@@ -1,11 +1,11 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	accumulator
+	accumulator \
+	systolic
 
 CFLAGS := $(CFLAGS) \
 	-Wall \
-	-Werror \
 	-static \
 	-I$(abs_top_srcdir)
 
