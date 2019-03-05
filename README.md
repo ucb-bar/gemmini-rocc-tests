@@ -1,23 +1,23 @@
 # Systolic Quickstart
 1. Clone submodules
     - `git submodule update --init --recursive`
-1. Install a recent `riscv-tools` and set the envvar `$RISCV` to the installed location
-    - I tested with master of `ucb-bar/esp-tools` and master of `riscv/riscv-tools`
+1. Clone `ucb-bar:esp-tools`, install, and set the envvar `$RISCV` to the installed location
+    - I tested with master of `ucb-bar:esp-tools`
     - You need gcc, binutils, pk, and fesvr at least
-1. Copy a recent `riscv-tests` to the root of `$RISCV`. You should use a vanilla `riscv-tests` from a recent `riscv-tools`.
-    - `cp -r riscv-tools/riscv-tests $RISCV/.`
+1. Copy `riscv-tests` to the root of `$RISCV`
+    - `cp -r esp-tools/riscv-tests $RISCV/.`
 1. Build the tests in this repo
-```
-autoconf
-mkdir build && cd build
-../configure --with-riscvtools=$RISCV
-make
-```
-1. Build spike with systolic support
-    - `ucb-bar/esp-tools/riscv-isa-sim` on branch `systolic`
-    - `cd esp-tools && ./build-spike-only.sh`
+    ```
+    autoconf
+    mkdir build && cd build
+    ../configure --with-riscvtools=$RISCV
+    make
+    ```
+1. Build spike (with systolic support) and pk
+    - `cd esp-tools/riscv-isa-sim && git checkout systolic`
+    - `cd esp-tools && ./build-spike-pk.sh`
 1. Run test programs on spike
-    - `cd build/bareMetal` or `cd build/pk`
+    - `cd systolic-rocc-tests/build/bareMetal` or `cd systolic-rocc-tests/build/pk`
     - `spike --extension=systolic examples-bareMetal-p-systolic`
     - `spike --extension=systolic pk examples-pk-systolic`
 

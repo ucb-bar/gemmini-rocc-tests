@@ -8,14 +8,15 @@ tests_p = $(addprefix $(PREFIX)-p-, $(tests))
 tests_v = $(addprefix $(PREFIX)-v-, $(tests))
 
 CFLAGS := $(CFLAGS) \
-	-static \
+	-march=rv64gc -Wa,-march=rv64gcxhwacha \
 	-mcmodel=medany \
+	-static \
 	-fvisibility=hidden \
 	-nostdlib \
 	-nostartfiles \
 	-I$(abs_top_srcdir) \
 	-I$(RISCVTOOLS) \
-	-DID_STRING=$(ID_STRING)
+	-DID_STRING=$(ID_STRING) \
 
 all: $(tests_p)
 
