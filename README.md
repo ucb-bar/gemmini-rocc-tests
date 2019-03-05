@@ -1,9 +1,11 @@
 # Systolic Quickstart
+1. Clone submodules
+    - `git submodule update --init --recursive`
 1. Install a recent `riscv-tools` and set the envvar `$RISCV` to the installed location
     - I tested with master of `ucb-bar/esp-tools` and master of `riscv/riscv-tools`
     - You need gcc, binutils, pk, and fesvr at least
-1. Copy a recent `riscv-tests` to the root of `$RISCV`.
-    - `cp -r esp-tools/riscv-tests $RISCV/.`
+1. Copy a recent `riscv-tests` to the root of `$RISCV`. You should use a vanilla `riscv-tests` from a recent `riscv-tools`.
+    - `cp -r riscv-tools/riscv-tests $RISCV/.`
 1. Build the tests in this repo
 ```
 autoconf
