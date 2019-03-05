@@ -1,3 +1,28 @@
+# Systolic Quickstart
+1. Install a recent `riscv-tools` and set the envvar `$RISCV` to the installed location
+    - I tested with master of `ucb-bar/esp-tools` and master of `riscv/riscv-tools`
+    - You need gcc, binutils, pk, and fesvr at least
+1. Copy a recent `riscv-tests` to the root of `$RISCV`.
+    - `cp -r esp-tools/riscv-tests $RISCV/.`
+1. Build the tests in this repo
+```
+autoconf
+mkdir build && cd build
+../configure --with-riscvtools=$RISCV
+make
+```
+1. Build spike with systolic support
+    - `ucb-bar/esp-tools/riscv-isa-sim` on branch `systolic`
+    - `cd esp-tools && ./build-spike-only.sh`
+1. Run test programs on spike
+    - `cd build/bareMetal` or `cd build/pk`
+    - `spike --extension=systolic examples-bareMetal-p-systolic`
+    - `spike --extension=systolic pk examples-pk-systolic`
+
+Currenly the `pk/systolic.c` test fails due to some bug in the software or spike.
+
+# Original README
+
 Collection of example libraries and test programs for the existing Rocket Custom Coprocessor (RoCC) accelerators for [Rocket Chip](https://github.com/ucb-bar/rocket-chip).
 
 ## Usage
