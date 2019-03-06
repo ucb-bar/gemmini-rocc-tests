@@ -2,7 +2,7 @@ include $(abs_top_srcdir)/Makefrag
 
 tests = \
 	accumulator \
-	systolic
+	systolic_toggle_mode
 
 tests_p = $(addprefix $(PREFIX)-p-, $(tests))
 tests_v = $(addprefix $(PREFIX)-v-, $(tests))
