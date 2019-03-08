@@ -14,17 +14,22 @@
 
 #define XCUSTOM_ACC 3
 
-#define matmul_mvin(dummy, dram_addr, spad_addr)                        \
-  ROCC_INSTRUCTION(XCUSTOM_ACC, dummy, dram_addr, spad_addr, k_MVIN);
-#define matmul_mvout(dummy, dram_addr, spad_addr)                              \
-  ROCC_INSTRUCTION(XCUSTOM_ACC, dummy, dram_addr, spad_addr, k_MVOUT);
+#define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct) \
+  ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, funct, 10, 11)
 
-#define matmul_compute_preloaded(dummy, A, B)                              \
-  ROCC_INSTRUCTION(XCUSTOM_ACC, dummy, A, B, k_COMPUTE_PRELOADED);
+#define matmul_mvin(dram_addr, spad_addr)                        \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, spad_addr, k_MVIN);
+#define matmul_mvout(dram_addr, spad_addr)                              \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, spad_addr, k_MVOUT);
+
+#define matmul_compute_preloaded(A, B)                              \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_COMPUTE_PRELOADED);
 
 #define matmul_preload(rd, C, D)                              \
   ROCC_INSTRUCTION(XCUSTOM_ACC, rd, C, D, k_PRELOAD);
-#define matmul_setmode(dummy, mode)                              \
-  ROCC_INSTRUCTION(XCUSTOM_ACC, dummy, mode, 0, k_SETMODE);
+#define matmul_preload_no_rd(C, D)                              \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, C, D, k_PRELOAD);
+#define matmul_setmode(mode)                              \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, mode, 0, k_SETMODE);
 
 #endif  // SRC_MAIN_C_SYSTOLIC_H

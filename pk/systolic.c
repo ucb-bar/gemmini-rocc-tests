@@ -31,26 +31,22 @@ int main() {
   }
 #endif
 
-  // TODO: eliminate the need for this dummy variable
-  // Need to modify rocc-software/src/xcustom.h
-  uint64_t dummy = 0;
-  assert(dummy == 0);
 
   for (size_t i = 0; i < DIM; ++i) {
-    matmul_mvin(dummy, A[i], i*DIM*sizeof(uint8_t));
-    matmul_mvin(dummy, B[i], DIM*DIM*sizeof(uint8_t) +
+    matmul_mvin(A[i], i*DIM*sizeof(uint8_t));
+    matmul_mvin(B[i], DIM*DIM*sizeof(uint8_t) +
         i*DIM*sizeof(uint8_t));
-    matmul_mvin(dummy, D[i], 2*DIM*DIM*sizeof(uint8_t) +
+    matmul_mvin(D[i], 2*DIM*DIM*sizeof(uint8_t) +
         i*DIM*sizeof(uint8_t));
   }
 
-  matmul_setmode(dummy, 0);
-  matmul_preload(dummy, 3*DIM*DIM*sizeof(uint8_t), 2*DIM*DIM*sizeof(uint8_t));
-  matmul_compute_preloaded(dummy, 0x0, DIM*DIM*sizeof(uint8_t));
+  matmul_setmode(0);
+  matmul_preload_no_rd(3*DIM*DIM*sizeof(uint8_t), 2*DIM*DIM*sizeof(uint8_t));
+  matmul_compute_preloaded(0x0, DIM*DIM*sizeof(uint8_t));
 
   for (size_t i = 0; i < DIM; ++i) {
     // TODO: mvout rs1 = scratchpad or DRAM address? mismatch bet spike and ISA spec
-    matmul_mvout(dummy, C[i], 3*DIM*DIM*sizeof(uint8_t) + i*DIM*sizeof(uint8_t));
+    matmul_mvout(C[i], 3*DIM*DIM*sizeof(uint8_t) + i*DIM*sizeof(uint8_t));
   }
 #define DEBUG_PRINTS
   for (size_t i = 0; i < DIM; ++i) {
