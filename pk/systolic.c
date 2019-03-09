@@ -45,7 +45,6 @@ int main() {
   matmul_compute_preloaded(0x0, DIM*DIM*sizeof(uint8_t));
 
   for (size_t i = 0; i < DIM; ++i) {
-    // TODO: mvout rs1 = scratchpad or DRAM address? mismatch bet spike and ISA spec
     matmul_mvout(C[i], 3*DIM*DIM*sizeof(uint8_t) + i*DIM*sizeof(uint8_t));
   }
 #define DEBUG_PRINTS
