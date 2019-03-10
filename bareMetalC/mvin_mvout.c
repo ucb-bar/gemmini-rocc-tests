@@ -2,10 +2,10 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "include/systolic.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "include/systolic.h"
 #include "util.h"
 
 #define DIM 16
