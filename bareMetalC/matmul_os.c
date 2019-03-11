@@ -36,7 +36,7 @@ int main() {
 
   for (size_t i = 0; i < DIM; ++i) {
     matmul_mvin(A[i], i);
-    matmul_mvin(B[i], DIM + i;
+    matmul_mvin(B[i], DIM + i);
     matmul_mvin(D[i], 2*DIM + i);
   }
 
