@@ -1,7 +1,8 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	mvin_mvout
+	mvin_mvout \
+	matmul_os
 
 BENCH_COMMON = $(RISCVTOOLS)/riscv-tests/benchmarks/common
 
