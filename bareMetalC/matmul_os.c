@@ -19,11 +19,11 @@ int main() {
   for (size_t i = 0; i < DIM; ++i) {
     for (size_t j = 0; j < DIM; ++j) {
       // A = incrementing values row by row
-      A[i][j] = 0;//(i == j) ? 1 : 0;//i*DIM + j;
+      A[i][j] = i*DIM + j;
       // B = identity matrix
-      B[i][j] = 0;//(i == j) ? 1 : 0;
+      B[i][j] = (i == j) ? 1 : 0;
       // D = zeros, TODO try to use matmul.preload(rd = 1) instead
-      D[i][j] = (i == j) ? 1 : 0;
+      D[i][j] = 0;
     }
   }
 
