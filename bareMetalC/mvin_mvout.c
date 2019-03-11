@@ -21,11 +21,11 @@ int main() {
   }
 
   for (size_t i = 0; i < DIM; ++i) {
-    matmul_mvin(A[i], i*DIM*sizeof(uint8_t));
+    matmul_mvin(A[i], i);
   }
 
   for (size_t i = 0; i < DIM; ++i) {
-    matmul_mvout(A_out[i], i*DIM*sizeof(uint8_t));
+    matmul_mvout(A_out[i], i);
   }
 
   for (size_t i = 0; i < DIM; ++i) {

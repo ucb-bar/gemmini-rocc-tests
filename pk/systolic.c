@@ -33,19 +33,17 @@ int main() {
 
 
   for (size_t i = 0; i < DIM; ++i) {
-    matmul_mvin(A[i], i*DIM*sizeof(uint8_t));
-    matmul_mvin(B[i], DIM*DIM*sizeof(uint8_t) +
-        i*DIM*sizeof(uint8_t));
-    matmul_mvin(D[i], 2*DIM*DIM*sizeof(uint8_t) +
-        i*DIM*sizeof(uint8_t));
+    matmul_mvin(A[i], i);
+    matmul_mvin(B[i], DIM + i);
+    matmul_mvin(D[i], 2*DIM + i);
   }
 
   matmul_setmode(0);
-  matmul_preload_no_rd(3*DIM*DIM*sizeof(uint8_t), 2*DIM*DIM*sizeof(uint8_t));
-  matmul_compute_preloaded(0x0, DIM*DIM*sizeof(uint8_t));
+  matmul_preload_no_rd(3*DIM, 2*DIM);
+  matmul_compute_preloaded(0x0, DIM);
 
   for (size_t i = 0; i < DIM; ++i) {
-    matmul_mvout(C[i], 3*DIM*DIM*sizeof(uint8_t) + i*DIM*sizeof(uint8_t));
+    matmul_mvout(C[i], 3*DIM + i);
   }
 #define DEBUG_PRINTS
   for (size_t i = 0; i < DIM; ++i) {
