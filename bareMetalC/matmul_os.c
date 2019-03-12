@@ -8,7 +8,7 @@
 #include "include/systolic.h"
 #include "util.h"
 
-#define DIM 16
+#define DIM 8
 
 int main() {
   // TODO: Should be signed, but then need to add a bias term below
@@ -19,7 +19,7 @@ int main() {
   for (size_t i = 0; i < DIM; ++i) {
     for (size_t j = 0; j < DIM; ++j) {
       // A = incrementing values row by row
-      A[i][j] = i*DIM + j;
+      A[i][j] = (i == j) ? 1 : 0;// i*DIM + j;
       // B = identity matrix
       B[i][j] = (i == j) ? 1 : 0;
       // D = zeros, TODO try to use matmul.preload(rd = 1) instead
@@ -41,7 +41,7 @@ int main() {
   }
 
   matmul_setmode(0);
-  matmul_preload_no_rd(3*DIM, 2*DIM);
+  matmul_preload_no_rd(2*DIM, 3*DIM);
   matmul_compute_preloaded(0x0, DIM);
 
   for (size_t i = 0; i < DIM; ++i) {

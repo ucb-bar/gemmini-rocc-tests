@@ -25,10 +25,10 @@
 #define matmul_compute_preloaded(A, B)                              \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_COMPUTE_PRELOADED);
 
-#define matmul_preload(rd, C, D)                              \
-  ROCC_INSTRUCTION(XCUSTOM_ACC, rd, C, D, k_PRELOAD);
-#define matmul_preload_no_rd(C, D)                              \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, C, D, k_PRELOAD);
+#define matmul_preload(rd, D, C)                              \
+  ROCC_INSTRUCTION(XCUSTOM_ACC, rd, D, C, k_PRELOAD);
+#define matmul_preload_no_rd(D, C)                              \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D, C, k_PRELOAD);
 #define matmul_setmode(mode)                              \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, mode, 0, k_SETMODE);
 
