@@ -8,34 +8,63 @@
 #include "include/systolic.h"
 #include "util.h"
 
-#define DIM 16
+#define DIM 4
+
+int is_equal(uint16_t X[DIM][DIM], uint16_t  Y[DIM][DIM]) {
+    for (size_t i = 0; i < DIM; ++i) {
+        for (size_t j = 0; j < DIM; ++j) {
+            if (X[i][j] != Y[i][j]) {
+                printf("X[%lu][%lu] = %u\n", i, j, X[i][j]);
+                printf("X_out[%lu][%lu] = %u\n", i, j, Y[i][j]);
+     
+                if (X[i][j] != Y[i][j]) {
+                    return 0;
+                }
+            }
+        }
+    }
+    return 1;
+}
 
 int main() {
-  static uint8_t A[DIM][DIM];
-  static uint8_t A_out[DIM][DIM];
+  static uint16_t A[DIM][DIM];
+  static uint16_t A_out[DIM][DIM];
+  static uint16_t B[DIM][DIM];
+  static uint16_t B_out[DIM][DIM];
+  static uint16_t C[DIM][DIM];
+  static uint16_t C_out[DIM][DIM];
+  static uint16_t D[DIM][DIM];
+  static uint16_t D_out[DIM][DIM];
+
   for (size_t i = 0; i < DIM; ++i) {
     for (size_t j = 0; j < DIM; ++j) {
-      // A = incrementing values row by row
       A[i][j] = i*DIM + j;
+      B[i][j] = i*DIM + j + 1;
+      C[i][j] = i*DIM + j + 2;
+      D[i][j] = i*DIM + j + 2;
     }
   }
 
+  printf("Moving in\n");
   for (size_t i = 0; i < DIM; ++i) {
     matmul_mvin(A[i], i);
+    matmul_mvin(B[i], DIM + i);
+    matmul_mvin(C[i], 2*DIM + i);
+    matmul_mvin(D[i], 3*DIM + i);
   }
 
+  printf("Moving out\n");
   for (size_t i = 0; i < DIM; ++i) {
     matmul_mvout(A_out[i], i);
+    matmul_mvout(B_out[i], DIM+i);
+    matmul_mvout(C_out[i], 2*DIM+i);
+    matmul_mvout(D_out[i], 3*DIM+i);
   }
 
-  for (size_t i = 0; i < DIM; ++i) {
-    for (size_t j = 0; j < DIM; ++j) {
-      if (A_out[i][j] != A[i][j]) {
-        printf("A[%lu][%lu] = %d\n", i, j, A[i][j]);
-        printf("A_out[%lu][%lu] = %d\n", i, j, A_out[i][j]);
-        exit(1);
-      }
-    }
+  if (!is_equal(A, A_out) || !is_equal(B, B_out)
+          || !is_equal(C, C_out) || !is_equal(D, D_out)) {
+      exit(1);
   }
+
   exit(0);
 }
