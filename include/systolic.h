@@ -3,6 +3,13 @@
 #ifndef SRC_MAIN_C_SYSTOLIC_H
 #define SRC_MAIN_C_SYSTOLIC_H
 
+// Dimension of the systolic array
+// Should be tileColumns*meshColumns
+#define DIM 16
+// Datatype of the systolic array
+// TODO: Should be signed, but then need to add a bias term below
+typedef uint8_t elem_t;
+
 #include "rocc-software/src/xcustom.h"
 
 #define k_MVIN 2

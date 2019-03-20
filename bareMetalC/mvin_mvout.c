@@ -8,15 +8,12 @@
 #include "include/systolic.h"
 #include "util.h"
 
-#define DIM 4
-
-int is_equal(uint16_t X[DIM][DIM], uint16_t  Y[DIM][DIM]) {
+int is_equal(elem_t X[DIM][DIM], elem_t Y[DIM][DIM]) {
     for (size_t i = 0; i < DIM; ++i) {
         for (size_t j = 0; j < DIM; ++j) {
             if (X[i][j] != Y[i][j]) {
                 printf("X[%lu][%lu] = %u\n", i, j, X[i][j]);
                 printf("X_out[%lu][%lu] = %u\n", i, j, Y[i][j]);
-     
                 if (X[i][j] != Y[i][j]) {
                     return 0;
                 }
@@ -27,14 +24,14 @@ int is_equal(uint16_t X[DIM][DIM], uint16_t  Y[DIM][DIM]) {
 }
 
 int main() {
-  static uint16_t A[DIM][DIM];
-  static uint16_t A_out[DIM][DIM];
-  static uint16_t B[DIM][DIM];
-  static uint16_t B_out[DIM][DIM];
-  static uint16_t C[DIM][DIM];
-  static uint16_t C_out[DIM][DIM];
-  static uint16_t D[DIM][DIM];
-  static uint16_t D_out[DIM][DIM];
+  static elem_t A[DIM][DIM];
+  static elem_t A_out[DIM][DIM];
+  static elem_t B[DIM][DIM];
+  static elem_t B_out[DIM][DIM];
+  static elem_t C[DIM][DIM];
+  static elem_t C_out[DIM][DIM];
+  static elem_t D[DIM][DIM];
+  static elem_t D_out[DIM][DIM];
 
   for (size_t i = 0; i < DIM; ++i) {
     for (size_t j = 0; j < DIM; ++j) {

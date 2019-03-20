@@ -8,9 +8,6 @@
 #include "include/systolic.h"
 #include "util.h"
 
-#define DIM 4
-typedef uint16_t elem_t;
-
 void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
     for (size_t r = 0; r < DIM; r++)
         for (size_t c = 0; c < DIM; c++) {
@@ -35,7 +32,6 @@ void printMatrix(elem_t m[DIM][DIM]) {
 }
 
 int main() {
-  // TODO: Should be signed, but then need to add a bias term below
   static elem_t A[DIM][DIM];
   static elem_t B[DIM][DIM];
   static elem_t C[DIM][DIM];
@@ -48,12 +44,11 @@ int main() {
   for (size_t i = 0; i < DIM; ++i) {
     for (size_t j = 0; j < DIM; ++j) {
       // A = incrementing values row by row
-      // A[i][j] = (i == j) ? 1 : 0;// i*DIM + j;
-      A[i][j] = 0;
+      A[i][j] = i*DIM + j;
       // B = identity matrix
-      B[i][j] = 0;
+      B[i][j] = (i == j) ? 1 : 0;
       // D = zeros, TODO try to use matmul.preload(rd = 1) instead
-      D[i][j] = i*DIM + j;
+      D[i][j] = 0;
     }
   }
 
@@ -61,12 +56,9 @@ int main() {
   transpose(A, A_tp);
 
 #ifdef DEBUG_PRINTS
-  for (size_t j = 0; j < DIM; ++j) {
-    printf("i = %lu, j = %lu, A_ij = %d\n", i, j, A[i][j]);
-    printf("i = %lu, j = %lu, B_ij = %d\n", i, j, B[i][j]);
-  }
+  printMatrix(A);
+  printMatrix(B);
 #endif
-
   printf("Moving in\n");
 
   for (size_t i = 0; i < DIM; ++i) {
