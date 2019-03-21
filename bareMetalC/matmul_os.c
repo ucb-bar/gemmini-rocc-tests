@@ -9,17 +9,17 @@
 #include "util.h"
 
 int main() {
-  for (int n = 0; n < 2; n++) {
+  for (int n = 0; n < 8; n++) {
     static matmul_t mm;
 
     for (size_t i = 0; i < DIM; ++i) {
       for (size_t j = 0; j < DIM; ++j) {
         // A = incrementing values row by row
-        mm.A[i][j] = i*DIM + j;
+        mm.A[i][j] = rand() % 6;
         // B = identity matrix
-        mm.B[i][j] = (i == j) ? 1 : 0;
+        mm.B[i][j] = rand() % 6;
         // D = zeros, TODO try to use matmul.preload(rd = 1) instead
-        mm.D[i][j] = 0;
+        mm.D[i][j] = rand() % 6;
       }
     }
 
@@ -44,10 +44,16 @@ int main() {
       matmul_mvout(mm.C[i], 3*DIM + i);
     }
 
+    // printf("A:\n");
+    // printMatrix(mm.A);
+    // printf("B:\n");
+    // printMatrix(mm.B);
+    // printf("D:\n");
+    // printMatrix(mm.D);
+    printf("C:\n");
+    printMatrix(mm.C);
     printf("Gold:\n");
     printMatrix(mm.gold);
-    printf("Actual:\n");
-    printMatrix(mm.C);
 
     if (!matmul_is_correct(&mm))
         exit(1);

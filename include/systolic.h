@@ -61,6 +61,14 @@ void init_matmul(matmul_t * mm) {
   transpose(mm->B, mm->B_tp);
 }
 
+int rand() {
+  static int x = 1;
+  x ^= (x << 21);
+  x ^= (x >> 35);
+  x ^= (x << 4);
+  return x >= 0 ? x : -x;
+}
+
 // Accelerator interface
 #include "rocc-software/src/xcustom.h"
 
