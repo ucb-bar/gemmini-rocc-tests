@@ -8,21 +8,6 @@
 #include "include/systolic.h"
 #include "util.h"
 
-int is_equal(elem_t X[DIM][DIM], elem_t Y[DIM][DIM]) {
-    for (size_t i = 0; i < DIM; ++i) {
-        for (size_t j = 0; j < DIM; ++j) {
-            if (X[i][j] != Y[i][j]) {
-                printf("X[%lu][%lu] = %u\n", i, j, X[i][j]);
-                printf("X_out[%lu][%lu] = %u\n", i, j, Y[i][j]);
-                if (X[i][j] != Y[i][j]) {
-                    return 0;
-                }
-            }
-        }
-    }
-    return 1;
-}
-
 int main() {
   static elem_t A[DIM][DIM];
   static elem_t A_out[DIM][DIM];
@@ -38,7 +23,7 @@ int main() {
       A[i][j] = i*DIM + j;
       B[i][j] = i*DIM + j + 1;
       C[i][j] = i*DIM + j + 2;
-      D[i][j] = i*DIM + j + 2;
+      D[i][j] = i*DIM + j + 3;
     }
   }
 
@@ -57,6 +42,23 @@ int main() {
     matmul_mvout(C_out[i], 2*DIM+i);
     matmul_mvout(D_out[i], 3*DIM+i);
   }
+  
+  printf("A:\n");
+  printMatrix(A);
+  printf("A_out:\n");
+  printMatrix(A_out);
+  printf("B:\n");
+  printMatrix(B);
+  printf("B_out:\n");
+  printMatrix(B_out);
+  printf("C:\n");
+  printMatrix(C);
+  printf("C_out:\n");
+  printMatrix(C_out);
+  printf("D:\n");
+  printMatrix(D);
+  printf("D_out:\n");
+  printMatrix(D_out);
 
   if (!is_equal(A, A_out) || !is_equal(B, B_out)
           || !is_equal(C, C_out) || !is_equal(D, D_out)) {

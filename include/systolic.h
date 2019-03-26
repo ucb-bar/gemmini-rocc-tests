@@ -3,6 +3,8 @@
 #ifndef SRC_MAIN_C_SYSTOLIC_H
 #define SRC_MAIN_C_SYSTOLIC_H
 
+#include <stdint.h>
+
 // Dimension of the systolic array
 // Should be tileColumns*meshColumns
 #define DIM 4
@@ -11,18 +13,6 @@
 typedef uint16_t elem_t;
 
 // Matmul utility functions
-typedef struct matmul_t {
-    elem_t A[DIM][DIM];
-    elem_t B[DIM][DIM];
-    elem_t C[DIM][DIM];
-    elem_t D[DIM][DIM];
-
-    elem_t A_tp[DIM][DIM];
-    elem_t B_tp[DIM][DIM];
-
-    elem_t gold[DIM][DIM];
-} matmul_t;
-
 void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
@@ -30,6 +20,12 @@ void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C
       for (size_t k = 0; k < DIM; k++)
         C[r][c] += A[r][k]*B[k][c];
     }
+}
+
+void matadd(elem_t x[DIM][DIM], elem_t y[DIM][DIM], elem_t sum[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++)
+        sum[r][c] = x[r][c] + y[r][c];
 }
 
 void transpose(elem_t in[DIM][DIM], elem_t out[DIM][DIM]) {
@@ -46,27 +42,18 @@ void printMatrix(elem_t m[DIM][DIM]) {
   }
 }
 
-int matmul_is_correct(matmul_t * mm) {
+int is_equal(elem_t x[DIM][DIM], elem_t y[DIM][DIM])  {
   for (size_t i = 0; i < DIM; ++i)
     for (size_t j = 0; j < DIM; ++j)
-      if (mm->C[i][j] != mm->gold[i][j])
+      if (x[i][j] != y[i][j])
           return 0;
   return 1;
 }
 
-// Run this function after setting the values of A, B, and D
-void init_matmul(matmul_t * mm) {
-  matmul(mm->A, mm->B, mm->D, mm->gold);
-  transpose(mm->A, mm->A_tp);
-  transpose(mm->B, mm->B_tp);
-}
-
 int rand() {
-  static int x = 1;
-  x ^= (x << 21);
-  x ^= (x >> 35);
-  x ^= (x << 4);
-  return x >= 0 ? x : -x;
+  static uint32_t x = 777;
+  x = x * 1664525 + 1013904223;
+  return x >> 24;
 }
 
 // Accelerator interface
@@ -81,22 +68,32 @@ int rand() {
 
 #define XCUSTOM_ACC 3
 
+#define GARBAGE_ADDR ((uint64_t)(~0))
+
 #define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct) \
   ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, funct, 10, 11)
 
+// mvin and mvout
 #define matmul_mvin(dram_addr, spad_addr)                        \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, spad_addr, k_MVIN);
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, spad_addr, k_MVIN)
 #define matmul_mvout(dram_addr, spad_addr)                              \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, spad_addr, k_MVOUT);
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, spad_addr, k_MVOUT)
 
-#define matmul_compute_preloaded(A, B)                              \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_COMPUTE_PRELOADED);
+// compute
+#define matmul_compute_preloaded(A, B) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_COMPUTE_PRELOADED)
+#define matmul_compute_accumulated(A, B) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_COMPUTE_ACCUMULATE)
 
-#define matmul_preload(rd, D, C)                              \
-  ROCC_INSTRUCTION(XCUSTOM_ACC, rd, D, C, k_PRELOAD);
-#define matmul_preload_no_rd(D, C)                              \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D, C, k_PRELOAD);
-#define matmul_setmode(mode)                              \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, mode, 0, k_SETMODE);
+// preload
+#define matmul_preload(D, C) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D, C, k_PRELOAD)
+#define matmul_preload_zeros(rd, C) \
+  ROCC_INSTRUCTION_R_R_R(XCUSTOM_ACC, rd, GARBAGE_ADDR, C, k_PRELOAD, 1, 11, 12)
+
+// config
+#define matmul_setmode(mode) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, mode, 0, k_SETMODE)
 
 #endif  // SRC_MAIN_C_SYSTOLIC_H
+
