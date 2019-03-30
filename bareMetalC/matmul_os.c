@@ -19,11 +19,8 @@ void operands(int c, int * a, int * b, int * d) {
 
 int main() {
   static elem_t ZERO[DIM][DIM];
-  for (size_t i = 0; i < DIM; ++i)
-    for (size_t j = 0; j < DIM; ++j)
-      ZERO[i][j] = 0;
 
-  for (int it = 0; it < 1; it++) {
+  for (int it = 0; it < 8; it++) {
     static elem_t A[N][DIM][DIM];
     static elem_t B[N][DIM][DIM];
     static elem_t D[N][DIM][DIM];
@@ -37,14 +34,12 @@ int main() {
     // ...taking into account the preloads or accumulates
     static int preload[N*N*N] = {1};
     for (int i = 1; i < N*N*N; ++i)
-        // preload[i] = rand() % 2; // TODO
-        preload[i] = 0;
+        preload[i] = rand() % 2;
 
     // ...and for the actual preloads, do we just preload zeros?
     static int preload_zeros[N*N*N];
     for (int i = 0; i < N*N*N; ++i)
-        // preload_zeros[i] = rand() % 2;
-        preload_zeros[i] = 0; // TODO
+        preload_zeros[i] = rand() % 2;
 
     // ...and finally, which results won't produce any output
     static int no_output[N*N*N];
@@ -69,9 +64,9 @@ int main() {
     for (size_t n = 0; n < N; ++n) {
       for (size_t i = 0; i < DIM; ++i) {
         for (size_t j = 0; j < DIM; ++j) {
-          A[n][i][j] = i == j ? 1 : 0; rand() % 6;
-          B[n][i][j] = i == j ? 1 : 0; rand() % 6;
-          D[n][i][j] = i == j ? 1 : 0; rand() % 6;
+          A[n][i][j] = rand() % 6;
+          B[n][i][j] = rand() % 6;
+          D[n][i][j] = rand() % 6;
         }
       }
     }
@@ -96,7 +91,7 @@ int main() {
     int D_addr = 2*N*DIM;
     int C_addr = 3*N*DIM;
 
-    printf("Moving in\n");
+    // printf("Moving in\n");
     for (size_t n = 0; n < N; ++n)
       for (size_t i = 0; i < DIM; ++i)
         matmul_mvin(A_tp[n][i], A_addr + n*DIM + i);
@@ -109,59 +104,50 @@ int main() {
       for (size_t i = 0; i < DIM; ++i)
         matmul_mvin(D[n][i], D_addr + n*DIM + i);
 
-    printf("Setting mode\n");
+    // printf("Setting mode\n");
     matmul_setmode(0);
 
-    printf("Matmulling\n");
+    // printf("Matmulling\n");
     for (size_t c = 0; c < N*N*N; ++c) {
-      int a, b, d; 
+      int a, b, d;
       operands(c, &a, &b, &d);
       
       uint64_t out_addr = C_addr + c*DIM;
       if (no_output[c])
         out_addr = GARBAGE_ADDR;
 
+      // printf("Preload %u\n", c);
       if (!preload[c]) {
-        int tmp;
-        matmul_preload_zeros(tmp, out_addr);
+        matmul_preload_zeros(out_addr);
+        // printf("Compute accumulate\n");
         matmul_compute_accumulated(A_addr + a*DIM, B_addr + b*DIM);
       } else if (preload_zeros[c]) {
-        // TODO
-        // int tmp;
-        // matmul_preload_zeros(tmp, out_addr);
-        matmul_preload(0, out_addr);
+        matmul_preload_zeros(out_addr);
+        // printf("Compute zero\n");
         matmul_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
       } else {
         matmul_preload(D_addr + d*DIM, out_addr);
+        // printf("Compute normal\n");
         matmul_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
       }
+      // printf("Done computing %u\n", c);
     }
-    /*for (size_t a = 0; a < N; ++a) {
-      for (size_t b = 0; b < N; ++b) {
-        for (size_t d = 0; d < N; ++d) {
-          size_t c = a*N*N + b*N + d;
-          // printf("Preloading\n");
-          matmul_preload(D_addr + d*DIM, C_addr + c*DIM);
-          // printf("Computing\n");
-          matmul_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
-        }
-      }
-    }*/
 
-    printf("Moving out\n");
-    for (size_t c = 0; c < N*N*N; ++c) {
-      for (size_t i = 0; i < DIM; ++i) {
-        matmul_mvout(C[c][i], C_addr + c*DIM + i);
-      }
-    }
+    // printf("Moving out\n");
+    for (size_t c = 0; c < N*N*N; ++c)
+      for (size_t i = 0; i < DIM; ++i)
+        if (!no_output[c])
+          matmul_mvout(C[c][i], C_addr + c*DIM + i);
 
     printf("Moved out\n");
     for (int n = 0; n < N*N*N; ++n) {
-      printf("C:\n");
-      printMatrix(C[n]);
-      printf("Gold:\n");
-      printMatrix(gold[n]);
-      printf("\n");
+      if (!no_output[n]) {
+        printf("C:\n");
+        printMatrix(C[n]);
+        printf("Gold:\n");
+        printMatrix(gold[n]);
+        printf("\n");
+      }
     }
 
     for (int n = 0; n < N*N*N; ++n)

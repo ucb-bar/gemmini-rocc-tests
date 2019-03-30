@@ -68,7 +68,7 @@ int rand() {
 
 #define XCUSTOM_ACC 3
 
-#define GARBAGE_ADDR ((uint64_t)(~0))
+#define GARBAGE_ADDR ((uint64_t)(-1))
 
 #define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct) \
   ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, funct, 10, 11)
@@ -88,8 +88,8 @@ int rand() {
 // preload
 #define matmul_preload(D, C) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D, C, k_PRELOAD)
-#define matmul_preload_zeros(rd, C) \
-  ROCC_INSTRUCTION_R_R_R(XCUSTOM_ACC, rd, GARBAGE_ADDR, C, k_PRELOAD, 1, 11, 12)
+#define matmul_preload_zeros(C) \
+  matmul_preload(GARBAGE_ADDR, C)
 
 // config
 #define matmul_setmode(mode) \
