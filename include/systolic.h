@@ -63,8 +63,8 @@ int rand() {
 #define k_MVOUT 3
 #define k_COMPUTE_PRELOADED 4
 #define k_COMPUTE_ACCUMULATE 5
-#define k_PRELOAD 8
-#define k_SETMODE 9
+#define k_PRELOAD 6
+#define k_SETMODE 0
 
 #define XCUSTOM_ACC 3
 
