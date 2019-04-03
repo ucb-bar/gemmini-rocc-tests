@@ -5,8 +5,6 @@
 #include <stdio.h>
 #include "include/systolic.h"
 
-#define DIM 16
-
 int main() {
   static uint8_t A[DIM][DIM];
   static uint8_t A_out[DIM][DIM];
@@ -18,11 +16,11 @@ int main() {
   }
 
   for (size_t i = 0; i < DIM; ++i) {
-    matmul_mvin(A[i], i);
+    matmul_mvin(A[i], i, 0, 0, 0, 0);
   }
 
   for (size_t i = 0; i < DIM; ++i) {
-    matmul_mvout(A_out[i], i);
+    matmul_mvout(A_out[i], i, 0, 0, 0, 0);
   }
 
   for (size_t i = 0; i < DIM; ++i) {
