@@ -20,7 +20,7 @@ void operands(int c, int * a, int * b, int * d) {
 int main() {
   static elem_t ZERO[DIM][DIM];
 
-  for (int it = 0; it < 16; it++) {
+  for (int it = 0; it < 8; it++) {
     static elem_t A[N][DIM][DIM];
     static elem_t B[N][DIM][DIM];
     static elem_t D[N][DIM][DIM];
@@ -49,15 +49,15 @@ int main() {
 
     // Print the sequence out
     printf("Preloads: ");
-    for (int i = 0; i < N*N*N-1; ++i)
+    for (int i = 0; i < N*N*N; ++i)
       printf("%d, ", preload[i]);
     printf("\n");
     printf("Zeros: ");
-    for (int i = 0; i < N*N*N-1; ++i)
+    for (int i = 0; i < N*N*N; ++i)
       printf("%d, ", preload_zeros[i]);
     printf("\n");
     printf("No outputs: ");
-    for (int i = 0; i < N*N*N-1; ++i)
+    for (int i = 0; i < N*N*N; ++i)
       printf("%d, ", no_output[i]);
     printf("\n");
 
@@ -102,10 +102,14 @@ int main() {
 
     for (size_t n = 0; n < N; ++n)
       for (size_t i = 0; i < DIM; ++i)
-        matmul_mvin(D[n][i], D_addr + n*DIM + i, 0, 0, 0, 0);
+        if (n == N-1 && i == DIM-1) {
+          matmul_mvin(D[n][i], D_addr + n*DIM + i, 0, 0, 1, 0);
+        } else {
+          matmul_mvin(D[n][i], D_addr + n*DIM + i, 0, 0, 0, 0);
+        }
 
     // printf("Setting mode\n");
-    matmul_setmode(OUTPUT_STATIONARY, 0, 0, 0, 0);
+    matmul_setmode(OUTPUT_STATIONARY, 1, 0);
 
     // printf("Matmulling\n");
     for (size_t c = 0; c < N*N*N; ++c) {
@@ -116,28 +120,39 @@ int main() {
       if (no_output[c])
         out_addr = GARBAGE_ADDR;
 
-      // printf("Preload %u\n", c);
       if (!preload[c]) {
-        matmul_preload_zeros(out_addr, 0, 0, 0, 0);
-        // printf("Compute accumulate\n");
-        matmul_compute_accumulated(A_addr + a*DIM, B_addr + b*DIM, 0, 0, 0, 0);
+        if (c == N*N*N-1) {
+          matmul_preload_zeros(out_addr, 0, 0, 1, 0);
+        } else {
+          matmul_preload_zeros(out_addr, 0, 0, 0, 0);
+        }
+        matmul_compute_accumulated(A_addr + a*DIM, B_addr + b*DIM);
       } else if (preload_zeros[c]) {
-        matmul_preload_zeros(out_addr, 0, 0, 0, 0);
-        // printf("Compute zero\n");
-        matmul_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM, 0, 0, 0, 0);
+        if (c == N*N*N-1) {
+          matmul_preload_zeros(out_addr, 0, 0, 1, 0);
+        } else {
+          matmul_preload_zeros(out_addr, 0, 0, 0, 0);
+        }
+        matmul_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
       } else {
-        matmul_preload(D_addr + d*DIM, out_addr, 0, 0, 0, 0);
-        // printf("Compute normal\n");
-        matmul_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM, 0, 0, 0, 0);
+        if (c == N*N*N-1) {
+          matmul_preload(D_addr + d*DIM, out_addr, 0, 0, 1, 0);
+        } else {
+          matmul_preload(D_addr + d*DIM, out_addr, 0, 0, 0, 0);
+        }
+        matmul_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
       }
-      // printf("Done computing %u\n", c);
     }
 
     // printf("Moving out\n");
     for (size_t c = 0; c < N*N*N; ++c)
       for (size_t i = 0; i < DIM; ++i)
         if (!no_output[c])
-          matmul_mvout(C[c][i], C_addr + c*DIM + i, 0, 0, 0, 0);
+          if (c == 0 && i == 0) {
+            matmul_mvout(C[c][i], C_addr + c*DIM + i, 0, 0, 0, 1);
+          } else {
+            matmul_mvout(C[c][i], C_addr + c*DIM + i, 0, 0, 0, 0);
+          }
 
     printf("Moved out\n");
     for (int n = 0; n < N*N*N; ++n) {

@@ -87,11 +87,11 @@ int rand() {
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, spad_addr, to_deps(push_mvin, pop_mvin, push_ex, pop_ex) | k_MVOUT)
 
 // compute
-#define matmul_compute_preloaded(A, B, push_mvin, pop_mvin, push_mvout, pop_mvout) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, to_deps(push_mvin, pop_mvin, push_mvout, pop_mvout) | k_COMPUTE_PRELOADED)
+#define matmul_compute_preloaded(A, B) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_COMPUTE_PRELOADED)
 
-#define matmul_compute_accumulated(A, B, push_mvin, pop_mvin, push_mvout, pop_mvout) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B,  to_deps(push_mvin, pop_mvin, push_mvout, pop_mvout) | k_COMPUTE_ACCUMULATE)
+#define matmul_compute_accumulated(A, B) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_COMPUTE_ACCUMULATE)
 
 // preload
 #define matmul_preload(D, C, push_mvin, pop_mvin, push_mvout, pop_mvout) \
@@ -101,8 +101,8 @@ int rand() {
   matmul_preload(GARBAGE_ADDR, C, push_mvin, pop_mvin, push_mvout, pop_mvout)
 
 // config
-#define matmul_setmode(mode, push_mvin, pop_mvin, push_mvout, pop_mvout) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, mode, 0, to_deps(push_mvin, pop_mvin, push_mvout, pop_mvout) | k_SETMODE)
+#define matmul_setmode(mode, pop_mvin, pop_mvout) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, mode, 0, to_deps(0, pop_mvin, 0, pop_mvout) | k_SETMODE)
 
 #endif  // SRC_MAIN_C_SYSTOLIC_H
 
