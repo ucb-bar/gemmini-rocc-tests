@@ -14,19 +14,29 @@
 typedef uint16_t elem_t;
 
 // Matmul utility functions
-void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
+void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], uint64_t C_full[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
-      C[r][c] = D[r][c];
+      C_full[r][c] = D[r][c];
       for (size_t k = 0; k < DIM; k++)
-        C[r][c] += A[r][k]*B[k][c];
+        C_full[r][c] += A[r][k]*B[k][c];
     }
 }
 
-void matadd(elem_t x[DIM][DIM], elem_t y[DIM][DIM], elem_t sum[DIM][DIM]) {
+void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], uint64_t D[DIM][DIM], uint64_t C_full[DIM][DIM]) {
+  // Identical to the other matmul fuction, but with a 64-bit bias
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C_full[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C_full[r][c] += A[r][k]*B[k][c];
+    }
+}
+
+void matshift(uint64_t full[DIM][DIM], elem_t out[DIM][DIM], int shift) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++)
-        sum[r][c] = x[r][c] + y[r][c];
+        out[r][c] = full[r][c] >> shift;
 }
 
 void transpose(elem_t in[DIM][DIM], elem_t out[DIM][DIM]) {
@@ -101,8 +111,8 @@ int rand() {
   matmul_preload(GARBAGE_ADDR, C, push_mvin, pop_mvin, push_mvout, pop_mvout)
 
 // config
-#define matmul_setmode(mode, pop_mvin, pop_mvout) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, mode, 0, to_deps(0, pop_mvin, 0, pop_mvout) | k_SETMODE)
+#define matmul_setmode(mode, shift, pop_mvin, pop_mvout) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, mode, shift, to_deps(0, pop_mvin, 0, pop_mvout) | k_SETMODE)
 
 #endif  // SRC_MAIN_C_SYSTOLIC_H
 

@@ -20,7 +20,7 @@ void operands(int c, int * a, int * b, int * d) {
 int main() {
   static elem_t ZERO[DIM][DIM];
 
-  for (int it = 0; it < 8; it++) {
+  for (int shift = 0; shift <= 12; shift += 4) {
     static elem_t A[N][DIM][DIM];
     static elem_t B[N][DIM][DIM];
     static elem_t D[N][DIM][DIM];
@@ -29,6 +29,7 @@ int main() {
 
     // We will try out every combination of A, B, D possible
     static elem_t C[N*N*N][DIM][DIM];
+    static uint64_t gold_full[N*N*N][DIM][DIM];
     static elem_t gold[N*N*N][DIM][DIM];
 
     // ...taking into account the preloads or accumulates
@@ -64,9 +65,9 @@ int main() {
     for (size_t n = 0; n < N; ++n) {
       for (size_t i = 0; i < DIM; ++i) {
         for (size_t j = 0; j < DIM; ++j) {
-          A[n][i][j] = rand() % 6;
-          B[n][i][j] = rand() % 6;
-          D[n][i][j] = rand() % 6;
+          A[n][i][j] = rand() % 32;
+          B[n][i][j] = rand() % 32;
+          D[n][i][j] = rand() % 32;
         }
       }
     }
@@ -79,12 +80,15 @@ int main() {
       operands(g, &a, &b, &d);
 
       if (!preload[g])
-        matmul(A[a], B[b], gold[g-1], gold[g]);
+        matmul_full(A[a], B[b], gold_full[g-1], gold_full[g]);
       else if (preload_zeros[g])
-        matmul(A[a], B[b], ZERO, gold[g]);
+        matmul(A[a], B[b], ZERO, gold_full[g]);
       else
-        matmul(A[a], B[b], D[d], gold[g]);
+        matmul(A[a], B[b], D[d], gold_full[g]);
     }
+
+    for (size_t g = 0; g < N*N*N; ++g)
+        matshift(gold_full[g], gold[g], shift);
 
     int A_addr = 0;
     int B_addr = N*DIM;
@@ -109,7 +113,7 @@ int main() {
         }
 
     // printf("Setting mode\n");
-    matmul_setmode(OUTPUT_STATIONARY, 1, 0);
+    matmul_setmode(OUTPUT_STATIONARY, shift, 1, 0);
 
     // printf("Matmulling\n");
     for (size_t c = 0; c < N*N*N; ++c) {
