@@ -23,6 +23,15 @@ void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], uint64_t
     }
 }
 
+void matmul_short(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C[r][c] += A[r][k]*B[k][c];
+    }
+}
+
 void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], uint64_t D[DIM][DIM], uint64_t C_full[DIM][DIM]) {
   // Identical to the other matmul fuction, but with a 64-bit bias
   for (size_t r = 0; r < DIM; r++)
@@ -97,15 +106,15 @@ int rand() {
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, spad_addr, to_deps(push_mvin, pop_mvin, push_ex, pop_ex) | k_MVOUT)
 
 // compute
-#define matmul_compute_preloaded(A, B) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_COMPUTE_PRELOADED)
+#define matmul_compute_preloaded(A, BD) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, BD, k_COMPUTE_PRELOADED)
 
-#define matmul_compute_accumulated(A, B) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_COMPUTE_ACCUMULATE)
+#define matmul_compute_accumulated(A, BD) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, BD, k_COMPUTE_ACCUMULATE)
 
 // preload
-#define matmul_preload(D, C, push_mvin, pop_mvin, push_mvout, pop_mvout) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D, C, to_deps(push_mvin, pop_mvin, push_mvout, pop_mvout) | k_PRELOAD)
+#define matmul_preload(BD, C, push_mvin, pop_mvin, push_mvout, pop_mvout) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, BD, C, to_deps(push_mvin, pop_mvin, push_mvout, pop_mvout) | k_PRELOAD)
 
 #define matmul_preload_zeros(C, push_mvin, pop_mvin, push_mvout, pop_mvout) \
   matmul_preload(GARBAGE_ADDR, C, push_mvin, pop_mvin, push_mvout, pop_mvout)
