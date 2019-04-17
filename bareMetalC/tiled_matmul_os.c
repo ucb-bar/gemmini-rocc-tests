@@ -9,17 +9,23 @@
 #include "include/systolic.h"
 #include "util.h"
 
-#define MAT_DIM_I 8
-#define MAT_DIM_K 8
-#define MAT_DIM_J 8
+#define MAT_DIM_I 16
+#define MAT_DIM_K 16
+#define MAT_DIM_J 16
 #define SCRATCHPAD_SIZE 4096
 #define TILE_DIM 4
 
 void transpose_tile(elem_t* in, elem_t* out, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++)
     for (size_t c = 0; c < tile_dim; c++)
-      *(out + c*tile_dim + r) = *(in +r*MAT_DIM_I + c);
+      *(out + c*tile_dim + r) = *(in +r*MAT_DIM_K + c);
       //out[c][r] = in[r][c];
+}
+
+void transpose_block(elem_t* in, elem_t out[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++)
+      out[c][r] = *(in +r*MAT_DIM_K + c);
 }
 
 void print_tile(elem_t* in, int tile_dim) {
@@ -89,7 +95,7 @@ int main() {
 
     static elem_t A_tp_s[TILE_DIM][TILE_DIM]; //TODO: need to make this a dynamic allocation
     static elem_t* A_tp; //TODO: need to make this a dynamic allocation
-    static elem_t* A_tp_s; //TODO: need to make this a dynamic allocation
+    static elem_t A_tps[DIM][DIM]; //TODO: need to make this a dynamic allocation
 
     A_tp = &A_tp_s;
 
@@ -115,10 +121,10 @@ int main() {
     full_matmul(full_A, full_B, full_D, gold_full);
 
 
-    printf("full_A:\n");
-    full_printMatrix(full_A);
-    printf("full_B:\n");
-    full_printMatrix(full_B);
+    //printf("full_A:\n");
+    //full_printMatrix(full_A);
+    //printf("full_B:\n");
+    //full_printMatrix(full_B);
 
 
 
@@ -159,21 +165,22 @@ int main() {
               for (size_t m = 0; m < DIM; ++m) {
                 matmul_mvin(D + ((i+m)*MAT_DIM_I)*sizeof(elem_t), D_addr + m, 0, 0, 0, 0);
               }
+              transpose_block(A, A_tps);
               for (size_t m = 0; m < DIM; ++m) {
-                matmul_mvin(A_tp + ((m)*MAT_DIM_I)*sizeof(elem_t), A_addr + m, 0, 0, 0, 0);  
+                //matmul_mvin(A_tp + ((m)*MAT_DIM_I)*sizeof(elem_t), A_addr + m, 0, 0, 0, 0);  
+                matmul_mvin(A_tps + m*DIM*sizeof(elem_t), A_addr + m, 0, 0, 0, 0);  
               }
               for (size_t m = 0; m < DIM; ++m) {
                 if (m == DIM-1) {
-                  matmul_mvin(B + ((m)*MAT_DIM_K)*sizeof(elem_t), B_addr + m, 0, 0, 1, 0);
+                  matmul_mvin(B + (m*MAT_DIM_K)*sizeof(elem_t), B_addr + m, 0, 0, 1, 0);
                 } else { 
-                  matmul_mvin(B + ((m)*MAT_DIM_K)*sizeof(elem_t), B_addr + m, 0, 0, 0, 0);
+                  matmul_mvin(B + (m*MAT_DIM_K)*sizeof(elem_t), B_addr + m, 0, 0, 0, 0);
                 }
               }
               uint64_t out_addr = GARBAGE_ADDR;
               if (tile_dim == DIM) { 
                 out_addr = C_addr + j*(tile_dim / DIM) + i;
               }
-              //matmul_preload(D_addr + i, out_addr, 0, 1, 0, 0);
               if (k0 == 0) {
                 //printf("preload from D at: %d\n", D_addr + j*(tile_dim / DIM) + i);
                 matmul_preload(D_addr + j*(tile_dim / DIM) + i, out_addr, 0, 1, 0, 0);
@@ -184,8 +191,10 @@ int main() {
               matmul_compute_preloaded(A_addr, B_addr);
 
               for (int k=DIM; k < tile_dim; k += DIM) {
+                transpose_block(A + (i*MAT_DIM_K + k)*sizeof(elem_t) , A_tps);
                 for (size_t m = 0; m < DIM; ++m) {
-                  matmul_mvin(A_tp + ((k+m)*MAT_DIM_K + i)*sizeof(elem_t), A_addr + (k+m), 0, 0, 0, 0);
+                  //matmul_mvin(A_tp + ((k+m)*MAT_DIM_K + i)*sizeof(elem_t), A_addr + (k+m), 0, 0, 0, 0);
+                  matmul_mvin(A_tps + m*DIM*sizeof(elem_t), A_addr + (k+m), 0, 0, 0, 0);
                 }  
                 for (size_t m = 0; m < DIM; ++m) {
                   if (m == DIM-1) {
@@ -201,8 +210,10 @@ int main() {
               }
 
               if (tile_dim != DIM) { 
+                transpose_block(A + (i*MAT_DIM_K + tile_dim - DIM)*sizeof(elem_t) , A_tps);
                 for (size_t m = 0; m < DIM; ++m) {
-                  matmul_mvin(A_tp + ((tile_dim - DIM +m)*MAT_DIM_K + i)*sizeof(elem_t), A_addr + (tile_dim - DIM + m), 0, 0, 0, 0); 
+                  //matmul_mvin(A_tp + ((tile_dim - DIM +m)*MAT_DIM_K + i)*sizeof(elem_t), A_addr + (tile_dim - DIM + m), 0, 0, 0, 0); 
+                  matmul_mvin(A_tps + m*DIM*sizeof(elem_t), A_addr + (tile_dim - DIM + m), 0, 0, 0, 0); 
                 } 
                 for (size_t m = 0; m < DIM; ++m) {
                   if (m == DIM-1) {
@@ -211,14 +222,7 @@ int main() {
                     matmul_mvin(B + ((tile_dim - DIM +m)*MAT_DIM_K + j)*sizeof(elem_t), B_addr + (tile_dim - DIM +m), 0, 0, 1, 0);
                   }
                 }
-                //out_addr = C_addr + i*DIM + j;
-                //out_addr = C_addr + j*DIM + i;
-                //out_addr = C_addr + i*(tile_dim / DIM) + j;
                 out_addr = C_addr + j*(tile_dim / DIM) + i;
-                //printf("out_addr: %d\n", out_addr);
-                //printf("i: %d, i0: %d\n", i, i0);
-                //printf("j: %d, j0: %d\n", j, j0);
-                //printf("k0: %d\n", k0);
                 matmul_preload_zeros(out_addr, 0, 1, 1, 0);
                 matmul_compute_accumulated(A_addr + tile_dim - DIM, B_addr + tile_dim - DIM);
 
@@ -230,15 +234,7 @@ int main() {
 
         for (size_t m = 0; m < tile_dim * tile_dim / DIM; ++m) {
           int i = m % tile_dim;
-          //int i = m % (tile_dim / DIM);
           int j = (m / tile_dim) * DIM;
-          //int j = m / (tile_dim / DIM);
-          //printf("i: %d\n", i);
-          //printf("j: %d\n", j);
-          printf("C_addr + m: %x\n", C_addr + m);
-          //printf("(i)*MAT_DIM_J: %d\n", (i)*MAT_DIM_J);
-          //printf("j*DIM: %d\n", j*DIM);
-          printf("C + (i)*MAT_DIM_I + j : %p\n", C + (i)*MAT_DIM_J + j );
           if (m == 0) {
             matmul_mvout(C + ((i)*MAT_DIM_J + j)*sizeof(elem_t) , C_addr + m, 0, 0, 0, 1);
           } else {
@@ -246,10 +242,10 @@ int main() {
           }
         }
 
-        printf("Moved out\n");
-        printf("Tile at i0: %d, j0: %d\n", i0, j0);
-        printf("Tile at starts at address: %p\n", C);
-        print_tile(C, tile_dim); 
+        //printf("Moved out\n");
+        //printf("Tile at i0: %d, j0: %d\n", i0, j0);
+        //printf("Tile at starts at address: %p\n", C);
+        //print_tile(C, tile_dim); 
 
 
       }
