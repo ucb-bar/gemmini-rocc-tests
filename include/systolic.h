@@ -5,16 +5,20 @@
 
 #include <stdint.h>
 #include <assert.h>
+#include <limits.h>
 
 // Dimension of the systolic array
 // Should be tileColumns*meshColumns
 #define DIM 4
+#define ADDR_LEN 32
+
 // Datatype of the systolic array
-// TODO: Should be signed, but then need to add a bias term below
-typedef uint16_t elem_t;
+typedef int16_t elem_t;
+elem_t elem_t_max = SHRT_MAX;
+elem_t elem_t_min = SHRT_MIN;
 
 // Matmul utility functions
-void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], uint64_t C_full[DIM][DIM]) {
+void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], int64_t C_full[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       C_full[r][c] = D[r][c];
@@ -32,7 +36,7 @@ void matmul_short(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], el
     }
 }
 
-void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], uint64_t D[DIM][DIM], uint64_t C_full[DIM][DIM]) {
+void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], int64_t D[DIM][DIM], int64_t C_full[DIM][DIM]) {
   // Identical to the other matmul fuction, but with a 64-bit bias
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
@@ -42,10 +46,25 @@ void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], uint64_t D[DIM][DIM], u
     }
 }
 
-void matshift(uint64_t full[DIM][DIM], elem_t out[DIM][DIM], int shift) {
+void matadd(int64_t sum[DIM][DIM], int64_t m1[DIM][DIM], int64_t m2[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++)
-        out[r][c] = full[r][c] >> shift;
+        sum[r][c] = m1[r][c] + m2[r][c];
+}
+
+void matshift(int64_t full[DIM][DIM], elem_t out[DIM][DIM], int shift) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+        int64_t shifted = full[r][c] >> shift;
+        int64_t elem = shifted > elem_t_max ? elem_t_max : (shifted < elem_t_min ? elem_t_min : shifted);
+        out[r][c] = elem;
+    }
+}
+
+void matrelu(elem_t in[DIM][DIM], elem_t out[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++)
+        out[r][c] = in[r][c] > 0 ? in[r][c] : 0;
 }
 
 void transpose(elem_t in[DIM][DIM], elem_t out[DIM][DIM]) {

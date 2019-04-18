@@ -29,23 +29,23 @@ int main() {
 
     // We will try out every combination of A, B, D possible
     static elem_t C[N*N*N][DIM][DIM];
-    static uint64_t gold_full[N*N*N][DIM][DIM];
+    static int64_t gold_full[N*N*N][DIM][DIM];
     static elem_t gold[N*N*N][DIM][DIM];
 
     // ...taking into account the preloads or accumulates
     static int preload[N*N*N] = {1};
     for (int i = 1; i < N*N*N; ++i)
-        preload[i] = rand() % 2;
+      preload[i] = rand() % 2;
 
     // ...and for the actual preloads, do we just preload zeros?
     static int preload_zeros[N*N*N];
     for (int i = 0; i < N*N*N; ++i)
-        preload_zeros[i] = rand() % 2;
+      preload_zeros[i] = rand() % 2;
 
     // ...and finally, which results won't produce any output
     static int no_output[N*N*N];
     for (int i = 0; i < N*N*N-1; ++i)
-        no_output[i] = !preload[i+1];
+      no_output[i] = !preload[i+1];
     no_output[N*N*N-1] = 0;
 
     // Print the sequence out
@@ -65,9 +65,9 @@ int main() {
     for (size_t n = 0; n < N; ++n) {
       for (size_t i = 0; i < DIM; ++i) {
         for (size_t j = 0; j < DIM; ++j) {
-          A[n][i][j] = rand() % 32;
-          B[n][i][j] = rand() % 32;
-          D[n][i][j] = rand() % 32;
+          A[n][i][j] = (rand() % 64) - 32;
+          B[n][i][j] = (rand() % 64) - 32;
+          D[n][i][j] = (rand() % 64) - 32;
         }
       }
     }
@@ -87,8 +87,10 @@ int main() {
         matmul(A[a], B[b], D[d], gold_full[g]);
     }
 
-    for (size_t g = 0; g < N*N*N; ++g)
+    for (size_t g = 0; g < N*N*N; ++g) {
         matshift(gold_full[g], gold[g], shift);
+        matrelu(gold[g], gold[g]);
+    }
 
     int A_addr = 0;
     int B_addr = N*DIM;
