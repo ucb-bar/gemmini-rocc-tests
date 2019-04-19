@@ -33,17 +33,17 @@ int main() {
     // ...taking into account whether we preload new weights or re-use the old ones
     static int preload[N*N*N] = {1};
     for (int i = 1; i < N*N*N; ++i)
-      preload[i] = 1; rand() % 2;
+      preload[i] = rand() % 2;
 
     // ...whether we pass in a D or just use zeros
     static int add_to_zeros[N*N*N];
     for (int i = 0; i < N*N*N; ++i)
-      add_to_zeros[i] = 0; rand() % 2;
+      add_to_zeros[i] = rand() % 2;
 
     // ...and whether we accumulate on top of the previous result
     static int accumulate[N*N*N] = {0};
     for (int i = 1; i < N*N*N; ++i)
-      accumulate[i] = 0; rand() % 2;
+      accumulate[i] = rand() % 2;
 
     static int no_output[N*N*N];
     for (int i = 0; i < N*N*N-1; ++i)
