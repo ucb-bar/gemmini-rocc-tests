@@ -33,17 +33,17 @@ int main() {
     // ...taking into account whether we preload new weights or re-use the old ones
     static int preload[N*N*N] = {1};
     for (int i = 1; i < N*N*N; ++i)
-      preload[i] = rand() % 2;
+      preload[i] = 1; rand() % 2;
 
     // ...whether we pass in a D or just use zeros
     static int add_to_zeros[N*N*N];
     for (int i = 0; i < N*N*N; ++i)
-      add_to_zeros[i] = rand() % 2;
+      add_to_zeros[i] = 0; rand() % 2;
 
     // ...and whether we accumulate on top of the previous result
     static int accumulate[N*N*N] = {0};
     for (int i = 1; i < N*N*N; ++i)
-      accumulate[i] = rand() % 2;
+      accumulate[i] = 0; rand() % 2;
 
     static int no_output[N*N*N];
     for (int i = 0; i < N*N*N-1; ++i)
@@ -51,22 +51,22 @@ int main() {
     no_output[N*N*N-1] = 0;
 
     // Print the sequence out
-    // printf("Preloads: ");
-    // for (int i = 0; i < N*N*N; ++i)
-    //   printf("%d, ", preload[i]);
-    // printf("\n");
-    // printf("Zeros: ");
-    // for (int i = 0; i < N*N*N; ++i)
-    //   printf("%d, ", add_to_zeros[i]);
-    // printf("\n");
-    // printf("Accumulates: ");
-    // for (int i = 0; i < N*N*N; ++i)
-    //   printf("%d, ", accumulate[i]);
-    // printf("\n");
-    // printf("No outputs: ");
-    // for (int i = 0; i < N*N*N; ++i)
-    //   printf("%d, ", no_output[i]);
-    // printf("\n");
+    /*printf("Preloads: ");
+    for (int i = 0; i < N*N*N; ++i)
+      printf("%d, ", preload[i]);
+    printf("\n");
+    printf("Zeros: ");
+    for (int i = 0; i < N*N*N; ++i)
+      printf("%d, ", add_to_zeros[i]);
+    printf("\n");
+    printf("Accumulates: ");
+    for (int i = 0; i < N*N*N; ++i)
+      printf("%d, ", accumulate[i]);
+    printf("\n");
+    printf("No outputs: ");
+    for (int i = 0; i < N*N*N; ++i)
+      printf("%d, ", no_output[i]);
+    printf("\n");*/
 
     for (size_t n = 0; n < N; ++n) {
       for (size_t i = 0; i < DIM; ++i) {
@@ -152,16 +152,14 @@ int main() {
 
       if (!preload[c]) {
         if (c == N*N*N-1) {
-          // matmul_preload_zeros(C_addrs[c], 0, 0, 1, 0);
-          matmul_preload_zeros(C_addrs[c], 0, 0, 0, 0);
+          matmul_preload_zeros(C_addrs[c], 0, 0, 1, 0);
         } else {
           matmul_preload_zeros(C_addrs[c], 0, 0, 0, 0);
         }
         matmul_compute_accumulated(A_addr + a*DIM, d_addr);
       } else {
         if (c == N*N*N-1) {
-          // matmul_preload(B_addr + b*DIM, C_addrs[c], 0, 0, 1, 0);
-          matmul_preload(B_addr + b*DIM, C_addrs[c], 0, 0, 0, 0);
+          matmul_preload(B_addr + b*DIM, C_addrs[c], 0, 0, 1, 0);
         } else {
           matmul_preload(B_addr + b*DIM, C_addrs[c], 0, 0, 0, 0);
         }
@@ -169,38 +167,27 @@ int main() {
       }
     }
 
-    // Useless through-SA move // TODO get rid of this by storing straight from accumulator
-    matmul_fence();
-    for (size_t c = 0; c < N*N*N; ++c) {
-      if (c == N*N*N-1) {
-        matmul_preload(GARBAGE_ADDR, C_addr + c*DIM, 0, 0, 1, 0);
-      } else {
-        matmul_preload(GARBAGE_ADDR, C_addr + c*DIM, 0, 0, 0, 0);
-      }
-      matmul_compute_preloaded(GARBAGE_ADDR, C_addrs[c]);
-    }
-
     // printf("Moving out\n");
     for (size_t c = 0; c < N*N*N; ++c)
       if (!no_output[c])
         if (c == 0) {
-          matmul_mvout(C[c], C_addr + c*DIM, 0, 0, 0, 1);
+          matmul_mvout(C[c], C_addrs[c] & ~(1 << (ADDR_LEN-2)), 0, 0, 0, 1);
         } else {
-          matmul_mvout(C[c], C_addr + c*DIM, 0, 0, 0, 0);
+          matmul_mvout(C[c], C_addrs[c] & ~(1 << (ADDR_LEN-2)), 0, 0, 0, 0);
         }
 
     matmul_fence();
 
-    // printf("Moved out\n");
-    // for (int n = 0; n < N*N*N; ++n) {
-    //   if (!no_output[n]) {
-    //     printf("C:\n");
-    //     printMatrix(C[n]);
-    //     printf("Gold:\n");
-    //     printMatrix(gold[n]);
-    //     printf("\n");
-    //   }
-    // }
+    /*printf("Moved out\n");
+    for (int n = 0; n < N*N*N; ++n) {
+      if (!no_output[n]) {
+        printf("C:\n");
+        printMatrix(C[n]);
+        printf("Gold:\n");
+        printMatrix(gold[n]);
+        printf("\n");
+      }
+    }*/
 
     for (int n = 0; n < N*N*N; ++n)
       if (!no_output[n] && !is_equal(C[n], gold[n]))
