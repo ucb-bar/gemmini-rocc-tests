@@ -38,7 +38,7 @@ int main() {
     matmul_mvin(D[i], 2*DIM + i, 0, 0, 0, 0);
   }
 
-  matmul_setmode(OUTPUT_STATIONARY, 0, 0, 0);
+  matmul_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0, 0);
   matmul_preload(3*DIM, 2*DIM, 0, 0, 0, 0);
   matmul_compute_preloaded(0x0, DIM);
 

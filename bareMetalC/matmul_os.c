@@ -49,18 +49,18 @@ int main() {
     no_output[N*N*N-1] = 0;
 
     // Print the sequence out
-    printf("Preloads: ");
-    for (int i = 0; i < N*N*N; ++i)
-      printf("%d, ", preload[i]);
-    printf("\n");
-    printf("Zeros: ");
-    for (int i = 0; i < N*N*N; ++i)
-      printf("%d, ", preload_zeros[i]);
-    printf("\n");
-    printf("No outputs: ");
-    for (int i = 0; i < N*N*N; ++i)
-      printf("%d, ", no_output[i]);
-    printf("\n");
+    // printf("Preloads: ");
+    // for (int i = 0; i < N*N*N; ++i)
+    //   printf("%d, ", preload[i]);
+    // printf("\n");
+    // printf("Zeros: ");
+    // for (int i = 0; i < N*N*N; ++i)
+    //   printf("%d, ", preload_zeros[i]);
+    // printf("\n");
+    // printf("No outputs: ");
+    // for (int i = 0; i < N*N*N; ++i)
+    //   printf("%d, ", no_output[i]);
+    // printf("\n");
 
     for (size_t n = 0; n < N; ++n) {
       for (size_t i = 0; i < DIM; ++i) {
@@ -99,23 +99,21 @@ int main() {
 
     // printf("Moving in\n");
     for (size_t n = 0; n < N; ++n)
-      for (size_t i = 0; i < DIM; ++i)
-        matmul_mvin(A_tp[n][i], A_addr + n*DIM + i, 0, 0, 0, 0);
+      matmul_mvin(A_tp[n], A_addr + n*DIM, 0, 0, 0, 0);
     
     for (size_t n = 0; n < N; ++n)
-      for (size_t i = 0; i < DIM; ++i)
-        matmul_mvin(B[n][i], B_addr + n*DIM + i, 0, 0, 0, 0);
+      matmul_mvin(B[n], B_addr + n*DIM, 0, 0, 0, 0);
 
-    for (size_t n = 0; n < N; ++n)
-      for (size_t i = 0; i < DIM; ++i)
-        if (n == N-1 && i == DIM-1) {
-          matmul_mvin(D[n][i], D_addr + n*DIM + i, 0, 0, 1, 0);
-        } else {
-          matmul_mvin(D[n][i], D_addr + n*DIM + i, 0, 0, 0, 0);
-        }
+    for (size_t n = 0; n < N; ++n) {
+      if (n == N-1) {
+        matmul_mvin(D[n], D_addr + n*DIM, 0, 0, 1, 0);
+      } else {
+        matmul_mvin(D[n], D_addr + n*DIM, 0, 0, 0, 0);
+      }
+    }
 
     // printf("Setting mode\n");
-    matmul_setmode(OUTPUT_STATIONARY, shift, 1, 0);
+    matmul_config_ex(OUTPUT_STATIONARY, shift, 0, 1, 0, 0);
 
     // printf("Matmulling\n");
     for (size_t c = 0; c < N*N*N; ++c) {
@@ -152,24 +150,25 @@ int main() {
 
     // printf("Moving out\n");
     for (size_t c = 0; c < N*N*N; ++c)
-      for (size_t i = 0; i < DIM; ++i)
-        if (!no_output[c])
-          if (c == 0 && i == 0) {
-            matmul_mvout(C[c][i], C_addr + c*DIM + i, 0, 0, 0, 1);
-          } else {
-            matmul_mvout(C[c][i], C_addr + c*DIM + i, 0, 0, 0, 0);
-          }
+      if (!no_output[c])
+        if (c == 0) {
+          matmul_mvout(C[c], C_addr + c*DIM, 0, 0, 0, 1);
+        } else {
+          matmul_mvout(C[c], C_addr + c*DIM, 0, 0, 0, 0);
+        }
 
-    printf("Moved out\n");
-    for (int n = 0; n < N*N*N; ++n) {
-      if (!no_output[n]) {
-        printf("C:\n");
-        printMatrix(C[n]);
-        printf("Gold:\n");
-        printMatrix(gold[n]);
-        printf("\n");
-      }
-    }
+    matmul_fence();
+
+    // printf("Moved out\n");
+    // for (int n = 0; n < N*N*N; ++n) {
+    //   if (!no_output[n]) {
+    //     printf("C:\n");
+    //     printMatrix(C[n]);
+    //     printf("Gold:\n");
+    //     printMatrix(gold[n]);
+    //     printf("\n");
+    //   }
+    // }
 
     for (int n = 0; n < N*N*N; ++n)
       if (!no_output[n] && !is_equal(C[n], gold[n]))

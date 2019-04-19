@@ -2,9 +2,10 @@ include $(abs_top_srcdir)/Makefrag
 
 tests = \
 	mvin_mvout \
+	mvin_mvout_stride \
 	matmul_os \
-	tiled_matmul_os \
-	matmul_ws
+	matmul_ws \
+	tiled_matmul_os
 
 BENCH_COMMON = $(RISCVTOOLS)/riscv-tests/benchmarks/common
 
