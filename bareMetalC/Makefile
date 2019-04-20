@@ -5,7 +5,8 @@ tests = \
 	mvin_mvout_stride \
 	matmul_os \
 	matmul_ws \
-	tiled_matmul_os
+	tiled_matmul_os \
+	raw_hazard
 
 BENCH_COMMON = $(RISCVTOOLS)/riscv-tests/benchmarks/common
 

@@ -9,8 +9,9 @@
 
 // Dimension of the systolic array
 // Should be tileColumns*meshColumns
-#define DIM 4
+#define DIM 8
 #define ADDR_LEN 32
+#define BANK_SIZE 16
 
 // Datatype of the systolic array
 typedef int16_t elem_t;

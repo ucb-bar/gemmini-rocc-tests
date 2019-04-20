@@ -8,7 +8,7 @@
 #include "include/systolic.h"
 #include "util.h"
 
-#define BIG_DIM 12
+#define BIG_DIM 16
 
 int is_equal_big(elem_t x[BIG_DIM][BIG_DIM], elem_t y[BIG_DIM][BIG_DIM]) {
   for (size_t i = 0; i < BIG_DIM; ++i)
@@ -28,6 +28,10 @@ void printMatrix_big(elem_t m[BIG_DIM][BIG_DIM]) {
 
 int main() {
   printf("Total rows required: %d\n", BIG_DIM*BIG_DIM/DIM);
+  if (BIG_DIM % DIM != 0) {
+    printf("Incorrect dimensions\n");
+    exit(1);
+  }
 
   static elem_t In[BIG_DIM][BIG_DIM];
   static elem_t Out[BIG_DIM][BIG_DIM];
