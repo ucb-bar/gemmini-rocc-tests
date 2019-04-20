@@ -134,7 +134,7 @@ int main() {
     int tile_dim = TILE_DIM; //sqrt(tile_size);
 
     // printf("Setting mode\n");
-    matmul_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0, 0);
+    matmul_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0, 0, 0);
 
     for (int i0=0; i0 < MAT_DIM_I; i0 += tile_dim) {
       for (int j0=0; j0 < MAT_DIM_J; j0 += tile_dim) {

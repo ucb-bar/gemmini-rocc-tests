@@ -143,8 +143,8 @@ int rand() {
   matmul_preload(GARBAGE_ADDR, C, push_mvin, pop_mvin, push_mvout, pop_mvout)
 
 // config
-#define matmul_config_ex(mode, shift, push_mvin, pop_mvin, push_mvout, pop_mvout) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (mode << 2) | CONFIG_EX, shift, to_deps(push_mvin, pop_mvin, push_mvout, pop_mvout) | k_CONFIG)
+#define matmul_config_ex(mode, relu, shift, push_mvin, pop_mvin, push_mvout, pop_mvout) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (relu << 3) | (mode << 2) | CONFIG_EX, shift, to_deps(push_mvin, pop_mvin, push_mvout, pop_mvout) | k_CONFIG)
 
 #define matmul_config_ld(stride, push_mvout, pop_mvout, push_ex, pop_ex) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_LD, stride, to_deps(push_mvout, pop_mvout, push_ex, pop_ex) | k_CONFIG)
