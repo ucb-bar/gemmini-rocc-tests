@@ -50,18 +50,18 @@ int main() {
       no_output[N*N*N-1] = 0;
 
       // Print the sequence out
-      // printf("Preloads: ");
-      // for (int i = 0; i < N*N*N; ++i)
-      //   printf("%d, ", preload[i]);
-      // printf("\n");
-      // printf("Zeros: ");
-      // for (int i = 0; i < N*N*N; ++i)
-      //   printf("%d, ", preload_zeros[i]);
-      // printf("\n");
-      // printf("No outputs: ");
-      // for (int i = 0; i < N*N*N; ++i)
-      //   printf("%d, ", no_output[i]);
-      // printf("\n");
+      /*printf("Preloads: ");
+      for (int i = 0; i < N*N*N; ++i)
+        printf("%d, ", preload[i]);
+      printf("\n");
+      printf("Zeros: ");
+      for (int i = 0; i < N*N*N; ++i)
+        printf("%d, ", preload_zeros[i]);
+      printf("\n");
+      printf("No outputs: ");
+      for (int i = 0; i < N*N*N; ++i)
+        printf("%d, ", no_output[i]);
+      printf("\n");*/
 
       for (size_t n = 0; n < N; ++n) {
         for (size_t i = 0; i < DIM; ++i) {
@@ -151,30 +151,34 @@ int main() {
       }
 
       // printf("Moving out\n");
+      int first_store = 1;
       for (size_t c = 0; c < N*N*N; ++c)
         if (!no_output[c])
-          if (c == 0) {
+          if (first_store) {
             matmul_mvout(C[c], C_addr + c*DIM, 0, 0, 0, 1);
+            first_store = 0;
           } else {
             matmul_mvout(C[c], C_addr + c*DIM, 0, 0, 0, 0);
           }
 
       matmul_fence();
 
-      // printf("Moved out\n");
-      // for (int n = 0; n < N*N*N; ++n) {
-      //   if (!no_output[n]) {
-      //     printf("C:\n");
-      //     printMatrix(C[n]);
-      //     printf("Gold:\n");
-      //     printMatrix(gold[n]);
-      //     printf("\n");
-      //   }
-      // }
+      /*printf("Moved out\n");
+      for (int n = 0; n < N*N*N; ++n) {
+        if (!no_output[n]) {
+          printf("C:\n");
+          printMatrix(C[n]);
+          printf("Gold:\n");
+          printMatrix(gold[n]);
+          printf("\n");
+        }
+      }*/
 
       for (int n = 0; n < N*N*N; ++n)
-        if (!no_output[n] && !is_equal(C[n], gold[n]))
+        if (!no_output[n] && !is_equal(C[n], gold[n])) {
+            printf("relu: %d, shift: %d\n", relu, shift);
             exit(1);
+        }
     }
   }
 

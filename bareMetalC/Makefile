@@ -5,6 +5,7 @@ tests = \
 	mvin_mvout_stride \
 	matmul_os \
 	matmul_ws \
+	matmul \
 	tiled_matmul_os \
 	raw_hazard
 
