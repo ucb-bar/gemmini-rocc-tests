@@ -17,6 +17,10 @@ void operands(int c, int * a, int * b, int * d) {
   *a = c / (N*N);
 }
 
+#if 3*N*DIM > (BANK_NUM * BANK_ROWS) || N*N*N*DIM > ACC_ROWS
+#error scratchpad or accumulator not big enough
+#endif
+
 int main() {
   static elem_t ZERO[DIM][DIM];
 

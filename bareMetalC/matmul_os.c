@@ -17,6 +17,10 @@ void operands(int c, int * a, int * b, int * d) {
   *a = c / (N*N);
 }
 
+#if (3*N + N*N*N)*DIM > (BANK_NUM * BANK_ROWS)
+#error scratchpad not big enough
+#endif
+
 int main() {
   static elem_t ZERO[DIM][DIM];
 

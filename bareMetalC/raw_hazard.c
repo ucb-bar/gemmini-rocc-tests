@@ -8,6 +8,10 @@
 #include "include/systolic.h"
 #include "util.h"
 
+#if BANK_NUM*BANK_ROWS < 5*DIM
+#error need more memory capacity
+#endif
+
 int main() {
   const int a_additions = 10;
   const int b_additions = 10;
@@ -33,16 +37,16 @@ int main() {
   }
 
   int IDENTITY1_addr = 0;
-  int IDENTITY2_addr = BANK_SIZE;
-  int A_addr = 2*BANK_SIZE;
-  int B_addr = 3*BANK_SIZE;
-  int D_addr = 4*BANK_SIZE;
+  int IDENTITY2_addr = DIM;
+  int A_addr = 2*DIM;
+  int B_addr = 3*DIM;
+  int D_addr = 4*DIM;
 
   // printf("Moving in\n");
   matmul_mvin(IDENTITY, IDENTITY1_addr, 0, 0, 0, 0);
   matmul_mvin(IDENTITY, IDENTITY2_addr, 0, 0, 0, 0);
-  matmul_mvin(IDENTITY, A_addr, 0, 0, 1, 0);
-  matmul_mvin(IDENTITY, B_addr, 0, 0, 1, 0);
+  matmul_mvin(IDENTITY, A_addr, 0, 0, 0, 0);
+  matmul_mvin(IDENTITY, B_addr, 0, 0, 0, 0);
   matmul_mvin(IDENTITY, D_addr, 0, 0, 1, 0);
   
   // printf("Setting mode\n");
@@ -52,8 +56,6 @@ int main() {
   for (int i = 0; i < a_additions; i++) {
     if (i == 0) {
       matmul_preload(IDENTITY1_addr, A_addr, 0, 1, 0, 0);
-    } else if (i == a_additions-1) {
-      matmul_preload(IDENTITY1_addr, A_addr, 0, 0, 1, 0);
     } else {
       matmul_preload(IDENTITY1_addr, A_addr, 0, 0, 0, 0);
     }
@@ -62,21 +64,13 @@ int main() {
 
   // printf("RAW with B\n");
   for (int i = 0; i < b_additions; i++) {
-    if (i == 0) {
-      matmul_preload(IDENTITY1_addr, B_addr, 0, 1, 0, 0);
-    } else if (i == b_additions-1) {
-      matmul_preload(IDENTITY1_addr, B_addr, 0, 0, 1, 0);
-    } else {
-      matmul_preload(IDENTITY1_addr, B_addr, 0, 0, 0, 0);
-    }
+  matmul_preload(IDENTITY1_addr, B_addr, 0, 0, 0, 0);
     matmul_compute_preloaded(IDENTITY2_addr, B_addr);
   }
 
   // printf("RAW with D\n");
   for (int i = 0; i < d_additions; i++) {
-    if (i == 0) {
-      matmul_preload(D_addr, D_addr, 0, 1, 0, 0);
-    } else if (i == d_additions-1) {
+    if (i == d_additions-1) {
       matmul_preload(D_addr, D_addr, 0, 0, 1, 0);
     } else {
       matmul_preload(D_addr, D_addr, 0, 0, 0, 0);
@@ -86,8 +80,8 @@ int main() {
 
   // printf("Moving out\n");
   matmul_mvout(result_A, A_addr, 0, 0, 0, 1);
-  matmul_mvout(result_B, B_addr, 0, 0, 0, 1);
-  matmul_mvout(result_D, D_addr, 0, 0, 0, 1);
+  matmul_mvout(result_B, B_addr, 0, 0, 0, 0);
+  matmul_mvout(result_D, D_addr, 0, 0, 0, 0);
 
   matmul_fence();
 
