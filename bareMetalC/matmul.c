@@ -29,8 +29,6 @@ void test_os() {
       static elem_t B[N][DIM][DIM];
       static elem_t D[N][DIM][DIM];
 
-      static elem_t A_tp[N][DIM][DIM];
-
       // We will try out every combination of A, B, D possible
       static elem_t C[N*N*N][DIM][DIM];
       static int64_t gold_full[N*N*N][DIM][DIM];
@@ -76,9 +74,6 @@ void test_os() {
         }
       }
 
-      for (size_t n = 0; n < N; ++n)
-        transpose(A[n], A_tp[n]);
-
       for (size_t g = 0; g < N*N*N; ++g) {
         int a, b, d; 
         operands(g, &a, &b, &d);
@@ -104,7 +99,7 @@ void test_os() {
 
       // printf("Moving in\n");
       for (size_t n = 0; n < N; ++n)
-        matmul_mvin(A_tp[n], A_addr + n*DIM, 0, 0, 0, 0);
+        matmul_mvin(A[n], A_addr + n*DIM, 0, 0, 0, 0);
       
       for (size_t n = 0; n < N; ++n)
         matmul_mvin(B[n], B_addr + n*DIM, 0, 0, 0, 0);
