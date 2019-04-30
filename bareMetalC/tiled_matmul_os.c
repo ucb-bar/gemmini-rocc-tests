@@ -15,6 +15,7 @@
 #define SCRATCHPAD_SIZE 4096
 #define TILE_DIM 4
 
+
 void transpose_tile(elem_t* in, elem_t* out, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++)
     for (size_t c = 0; c < tile_dim; c++)
@@ -149,34 +150,21 @@ int main() {
           elem_t* A = &(full_A[i0][k0]); 
           elem_t* B = &(full_B[k0][j0]);
 
-          //elem_t* A = (elem_t*)full_A + i0*MAT_DIM_I + k0; 
-          //elem_t* B = (elem_t*)full_B + k0*MAT_DIM_K + j0;
-          //elem_t* D = (elem_t*)full_D + i0*MAT_DIM_I + j0;
-          //elem_t* C = (elem_t*)full_C + i0*MAT_DIM_I + j0;
- 
-          transpose_tile(A, A_tp, tile_dim);
-
           int A_addr = 0;
           int B_addr = 1*tile_size;
 
           for (int i=0; i < tile_dim; i += DIM) {
             for (int j=0; j < tile_dim; j += DIM) {
 
-              for (size_t m = 0; m < DIM; ++m) {
-                matmul_mvin(D + ((i+m)*MAT_DIM_I)*sizeof(elem_t), D_addr + m, 0, 0, 0, 0);
-              }
-              transpose_block(A, A_tps);
-              for (size_t m = 0; m < DIM; ++m) {
-                //matmul_mvin(A_tp + ((m)*MAT_DIM_I)*sizeof(elem_t), A_addr + m, 0, 0, 0, 0);  
-                matmul_mvin(A_tps + m*DIM*sizeof(elem_t), A_addr + m, 0, 0, 0, 0);  
-              }
-              for (size_t m = 0; m < DIM; ++m) {
-                if (m == DIM-1) {
-                  matmul_mvin(B + (m*MAT_DIM_K)*sizeof(elem_t), B_addr + m, 0, 0, 1, 0);
-                } else { 
-                  matmul_mvin(B + (m*MAT_DIM_K)*sizeof(elem_t), B_addr + m, 0, 0, 0, 0);
-                }
-              }
+              matmul_config_ld(MAT_DIM_J*sizeof(elem_t), 0, 0, 0, 0)
+              matmul_mvin(D + i*MAT_DIM_J*sizeof(elem_t), D_addr, 0, 0, 0, 0);
+              
+              matmul_config_ld(MAT_DIM_K*sizeof(elem_t), 0, 0, 0, 0)
+              matmul_mvin(A, A_addr, 0, 0, 0, 0);
+  
+              matmul_config_ld(MAT_DIM_J*sizeof(elem_t), 0, 0, 0, 0)
+              matmul_mvin(B, B_addr, 0, 0, 1, 0);
+
               uint64_t out_addr = GARBAGE_ADDR;
               if (tile_dim == DIM) { 
                 out_addr = C_addr + j*(tile_dim / DIM) + i;
@@ -191,18 +179,11 @@ int main() {
               matmul_compute_preloaded(A_addr, B_addr);
 
               for (int k=DIM; k < tile_dim; k += DIM) {
-                transpose_block(A + (i*MAT_DIM_K + k)*sizeof(elem_t) , A_tps);
-                for (size_t m = 0; m < DIM; ++m) {
-                  //matmul_mvin(A_tp + ((k+m)*MAT_DIM_K + i)*sizeof(elem_t), A_addr + (k+m), 0, 0, 0, 0);
-                  matmul_mvin(A_tps + m*DIM*sizeof(elem_t), A_addr + (k+m), 0, 0, 0, 0);
-                }  
-                for (size_t m = 0; m < DIM; ++m) {
-                  if (m == DIM-1) {
-                    matmul_mvin(B + ((k+m)*MAT_DIM_K + j)*sizeof(elem_t), B_addr + (k+m), 0, 0, 1, 0);
-                  } else { 
-                    matmul_mvin(B + ((k+m)*MAT_DIM_K + j)*sizeof(elem_t), B_addr + (k+m), 0, 0, 0, 0);
-                  }
-                }
+                matmul_config_ld(MAT_DIM_K*sizeof(elem_t), 0, 0, 0, 0)
+                matmul_mvin(A + i*MAT_DIM_K + k, A_addr, 0, 0, 0, 0);  
+
+                matmul_config_ld(MAT_DIM_J*sizeof(elem_t), 0, 0, 0, 0)
+                matmul_mvin(B + k*MAT_DIM_J + j, B_addr, 0, 0, 1, 0);
 
                 out_addr = GARBAGE_ADDR;
                 matmul_preload_zeros(out_addr, 0, 1, 0, 0);
@@ -210,18 +191,12 @@ int main() {
               }
 
               if (tile_dim != DIM) { 
-                transpose_block(A + (i*MAT_DIM_K + tile_dim - DIM)*sizeof(elem_t) , A_tps);
-                for (size_t m = 0; m < DIM; ++m) {
-                  //matmul_mvin(A_tp + ((tile_dim - DIM +m)*MAT_DIM_K + i)*sizeof(elem_t), A_addr + (tile_dim - DIM + m), 0, 0, 0, 0); 
-                  matmul_mvin(A_tps + m*DIM*sizeof(elem_t), A_addr + (tile_dim - DIM + m), 0, 0, 0, 0); 
-                } 
-                for (size_t m = 0; m < DIM; ++m) {
-                  if (m == DIM-1) {
-                    matmul_mvin(B + ((tile_dim - DIM +m)*MAT_DIM_K + j)*sizeof(elem_t), B_addr + (tile_dim - DIM +m), 0, 0, 0, 0);
-                  } else { 
-                    matmul_mvin(B + ((tile_dim - DIM +m)*MAT_DIM_K + j)*sizeof(elem_t), B_addr + (tile_dim - DIM +m), 0, 0, 1, 0);
-                  }
-                }
+                matmul_config_ld(DIM*sizeof(elem_t), 0, 0, 0, 0)
+                matmul_mvin(A + i*MAT_DIM_K + (tile_dim - DIM), A_addr, 0, 0, 0, 0); 
+ 
+                matmul_config_ld(MAT_DIM_J*sizeof(elem_t), 0, 0, 0, 0)
+                matmul_mvin(B + (tile_dim - DIM)*MAT_DIM_J + j, B_addr, 0, 0, 1, 0);
+
                 out_addr = C_addr + j*(tile_dim / DIM) + i;
                 matmul_preload_zeros(out_addr, 0, 1, 1, 0);
                 matmul_compute_accumulated(A_addr + tile_dim - DIM, B_addr + tile_dim - DIM);
@@ -232,8 +207,9 @@ int main() {
           }
         }
 
-        for (size_t m = 0; m < tile_dim * tile_dim / DIM; ++m) {
-          int i = m % tile_dim;
+        matmul_config_st(MAT_DIM_J*sizeof(elem_t), 0, 0, 0, 0)
+        for (size_t m = 0; m < (tile_dim * tile_dim) / (DIM*DIM); ++m) {
+          int i = (m % tile_dim) * DIM;
           int j = (m / tile_dim) * DIM;
           if (m == 0) {
             matmul_mvout(C + ((i)*MAT_DIM_J + j)*sizeof(elem_t) , C_addr + m, 0, 0, 0, 1);
