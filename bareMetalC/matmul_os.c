@@ -24,7 +24,7 @@ void operands(int c, int * a, int * b, int * d) {
 int main() {
   static elem_t ZERO[DIM][DIM];
 
-  for (int relu = 0; relu <= 1; ++relu) {
+  for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 12; shift += 4) {
       static elem_t A[N][DIM][DIM];
       static elem_t B[N][DIM][DIM];
@@ -89,8 +89,10 @@ int main() {
 
       for (size_t g = 0; g < N*N*N; ++g) {
           matshift(gold_full[g], gold[g], shift);
-          if (relu)
+          if (activation == RELU)
             matrelu(gold[g], gold[g]);
+          else if (activation == RELU6)
+            matrelu6(gold[g], gold[g]);
       }
 
       int A_addr = 0;
@@ -114,7 +116,7 @@ int main() {
       }
 
       // printf("Setting mode\n");
-      matmul_config_ex(OUTPUT_STATIONARY, relu, shift, 0, 1, 0, 0);
+      matmul_config_ex(OUTPUT_STATIONARY, activation, shift, 0, 1, 0, 0);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
@@ -175,7 +177,7 @@ int main() {
 
       for (int n = 0; n < N*N*N; ++n)
         if (!no_output[n] && !is_equal(C[n], gold[n])) {
-            printf("relu: %d, shift: %d\n", relu, shift);
+            printf("activation: %d, shift: %d\n", activation, shift);
             exit(1);
         }
     }
