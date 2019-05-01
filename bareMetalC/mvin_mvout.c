@@ -10,6 +10,10 @@
 
 #define N (8)
 
+#if (N*DIM) > (BANK_NUM*BANK_ROWS)
+#error not enough scratchpad space
+#endif
+
 int main() {
   static elem_t In[N][DIM][DIM];
   static elem_t Out[N][DIM][DIM];
