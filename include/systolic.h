@@ -55,10 +55,19 @@ void matadd(int64_t sum[DIM][DIM], int64_t m1[DIM][DIM], int64_t m2[DIM][DIM]) {
       sum[r][c] = m1[r][c] + m2[r][c];
 }
 
+// THIS IS A ROUNDING SHIFT! It also performs a saturating cast
 void matshift(int64_t full[DIM][DIM], elem_t out[DIM][DIM], int shift) {
+  int divisor = 1 << shift;
+
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
-      int64_t shifted = full[r][c] >> shift;
+      // Bitshift and round element
+      int64_t abs = full[r][c] > 0 ? full[r][c] : -full[r][c];
+      int64_t shifted = (abs + (divisor/2)) / divisor;
+      if (full[r][c] < 0)
+        shifted = -shifted;
+
+      // Saturate and cast element
       int64_t elem = shifted > elem_t_max ? elem_t_max : (shifted < elem_t_min ? elem_t_min : shifted);
       out[r][c] = elem;
     }
