@@ -11,9 +11,9 @@
 #define MAT_DIM_I 32
 #define MAT_DIM_K 32
 #define MAT_DIM_J 32
-#define TILE_I 1
-#define TILE_J 1
-#define TILE_K 1
+#define TILE_I 2
+#define TILE_J 2
+#define TILE_K 2
 
 void print_tile(elem_t* in, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++) {
@@ -51,14 +51,23 @@ int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]
 }
 
 void full_matshift(int64_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_DIM_J], int shift) {
+  int divisor = 1 << shift;
+
   for (size_t r = 0; r < MAT_DIM_I; r++)                             
-    for (size_t c = 0; c < MAT_DIM_J; c++)
-        out[r][c] = full[r][c] >> shift;                       
+    for (size_t c = 0; c < MAT_DIM_J; c++) {
+      // Bitshift and round element
+      int64_t abs = full[r][c] > 0 ? full[r][c] : -full[r][c];
+      int64_t shifted = (abs + (divisor/2)) / divisor;
+      if (full[r][c] < 0)
+        shifted = -shifted;
+
+      // Saturate and cast element
+      int64_t elem = shifted > elem_t_max ? elem_t_max : (shifted < elem_t_min ? elem_t_min : shifted);
+      out[r][c] = elem;
+    }
 } 
 
 int main() {
-    printf("Here\n");
-
     static elem_t ZERO[DIM][DIM];
 
     static elem_t full_A[MAT_DIM_I][MAT_DIM_K];
@@ -71,13 +80,13 @@ int main() {
 
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
-        full_A[i][j] = rand() % 2;
+        full_A[i][j] = (rand() % 64) - 32;
       }
     }
 
     for (size_t i = 0; i < MAT_DIM_K; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_B[i][j] = rand() % 2;
+        full_B[i][j] = (rand() % 64) - 32;
       }
     }
 
@@ -91,9 +100,9 @@ int main() {
 
     matmul_config_ex(OUTPUT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0);
 
-    const int I0 = MAT_DIM_I / TILE_I;
-    const int J0 = MAT_DIM_J / TILE_J;
-    const int K0 = MAT_DIM_K / TILE_K;
+    const int I0 = MAT_DIM_I / (TILE_I*DIM);
+    const int J0 = MAT_DIM_J / (TILE_J*DIM);
+    const int K0 = MAT_DIM_K / (TILE_K*DIM);
 
     for (size_t i0 = 0; i0 < I0; i0++)
       for (size_t j0 = 0; j0 < J0; j0++)
@@ -103,7 +112,6 @@ int main() {
 
           elem_t (*preload)[][MAT_DIM_J] = first ? &full_D : &full_C;
 
-          printf("fdsa\n");
           sp_tiled_matmul(&full_A[i0*TILE_I*DIM][k0*TILE_K*DIM],
               &full_B[k0*TILE_K*DIM][j0*TILE_J*DIM],
               &(*preload)[i0*TILE_I*DIM][j0*TILE_J*DIM],
@@ -117,11 +125,11 @@ int main() {
 
     full_matshift(gold_full, gold, 0);   
 
-    printf("C:\n");
+    /*printf("C:\n");
     full_printMatrix(full_C);
     printf("Gold:\n");
     full_printMatrix(gold);
-    printf("\n");
+    printf("\n");*/
  
     if (!full_is_equal(full_C, gold))
       exit(1);
