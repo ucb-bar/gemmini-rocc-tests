@@ -196,90 +196,82 @@ void sp_tiled_matmul(elem_t * A, elem_t * B, elem_t * D, elem_t * C, size_t I,
         size_t D_row_len, size_t C_row_len,
         int first, int last) {
 
-  int A_sp_addr = 0;
-  int B_sp_addr = BANK_ROWS;
-  int D_sp_addr = 2*BANK_ROWS;
-  int C_sp_addr = 3*BANK_ROWS;
+  const int A_sp_addr_start = 0;
+  const int B_sp_addr_start = BANK_ROWS;
+  const int D_sp_addr_start = 2*BANK_ROWS;
+  const int C_sp_addr_start = 3*BANK_ROWS;
 
-  // Move-ins
   matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 0);
-
-  for (size_t i = 0; i < I; i++) {
-    for (size_t j = 0; j < J; j++) {
-      for (size_t k = 0; k < K; k++) {
-        elem_t * A_dram_addr = A + (i*A_row_len + k)*DIM;
-        elem_t * B_dram_addr = B + (k*B_row_len + j)*DIM;
-        elem_t * D_dram_addr = D + (i*D_row_len + j)*DIM;
-
-        int A_already_moved_in = j != 0;
-        int B_already_moved_in = i != 0;
-        int D_already_moved_in = k != 0;
-
-        if (!A_already_moved_in) {
-          matmul_mvin(A_dram_addr, A_sp_addr + (i*K + k)*DIM, 0, 0, 0, 0);
-        }
-
-        if (!B_already_moved_in) {
-          matmul_config_ld(B_row_len * sizeof(elem_t), 0, 0, 0, 0);
-          matmul_mvin(B_dram_addr, B_sp_addr + (k*J + j)*DIM, 0, 0, 0, 0);
-        }
-        
-        if (!D_already_moved_in) {
-          matmul_config_ld(D_row_len * sizeof(elem_t), 0, 0, 0, 0);
-          matmul_mvin(D_dram_addr, D_sp_addr + (i*J + j)*DIM, 0, 0, 0, 0);
-        }
-
-        matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 1, 0);
-      }
-    }
-  }
-
-  // Computes
-  for (size_t i = 0; i < I; i++) {
-    for (size_t j = 0; j < J; j++) {
-      // First iteration
-      if (K == 1) {
-        if (first) {
-          matmul_preload(D_sp_addr + (i*J + j)*DIM, 
-              C_sp_addr + (i*J + j)*DIM, 0, 1, 1, 0);
-        } else {
-          matmul_preload(D_sp_addr + (i*J + j)*DIM, 
-              C_sp_addr + (i*J + j)*DIM, 0, 1, 1, 1);
-        }
-      } else {
-        matmul_preload(D_sp_addr + (i*J + j)*DIM,
-            GARBAGE_ADDR, 0, 1, 0, 0);
-      }
-
-      matmul_compute_preloaded(A_sp_addr + i*K*DIM, B_sp_addr + j*DIM);
-
-      // Rest of the iterations
-      for (size_t k = 1; k < K; k++) {
-        if (k == K-1) { // Last iteration
-          if (first) {
-            matmul_preload_zeros(C_sp_addr + (i*J + j)*DIM, 0, 1, 1, 0);
-          } else {
-            matmul_preload_zeros(C_sp_addr + (i*J + j)*DIM, 0, 1, 1, 1);
-          }
-          matmul_compute_accumulated(A_sp_addr + (i*K + k)*DIM, B_sp_addr + (k*J + j)*DIM);
-        } else {
-          matmul_preload_zeros(GARBAGE_ADDR, 0, 1, 0, 0);
-          matmul_compute_accumulated(A_sp_addr + (i*K + k)*DIM, B_sp_addr + (k*J + j)*DIM);
-        }
-      }
-    }
-  }
-
-  // Move-outs
   matmul_config_st(C_row_len * sizeof(elem_t), 0, 0, 0, 0);
 
   for (size_t i = 0; i < I; i++) {
     for (size_t j = 0; j < J; j++) {
+      elem_t * D_dram_addr = D + (i*D_row_len + j)*DIM;
       elem_t * C_dram_addr = C + (i*C_row_len + j)*DIM;
-      if (last)  {
-        matmul_mvout(C_dram_addr, C_sp_addr + (i*J + j)*DIM, 0, 0, 0, 1);
-      } else {
-        matmul_mvout(C_dram_addr, C_sp_addr + (i*J + j)*DIM, 0, 0, 1, 1);
+
+      int D_sp_addr = D_sp_addr_start + (i*J + j)*DIM;
+      int C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
+
+      for (size_t k = 0; k < K; k++) {
+        elem_t * A_dram_addr = A + (i*A_row_len + k)*DIM;
+        elem_t * B_dram_addr = B + (k*B_row_len + j)*DIM;
+
+        int A_sp_addr = A_sp_addr_start + (i*K + k)*DIM;
+        int B_sp_addr = B_sp_addr_start + (k*J + j)*DIM;
+
+        // Move-in
+        {
+          int A_already_moved_in = j != 0;
+          int B_already_moved_in = i != 0;
+          int D_already_moved_in = k != 0;
+
+          if (!A_already_moved_in) {
+            matmul_mvin(A_dram_addr, A_sp_addr, 0, 0, 0, 0);
+          }
+
+          if (!B_already_moved_in) {
+            matmul_config_ld(B_row_len * sizeof(elem_t), 0, 0, 0, 0);
+            matmul_mvin(B_dram_addr, B_sp_addr, 0, 0, 0, 0);
+          }
+          
+          if (!D_already_moved_in) {
+            matmul_config_ld(D_row_len * sizeof(elem_t), 0, 0, 0, 0);
+            matmul_mvin(D_dram_addr, D_sp_addr, 0, 0, 0, 0);
+          }
+
+          matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 1, 0);
+        }
+        
+        // Compute
+        {
+          int preload_sp_addr = k == 0 ? D_sp_addr : GARBAGE_ADDR;
+          int out_sp_addr = k == K-1 ? C_sp_addr : GARBAGE_ADDR;
+
+          if (k == K-1) { // Last iteration
+            if (first) {
+              matmul_preload(preload_sp_addr, out_sp_addr, 0, 1, 1, 0);
+            } else {
+              matmul_preload(preload_sp_addr, out_sp_addr, 0, 1, 1, 1);
+            }
+          } else { // All other iterations
+            matmul_preload(preload_sp_addr, out_sp_addr, 0, 1, 0, 0);
+          }
+
+          if (k == 0) { // First iteration
+            matmul_compute_preloaded(A_sp_addr, B_sp_addr);
+          } else { // All other iterations
+            matmul_compute_accumulated(A_sp_addr, B_sp_addr);
+          }
+        }
+      }
+
+      // Move-out
+      {
+        if (last)  {
+          matmul_mvout(C_dram_addr, C_sp_addr, 0, 0, 0, 1);
+        } else {
+          matmul_mvout(C_dram_addr, C_sp_addr, 0, 0, 1, 1);
+        }
       }
     }
   }
