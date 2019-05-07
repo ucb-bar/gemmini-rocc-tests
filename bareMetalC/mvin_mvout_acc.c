@@ -71,6 +71,19 @@ int main() {
       for (size_t n = 0; n < N; ++n)
         if (!is_equal(Out[n], Out_gold[n])) {
           printf("activation: %d, shift: %d\n", activation, shift);
+
+          printf("Matrix %u:\n", n);
+          for (size_t i = 0; i < DIM; ++i) {
+            for (size_t j = 0; j < DIM; ++j)
+              printf("%d ", In[n][i][j]);
+            printf("\n");
+          }
+          printf("Matrix %u output:\n", n);
+          printMatrix(Out[n]);
+          printf("Matrix %u gold output:\n", n);
+          printMatrix(Out_gold[n]);
+          printf("\n");
+
           exit(1);
         }
     }

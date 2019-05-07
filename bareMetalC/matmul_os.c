@@ -175,9 +175,24 @@ int main() {
         }
       }*/
 
+      // printf("activation: %d, shift: %d\n", activation, shift);
       for (int n = 0; n < N*N*N; ++n)
         if (!no_output[n] && !is_equal(C[n], gold[n])) {
             printf("activation: %d, shift: %d\n", activation, shift);
+
+            printf("C:\n");
+            printMatrix(C[n]);
+            printf("Gold:\n");
+            printMatrix(gold[n]);
+            printf("Gold_full:\n");
+            for (size_t i = 0; i < DIM; ++i) {
+                for (size_t j = 0; j < DIM; ++j) {
+                    printf("%lld ", gold_full[n][i][j]);
+                }
+                printf("\n");
+            }
+            printf("\n");
+
             exit(1);
         }
     }

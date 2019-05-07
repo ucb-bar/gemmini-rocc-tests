@@ -9,16 +9,25 @@
 
 // Dimension of the systolic array
 // Should be tileColumns*meshColumns
-#define DIM 8
+// #define DIM 8
+// #define ADDR_LEN 32
+// #define BANK_ROWS (8*16) // 16
+// #define BANK_NUM 2 // 7
+// #define ACC_ROWS 64
+#define DIM 16
 #define ADDR_LEN 32
-#define BANK_ROWS (8*16) // 16
-#define BANK_NUM 2 // 7
-#define ACC_ROWS 64
+#define BANK_ROWS (64 * 1024 * 8 / (4 * 16*8))
+#define BANK_NUM 4
+#define ACC_ROWS (16 * 1024 * 8 / (16*32))
 
 // Datatype of the systolic array
-typedef int16_t elem_t;
-elem_t elem_t_max = SHRT_MAX;
-elem_t elem_t_min = SHRT_MIN;
+// typedef int16_t elem_t;
+// elem_t elem_t_max = SHRT_MAX;
+// elem_t elem_t_min = SHRT_MIN;
+// typedef int32_t acc_t;
+typedef int8_t elem_t;
+elem_t elem_t_max = SCHAR_MAX;
+elem_t elem_t_min = SCHAR_MIN;
 typedef int32_t acc_t;
 
 // Matmul utility functions
@@ -110,6 +119,7 @@ int is_equal(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
   return 1;
 }
 
+
 int rand() {
   static uint32_t x = 777;
   x = x * 1664525 + 1013904223;
@@ -179,6 +189,100 @@ int rand() {
 
 // fence
 #define matmul_fence() asm volatile("fence")
+
+// Tiling functions
+int sp_tiled_matmul(elem_t * A, elem_t * B, elem_t * D, elem_t * C, size_t I,
+        size_t J, size_t K, size_t A_row_len, size_t B_row_len,
+        size_t D_row_len, size_t C_row_len,
+        int first, int last) {
+
+  int A_sp_addr = 0;
+  int B_sp_addr = BANK_ROWS;
+  int D_sp_addr = 2*BANK_ROWS;
+  int C_sp_addr = 3*BANK_ROWS;
+
+  // Move-ins
+  matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 0);
+
+  for (size_t i = 0; i < I; i++) {
+    for (size_t j = 0; j < J; j++) {
+      for (size_t k = 0; k < K; k++) {
+        elem_t * A_dram_addr = A + (i*A_row_len + k)*DIM;
+        elem_t * B_dram_addr = B + (k*B_row_len + j)*DIM;
+        elem_t * D_dram_addr = D + (i*D_row_len + j)*DIM;
+
+        int A_already_moved_in = j != 0;
+        int B_already_moved_in = i != 0;
+        int D_already_moved_in = k != 0;
+
+        if (!A_already_moved_in)
+          matmul_mvin(A_dram_addr, A_sp_addr + (i*K + k)*DIM, 0, 0, 0, 0);
+
+        if (!B_already_moved_in) {
+          matmul_config_ld(B_row_len * sizeof(elem_t), 0, 0, 0, 0);
+          matmul_mvin(B_dram_addr, B_sp_addr + (k*J + j)*DIM, 0, 0, 0, 0);
+        }
+        
+        if (!D_already_moved_in) {
+          matmul_config_ld(D_row_len * sizeof(elem_t), 0, 0, 0, 0);
+          matmul_mvin(D_dram_addr, D_sp_addr + (i*J + j)*DIM, 0, 0, 0, 0);
+        }
+
+        matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 1, 0);
+      }
+    }
+  }
+
+  // Computes
+  for (size_t i = 0; i < I; i++) {
+    for (size_t j = 0; j < J; j++) {
+      // First iteration
+      if (K == 1) {
+        if (first) {
+          matmul_preload(D_sp_addr + (i*J + j)*DIM, 
+              C_sp_addr + (i*D_row_len + j)*DIM, 0, 1, 1, 0);
+        } else {
+          matmul_preload(D_sp_addr + (i*J + j)*DIM, 
+              C_sp_addr + (i*D_row_len + j)*DIM, 0, 1, 1, 1);
+        }
+      } else {
+        matmul_preload(D_sp_addr + (i*J + j)*DIM,
+            GARBAGE_ADDR, 0, 1, 0, 0);
+      }
+
+      matmul_compute_preloaded(A_sp_addr + i*K*DIM, B_sp_addr + j*DIM);
+
+      // Rest of the iterations
+      for (size_t k = 1; k < K; k++) {
+        if (k == K-1) { // Last iteration
+          if (first) {
+            matmul_preload_zeros(C_sp_addr + (i*J + j)*DIM, 0, 1, 1, 0);
+          } else {
+            matmul_preload_zeros(C_sp_addr + (i*J + j)*DIM, 0, 1, 1, 1);
+          }
+          matmul_compute_accumulated(A_sp_addr + (i*K + k)*DIM, B_sp_addr + (k*J + j)*DIM);
+        } else {
+          matmul_preload_zeros(GARBAGE_ADDR, 0, 1, 0, 0);
+          matmul_compute_accumulated(A_sp_addr + (i*K + k)*DIM, B_sp_addr + (k*J + j)*DIM);
+        }
+      }
+    }
+  }
+
+  // Move-outs
+  matmul_config_st(C_row_len * sizeof(elem_t), 0, 0, 0, 0);
+
+  for (size_t i = 0; i < I; i++) {
+    for (size_t j = 0; j < J; j++) {
+      elem_t * C_dram_addr = C + (i*C_row_len + j)*DIM;
+      if (last)  {
+        matmul_mvout(C_dram_addr, C_sp_addr + (i*J + j)*DIM, 0, 0, 0, 1);
+      } else {
+        matmul_mvout(C_dram_addr, C_sp_addr + (i*J + j)*DIM, 0, 0, 1, 1);
+      }
+    }
+  }
+}
 
 #endif  // SRC_MAIN_C_SYSTOLIC_H
 

@@ -22,9 +22,9 @@ void operands(int c, int * a, int * b, int * d) {
 
 void test_os() {
   // Output stationary
-  printf("Output-stationary\n");
+  // printf("Output-stationary\n");
   for (int activation = 0; activation <= 2; ++activation) {
-    for (int shift = 0; shift <= 12; shift += 4) {
+    for (int shift = 0; shift <= 4; shift += 4) {
       static elem_t A[N][DIM][DIM];
       static elem_t B[N][DIM][DIM];
       static elem_t D[N][DIM][DIM];
@@ -51,18 +51,18 @@ void test_os() {
       no_output[N*N*N-1] = 0;
 
       // Print the sequence out
-      // printf("Preloads: ");
-      // for (int i = 0; i < N*N*N; ++i)
-      //   printf("%d, ", preload[i]);
-      // prin("\n");
-      // printf("Zeros: ");
-      // for (int i = 0; i < N*N*N; ++i)
-      //   printf("%d, ", preload_zeros[i]);
-      // printf("\n");
-      // printf("No outputs: ");
-      // for (int i = 0; i < N*N*N; ++i)
-      //   printf("%d, ", no_output[i]);
-      // printf("\n");
+      /*printf("Preloads: ");
+      for (int i = 0; i < N*N*N; ++i)
+        printf("%d, ", preload[i]);
+      printf("\n");
+      printf("Zeros: ");
+      for (int i = 0; i < N*N*N; ++i)
+        printf("%d, ", preload_zeros[i]);
+      printf("\n");
+      printf("No outputs: ");
+      for (int i = 0; i < N*N*N; ++i)
+        printf("%d, ", no_output[i]);
+      printf("\n");*/
 
       for (size_t n = 0; n < N; ++n) {
         for (size_t i = 0; i < DIM; ++i) {
@@ -95,9 +95,9 @@ void test_os() {
       }
 
       int A_addr = 0;
-      int B_addr = N*DIM;
-      int D_addr = 2*N*DIM;
-      int C_addr = 3*N*DIM;
+      int B_addr = BANK_ROWS; // N*DIM;
+      int D_addr = 2*BANK_ROWS; // 2*N*DIM;
+      int C_addr = 3*BANK_ROWS; // 3*N*DIM;
 
       // printf("Moving in\n");
       for (size_t n = 0; n < N; ++n)
@@ -163,29 +163,39 @@ void test_os() {
 
       matmul_fence();
 
-      // printf("Moved out\n");
-      // for (int n = 0; n < N*N*N; ++n) {
-      //   if (!no_output[n]) {
-      //     printf("C:\n");
-      //     printMatrix(C[n]);
-      //     printf("Gold:\n");
-      //     printMatrix(gold[n]);
-      //     printf("\n");
-      //   }
-      // }
+      /*
+      printf("Moved out\n");
+
+      printf("A[0]:\n");
+      printMatrix(A[0]);
+      printf("B[0]:\n");
+      printMatrix(B[0]);
+
+      for (int n = 0; n < N*N*N; ++n) {
+        if (!no_output[n]) {
+          printf("C:\n");
+          printMatrix(C[n]);
+          printf("Gold:\n");
+          printMatrix(gold[n]);
+          printf("\n");
+        }
+      }
+      */
 
       for (int n = 0; n < N*N*N; ++n)
-        if (!no_output[n] && !is_equal(C[n], gold[n]))
-            exit(1);
+        if (!no_output[n] && !is_equal(C[n], gold[n])) {
+          printf("activation: %d, shift: %d\n", activation, shift);
+          exit(1);
+        }
     }
   }
 }
 
 void test_ws() {
   // Weight-stationary
-  printf("Weight-stationary\n");
+  // printf("Weight-stationary\n");
   for (int activation = 0; activation <= 2; ++activation) {
-    for (int shift = 0; shift <= 12; shift += 4) {
+    for (int shift = 0; shift <= 4; shift += 4) {
       static elem_t A[N][DIM][DIM];
       static elem_t B[N][DIM][DIM];
       static elem_t D[N][DIM][DIM];
@@ -274,9 +284,9 @@ void test_ws() {
       }
 
       int A_addr = 0;
-      int B_addr = N*DIM;
-      int D_addr = 2*N*DIM;
-      int C_addr = 3*N*DIM;
+      int B_addr = BANK_ROWS; // N*DIM;
+      int D_addr = 2*BANK_ROWS; // 2*N*DIM;
+      int C_addr = 3*BANK_ROWS; // 3*N*DIM;
       int C_addr_acc = 1 << (ADDR_LEN-1);
 
       // Calculate the proper destination addresses of everything
@@ -367,12 +377,14 @@ void test_ws() {
 }
 
 int main() {
-  for (size_t i = 0; i < 8; i++) {
-    if (rand() % 2)
-      test_os();
-    else
-      test_ws();
-  }
+  // for (size_t i = 0; i < 8; i++) {
+  //   if (rand() % 2)
+  //     test_os();
+  //   else
+  //     test_ws();
+  // }
+  test_os();
+  test_ws();
 
   exit(0);
 }
