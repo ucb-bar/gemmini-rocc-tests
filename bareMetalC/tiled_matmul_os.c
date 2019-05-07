@@ -8,9 +8,9 @@
 #include "include/systolic.h"
 #include "util.h"
 
-#define MAT_DIM_I 16
-#define MAT_DIM_K 16
-#define MAT_DIM_J 16
+#define MAT_DIM_I 32
+#define MAT_DIM_K 32
+#define MAT_DIM_J 32
 #define TILE_I 1
 #define TILE_J 1
 #define TILE_K 1
@@ -57,6 +57,8 @@ void full_matshift(int64_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT
 } 
 
 int main() {
+    printf("Here\n");
+
     static elem_t ZERO[DIM][DIM];
 
     static elem_t full_A[MAT_DIM_I][MAT_DIM_K];
@@ -69,13 +71,13 @@ int main() {
 
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
-        full_A[i][j] = i * (i == j); // rand() % 2;
+        full_A[i][j] = rand() % 2;
       }
     }
 
     for (size_t i = 0; i < MAT_DIM_K; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_B[i][j] = i == j; // rand() % 2;
+        full_B[i][j] = rand() % 2;
       }
     }
 
@@ -87,14 +89,34 @@ int main() {
 
     full_matmul(full_A, full_B, full_D, gold_full);
 
-    sp_tiled_matmul(&full_A[0][0], &full_B[0][0], &full_D[0][0], &full_C[0][0],
-        TILE_I, TILE_J, TILE_K,
-        MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
-        1, 1);
+    matmul_config_ex(OUTPUT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0);
+
+    const int I0 = MAT_DIM_I / TILE_I;
+    const int J0 = MAT_DIM_J / TILE_J;
+    const int K0 = MAT_DIM_K / TILE_K;
+
+    for (size_t i0 = 0; i0 < I0; i0++)
+      for (size_t j0 = 0; j0 < J0; j0++)
+        for (size_t k0 = 0; k0 < K0; k0++) {
+          int first = i0 == 0 && j0 == 0 && k0 == 0;
+          int last = (i0 == I0-1) && (j0 == J0-1) && (k0 == K0-1);
+
+          elem_t (*preload)[][MAT_DIM_J] = first ? &full_D : &full_C;
+
+          printf("fdsa\n");
+          sp_tiled_matmul(&full_A[i0*TILE_I*DIM][k0*TILE_K*DIM],
+              &full_B[k0*TILE_K*DIM][j0*TILE_J*DIM],
+              &(*preload)[i0*TILE_I*DIM][j0*TILE_J*DIM],
+              &full_C[i0*TILE_I*DIM][j0*TILE_J*DIM],
+              TILE_I, TILE_J, TILE_K,
+              MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
+              first, last);
+        }
 
     matmul_fence();
 
     full_matshift(gold_full, gold, 0);   
+
     printf("C:\n");
     full_printMatrix(full_C);
     printf("Gold:\n");

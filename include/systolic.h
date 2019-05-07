@@ -191,7 +191,7 @@ int rand() {
 #define matmul_fence() asm volatile("fence")
 
 // Tiling functions
-int sp_tiled_matmul(elem_t * A, elem_t * B, elem_t * D, elem_t * C, size_t I,
+void sp_tiled_matmul(elem_t * A, elem_t * B, elem_t * D, elem_t * C, size_t I,
         size_t J, size_t K, size_t A_row_len, size_t B_row_len,
         size_t D_row_len, size_t C_row_len,
         int first, int last) {
@@ -215,8 +215,9 @@ int sp_tiled_matmul(elem_t * A, elem_t * B, elem_t * D, elem_t * C, size_t I,
         int B_already_moved_in = i != 0;
         int D_already_moved_in = k != 0;
 
-        if (!A_already_moved_in)
+        if (!A_already_moved_in) {
           matmul_mvin(A_dram_addr, A_sp_addr + (i*K + k)*DIM, 0, 0, 0, 0);
+        }
 
         if (!B_already_moved_in) {
           matmul_config_ld(B_row_len * sizeof(elem_t), 0, 0, 0, 0);
@@ -240,10 +241,10 @@ int sp_tiled_matmul(elem_t * A, elem_t * B, elem_t * D, elem_t * C, size_t I,
       if (K == 1) {
         if (first) {
           matmul_preload(D_sp_addr + (i*J + j)*DIM, 
-              C_sp_addr + (i*D_row_len + j)*DIM, 0, 1, 1, 0);
+              C_sp_addr + (i*J + j)*DIM, 0, 1, 1, 0);
         } else {
           matmul_preload(D_sp_addr + (i*J + j)*DIM, 
-              C_sp_addr + (i*D_row_len + j)*DIM, 0, 1, 1, 1);
+              C_sp_addr + (i*J + j)*DIM, 0, 1, 1, 1);
         }
       } else {
         matmul_preload(D_sp_addr + (i*J + j)*DIM,
