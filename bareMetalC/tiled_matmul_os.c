@@ -8,6 +8,13 @@
 #include "include/systolic.h"
 #include "util.h"
 
+// #define MAT_DIM_I 512
+// #define MAT_DIM_K 512
+// #define MAT_DIM_J 512
+// #define TILE_I (128/DIM)
+// #define TILE_J (128/DIM)
+// #define TILE_K (128/DIM)
+
 #define MAT_DIM_I 32
 #define MAT_DIM_K 32
 #define MAT_DIM_J 32
@@ -46,7 +53,7 @@ int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]
   for (size_t i = 0; i < MAT_DIM_I; ++i)
     for (size_t j = 0; j < MAT_DIM_J; ++j)
       if (x[i][j] != y[i][j])
-          return 0;
+        return 0;
   return 1;
 }
 
@@ -80,29 +87,30 @@ int main() {
 
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
-        full_A[i][j] = (rand() % 64) - 32;
+        full_A[i][j] = rand() % 2; (rand() % 64) - 32;
       }
     }
 
     for (size_t i = 0; i < MAT_DIM_K; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_B[i][j] = (rand() % 64) - 32;
+        full_B[i][j] = rand() % 2; (rand() % 64) - 32;
       }
     }
 
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_D[i][j] = 0;
+        full_D[i][j] = rand() % 2; (rand() % 64) - 32;
       }
     }
 
     full_matmul(full_A, full_B, full_D, gold_full);
-
-    matmul_config_ex(OUTPUT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0);
+    full_matshift(gold_full, gold, 0);   
 
     const int I0 = MAT_DIM_I / (TILE_I*DIM);
     const int J0 = MAT_DIM_J / (TILE_J*DIM);
     const int K0 = MAT_DIM_K / (TILE_K*DIM);
+
+    matmul_config_ex(OUTPUT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0);
 
     for (size_t i0 = 0; i0 < I0; i0++)
       for (size_t j0 = 0; j0 < J0; j0++)
@@ -122,8 +130,6 @@ int main() {
         }
 
     matmul_fence();
-
-    full_matshift(gold_full, gold, 0);   
 
     /*printf("C:\n");
     full_printMatrix(full_C);
