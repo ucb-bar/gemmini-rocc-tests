@@ -9,6 +9,7 @@ tests = \
 	matmul_ws \
 	matmul \
 	tiled_matmul_os \
+	tiled_matmul_ws \
 	raw_hazard
 
 BENCH_COMMON = $(RISCVTOOLS)/riscv-tests/benchmarks/common
