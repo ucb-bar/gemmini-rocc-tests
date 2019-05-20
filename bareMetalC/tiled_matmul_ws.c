@@ -112,9 +112,9 @@ int main() {
 
     matmul_config_ex(WEIGHT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0);
 
-    for (size_t k0 = 0; k0 < K0; k0++) {
+    for (size_t k0 = 0; k0 < K0; k0++)
       for (size_t j0 = 0; j0 < J0; j0++)
-        for (size_t i0 = 0; i0 < I0; i0++)
+        for (size_t i0 = 0; i0 < I0; i0++) {
           int first = i0 == 0 && j0 == 0 && k0 == 0;
           int last = (i0 == I0-1) && (j0 == J0-1) && (k0 == K0-1);
 
