@@ -25,12 +25,14 @@ void test_os() {
   // printf("Output-stationary\n");
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 4; shift += 4) {
-      static elem_t A[N][DIM][DIM];
-      static elem_t B[N][DIM][DIM];
-      static elem_t D[N][DIM][DIM];
+      // printf("activation: %d, shift: %d\n", activation, shift);
+
+      static elem_t A[N][DIM][DIM] row_align;
+      static elem_t B[N][DIM][DIM] row_align;
+      static elem_t D[N][DIM][DIM] row_align;
 
       // We will try out every combination of A, B, D possible
-      static elem_t C[N*N*N][DIM][DIM];
+      static elem_t C[N*N*N][DIM][DIM] row_align;
       static int64_t gold_full[N*N*N][DIM][DIM];
       static elem_t gold[N*N*N][DIM][DIM];
 
@@ -91,7 +93,7 @@ void test_os() {
         if (activation == RELU)
           matrelu(gold[g], gold[g]);
         else if (activation == RELU6)
-          matrelu6(gold[g], gold[g]);
+          matrelu6(gold[g], gold[g], 1 << shift);
       }
 
       int A_addr = 0;
@@ -184,7 +186,14 @@ void test_os() {
 
       for (int n = 0; n < N*N*N; ++n)
         if (!no_output[n] && !is_equal(C[n], gold[n])) {
-          printf("activation: %d, shift: %d\n", activation, shift);
+          printf("activation: %d, shift: %d, n: %d\n", activation, shift, n);
+
+          printf("C:\n");
+          printMatrix(C[n]);
+          printf("Gold:\n");
+          printMatrix(gold[n]);
+          printf("\n");
+
           exit(1);
         }
     }
@@ -196,12 +205,12 @@ void test_ws() {
   // printf("Weight-stationary\n");
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 4; shift += 4) {
-      static elem_t A[N][DIM][DIM];
-      static elem_t B[N][DIM][DIM];
-      static elem_t D[N][DIM][DIM];
+      static elem_t A[N][DIM][DIM] row_align;
+      static elem_t B[N][DIM][DIM] row_align;
+      static elem_t D[N][DIM][DIM] row_align;
 
       // We will try out every combination of A, B, D possible
-      static elem_t C[N*N*N][DIM][DIM];
+      static elem_t C[N*N*N][DIM][DIM] row_align;
       static int64_t gold_full[N*N*N][DIM][DIM];
       static elem_t gold[N*N*N][DIM][DIM];
 
@@ -280,7 +289,7 @@ void test_ws() {
         if (activation == RELU)
           matrelu(gold[g], gold[g]);
         else if (activation == RELU6)
-          matrelu6(gold[g], gold[g]);
+          matrelu6(gold[g], gold[g], 1 << shift);
       }
 
       int A_addr = 0;
@@ -377,14 +386,12 @@ void test_ws() {
 }
 
 int main() {
-  // for (size_t i = 0; i < 8; i++) {
-  //   if (rand() % 2)
-  //     test_os();
-  //   else
-  //     test_ws();
-  // }
-  test_os();
-  test_ws();
+  for (size_t i = 0; i < 8; i++) {
+    //if (rand() % 2) // TODO
+      test_os();
+    //else
+      //test_ws();
+  }
 
   exit(0);
 }

@@ -18,7 +18,7 @@ void operands(int c, int * a, int * b, int * d) {
 }
 
 #if 3*N*DIM > (BANK_NUM * BANK_ROWS) || N*N*N*DIM > ACC_ROWS
-#error scratchpad or accumulator not big enough
+//#error scratchpad or accumulator not big enough
 #endif
 
 int main() {
@@ -26,12 +26,12 @@ int main() {
 
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 12; shift += 4) {
-      static elem_t A[N][DIM][DIM];
-      static elem_t B[N][DIM][DIM];
-      static elem_t D[N][DIM][DIM];
+      static elem_t A[N][DIM][DIM] row_align;
+      static elem_t B[N][DIM][DIM] row_align;
+      static elem_t D[N][DIM][DIM] row_align;
 
       // We will try out every combination of A, B, D possible
-      static elem_t C[N*N*N][DIM][DIM];
+      static elem_t C[N*N*N][DIM][DIM] row_align;
       static int64_t gold_full[N*N*N][DIM][DIM];
       static elem_t gold[N*N*N][DIM][DIM];
 
@@ -110,7 +110,7 @@ int main() {
         if (activation == RELU)
           matrelu(gold[g], gold[g]);
         else if (activation == RELU6)
-          matrelu6(gold[g], gold[g]);
+          matrelu6(gold[g], gold[g], 1 << shift);
       }
 
       int A_addr = 0;

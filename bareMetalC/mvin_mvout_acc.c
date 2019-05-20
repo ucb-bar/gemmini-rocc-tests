@@ -11,24 +11,29 @@
 #define N (8)
 
 #if (N*DIM) > ACC_ROWS
-#error not enough accumulator space
+//#error not enough accumulator space
 #endif
 
 int main() {
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 12; shift += 4) {
-      static acc_t In[N][DIM][DIM];
+      printf("activation: %d, shift: %d\n", activation, shift);
+
+      static acc_t In[N][DIM][DIM] row_align_acc;
       static int64_t In_full[N][DIM][DIM];
-      static elem_t Out[N][DIM][DIM];
+      static elem_t Out[N][DIM][DIM] row_align;
       static elem_t Out_gold[N][DIM][DIM];
 
       for (size_t n = 0; n < N; ++n)
         for (size_t i = 0; i < DIM; ++i)
           for (size_t j = 0; j < DIM; ++j) {
             In[n][i][j] = 0;
-            for (size_t b = 0; b < sizeof(acc_t); ++b) {
+
+            int bytes = rand() % 2 ? sizeof(acc_t) : sizeof(elem_t);
+            for (size_t b = 0; b < bytes; ++b) {
               In[n][i][j] |= (rand() % 255) << (b*8);
             }
+
             In_full[n][i][j] = In[n][i][j];
           }
 
@@ -38,7 +43,7 @@ int main() {
         if (activation == RELU)
           matrelu(Out_gold[n], Out_gold[n]);
         else if (activation == RELU6)
-          matrelu6(Out_gold[n], Out_gold[n]);
+          matrelu6(Out_gold[n], Out_gold[n], 1 << shift);
       }
 
       const int acc_addr = 1 << (ADDR_LEN-1);

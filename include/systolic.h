@@ -9,26 +9,26 @@
 
 // Dimension of the systolic array
 // Should be tileColumns*meshColumns
-// #define DIM 8
-// #define ADDR_LEN 32
-// #define BANK_ROWS (8*16) // 16
-// #define BANK_NUM 2 // 7
-// #define ACC_ROWS 64
 #define DIM 16
 #define ADDR_LEN 32
-#define BANK_ROWS (64 * 1024 * 8 / (4 * 16*8))
 #define BANK_NUM 4
-#define ACC_ROWS (16 * 1024 * 8 / (16*32))
+#define BANK_ROWS (256 * 1024 * 8 / (BANK_NUM * DIM*8))
+#define ACC_ROWS (64 * 1024 * 8 / (DIM*32))
 
 // Datatype of the systolic array
-// typedef int16_t elem_t;
-// elem_t elem_t_max = SHRT_MAX;
-// elem_t elem_t_min = SHRT_MIN;
-// typedef int32_t acc_t;
+//typedef int32_t elem_t;
+//elem_t elem_t_max = INT_MAX;
+//elem_t elem_t_min = INT_MIN;
+//typedef int32_t acc_t;
 typedef int8_t elem_t;
 elem_t elem_t_max = SCHAR_MAX;
 elem_t elem_t_min = SCHAR_MIN;
 typedef int32_t acc_t;
+
+// #define row_align __attribute__((aligned(DIM*sizeof(elem_t)))) // TODO maybe these only need to be aligned to databits?
+// #define row_align_acc __attribute__((aligned(DIM*sizeof(acc_t))))
+#define row_align __attribute__((aligned(128/8))) // TODO maybe these only need to be aligned to databits?
+#define row_align_acc __attribute__((aligned(128/8)))
 
 // Matmul utility functions
 void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], int64_t C_full[DIM][DIM]) {
@@ -89,11 +89,15 @@ void matrelu(elem_t in[DIM][DIM], elem_t out[DIM][DIM]) {
       out[r][c] = in[r][c] > 0 ? in[r][c] : 0;
 }
 
-void matrelu6(elem_t in[DIM][DIM], elem_t out[DIM][DIM]) {
+// TODO this should take a cumulative scale into account
+void matrelu6(elem_t in[DIM][DIM], elem_t out[DIM][DIM], int scale) {
+  // int max = 6 * scale;
+  int max = 6;
+
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       elem_t positive = in[r][c] > 0 ? in[r][c] : 0;
-      out[r][c] = positive > 6 ? 6 : positive;
+      out[r][c] = positive > max ? max : positive;
     }
 }
 
@@ -124,6 +128,12 @@ int rand() {
   static uint32_t x = 777;
   x = x * 1664525 + 1013904223;
   return x >> 24;
+}
+
+unsigned long read_cycles() {
+    unsigned long cycles;
+    asm volatile ("rdcycle %0" : "=r" (cycles));
+    return cycles;
 }
 
 // Accelerator interface
@@ -158,7 +168,10 @@ int rand() {
 
 // mvin and mvout
 #define matmul_mvin(dram_addr, spad_addr, push_mvout, pop_mvout, push_ex, pop_ex) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, spad_addr, to_deps(push_mvout, pop_mvout, push_ex, pop_ex) | k_MVIN)
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)1 << ADDR_LEN) | spad_addr, to_deps(push_mvout, pop_mvout, push_ex, pop_ex) | k_MVIN)
+
+#define matmul_block_mvin(dram_addr, spad_addr, len, push_mvout, pop_mvout, push_ex, pop_ex) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)len << ADDR_LEN) | spad_addr, to_deps(push_mvout, pop_mvout, push_ex, pop_ex) | k_MVIN)
 
 #define matmul_mvout(dram_addr, spad_addr, push_mvin, pop_mvin, push_ex, pop_ex) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, spad_addr, to_deps(push_mvin, pop_mvin, push_ex, pop_ex) | k_MVOUT)
@@ -284,11 +297,12 @@ void sp_tiled_matmul_ws(elem_t * A, elem_t * B, elem_t * D, elem_t * C, size_t I
         size_t D_row_len, size_t C_row_len,
         int first, int last) {
 
+  const int partition_size = (BANK_NUM/4) * BANK_ROWS;
 
   const int A_sp_addr_start = 0;
-  const int B_sp_addr_start = BANK_ROWS;
-  const int D_sp_addr_start = 2*BANK_ROWS;
-  const int C_sp_addr_start = 3*BANK_ROWS;
+  const int B_sp_addr_start = partition_size;
+  const int D_sp_addr_start = 2*partition_size;
+  const int C_sp_addr_start = 3*partition_size;
 
   matmul_config_st(C_row_len * sizeof(elem_t), 0, 0, 0, 0);
 

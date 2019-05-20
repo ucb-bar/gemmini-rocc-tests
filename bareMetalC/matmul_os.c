@@ -26,12 +26,14 @@ int main() {
 
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 12; shift += 4) {
-      static elem_t A[N][DIM][DIM];
-      static elem_t B[N][DIM][DIM];
-      static elem_t D[N][DIM][DIM];
+      // printf("activation: %d, shift: %d\n", activation, shift);
+
+      static elem_t A[N][DIM][DIM] row_align;
+      static elem_t B[N][DIM][DIM] row_align;
+      static elem_t D[N][DIM][DIM] row_align;
 
       // We will try out every combination of A, B, D possible
-      static elem_t C[N*N*N][DIM][DIM];
+      static elem_t C[N*N*N][DIM][DIM] row_align;
       static int64_t gold_full[N*N*N][DIM][DIM];
       static elem_t gold[N*N*N][DIM][DIM];
 
@@ -92,7 +94,7 @@ int main() {
           if (activation == RELU)
             matrelu(gold[g], gold[g]);
           else if (activation == RELU6)
-            matrelu6(gold[g], gold[g]);
+            matrelu6(gold[g], gold[g], 1 << shift);
       }
 
       int A_addr = 0;
@@ -151,16 +153,23 @@ int main() {
         }
       }
 
+      matmul_fence();
       // printf("Moving out\n");
       int first_store = 1;
       for (size_t c = 0; c < N*N*N; ++c)
-        if (!no_output[c])
+        if (!no_output[c]) {
+          //printf("%x\n", &C[c][0]);
+          //if ((int)(C[c]) % (DIM*sizeof(elem_t)) != 0) {
+          //    // printf("%x\n", C[c]);
+          //    exit(1);
+          //}
           if (first_store) {
-            matmul_mvout(C[c], C_addr + c*DIM, 0, 0, 0, 1);
+            matmul_mvout(&C[c][0][0], C_addr + c*DIM, 0, 0, 0, 1);
             first_store = 0;
           } else {
-            matmul_mvout(C[c], C_addr + c*DIM, 0, 0, 0, 0);
+            matmul_mvout(&C[c][0][0], C_addr + c*DIM, 0, 0, 0, 0);
           }
+        }
 
       matmul_fence();
 
@@ -175,7 +184,6 @@ int main() {
         }
       }*/
 
-      // printf("activation: %d, shift: %d\n", activation, shift);
       for (int n = 0; n < N*N*N; ++n)
         if (!no_output[n] && !is_equal(C[n], gold[n])) {
             printf("activation: %d, shift: %d\n", activation, shift);

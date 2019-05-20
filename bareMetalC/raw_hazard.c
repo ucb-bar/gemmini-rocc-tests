@@ -17,11 +17,11 @@ int main() {
   const int b_additions = 10;
   const int d_additions = 10;
 
-  static elem_t IDENTITY[DIM][DIM];
+  static elem_t IDENTITY[DIM][DIM] row_align;
 
-  static elem_t result_A[DIM][DIM];
-  static elem_t result_B[DIM][DIM];
-  static elem_t result_D[DIM][DIM];
+  static elem_t result_A[DIM][DIM] row_align;
+  static elem_t result_B[DIM][DIM] row_align;
+  static elem_t result_D[DIM][DIM] row_align;
 
   static elem_t gold_A[DIM][DIM];
   static elem_t gold_B[DIM][DIM];
