@@ -14,8 +14,8 @@
 #endif
 
 int main() {
-  static elem_t In[N][DIM][DIM] row_align;
-  static elem_t Out[N][DIM][DIM] row_align;
+  static elem_t In[N][DIM][DIM] row_align(1);
+  static elem_t Out[N][DIM][DIM] row_align(1);
 
   for (size_t n = 0; n < N; ++n)
     for (size_t i = 0; i < DIM; ++i)

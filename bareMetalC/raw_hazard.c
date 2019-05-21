@@ -17,11 +17,11 @@ int main() {
   const int b_additions = 10;
   const int d_additions = 10;
 
-  static elem_t IDENTITY[DIM][DIM] row_align;
+  static elem_t IDENTITY[DIM][DIM] row_align(1);
 
-  static elem_t result_A[DIM][DIM] row_align;
-  static elem_t result_B[DIM][DIM] row_align;
-  static elem_t result_D[DIM][DIM] row_align;
+  static elem_t result_A[DIM][DIM] row_align(1);
+  static elem_t result_B[DIM][DIM] row_align(1);
+  static elem_t result_D[DIM][DIM] row_align(1);
 
   static elem_t gold_A[DIM][DIM];
   static elem_t gold_B[DIM][DIM];
@@ -50,7 +50,7 @@ int main() {
   matmul_mvin(IDENTITY, D_addr, 0, 0, 1, 0);
   
   // printf("Setting mode\n");
-  matmul_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0, 0, 0);
+  matmul_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0, 0, 0, 0);
 
   // printf("RAW with A\n");
   for (int i = 0; i < a_additions; i++) {

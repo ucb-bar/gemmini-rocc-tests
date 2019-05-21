@@ -14,6 +14,8 @@
 #define BANK_NUM 4
 #define BANK_ROWS (256 * 1024 * 8 / (BANK_NUM * DIM*8))
 #define ACC_ROWS (64 * 1024 * 8 / (DIM*32))
+#define MAX_BLOCK_LEN (128/(DIM*sizeof(elem_t)) - 1)
+#define MAX_BLOCK_LEN_ACC (128/(DIM*sizeof(acc_t)) - 1)
 
 // Datatype of the systolic array
 //typedef int32_t elem_t;
@@ -25,10 +27,8 @@ elem_t elem_t_max = SCHAR_MAX;
 elem_t elem_t_min = SCHAR_MIN;
 typedef int32_t acc_t;
 
-// #define row_align __attribute__((aligned(DIM*sizeof(elem_t)))) // TODO maybe these only need to be aligned to databits?
-// #define row_align_acc __attribute__((aligned(DIM*sizeof(acc_t))))
-#define row_align __attribute__((aligned(128/8))) // TODO maybe these only need to be aligned to databits?
-#define row_align_acc __attribute__((aligned(128/8)))
+#define row_align(blocks) __attribute__((aligned(blocks*DIM*sizeof(elem_t)))) // TODO maybe these only need to be aligned to databits?
+#define row_align_acc(blocks) __attribute__((aligned(blocks*DIM*sizeof(acc_t))))
 
 // Matmul utility functions
 void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], int64_t C_full[DIM][DIM]) {
@@ -89,10 +89,9 @@ void matrelu(elem_t in[DIM][DIM], elem_t out[DIM][DIM]) {
       out[r][c] = in[r][c] > 0 ? in[r][c] : 0;
 }
 
-// TODO this should take a cumulative scale into account
 void matrelu6(elem_t in[DIM][DIM], elem_t out[DIM][DIM], int scale) {
-  // int max = 6 * scale;
-  int max = 6;
+  // int max = 6;
+  int max = 6 * scale;
 
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
@@ -191,8 +190,8 @@ unsigned long read_cycles() {
   matmul_preload(GARBAGE_ADDR, C, push_mvin, pop_mvin, push_mvout, pop_mvout)
 
 // config
-#define matmul_config_ex(mode, act, shift, push_mvin, pop_mvin, push_mvout, pop_mvout) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (act << 3) | (mode << 2) | CONFIG_EX, shift, to_deps(push_mvin, pop_mvin, push_mvout, pop_mvout) | k_CONFIG)
+#define matmul_config_ex(mode, act, shift, relu6_shift, push_mvin, pop_mvin, push_mvout, pop_mvout) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (act << 3) | (mode << 2) | CONFIG_EX, ((uint64_t)relu6_shift << 32) | shift, to_deps(push_mvin, pop_mvin, push_mvout, pop_mvout) | k_CONFIG)
 
 #define matmul_config_ld(stride, push_mvout, pop_mvout, push_ex, pop_ex) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_LD, stride, to_deps(push_mvout, pop_mvout, push_ex, pop_ex) | k_CONFIG)

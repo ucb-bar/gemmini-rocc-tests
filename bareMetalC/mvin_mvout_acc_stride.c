@@ -8,7 +8,7 @@
 #include "include/systolic.h"
 #include "util.h"
 
-#define BIG_DIM 32
+#define BIG_DIM 64
 
 #if (BIG_DIM % DIM) != 0
 #error incorrect dimensions
@@ -49,10 +49,9 @@ void matrelu_big(elem_t in[BIG_DIM][BIG_DIM], elem_t out[BIG_DIM][BIG_DIM]) {
       out[r][c] = in[r][c] > 0 ? in[r][c] : 0;
 }
 
-// TODO this should take the cumulative scale into account
 void matrelu6_big(elem_t in[BIG_DIM][BIG_DIM], elem_t out[BIG_DIM][BIG_DIM], int scale) {
-  // int max = 6 * scale;
-  int max = 6;
+  // int max = 6;
+  int max = 6 * scale;
 
   for (size_t r = 0; r < BIG_DIM; r++)
     for (size_t c = 0; c < BIG_DIM; c++) {
@@ -78,93 +77,99 @@ void printMatrix_acc_big(acc_t m[BIG_DIM][BIG_DIM]) {
 }
 
 int main() {
-  for (int activation = 0; activation <= 2; ++activation) {
-    for (int shift = 0; shift <= 12; shift += 4) {
-      // printf("activation: %d, shift: %d\n", activation, shift);
+  for (int block_len = 1; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN_ACC; block_len++) {
+    for (int activation = 0; activation <= 2; ++activation) {
+      for (int shift = 0; shift <= 12; shift += 4) {
+        // printf("block_len: %d, activation: %d, shift: %d\n", block_len, activation, shift);
+        
+        static acc_t In[BIG_DIM][BIG_DIM] row_align_acc(1);
+        static int64_t In_full[BIG_DIM][BIG_DIM];
+        static elem_t Out[BIG_DIM][BIG_DIM] row_align(1);
+        static elem_t Out_gold[BIG_DIM][BIG_DIM];
 
-      static acc_t In[BIG_DIM][BIG_DIM] row_align_acc;
-      static int64_t In_full[BIG_DIM][BIG_DIM];
-      static elem_t Out[BIG_DIM][BIG_DIM] row_align;
-      static elem_t Out_gold[BIG_DIM][BIG_DIM];
+        int relu6_shift = shift+1;
 
-      for (size_t i = 0; i < BIG_DIM; ++i) {
-        for (size_t j = 0; j < BIG_DIM; ++j) {
-          In[i][j] = 0;
+        for (size_t i = 0; i < BIG_DIM; ++i) {
+          for (size_t j = 0; j < BIG_DIM; ++j) {
+            In[i][j] = 0;
 
-          int bytes = rand() % 2 ? sizeof(acc_t) : sizeof(elem_t);
-          for (size_t b = 0; b < bytes; ++b) {
-            In[i][j] |= (rand() % 255) << (b*8);
+            int bytes = rand() % 2 ? sizeof(acc_t) : sizeof(elem_t);
+            for (size_t b = 0; b < bytes; ++b) {
+              In[i][j] |= (rand() % 255) << (b*8);
+            }
+
+            In_full[i][j] = In[i][j];
+          }
+        }
+
+        matshift_big(In_full, Out_gold, shift);
+
+        if (activation == RELU)
+          matrelu_big(Out_gold, Out_gold);
+        else if (activation == RELU6)
+          matrelu6_big(Out_gold, Out_gold, 1 << relu6_shift);
+
+        const uint32_t acc_addr = 1 << (ADDR_LEN-1);
+
+        matmul_config_ld(BIG_DIM*sizeof(acc_t), 0, 0, 0, 0);
+        matmul_config_ex(0, activation, shift, relu6_shift, 0, 0, 1, 0);
+        matmul_config_st(BIG_DIM*sizeof(elem_t), 0, 0, 0, 1);
+
+        for (size_t i = 0; i < BIG_DIM; i += DIM) {
+          for (size_t j = 0; j < BIG_DIM; j += DIM) {
+            // printf("i: %u, j: %u\n", i, j);
+
+            acc_t * dram_addr_in = &In[i][j];
+            elem_t * dram_addr_out = &Out[i][j];
+            uint32_t sp_addr = acc_addr + i*(BIG_DIM/DIM) + j;
+
+            int already_moved_in = (j/DIM) % block_len != 0;
+
+            if (!already_moved_in) {
+              int len = j + block_len*DIM <= BIG_DIM ? block_len : (BIG_DIM-j)/DIM;
+              // printf("Moving in with len: %d\n", len);
+              matmul_block_mvin(dram_addr_in, sp_addr, len, 1, 0, 0, 0);
+              matmul_mvout(dram_addr_out, sp_addr, 0, 1, 0, 0);
+            } else {
+              // printf("Already moved in\n");
+              matmul_mvout(dram_addr_out, sp_addr, 0, 0, 0, 0);
+            }
+          }
+        }
+
+        matmul_fence();
+
+        if (!is_equal_big(Out, Out_gold)) {
+          printf("activation: %d, shift: %d\n", activation, shift);
+
+          /*printf("Out:\n");
+          for (size_t i = 0; i < BIG_DIM; i++) {
+            for (size_t j = 0; j < BIG_DIM; j++) {
+              printf("%d, ", Out[i][j]);
+            }
+            printf("\n");
           }
 
-          //In[i][j] = i*BIG_DIM+j;
-
-          In_full[i][j] = In[i][j];
-        }
-      }
-
-      matshift_big(In_full, Out_gold, shift);
-
-      if (activation == RELU)
-        matrelu_big(Out_gold, Out_gold);
-      else if (activation == RELU6)
-        matrelu6_big(Out_gold, Out_gold, 1 << shift);
-
-      const int acc_addr = 1 << (ADDR_LEN-1);
-
-      matmul_config_ld(BIG_DIM*sizeof(acc_t), 0, 0, 0, 0);
-      matmul_config_ex(0, activation, shift, 0, 0, 1, 0);
-      matmul_config_st(BIG_DIM*sizeof(elem_t), 0, 0, 0, 1);
-
-      for (size_t i = 0; i < BIG_DIM; i += DIM) {
-        for (size_t j = 0; j < BIG_DIM; j += DIM) {
-          acc_t * dram_addr_in = &In[i][j];
-          elem_t * dram_addr_out = &Out[i][j];
-          int sp_addr = acc_addr + i*(BIG_DIM/DIM) + j;
-
-          matmul_mvin(dram_addr_in, sp_addr, 1, 0, 0, 0);
-          matmul_mvout(dram_addr_out, sp_addr, 0, 1, 0, 0);
-        }
-      }
-
-      matmul_fence();
-
-      // printf("Matrix:\n");
-      // printMatrix_acc_big(In);
-      // printf("Matrix output:\n");
-      // printMatrix_big(Out);
-      // printf("Matrix gold output:\n");
-      // printMatrix_big(Out_gold);
-      // printf("\n");
-
-      if (!is_equal_big(Out, Out_gold)) {
-        /*printf("Out:\n");
-        for (size_t i = 0; i < BIG_DIM; i++) {
-          for (size_t j = 0; j < BIG_DIM; j++) {
-            printf("%d, ", Out[i][j]);
-          }
           printf("\n");
-        }
 
-        printf("\n");
+          printf("Gold:\n");
+          for (size_t i = 0; i < BIG_DIM; i++) {
+            for (size_t j = 0; j < BIG_DIM; j++) {
+              printf("%d, ", Out[i][j]);
+            }
+            printf("\n");
+          }*/
 
-        printf("Gold:\n");
-        for (size_t i = 0; i < BIG_DIM; i++) {
-          for (size_t j = 0; j < BIG_DIM; j++) {
-            printf("%d, ", Out[i][j]);
-          }
+          printf("Matrix:\n");
+          printMatrix_acc_big(In);
+          printf("Matrix output:\n");
+          printMatrix_big(Out);
+          printf("Matrix gold output:\n");
+          printMatrix_big(Out_gold);
           printf("\n");
-        }*/
 
-        printf("Matrix:\n");
-        printMatrix_acc_big(In);
-        printf("Matrix output:\n");
-        printMatrix_big(Out);
-        printf("Matrix gold output:\n");
-        printMatrix_big(Out_gold);
-        printf("\n");
-
-        printf("activation: %d, shift: %d\n", activation, shift);
-        exit(1);
+          exit(1);
+        }
       }
     }
   }

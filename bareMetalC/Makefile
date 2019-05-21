@@ -1,7 +1,6 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	exit \
 	mvin_mvout \
 	mvin_mvout_stride \
 	mvin_mvout_acc \

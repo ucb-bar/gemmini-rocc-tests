@@ -35,15 +35,17 @@ void printMatrix_big(elem_t m[BIG_DIM][BIG_DIM]) {
 }
 
 int main() {
-  for (int len = 1; len <= BIG_DIM/DIM; len++) {
-    // printf("len: %d\n", len);
+  for (int block_len = 1; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN; block_len++) {
+    // printf("block_len: %d\n", block_len);
 
-    static elem_t In[BIG_DIM][BIG_DIM] row_align;
-    static elem_t Out[BIG_DIM][BIG_DIM] row_align;
+    static elem_t In[BIG_DIM][BIG_DIM] row_align(8);
+    static elem_t Out[BIG_DIM][BIG_DIM] row_align(1);
 
     for (size_t i = 0; i < BIG_DIM; ++i)
-      for (size_t j = 0; j < BIG_DIM; ++j)
-        In[i][j] = i*BIG_DIM + j;
+      for (size_t j = 0; j < BIG_DIM; ++j) {
+        In[i][j] = (rand() % 64) - 32; // i*BIG_DIM + j;
+        Out[i][j] = 0;
+      }
 
     matmul_config_ld(BIG_DIM*sizeof(elem_t), 0, 0, 0, 0);
     matmul_config_st(BIG_DIM*sizeof(elem_t), 0, 0, 0, 0);
@@ -54,14 +56,17 @@ int main() {
 
         elem_t * dram_addr_in = &In[i][j];
         elem_t * dram_addr_out = &Out[i][j];
-        int sp_addr = i*(BIG_DIM/DIM) + j;
+        uint32_t sp_addr = i*(BIG_DIM/DIM) + j;
 
-        int already_moved_in = (j/DIM) % len != 0;
+        int already_moved_in = (j/DIM) % block_len != 0;
 
         if (!already_moved_in) {
+          int len = j + block_len*DIM <= BIG_DIM ? block_len : (BIG_DIM-j)/DIM;
+          // printf("Moving in with len: %d\n", len);
           matmul_block_mvin(dram_addr_in, sp_addr, len, 1, 0, 0, 0);
           matmul_mvout(dram_addr_out, sp_addr, 0, 1, 0, 0);
         } else {
+          // printf("Already moved in\n");
           matmul_mvout(dram_addr_out, sp_addr, 0, 0, 0, 0);
         }
       }
@@ -70,12 +75,12 @@ int main() {
     matmul_fence();
 
     if (!is_equal_big(In, Out)) {
-      printf("len: %d\n", len);
+      printf("block_len: %d\n", block_len);
 
-      printf("Matrix:\n");
-      printMatrix_big(In);
       printf("Matrix output:\n");
       printMatrix_big(Out);
+      printf("Matrix gold:\n");
+      printMatrix_big(In);
       printf("\n");
 
       exit(1);

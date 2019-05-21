@@ -110,7 +110,7 @@ int main() {
     const int J0 = MAT_DIM_J / (TILE_J*DIM);
     const int K0 = MAT_DIM_K / (TILE_K*DIM);
 
-    matmul_config_ex(WEIGHT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0);
+    matmul_config_ex(WEIGHT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0, 0);
 
     for (size_t k0 = 0; k0 < K0; k0++)
       for (size_t j0 = 0; j0 < J0; j0++)

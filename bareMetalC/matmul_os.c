@@ -28,12 +28,14 @@ int main() {
     for (int shift = 0; shift <= 12; shift += 4) {
       // printf("activation: %d, shift: %d\n", activation, shift);
 
-      static elem_t A[N][DIM][DIM] row_align;
-      static elem_t B[N][DIM][DIM] row_align;
-      static elem_t D[N][DIM][DIM] row_align;
+      static elem_t A[N][DIM][DIM] row_align(1);
+      static elem_t B[N][DIM][DIM] row_align(1);
+      static elem_t D[N][DIM][DIM] row_align(1);
+
+      int relu6_shift = shift+1;
 
       // We will try out every combination of A, B, D possible
-      static elem_t C[N*N*N][DIM][DIM] row_align;
+      static elem_t C[N*N*N][DIM][DIM] row_align(1);
       static int64_t gold_full[N*N*N][DIM][DIM];
       static elem_t gold[N*N*N][DIM][DIM];
 
@@ -94,7 +96,7 @@ int main() {
           if (activation == RELU)
             matrelu(gold[g], gold[g]);
           else if (activation == RELU6)
-            matrelu6(gold[g], gold[g], 1 << shift);
+            matrelu6(gold[g], gold[g], 1 << relu6_shift);
       }
 
       int A_addr = 0;
@@ -118,7 +120,7 @@ int main() {
       }
 
       // printf("Setting mode\n");
-      matmul_config_ex(OUTPUT_STATIONARY, activation, shift, 0, 1, 0, 0);
+      matmul_config_ex(OUTPUT_STATIONARY, activation, shift, relu6_shift, 0, 1, 0, 0);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {

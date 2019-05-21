@@ -27,14 +27,16 @@ void test_os() {
     for (int shift = 0; shift <= 4; shift += 4) {
       // printf("activation: %d, shift: %d\n", activation, shift);
 
-      static elem_t A[N][DIM][DIM] row_align;
-      static elem_t B[N][DIM][DIM] row_align;
-      static elem_t D[N][DIM][DIM] row_align;
+      static elem_t A[N][DIM][DIM] row_align(1);
+      static elem_t B[N][DIM][DIM] row_align(1);
+      static elem_t D[N][DIM][DIM] row_align(1);
 
       // We will try out every combination of A, B, D possible
-      static elem_t C[N*N*N][DIM][DIM] row_align;
+      static elem_t C[N*N*N][DIM][DIM] row_align(1);
       static int64_t gold_full[N*N*N][DIM][DIM];
       static elem_t gold[N*N*N][DIM][DIM];
+
+      int relu6_shift = shift+1;
 
       // ...taking into account the preloads or accumulates
       static int preload[N*N*N] = {1};
@@ -93,7 +95,7 @@ void test_os() {
         if (activation == RELU)
           matrelu(gold[g], gold[g]);
         else if (activation == RELU6)
-          matrelu6(gold[g], gold[g], 1 << shift);
+          matrelu6(gold[g], gold[g], 1 << relu6_shift);
       }
 
       int A_addr = 0;
@@ -117,7 +119,7 @@ void test_os() {
       }
 
       // printf("Setting mode\n");
-      matmul_config_ex(OUTPUT_STATIONARY, activation, shift, 0, 1, 0, 0);
+      matmul_config_ex(OUTPUT_STATIONARY, activation, shift, relu6_shift, 0, 1, 0, 0);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
@@ -205,14 +207,16 @@ void test_ws() {
   // printf("Weight-stationary\n");
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 4; shift += 4) {
-      static elem_t A[N][DIM][DIM] row_align;
-      static elem_t B[N][DIM][DIM] row_align;
-      static elem_t D[N][DIM][DIM] row_align;
+      static elem_t A[N][DIM][DIM] row_align(1);
+      static elem_t B[N][DIM][DIM] row_align(1);
+      static elem_t D[N][DIM][DIM] row_align(1);
 
       // We will try out every combination of A, B, D possible
-      static elem_t C[N*N*N][DIM][DIM] row_align;
+      static elem_t C[N*N*N][DIM][DIM] row_align(1);
       static int64_t gold_full[N*N*N][DIM][DIM];
       static elem_t gold[N*N*N][DIM][DIM];
+
+      int relu6_shift = shift+1;
 
       // ...taking into account whether we preload new weights or re-use the old ones
       static int preload[N*N*N] = {1};
@@ -289,14 +293,14 @@ void test_ws() {
         if (activation == RELU)
           matrelu(gold[g], gold[g]);
         else if (activation == RELU6)
-          matrelu6(gold[g], gold[g], 1 << shift);
+          matrelu6(gold[g], gold[g], 1 << relu6_shift);
       }
 
       int A_addr = 0;
       int B_addr = BANK_ROWS; // N*DIM;
       int D_addr = 2*BANK_ROWS; // 2*N*DIM;
       int C_addr = 3*BANK_ROWS; // 3*N*DIM;
-      int C_addr_acc = 1 << (ADDR_LEN-1);
+      uint32_t C_addr_acc = 1 << (ADDR_LEN-1);
 
       // Calculate the proper destination addresses of everything
       int C_addrs[N*N*N];
@@ -326,7 +330,7 @@ void test_ws() {
         }
 
       // printf("Setting mode\n");
-      matmul_config_ex(WEIGHT_STATIONARY, activation, shift, 0, 1, 0, 0);
+      matmul_config_ex(WEIGHT_STATIONARY, activation, shift, relu6_shift, 0, 1, 0, 0);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
@@ -387,10 +391,10 @@ void test_ws() {
 
 int main() {
   for (size_t i = 0; i < 8; i++) {
-    //if (rand() % 2) // TODO
+    if (rand() % 2)
       test_os();
-    //else
-      //test_ws();
+    else
+      test_ws();
   }
 
   exit(0);

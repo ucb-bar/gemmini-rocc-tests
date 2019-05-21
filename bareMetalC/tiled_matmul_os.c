@@ -72,10 +72,10 @@ void full_matshift(int64_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT
 int main() {
     static elem_t ZERO[DIM][DIM];
 
-    static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align;
-    static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align;
-    static elem_t full_D[MAT_DIM_I][MAT_DIM_J] row_align;
-    static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align;
+    static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
+    static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
+    static elem_t full_D[MAT_DIM_I][MAT_DIM_J] row_align(1);
+    static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
 
     static int64_t gold_full[MAT_DIM_I][MAT_DIM_J];
     static elem_t gold[MAT_DIM_I][MAT_DIM_J];
@@ -114,7 +114,7 @@ int main() {
     // printf("Starting systolic matmul\n");
     unsigned long start = read_cycles();
 
-    matmul_config_ex(OUTPUT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0);
+    matmul_config_ex(OUTPUT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0, 0);
 
     for (size_t i0 = 0; i0 < I0; i0++)
       for (size_t j0 = 0; j0 < J0; j0++)
