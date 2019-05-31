@@ -38,7 +38,7 @@ int main() {
   for (int block_len = 1; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN; block_len++) {
     // printf("block_len: %d\n", block_len);
 
-    static elem_t In[BIG_DIM][BIG_DIM] row_align(8);
+    static elem_t In[BIG_DIM][BIG_DIM] row_align(1);
     static elem_t Out[BIG_DIM][BIG_DIM] row_align(1);
 
     for (size_t i = 0; i < BIG_DIM; ++i)

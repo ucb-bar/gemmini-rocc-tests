@@ -12,10 +12,15 @@
 #define DIM 16
 #define ADDR_LEN 32
 #define BANK_NUM 4
-#define BANK_ROWS (256 * 1024 * 8 / (BANK_NUM * DIM*8))
-#define ACC_ROWS (64 * 1024 * 8 / (DIM*32))
-#define MAX_BLOCK_LEN (128/(DIM*sizeof(elem_t)) - 1)
-#define MAX_BLOCK_LEN_ACC (128/(DIM*sizeof(acc_t)) - 1)
+//#define BANK_ROWS (256 * 1024 / (BANK_NUM * DIM*sizeof(elem_t)))
+//#define ACC_ROWS (64 * 1024 / (DIM*sizeof(acc_t)))
+#define BANK_ROWS (256 * 1024 / (BANK_NUM * DIM*1))
+#define ACC_ROWS (64 * 1024 / (DIM*4))
+#define MAX_BYTES 128
+//#define MAX_BLOCK_LEN (MAX_BYTES/(DIM*sizeof(elem_t)) - 1)
+//#define MAX_BLOCK_LEN_ACC (MAX_BYTES/(DIM*sizeof(acc_t)) - 1)
+#define MAX_BLOCK_LEN (MAX_BYTES/(DIM*1) - 1)
+#define MAX_BLOCK_LEN_ACC (MAX_BYTES/(DIM*4) - 1)
 
 // Datatype of the systolic array
 //typedef int32_t elem_t;
@@ -27,7 +32,8 @@ elem_t elem_t_max = SCHAR_MAX;
 elem_t elem_t_min = SCHAR_MIN;
 typedef int32_t acc_t;
 
-#define row_align(blocks) __attribute__((aligned(blocks*DIM*sizeof(elem_t)))) // TODO maybe these only need to be aligned to databits?
+
+#define row_align(blocks) __attribute__((aligned(blocks*DIM*sizeof(elem_t))))
 #define row_align_acc(blocks) __attribute__((aligned(blocks*DIM*sizeof(acc_t))))
 
 // Matmul utility functions
@@ -203,70 +209,131 @@ unsigned long read_cycles() {
 #define matmul_fence() asm volatile("fence")
 
 // Tiling functions
-void sp_tiled_matmul(elem_t * A, elem_t * B, elem_t * D, elem_t * C, size_t I,
-        size_t J, size_t K, size_t A_row_len, size_t B_row_len,
-        size_t D_row_len, size_t C_row_len,
-        int first, int last) {
+static void sp_tiled_matmul(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
+// static void sp_tiled_matmul(elem_t * A, elem_t * B, elem_t * D, elem_t * C,
+        size_t I, size_t J, size_t K, size_t A_row_len,
+        size_t B_row_len, size_t D_row_len, size_t C_row_len,
+        int first_mvin, int last_mvout) {
 
-  const int A_sp_addr_start = 0;
-  const int B_sp_addr_start = BANK_ROWS;
-  const int D_sp_addr_start = 2*BANK_ROWS;
-  const int C_sp_addr_start = 3*BANK_ROWS;
+  const uint32_t A_sp_addr_start = 0;
+  const uint32_t B_sp_addr_start = BANK_ROWS;
+  const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
+  const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2);
 
-  matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 0);
-  matmul_config_st(C_row_len * sizeof(elem_t), 0, 0, 0, 0);
+  const int A_blocks = K <= MAX_BLOCK_LEN ? K : MAX_BLOCK_LEN;
+  const int B_blocks = J <= MAX_BLOCK_LEN ? K : MAX_BLOCK_LEN;
+  const int D_blocks = J <= MAX_BLOCK_LEN_ACC ? J : MAX_BLOCK_LEN_ACC;
+  // const int D_blocks = J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN;
+
+  // Move-in D
+  if (D != NULL) {
+    matmul_config_ld(D_row_len * sizeof(acc_t), 0, 0, 0, 0);
+
+    for (size_t i = 0; i < I; i++) {
+      for (size_t j = 0; j < J; j++) {
+        acc_t * D_dram_addr = D + (i*D_row_len + j)*DIM;
+        uint32_t D_sp_addr = D_sp_addr_start + (i*J + j)*DIM;
+
+        int already_moved_in = j % D_blocks != 0;
+
+        if (!already_moved_in) {
+          int blocks = j + D_blocks <= J ? D_blocks : J-j;
+
+          if (first_mvin) {
+            matmul_block_mvin(D_dram_addr, D_sp_addr, blocks, 0, 0, 0, 0);
+          } else {
+            matmul_block_mvin(D_dram_addr, D_sp_addr, blocks, 0, 1, 0, 0);
+          }
+        }
+      }
+    }
+  }
+  /*if (D != NULL) {
+    matmul_config_ld(D_row_len * sizeof(elem_t), 0, 0, 0, 0);
+
+    for (size_t i = 0; i < I; i++) {
+      for (size_t j = 0; j < J; j++) {
+        elem_t * D_dram_addr = D + (i*D_row_len + j)*DIM;
+        uint32_t D_sp_addr = A_sp_addr_start + (i*J + j)*DIM;
+        uint32_t D_acc_addr = D_sp_addr_start + (i*J + j)*DIM;
+
+        int already_moved_in = j % D_blocks != 0;
+
+        if (!already_moved_in) {
+          int blocks = j + D_blocks <= J ? D_blocks : J-j;
+
+          // printf("Moving in %d blocks\n", blocks);
+          if (first_mvin) {
+            matmul_block_mvin(D_dram_addr, D_sp_addr, blocks, 0, 0, 1, 0);
+          } else {
+            matmul_block_mvin(D_dram_addr, D_sp_addr, blocks, 0, 1, 1, 0);
+          }
+
+          matmul_preload(D_sp_addr, D_acc_addr, 0, 1, 0, 0);
+        } else {
+          // printf("Already moved in\n");
+          
+          if (!first_mvin) {
+            // This is only here to acknowledge the dependency from store
+            matmul_config_ld(D_row_len * sizeof(elem_t), 0, 1, 0, 0); 
+          }
+
+          matmul_preload(D_sp_addr, D_acc_addr, 0, 0, 0, 0);
+        }
+
+        matmul_compute_preloaded(GARBAGE_ADDR, GARBAGE_ADDR);
+      }
+    }
+
+    matmul_config_ex(OUTPUT_STATIONARY, NO_ACTIVATION, 0, 0, 1, 0, 0, 0);
+  }*/
+
+  // if (D != NULL) {
+  //   matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 1);
+  // } else {
+    matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 0);
+  // }
 
   for (size_t i = 0; i < I; i++) {
     for (size_t j = 0; j < J; j++) {
-      elem_t * D_dram_addr = D + (i*D_row_len + j)*DIM;
-      elem_t * C_dram_addr = C + (i*C_row_len + j)*DIM;
-
-      int D_sp_addr = D_sp_addr_start + (i*J + j)*DIM;
-      int C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
+      uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
 
       for (size_t k = 0; k < K; k++) {
         elem_t * A_dram_addr = A + (i*A_row_len + k)*DIM;
         elem_t * B_dram_addr = B + (k*B_row_len + j)*DIM;
 
-        int A_sp_addr = A_sp_addr_start + (i*K + k)*DIM;
-        int B_sp_addr = B_sp_addr_start + (k*J + j)*DIM;
+        uint32_t A_sp_addr = A_sp_addr_start + (i*K + k)*DIM;
+        uint32_t B_sp_addr = B_sp_addr_start + (k*J + j)*DIM;
 
-        // Move-in
+        // Move-in A and B
         {
-          int A_already_moved_in = j != 0;
-          int B_already_moved_in = i != 0;
-          int D_already_moved_in = k != 0;
+          int A_already_moved_in = j != 0 || k % A_blocks != 0;
+          int B_already_moved_in = i != 0 || j % B_blocks != 0;
 
           if (!A_already_moved_in) {
-            matmul_mvin(A_dram_addr, A_sp_addr, 0, 0, 0, 0);
+            int blocks = k + A_blocks <= K ? A_blocks : K-k;
+            matmul_block_mvin(A_dram_addr, A_sp_addr, blocks, 0, 0, 0, 0);
           }
 
           if (!B_already_moved_in) {
+            int blocks = j + B_blocks <= J ? B_blocks : J-j;
             matmul_config_ld(B_row_len * sizeof(elem_t), 0, 0, 0, 0);
-            matmul_mvin(B_dram_addr, B_sp_addr, 0, 0, 0, 0);
+            matmul_block_mvin(B_dram_addr, B_sp_addr, blocks, 0, 0, 0, 0);
           }
           
-          if (!D_already_moved_in) {
-            matmul_config_ld(D_row_len * sizeof(elem_t), 0, 0, 0, 0);
-            matmul_mvin(D_dram_addr, D_sp_addr, 0, 0, 0, 0);
-          }
-
           matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 1, 0);
         }
-        
+
         // Compute
         {
-          int preload_sp_addr = k == 0 ? D_sp_addr : GARBAGE_ADDR;
-          int out_sp_addr = k == K-1 ? C_sp_addr : GARBAGE_ADDR;
+          uint32_t out_sp_addr = k == K-1 ? C_sp_addr : GARBAGE_ADDR;
 
-          if (k == K-1) { // Last iteration
-            if (first) {
-              matmul_preload(preload_sp_addr, out_sp_addr, 0, 1, 1, 0);
-            } else {
-              matmul_preload(preload_sp_addr, out_sp_addr, 0, 1, 1, 1);
-            }
-          } else { // All other iterations
-            matmul_preload(preload_sp_addr, out_sp_addr, 0, 1, 0, 0);
+          if (i == I-1 && j == J-1 && k == K-1 && C != NULL) { 
+            // Last iteration, when we calculate final sub-matrix
+            matmul_preload(GARBAGE_ADDR, out_sp_addr, 0, 1, 1, 0);
+          } else {
+            // All other iterations
+            matmul_preload(GARBAGE_ADDR, out_sp_addr, 0, 1, 0, 0);
           }
 
           if (k == 0) { // First iteration
@@ -276,110 +343,198 @@ void sp_tiled_matmul(elem_t * A, elem_t * B, elem_t * D, elem_t * C, size_t I,
           }
         }
       }
+    }
+  }
 
-      // Move-out
-      {
-        if (last)  {
-          matmul_mvout(C_dram_addr, C_sp_addr, 0, 0, 0, 1);
+  // TODO this should be overlapped with the next "Move-in D"
+  // Move-out C
+  if (C != NULL) {
+    matmul_config_st(C_row_len * sizeof(elem_t), 0, 0, 0, 1);
+
+    for (size_t i = 0; i < I; i++) {
+      for (size_t j = 0; j < J; j++) {
+        elem_t * C_dram_addr = C + (i*C_row_len + j)*DIM;
+        uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
+
+        if (last_mvout) {
+          matmul_mvout(C_dram_addr, C_sp_addr, 0, 0, 0, 0);
         } else {
-          matmul_mvout(C_dram_addr, C_sp_addr, 0, 0, 1, 1);
+          matmul_mvout(C_dram_addr, C_sp_addr, 1, 0, 0, 0);
         }
       }
     }
   }
 }
 
+static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
+// static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, elem_t * D, elem_t * C,
+        size_t I, size_t J, size_t K, size_t A_row_len,
+        size_t B_row_len, size_t D_row_len, size_t C_row_len,
+        int first_mvin, int last_mvout) {
 
+  const uint32_t A_sp_addr_start = 0;
+  const uint32_t B_sp_addr_start = BANK_ROWS;
+  const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
+  const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2);
 
-void sp_tiled_matmul_ws(elem_t * A, elem_t * B, elem_t * D, elem_t * C, size_t I,
-        size_t J, size_t K, size_t A_row_len, size_t B_row_len,
-        size_t D_row_len, size_t C_row_len,
-        int first, int last) {
+  const int A_blocks = K <= MAX_BLOCK_LEN ? K : MAX_BLOCK_LEN;
+  const int B_blocks = J <= MAX_BLOCK_LEN ? K : MAX_BLOCK_LEN;
+  // const int D_blocks = J <= MAX_BLOCK_LEN_ACC ? J : MAX_BLOCK_LEN_ACC;
+  const int D_blocks = J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN;
 
-  const int partition_size = (BANK_NUM/4) * BANK_ROWS;
+  // Move-in D
+  if (D != NULL) {
+    matmul_config_ld(D_row_len * sizeof(acc_t), 0, 0, 0, 0);
 
-  const int A_sp_addr_start = 0;
-  const int B_sp_addr_start = partition_size;
-  const int D_sp_addr_start = 2*partition_size;
-  const int C_sp_addr_start = 3*partition_size;
+    for (size_t i = 0; i < I; i++) {
+      for (size_t j = 0; j < J; j++) {
+        acc_t * D_dram_addr = D + (i*D_row_len + j)*DIM;
+        uint32_t D_sp_addr = D_sp_addr_start + (i*J + j)*DIM;
 
-  matmul_config_st(C_row_len * sizeof(elem_t), 0, 0, 0, 0);
+        int already_moved_in = j % D_blocks != 0;
 
-  for (size_t k = 0; k < K; k++) {
-    for (size_t j = 0; j < J; j++) {
-      elem_t * B_dram_addr = B + (k*B_row_len + j)*DIM;
-      int B_sp_addr = B_sp_addr_start + (k*J + j)*DIM;
-      matmul_config_ld(B_row_len * sizeof(elem_t), 0, 0, 0, 0);
-      matmul_mvin(B_dram_addr, B_sp_addr, 0, 0, 0, 0);
+        if (!already_moved_in) {
+          int blocks = j + D_blocks <= J ? D_blocks : J-j;
 
-      matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 0);
-      for (size_t i = 0; i < I; i++) {
+          if (first_mvin) {
+            matmul_block_mvin(D_dram_addr, D_sp_addr, blocks, 0, 0, 0, 0);
+          } else {
+            matmul_block_mvin(D_dram_addr, D_sp_addr, blocks, 0, 1, 0, 0);
+          }
+        }
+      }
+    }
+  }
+  /*if (D != NULL) {
+    matmul_config_ld(D_row_len * sizeof(elem_t), 0, 0, 0, 0);
+
+    for (size_t i = 0; i < I; i++) {
+      for (size_t j = 0; j < J; j++) {
+        // printf("Move-in D, i: %u, j: %u\n", i, j);
 
         elem_t * D_dram_addr = D + (i*D_row_len + j)*DIM;
-        elem_t * C_dram_addr = C + (i*C_row_len + j)*DIM;
+        uint32_t D_sp_addr = A_sp_addr_start + (i*J + j)*DIM;
+        uint32_t D_acc_addr = D_sp_addr_start + (i*J + j)*DIM;
 
-        int D_sp_addr = D_sp_addr_start + (i*J + j)*DIM;
-        int C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
+        int already_moved_in = j % D_blocks != 0;
 
+        if (!already_moved_in) {
+          int blocks = j + D_blocks <= J ? D_blocks : J-j;
+
+          // printf("Moving in %d blocks\n", blocks);
+          if (first_mvin) {
+            matmul_block_mvin(D_dram_addr, D_sp_addr, blocks, 0, 0, 1, 0);
+          } else {
+            matmul_block_mvin(D_dram_addr, D_sp_addr, blocks, 0, 1, 1, 0);
+          }
+
+          matmul_preload(GARBAGE_ADDR, D_acc_addr, 0, 1, 0, 0);
+        } else {
+          // printf("Already moved in\n");
+          
+          if (!first_mvin) {
+            // This is only here to acknowledge the dependency from store
+            matmul_config_ld(D_row_len * sizeof(elem_t), 0, 1, 0, 0); 
+          }
+
+          matmul_preload(GARBAGE_ADDR, D_acc_addr, 0, 0, 0, 0);
+        }
+
+        matmul_compute_preloaded(GARBAGE_ADDR, D_sp_addr);
+      }
+    }
+
+    matmul_config_ex(WEIGHT_STATIONARY, NO_ACTIVATION, 0, 0, 1, 0, 0, 0);
+  }*/
+
+  // if (D != NULL) {
+  //   // printf("Wait for D to finish\n");
+  //   matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 1);
+  // } else {
+    // printf("Don't wait for D to finish\n");
+    matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 0);
+  // }
+
+  for (size_t j = 0; j < J; j++) {
+    for (size_t k = 0; k < K; k++) {
+      uint32_t B_sp_addr = B_sp_addr_start + (k*J + j)*DIM;
+
+      for (size_t i = 0; i < I; i++) {
         elem_t * A_dram_addr = A + (i*A_row_len + k)*DIM;
-        int A_sp_addr = A_sp_addr_start + (i*K + k)*DIM;
+        elem_t * B_dram_addr = B + (k*B_row_len + j)*DIM;
 
-        // Move-in
+        uint32_t A_sp_addr = A_sp_addr_start + (i*K + k)*DIM;
+        uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
+
+        // Move-in A and B
         {
-          int A_already_moved_in = j != 0;
-          int D_already_moved_in = k != 0;
+          int A_already_moved_in = j != 0 || k % A_blocks != 0;
+          int B_already_moved_in = i != 0 || j % B_blocks != 0;
 
           if (!A_already_moved_in) {
-            matmul_mvin(A_dram_addr, A_sp_addr, 0, 0, 0, 0);
+            int blocks = k + A_blocks <= K ? A_blocks : K-k;
+            // printf("Moving in %d blocks of A: %u\n", blocks, A_sp_addr);
+            matmul_block_mvin(A_dram_addr, A_sp_addr, blocks, 0, 0, 0, 0);
           }
-          
-          if (!D_already_moved_in) {
-            matmul_config_ld(D_row_len * sizeof(elem_t), 0, 0, 0, 0);
-            matmul_mvin(D_dram_addr, D_sp_addr, 0, 0, 0, 0);
+
+          if (!B_already_moved_in) {
+            int blocks = j + B_blocks <= J ? B_blocks : J-j;
+            // printf("Moving in %d blocks of B: %u\n", blocks, B_sp_addr);
+            matmul_config_ld(B_row_len * sizeof(elem_t), 0, 0, 0, 0);
+            matmul_block_mvin(B_dram_addr, B_sp_addr, blocks, 0, 0, 0, 0);
           }
 
           matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 1, 0);
         }
 
-
         // Compute
         {
-          int preload_sp_addr = i == 0 ? B_sp_addr : GARBAGE_ADDR;
-          int out_sp_addr = i == I-1 ? C_sp_addr : GARBAGE_ADDR;
+          uint32_t pre_sp_addr = i == 0 ? B_sp_addr : GARBAGE_ADDR;
 
-          if (i == I-1) { // Last iteration
-            if (first) {
-              matmul_preload(preload_sp_addr, out_sp_addr, 0, 1, 1, 0);
-            } else {
-              matmul_preload(preload_sp_addr, out_sp_addr, 0, 1, 1, 1);
-            }
-          } else { // All other iterations
-            matmul_preload(preload_sp_addr, out_sp_addr, 0, 1, 0, 0);
+          // printf("Preload with B: %u\n", pre_sp_addr);
+          // printf("Write to C: %x\n", C_sp_addr);
+
+          if (i == I-1 && j == J-1 && k == K-1 && C != NULL) { 
+            // Last iteration, when we calculate final sub-matrix
+            matmul_preload(pre_sp_addr, C_sp_addr, 0, 1, 1, 0);
+          } else {
+            // All other iterations
+            matmul_preload(pre_sp_addr, C_sp_addr, 0, 1, 0, 0);
           }
 
           if (i == 0) { // First iteration
-            matmul_compute_preloaded(A_sp_addr, D_sp_addr);
+            // printf("Compute with preloaded value, A: %u\n", A_sp_addr);
+            matmul_compute_preloaded(A_sp_addr, GARBAGE_ADDR);
           } else { // All other iterations
-            matmul_compute_accumulated(A_sp_addr, D_sp_addr);
-          }
-        }
-
-
-        // Move-out
-        {
-          if (last)  {
-            matmul_mvout(C_dram_addr, C_sp_addr, 0, 0, 0, 1);
-          } else {
-            matmul_mvout(C_dram_addr, C_sp_addr, 0, 0, 1, 1);
+            // printf("Compute with accumulated value, A: %u\n", A_sp_addr);
+            matmul_compute_accumulated(A_sp_addr, GARBAGE_ADDR);
           }
         }
       }
     }
   }
 
+  // TODO this should be overlapped with the next "Move-in D"
+  // Move-out C
+  if (C != NULL) {
+    matmul_config_st(C_row_len * sizeof(elem_t), 0, 0, 0, 1);
+
+    for (size_t i = 0; i < I; i++) {
+      for (size_t j = 0; j < J; j++) {
+        elem_t * C_dram_addr = C + (i*C_row_len + j)*DIM;
+        uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
+
+        // printf("Move out from %x\n", C_sp_addr);
+
+        if (last_mvout) {
+          matmul_mvout(C_dram_addr, C_sp_addr, 0, 0, 0, 0);
+        } else {
+          matmul_mvout(C_dram_addr, C_sp_addr, 1, 0, 0, 0);
+        }
+      }
+    }
+  }
 }
-
-
 
 #endif  // SRC_MAIN_C_SYSTOLIC_H
 
