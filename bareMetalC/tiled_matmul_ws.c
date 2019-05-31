@@ -27,8 +27,8 @@ void print_tile(elem_t* in, int tile_dim) {
   }
 }
 
-// void full_matmul(elem_t A[MAT_DIM_I][MAT_DIM_K], elem_t B[MAT_DIM_K][MAT_DIM_J], acc_t D[MAT_DIM_I][MAT_DIM_J], int64_t C_full[MAT_DIM_I][MAT_DIM_J]) {
-void full_matmul(elem_t A[MAT_DIM_I][MAT_DIM_K], elem_t B[MAT_DIM_K][MAT_DIM_J], elem_t D[MAT_DIM_I][MAT_DIM_J], int64_t C_full[MAT_DIM_I][MAT_DIM_J]) {
+void full_matmul(elem_t A[MAT_DIM_I][MAT_DIM_K], elem_t B[MAT_DIM_K][MAT_DIM_J], acc_t D[MAT_DIM_I][MAT_DIM_J], int64_t C_full[MAT_DIM_I][MAT_DIM_J]) {
+// void full_matmul(elem_t A[MAT_DIM_I][MAT_DIM_K], elem_t B[MAT_DIM_K][MAT_DIM_J], elem_t D[MAT_DIM_I][MAT_DIM_J], int64_t C_full[MAT_DIM_I][MAT_DIM_J]) {
   for (size_t r = 0; r < MAT_DIM_I; r++)
     for (size_t c = 0; c < MAT_DIM_J; c++) {
       C_full[r][c] = D[r][c];
@@ -76,8 +76,8 @@ int main() {
     static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
     static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
     static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
-    // static acc_t full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
-    static elem_t full_D[MAT_DIM_I][MAT_DIM_J] row_align(1);
+    static acc_t full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
+    // static elem_t full_D[MAT_DIM_I][MAT_DIM_J] row_align(1);
 
     static int64_t gold_full[MAT_DIM_I][MAT_DIM_J];
     static elem_t gold[MAT_DIM_I][MAT_DIM_J];
@@ -126,8 +126,8 @@ int main() {
           int first_mvin = i0 == 0 && j0 == 0 && k0 == 0;
           int last_mvout = (i0 == I0-1) && (j0 == J0-1) && (k0 == K0-1);
 
-          // acc_t * pre = k0 == 0 ? &full_D[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
-          elem_t * pre = k0 == 0 ? &full_D[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
+          acc_t * pre = k0 == 0 ? &full_D[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
+          // elem_t * pre = k0 == 0 ? &full_D[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
           elem_t * out = k0 == K0-1 ? &full_C[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
 
           sp_tiled_matmul_ws(&full_A[i0*TILE_I*DIM][k0*TILE_K*DIM],
