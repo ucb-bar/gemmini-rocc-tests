@@ -1,8 +1,8 @@
 XLEN ?= 64
 
-TARGET ?= riscv$(XLEN)-unknown-elf-
+TARGET ?= riscv$(XLEN)-unknown-linux-gnu-
 CC := $(TARGET)gcc
-LD := $(CC)
+LD := $(TARGET)ld
 
 ENV_P = $(RISCVTOOLS)/riscv-tests/env/p
 ENV_V = $(RISCVTOOLS)/riscv-tests/env/v
