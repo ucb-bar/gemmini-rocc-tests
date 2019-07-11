@@ -6,16 +6,19 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "include/systolic.h"
-#include "util.h"
 
-#define CHECK_RESULT 0
+#define CHECK_RESULT 1
 
-#define MAT_DIM_I 512
-#define MAT_DIM_K 512
-#define MAT_DIM_J 512
-#define TILE_I 8
-#define TILE_J 8
-#define TILE_K 16
+#define MAT_DIM_I 64
+#define MAT_DIM_K 64
+#define MAT_DIM_J 64
+#define TILE_I 2
+#define TILE_J 2
+#define TILE_K 2
+
+#if ((MAT_DIM_I % (TILE_I*DIM)) != 0) || ((MAT_DIM_J % (TILE_J*DIM)) != 0) || ((MAT_DIM_K % (TILE_K*DIM)) != 0)
+#error Matrix dimensions are not divisble by tiling factors
+#endif
 
 void print_tile(elem_t* in, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++) {
@@ -77,7 +80,6 @@ int main() {
     static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
     static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
     static acc_t full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
-    // static elem_t full_D[MAT_DIM_I][MAT_DIM_J] row_align(1);
 
     static int64_t gold_full[MAT_DIM_I][MAT_DIM_J];
     static elem_t gold[MAT_DIM_I][MAT_DIM_J];
@@ -104,7 +106,7 @@ int main() {
     }
 
 #if CHECK_RESULT == 1
-    // printf("Starting CPU matmul\n");
+    printf("Starting CPU matmul\n");
     full_matmul(full_A, full_B, full_D, gold_full);
     full_matshift(gold_full, gold, 0);
 #endif
@@ -113,7 +115,7 @@ int main() {
     const int J0 = MAT_DIM_J / (TILE_J*DIM);
     const int K0 = MAT_DIM_K / (TILE_K*DIM);
 
-    // printf("Starting systolic matmul\n");
+    printf("Starting systolic matmul\n");
     unsigned long start = read_cycles();
 
     matmul_config_ex(OUTPUT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0, 0);
@@ -127,7 +129,6 @@ int main() {
           int last_mvout = (i0 == I0-1) && (j0 == J0-1) && (k0 == K0-1);
 
           acc_t * pre = k0 == 0 ? &full_D[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
-          // elem_t * pre = k0 == 0 ? &full_D[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
           elem_t * out = k0 == K0-1 ? &full_C[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
 
           sp_tiled_matmul(&full_A[i0*TILE_I*DIM][k0*TILE_K*DIM],

@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <time.h>
 #include "include/systolic.h"
-#include "util.h"
 
 #define N (2)
 
