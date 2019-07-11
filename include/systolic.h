@@ -297,10 +297,18 @@ static void sp_tiled_matmul(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 
           if (i == I-1 && j == J-1 && k == K-1 && C != NULL) {
             // Last iteration, when we calculate final sub-matrix
-            matmul_preload(GARBAGE_ADDR, out_sp_addr, 1, 1, 1, 0);
+            if (last_mvout) {
+              matmul_preload(GARBAGE_ADDR, out_sp_addr, 0, 1, 1, 0);
+            } else {
+              matmul_preload(GARBAGE_ADDR, out_sp_addr, 1, 1, 1, 0);
+            }
           } else {
             // All other iterations
-            matmul_preload(GARBAGE_ADDR, out_sp_addr, 1, 1, 0, 0);
+            if (last_mvout) {
+              matmul_preload(GARBAGE_ADDR, out_sp_addr, 0, 1, 0, 0);
+            } else {
+              matmul_preload(GARBAGE_ADDR, out_sp_addr, 1, 1, 0, 0);
+            }
           }
 
           if (k == 0) { // First iteration
@@ -442,10 +450,18 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 
           if (i == I-1 && j == J-1 && k == K-1 && C != NULL) { 
             // Last iteration, when we calculate final sub-matrix
-            matmul_preload(pre_sp_addr, C_sp_addr, 1, 1, 1, 0);
+            if (last_mvout) {
+              matmul_preload(pre_sp_addr, C_sp_addr, 0, 1, 1, 0);
+            } else {
+              matmul_preload(pre_sp_addr, C_sp_addr, 1, 1, 1, 0);
+            }
           } else {
             // All other iterations
-            matmul_preload(pre_sp_addr, C_sp_addr, 1, 1, 0, 0);
+            if (last_mvout) {
+              matmul_preload(pre_sp_addr, C_sp_addr, 0, 1, 0, 0);
+            } else {
+              matmul_preload(pre_sp_addr, C_sp_addr, 1, 1, 0, 0);
+            }
           }
 
           if (i == 0) { // First iteration
