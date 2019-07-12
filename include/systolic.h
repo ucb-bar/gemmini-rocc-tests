@@ -207,7 +207,7 @@ unsigned long read_cycles() {
 #define matmul_fence() asm volatile("fence")
 
 // Tiling functions
-static void sp_tiled_matmul(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
+static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
         size_t I, size_t J, size_t K, size_t A_row_len,
         size_t B_row_len, size_t D_row_len, size_t C_row_len,
         int first_mvin, int last_mvout) {
@@ -507,6 +507,66 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
   // Set up iteration counts for next run
   old_iterations = new_iterations;
   new_iterations = 0;
+}
+
+static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
+        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
+        elem_t C[DIM_I][DIM_J], size_t TILE_I, size_t TILE_J, size_t TILE_K) {
+
+    const int I0 = DIM_I / (TILE_I*DIM);
+    const int J0 = DIM_J / (TILE_J*DIM);
+    const int K0 = DIM_K / (TILE_K*DIM);
+
+    matmul_config_ex(OUTPUT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0, 0);
+
+    for (size_t i0 = 0; i0 < I0; i0++)
+      for (size_t j0 = 0; j0 < J0; j0++)
+        for (size_t k0 = 0; k0 < K0; k0++) {
+          // printf("i0: %u, j0: %u, k0: %u\n", i0, j0, k0);
+
+          int first_mvin = i0 == 0 && j0 == 0 && k0 == 0;
+          int last_mvout = (i0 == I0-1) && (j0 == J0-1) && (k0 == K0-1);
+
+          acc_t * pre = k0 == 0 ? &D[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
+          elem_t * out = k0 == K0-1 ? &C[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
+
+          sp_tiled_matmul_os(&A[i0*TILE_I*DIM][k0*TILE_K*DIM],
+              &B[k0*TILE_K*DIM][j0*TILE_J*DIM],
+              pre, out,
+              TILE_I, TILE_J, TILE_K,
+              DIM_K, DIM_J, DIM_J, DIM_J,
+              first_mvin, last_mvout);
+        }
+}
+
+static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
+        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
+        elem_t C[DIM_I][DIM_J], size_t TILE_I, size_t TILE_J, size_t TILE_K) {
+
+    const int I0 = DIM_I / (TILE_I*DIM);
+    const int J0 = DIM_J / (TILE_J*DIM);
+    const int K0 = DIM_K / (TILE_K*DIM);
+
+    matmul_config_ex(WEIGHT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0, 0);
+
+    for (size_t i0 = 0; i0 < I0; i0++)
+      for (size_t j0 = 0; j0 < J0; j0++)
+        for (size_t k0 = 0; k0 < K0; k0++) {
+          // printf("Outer: i0: %u, j0: %u, k0: %u\n", i0, j0, k0);
+
+          int first_mvin = i0 == 0 && j0 == 0 && k0 == 0;
+          int last_mvout = (i0 == I0-1) && (j0 == J0-1) && (k0 == K0-1);
+
+          acc_t * pre = k0 == 0 ? &D[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
+          elem_t * out = k0 == K0-1 ? &C[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
+
+          sp_tiled_matmul_ws(&A[i0*TILE_I*DIM][k0*TILE_K*DIM],
+              &B[k0*TILE_K*DIM][j0*TILE_J*DIM],
+              pre, out,
+              TILE_I, TILE_J, TILE_K,
+              DIM_K, DIM_J, DIM_J, DIM_J,
+              first_mvin, last_mvout);
+        }
 }
 
 #endif  // SRC_MAIN_C_SYSTOLIC_H
