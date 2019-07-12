@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "include/systolic.h"
-#include "util.h"
 
 #if BANK_NUM*BANK_ROWS < 5*DIM
 #error need more memory capacity
@@ -85,26 +84,27 @@ int main() {
 
   matmul_fence();
 
-  /*printf("A:\n");
-  printMatrix(result_A);
-  printf("\n");
-  printMatrix(gold_A);
-  printf("\n");
+  if (!is_equal(result_A, gold_A) || !is_equal(result_B, gold_B) || !is_equal(result_D, gold_D)) {
+    printf("A:\n");
+    printMatrix(result_A);
+    printf("\n");
+    printMatrix(gold_A);
+    printf("\n");
+  
+    printf("B:\n");
+    printMatrix(result_B);
+    printf("\n");
+    printMatrix(gold_B);
+    printf("\n");
+  
+    printf("D:\n");
+    printMatrix(result_D);
+    printf("\n");
+    printMatrix(gold_D);
+    printf("\n");
 
-  printf("B:\n");
-  printMatrix(result_B);
-  printf("\n");
-  printMatrix(gold_B);
-  printf("\n");
-
-  printf("D:\n");
-  printMatrix(result_D);
-  printf("\n");
-  printMatrix(gold_D);
-  printf("\n");*/
-
-  if (!is_equal(result_A, gold_A) || !is_equal(result_B, gold_B) || !is_equal(result_D, gold_D))
     exit(1);
+  }
 
   exit(0);
 }

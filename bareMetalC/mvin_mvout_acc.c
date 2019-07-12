@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "include/systolic.h"
-#include "util.h"
 
 #define N 8
 
