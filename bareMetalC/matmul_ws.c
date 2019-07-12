@@ -23,6 +23,8 @@ void operands(int c, int * a, int * b, int * d) {
 int main() {
   static elem_t ZERO[DIM][DIM];
 
+  matmul_flush(0);
+
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 12; shift += 4) {
       static elem_t A[N][DIM][DIM] row_align(1);

@@ -143,6 +143,7 @@ unsigned long read_cycles() {
 #define k_COMPUTE_PRELOADED 4
 #define k_COMPUTE_ACCUMULATE 5
 #define k_PRELOAD 6
+#define k_FLUSH 7
 
 #define CONFIG_EX 0
 #define CONFIG_LD 1
@@ -197,6 +198,10 @@ unsigned long read_cycles() {
 
 #define matmul_config_st(stride, push_mvin, pop_mvin, push_ex, pop_ex) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_ST, stride, (to_deps(push_mvin, pop_mvin, push_ex, pop_ex)) | (k_CONFIG))
+
+// flush
+#define matmul_flush(skip) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, skip, 0, k_FLUSH)
 
 // fence
 #define matmul_fence() asm volatile("fence")

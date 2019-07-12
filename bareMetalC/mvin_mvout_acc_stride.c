@@ -76,6 +76,8 @@ void printMatrix_acc_big(acc_t m[BIG_DIM][BIG_DIM]) {
 }
 
 int main() {
+  matmul_flush(0);
+
   for (int block_len = 1; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN_ACC; block_len++) {
     for (int activation = 0; activation <= 2; ++activation) {
       for (int shift = 0; shift <= 12; shift += 4) {

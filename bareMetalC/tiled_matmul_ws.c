@@ -80,10 +80,11 @@ int main() {
     static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
     static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
     static acc_t full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
-    // static elem_t full_D[MAT_DIM_I][MAT_DIM_J] row_align(1);
 
     static int64_t gold_full[MAT_DIM_I][MAT_DIM_J];
     static elem_t gold[MAT_DIM_I][MAT_DIM_J];
+
+    matmul_flush(0);
 
     // printf("Init A\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {

@@ -84,6 +84,8 @@ int main() {
     static int64_t gold_full[MAT_DIM_I][MAT_DIM_J];
     static elem_t gold[MAT_DIM_I][MAT_DIM_J];
 
+    matmul_flush(0);
+
     // printf("Init A\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
@@ -106,7 +108,7 @@ int main() {
     }
 
 #if CHECK_RESULT == 1
-    printf("Starting CPU matmul\n");
+    // printf("Starting CPU matmul\n");
     full_matmul(full_A, full_B, full_D, gold_full);
     full_matshift(gold_full, gold, 0);
 #endif
@@ -115,7 +117,7 @@ int main() {
     const int J0 = MAT_DIM_J / (TILE_J*DIM);
     const int K0 = MAT_DIM_K / (TILE_K*DIM);
 
-    printf("Starting systolic matmul\n");
+    // printf("Starting systolic matmul\n");
     unsigned long start = read_cycles();
 
     matmul_config_ex(OUTPUT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0, 0);
