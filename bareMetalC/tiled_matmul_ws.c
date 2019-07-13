@@ -9,6 +9,8 @@
 
 #define CHECK_RESULT 1
 
+#define NO_BIAS 1
+
 #define MAT_DIM_I 64
 #define MAT_DIM_K 64
 #define MAT_DIM_J 64
@@ -103,7 +105,7 @@ int main() {
     // printf("Init D\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_D[i][j] = rand() % 2;
+        full_D[i][j] = NO_BIAS ? 0 : rand() % 2;
       }
     }
 
@@ -118,7 +120,8 @@ int main() {
 
     tiled_matmul_ws(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
             full_A, full_B, full_D, full_C,
-            TILE_I_FACTOR, TILE_J_FACTOR, TILE_K_FACTOR);
+            TILE_I_FACTOR, TILE_J_FACTOR, TILE_K_FACTOR,
+            NO_BIAS);
 
     matmul_fence();
 

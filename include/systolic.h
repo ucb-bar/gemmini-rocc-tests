@@ -210,7 +210,7 @@ unsigned long read_cycles() {
 static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
         size_t I, size_t J, size_t K, size_t A_row_len,
         size_t B_row_len, size_t D_row_len, size_t C_row_len,
-        int first_mvin, int last_mvout) {
+        int first_mvin, int last_mvout, int no_bias) {
 
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = 2*BANK_ROWS;
@@ -225,7 +225,7 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
   static int new_iterations = 0;
 
   // Move-in D
-  if (D != NULL) {
+  if (D != NULL && !no_bias) {
     matmul_config_ld(D_row_len * sizeof(acc_t), 0, 0, 0, 0);
 
     for (size_t i = 0; i < I; i++) {
@@ -243,6 +243,8 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
           } else {
             matmul_block_mvin(D_dram_addr, D_sp_addr, blocks, 0, 1, 0, 0);
           }
+        } else {
+          matmul_config_ld(D_row_len * sizeof(acc_t), 0, 1, 0, 0);
         }
       }
     }
@@ -257,6 +259,8 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
       const uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
 
       for (size_t k = 0; k < K; k++) {
+        // printf("i: %u, j: %u, k: %u\n", i, j, k);
+
         elem_t * const A_dram_addr = A + (i*A_row_len + k)*DIM;
         elem_t * const B_dram_addr = B + (k*B_row_len + j)*DIM;
 
@@ -300,7 +304,35 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
         {
           uint32_t out_sp_addr = k == K-1 ? C_sp_addr : GARBAGE_ADDR;
 
-          if (i == I-1 && j == J-1 && k == K-1 && C != NULL) {
+          // If we're not using a bias, then we want to overwrite what's in the
+          // accumulator, rather than writing over it
+          int no_bias_new_matrix = no_bias && D != NULL && k == K-1;
+          if (no_bias_new_matrix) {
+            out_sp_addr &= ~(1 << (ADDR_LEN-2));
+          }
+
+          int final_submatrix = i == I-1 && j == J-1 && k == K-1 && C != NULL;
+
+          // printf(" first_mvin: %d\n", first_mvin);
+          // printf(" no_bias_new_matrix: %d\n", no_bias_new_matrix);
+          // printf(" final_submatrix: %d\n", final_submatrix);
+
+          if (!first_mvin && no_bias_new_matrix && final_submatrix) {
+            // Both first and last iteration, but only relevant when bias isn't
+            // used
+            if (last_mvout) {
+              matmul_preload(GARBAGE_ADDR, out_sp_addr, 0, 1, 1, 1);
+            } else {
+              matmul_preload(GARBAGE_ADDR, out_sp_addr, 1, 1, 1, 1);
+            }
+          } else if (!first_mvin && no_bias_new_matrix) {
+            // First iteration, but only relevant when bias isn't used
+            if (last_mvout) {
+              matmul_preload(GARBAGE_ADDR, out_sp_addr, 0, 1, 0, 1);
+            } else {
+              matmul_preload(GARBAGE_ADDR, out_sp_addr, 1, 1, 0, 1);
+            }
+          } else if (final_submatrix) {
             // Last iteration, when we calculate final sub-matrix
             if (last_mvout) {
               matmul_preload(GARBAGE_ADDR, out_sp_addr, 0, 1, 1, 0);
@@ -340,6 +372,8 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 
         if (last_mvout) {
           matmul_mvout(C_dram_addr, C_sp_addr, 0, 0, 0, 0);
+        } else if (no_bias) {
+          matmul_mvout(C_dram_addr, C_sp_addr, 0, 0, 1, 0);
         } else {
           matmul_mvout(C_dram_addr, C_sp_addr, 1, 0, 0, 0);
         }
@@ -355,7 +389,7 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
         size_t I, size_t J, size_t K, size_t A_row_len,
         size_t B_row_len, size_t D_row_len, size_t C_row_len,
-        int first_mvin, int last_mvout) {
+        int first_mvin, int last_mvout, int no_bias) {
 
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = 2*BANK_ROWS;
@@ -370,7 +404,7 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
   static int new_iterations = 0;
 
   // Move-in D
-  if (D != NULL) {
+  if (D != NULL && !no_bias) {
     matmul_config_ld(D_row_len * sizeof(acc_t), 0, 0, 0, 0);
 
     for (size_t i = 0; i < I; i++) {
@@ -388,6 +422,8 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
           } else {
             matmul_block_mvin(D_dram_addr, D_sp_addr, blocks, 0, 1, 0, 0);
           }
+        } else {
+          matmul_config_ld(D_row_len * sizeof(acc_t), 0, 1, 0, 0);
         }
       }
     }
@@ -449,31 +485,51 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
         // Compute
         {
           uint32_t pre_sp_addr = i == 0 ? B_sp_addr : GARBAGE_ADDR;
+          uint32_t out_sp_addr = C_sp_addr;
 
-          // printf("Preload with B: %u\n", pre_sp_addr);
-          // printf("Write to C: %x\n", C_sp_addr);
+          // If we're not using a bias, then we want to overwrite what's in the
+          // accumulator, rather than writing over it
+          int no_bias_new_matrix = no_bias && D != NULL && k == 0;
+          if (no_bias_new_matrix) {
+            out_sp_addr &= ~(1 << (ADDR_LEN-2));
+          }
 
-          if (i == I-1 && j == J-1 && k == K-1 && C != NULL) { 
+          int final_submatrix = i == I-1 && j == J-1 && k == K-1 && C != NULL;
+
+          if (!first_mvin && no_bias_new_matrix && final_submatrix) {
+            // Both first and last iteration, but only relevant when bias isn't
+            // used
+            if (last_mvout) {
+              matmul_preload(pre_sp_addr, out_sp_addr, 0, 1, 1, 1);
+            } else {
+              matmul_preload(pre_sp_addr, out_sp_addr, 1, 1, 1, 1);
+            }
+          } else if (!first_mvin && no_bias_new_matrix) {
+            // First iteration, but only relevant when bias isn't used
+            if (last_mvout) {
+              matmul_preload(pre_sp_addr, out_sp_addr, 0, 1, 0, 1);
+            } else {
+              matmul_preload(pre_sp_addr, out_sp_addr, 1, 1, 0, 1);
+            }
+          } else if (final_submatrix) { 
             // Last iteration, when we calculate final sub-matrix
             if (last_mvout) {
-              matmul_preload(pre_sp_addr, C_sp_addr, 0, 1, 1, 0);
+              matmul_preload(pre_sp_addr, out_sp_addr, 0, 1, 1, 0);
             } else {
-              matmul_preload(pre_sp_addr, C_sp_addr, 1, 1, 1, 0);
+              matmul_preload(pre_sp_addr, out_sp_addr, 1, 1, 1, 0);
             }
           } else {
             // All other iterations
             if (last_mvout) {
-              matmul_preload(pre_sp_addr, C_sp_addr, 0, 1, 0, 0);
+              matmul_preload(pre_sp_addr, out_sp_addr, 0, 1, 0, 0);
             } else {
-              matmul_preload(pre_sp_addr, C_sp_addr, 1, 1, 0, 0);
+              matmul_preload(pre_sp_addr, out_sp_addr, 1, 1, 0, 0);
             }
           }
 
           if (i == 0) { // First iteration
-            // printf("Compute with preloaded value, A: %u\n", A_sp_addr);
             matmul_compute_preloaded(A_sp_addr, GARBAGE_ADDR);
           } else { // All other iterations
-            // printf("Compute with accumulated value, A: %u\n", A_sp_addr);
             matmul_compute_accumulated(A_sp_addr, GARBAGE_ADDR);
           }
 
@@ -497,6 +553,8 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 
         if (last_mvout) {
           matmul_mvout(C_dram_addr, C_sp_addr, 0, 0, 0, 0);
+        } else if (no_bias) {
+          matmul_mvout(C_dram_addr, C_sp_addr, 0, 0, 1, 0);
         } else {
           matmul_mvout(C_dram_addr, C_sp_addr, 1, 0, 0, 0);
         }
@@ -511,7 +569,8 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 
 static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
-        elem_t C[DIM_I][DIM_J], size_t TILE_I, size_t TILE_J, size_t TILE_K) {
+        elem_t C[DIM_I][DIM_J], size_t TILE_I, size_t TILE_J, size_t TILE_K,
+        int no_bias) {
 
     const int I0 = DIM_I / (TILE_I*DIM);
     const int J0 = DIM_J / (TILE_J*DIM);
@@ -535,13 +594,14 @@ static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
               pre, out,
               TILE_I, TILE_J, TILE_K,
               DIM_K, DIM_J, DIM_J, DIM_J,
-              first_mvin, last_mvout);
+              first_mvin, last_mvout, no_bias);
         }
 }
 
 static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
-        elem_t C[DIM_I][DIM_J], size_t TILE_I, size_t TILE_J, size_t TILE_K) {
+        elem_t C[DIM_I][DIM_J], size_t TILE_I, size_t TILE_J, size_t TILE_K,
+        int no_bias) {
 
     const int I0 = DIM_I / (TILE_I*DIM);
     const int J0 = DIM_J / (TILE_J*DIM);
@@ -565,7 +625,7 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
               pre, out,
               TILE_I, TILE_J, TILE_K,
               DIM_K, DIM_J, DIM_J, DIM_J,
-              first_mvin, last_mvout);
+              first_mvin, last_mvout, no_bias);
         }
 }
 
