@@ -389,6 +389,8 @@ void test_ws() {
 }
 
 int main() {
+  matmul_flush(0);
+
   for (size_t i = 0; i < 8; i++) {
     if (rand() % 2)
       test_os();

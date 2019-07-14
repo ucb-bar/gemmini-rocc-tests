@@ -14,6 +14,8 @@
 #endif
 
 int main() {
+  matmul_flush(0);
+
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 12; shift += 4) {
       // printf("activation: %d, shift: %d\n", activation, shift);

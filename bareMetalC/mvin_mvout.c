@@ -14,6 +14,8 @@
 #endif
 
 int main() {
+  matmul_flush(0);
+
   static elem_t In[N][DIM][DIM] row_align(1);
   static elem_t Out[N][DIM][DIM] row_align(1);
 

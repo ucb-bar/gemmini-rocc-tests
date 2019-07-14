@@ -102,6 +102,8 @@ void pool7(int len, int8_t in[][len],int8_t out[][len]){
 }
 
 int main() {
+    matmul_flush(0);
+
     unsigned long start = read_cycles();
 
     ///////// first layer - sys array///////////

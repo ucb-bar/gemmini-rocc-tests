@@ -12,6 +12,8 @@
 #endif
 
 int main() {
+  matmul_flush(0);
+
   const int a_additions = 10;
   const int b_additions = 10;
   const int d_additions = 10;

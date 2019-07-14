@@ -34,6 +34,8 @@ void printMatrix_big(elem_t m[BIG_DIM][BIG_DIM]) {
 }
 
 int main() {
+  matmul_flush(0);
+
   for (int block_len = 1; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN; block_len++) {
     // printf("block_len: %d\n", block_len);
 

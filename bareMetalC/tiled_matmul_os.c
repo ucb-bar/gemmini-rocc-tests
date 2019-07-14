@@ -75,6 +75,8 @@ void full_matshift(int64_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT
 } 
 
 int main() {
+    matmul_flush(0);
+
     static elem_t ZERO[DIM][DIM];
 
     static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);

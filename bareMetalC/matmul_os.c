@@ -21,6 +21,8 @@ void operands(int c, int * a, int * b, int * d) {
 #endif
 
 int main() {
+  matmul_flush(0);
+
   static elem_t ZERO[DIM][DIM];
 
   for (int activation = 0; activation <= 2; ++activation) {
