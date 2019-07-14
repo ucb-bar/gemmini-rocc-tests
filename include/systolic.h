@@ -576,6 +576,10 @@ static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
     const int J0 = DIM_J / (TILE_J*DIM);
     const int K0 = DIM_K / (TILE_K*DIM);
 
+    if (no_bias) {
+      D = (int (*)[DIM_J]) 1; // Dummy address which isn't NULL
+    }
+
     matmul_config_ex(OUTPUT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0, 0);
 
     for (size_t i0 = 0; i0 < I0; i0++)
@@ -606,6 +610,10 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
     const int I0 = DIM_I / (TILE_I*DIM);
     const int J0 = DIM_J / (TILE_J*DIM);
     const int K0 = DIM_K / (TILE_K*DIM);
+
+    if (no_bias) {
+      D = (int (*)[DIM_J]) 1; // Dummy address which isn't NULL
+    }
 
     matmul_config_ex(WEIGHT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0, 0);
 
