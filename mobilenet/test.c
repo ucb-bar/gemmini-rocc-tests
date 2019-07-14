@@ -101,9 +101,8 @@ void pool7(int len, int8_t in[][len],int8_t out[][len]){
 
 }
 
-int main()
-
-{
+int main() {
+    unsigned long start = read_cycles();
 
     ///////// first layer - sys array///////////
     //stride = 2
@@ -166,13 +165,13 @@ int main()
             1);                         // no_bias
     /* end of first layer */
 
-    verbose(0,A,filter0,C0) 
+    // verbose(0,A,filter0,C0) 
     
     /* second layer, depthwise conv, Ameer decided to put it on  on rocket*/
     int num_imgs = 32;
     int8_t C1[112*112][32] ={0};
     dwconv(num_imgs, C1,C0,filter1,112,112,3,1);
-    verbose(1,C0,filter1,C1) 
+    // verbose(1,C0,filter1,C1) 
     /* end of second layer*/
     
     /* third layer, directly matmul because it is 1x1 conv, hell yeah!!*/
@@ -184,7 +183,7 @@ int main()
             C1, filter2, NULL, C2,      // addresses
             1, 1, 1,                    // tiling
             1);                         // no_bias
-    verbose(2,C1,filter2,C2) 
+    // verbose(2,C1,filter2,C2) 
     /* end of third layer */
 
     /* fourth layer, depthwise conv, on rocket*/
@@ -192,7 +191,7 @@ int main()
     num_imgs = 64;
     int8_t C3[56*56][64] ={0};
     dwconv(num_imgs, C3,C2,filter3,112,112,3,2);
-    verbose(3,C2,filter3,C3) 
+    // verbose(3,C2,filter3,C3) 
     /* end of fourth layer*/
 
     
@@ -205,7 +204,7 @@ int main()
             C3, filter4, NULL, C4,      // addresses
             1, 1, 1,                    // tiling
             1);                         // no_bias
-    verbose(4,C3,filter4,C4) 
+    // verbose(4,C3,filter4,C4) 
     /* end of fifth layer */
     
      
@@ -213,7 +212,7 @@ int main()
     num_imgs = 128;
     int8_t C5[56*56][128] ={0};
     dwconv(num_imgs, C5,C4,filter5,56,56,3,1);
-    verbose(5,C4,filter5,C5) 
+    // verbose(5,C4,filter5,C5) 
     /* end of sixth layer*/
 
     /* seventh layer, directly matmul because it is 1x1 conv, hell yeah!!*/
@@ -224,14 +223,14 @@ int main()
             C5, filter6, NULL, C6,      // addresses
             1, 1, 1,                    // tiling
             1);                         // no_bias
-    verbose(6,C5,filter6,C6) 
+    // verbose(6,C5,filter6,C6) 
     /* end of seventh layer */
 
     /* 8th layer, depthwise conv, on rocket*/
     num_imgs = 128;
     int8_t C7[28*28][128] ={0};
     dwconv(num_imgs, C7,C6,filter7,56,56,3,2);
-    verbose(7,C6,filter7,C7) 
+    // verbose(7,C6,filter7,C7) 
     /* end of 8th layer*/
 
     /* 9th layer, directly matmul because it is 1x1 conv, hell yeah!!*/
@@ -242,7 +241,7 @@ int main()
             C7, filter8, NULL, C8,       // addresses
             1, 1, 1,                    // tiling
             1);                         // no_bias
-    verbose(8,C7,filter8,C8) 
+    // verbose(8,C7,filter8,C8) 
     /* end of 9th layer */
 
         
@@ -250,7 +249,7 @@ int main()
     num_imgs = 256;
     int8_t C9[28*28][256] ={0};
     dwconv(num_imgs, C9,C8,filter9,28,28,3,1);
-    verbose(9,C8,filter9,C9) 
+    // verbose(9,C8,filter9,C9) 
     /* end of 10th layer*/
 
     /* 11th layer, directly matmul because it is 1x1 conv, hell yeah!!*/
@@ -261,7 +260,7 @@ int main()
             C9, filter10, NULL, C10,    // addresses
             1, 1, 1,                    // tiling
             1);                         // no_bias
-    verbose(10,C9,filter10,C10) 
+    // verbose(10,C9,filter10,C10) 
     /* end of 11th layer */
         
     /* 12th layer, depthwise conv, on rocket*/
@@ -269,7 +268,7 @@ int main()
     // it should be 14*14 but it doesn't divide by 16
     int8_t C11[13*16][256] ={0};
     dwconv(num_imgs, C11,C10,filter11,28,28,3,2);
-    verbose(11,C10,filter11,C11) 
+    // verbose(11,C10,filter11,C11) 
     /* end of 12th layer*/
 
     /* 13th layer, directly matmul because it is 1x1 conv, hell yeah!!*/
@@ -280,7 +279,7 @@ int main()
             C11, filter12, NULL, C12,       // addresses
             1, 1, 1,                    // tiling
             1);                         // no_bias
-    verbose(12,C11,filter12,C12) 
+    // verbose(12,C11,filter12,C12) 
     /* end of 13th layer */
     
     /* layers 14-23 that combine 1x1 conv and dw convs */
@@ -294,61 +293,61 @@ int main()
 /* 5 repeated depthwise and 1x1 layers */
     /* dw conv */
     dwconv(num_imgs, C13,C12,filter13,14,14,3,1);
-    verbose(13,C12,filter13,C13);
+    // verbose(13,C12,filter13,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter14
     tiled_matmul_os(13*16, 512, 512,    // dimensions
                 C13, filter14, NULL, C12,// addresses
                 1, 1, 1,                    // tiling
                 1);                         // no_bias
-    verbose(14,C13,filter14,C12) 
+    // verbose(14,C13,filter14,C12) 
 
 
     /* dw conv */
     dwconv(num_imgs, C13,C12,filter15,14,14,3,1);
-    verbose(15,C12,filter15,C13);
+    // verbose(15,C12,filter15,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter16
     tiled_matmul_os(13*16, 512, 512,    // dimensions
                 C13, filter16, NULL, C12,// addresses
                 1, 1, 1,                    // tiling
                 1);                         // no_bias
-    verbose(16,C13,filter16,C12) 
+    // verbose(16,C13,filter16,C12) 
 
         
     /* dw conv */
     dwconv(num_imgs, C13,C12,filter17,14,14,3,1);
-    verbose(17,C12,filter17,C13);
+    // verbose(17,C12,filter17,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter18
     tiled_matmul_os(13*16, 512, 512,    // dimensions
                 C13, filter18, NULL, C12,// addresses
                 1, 1, 1,                    // tiling
                 1);                         // no_bias
-    verbose(18,C13,filter18,C12) 
+    // verbose(18,C13,filter18,C12) 
 
         
     /* dw conv */
     dwconv(num_imgs, C13,C12,filter19,14,14,3,1);
-    verbose(19,C12,filter19,C13);
+    // verbose(19,C12,filter19,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter20
     tiled_matmul_os(13*16, 512, 512,    // dimensions
                 C13, filter20, NULL, C12,// addresses
                 1, 1, 1,                    // tiling
                 1);                         // no_bias
-    verbose(20,C13,filter20,C12) 
+    // verbose(20,C13,filter20,C12) 
 
     /* dw conv */
     dwconv(num_imgs, C13,C12,filter21,14,14,3,1);
-    verbose(21,C12,filter21,C13);
+    // verbose(21,C12,filter21,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter22
     tiled_matmul_os(13*16, 512, 512,    // dimensions
                 C13, filter22, NULL, C12,// addresses
                 1, 1, 1,                    // tiling
                 1);                         // no_bias
-    verbose(22,C13,filter22,C12) 
+    // verbose(22,C13,filter22,C12) 
         
 /* end of 5 repeated dw and 1x1 layers*/    
 
@@ -357,7 +356,7 @@ int main()
     //it should 7*7 but replaced with 64 to divide 16
     int8_t C14[64][512] ={0};
     dwconv(num_imgs, C14,C13,filter23,14,14,3,2);
-    verbose(23,C13,filter23,C14) 
+    // verbose(23,C13,filter23,C14) 
     /* end of 24th layer*/
 
     /* 25th layer, directly matmul because it is 1x1 conv, hell yeah!!*/
@@ -368,7 +367,7 @@ int main()
             C14, filter24, NULL, C15,   // addresses
             1, 1, 1,                    // tiling
             1);                         // no_bias
-    verbose(24,C14,filter24,C15)
+    // verbose(24,C14,filter24,C15)
     
     /* end of 25th layer */
 
@@ -377,7 +376,7 @@ int main()
     num_imgs = 1024;
     int8_t C16[64][1024] ={0};
     dwconv(num_imgs, C16,C15,filter25,7,7,3,1);
-    verbose(25,C15,filter25,C16)
+    // verbose(25,C15,filter25,C16)
     /* end of 26th layer*/
 
     /* 27th layer, directly matmul because it is 1x1 conv, hell yeah!!*/
@@ -389,7 +388,7 @@ int main()
             C16, filter26, NULL, C17,   // addresses
             1, 1, 1,                    // tiling
             1);                         // no_bias
-    verbose(26,C16,filter26,C17) 
+    // verbose(26,C16,filter26,C17) 
     /* end of 27th layer */
     
     /* 28th layer, pooling, on rocket, can be done on the array with fixed point divison*/
@@ -397,7 +396,7 @@ int main()
     int8_t C18[16][1024] ={0};
     pool7(1024,C17,C18);
     int8_t garbage[7][7] = {0};
-    verbose(27,C17,garbage,C18) 
+    // verbose(27,C17,garbage,C18) 
     /*end of 28th layer */    
 
     /* 29th and last layer, FC, originally its 1024x1000, zeropadded to 1024x1008 */
@@ -407,9 +406,13 @@ int main()
             C18, fc27, NULL, C19,      // addresses
             1, 1, 1,                    // tiling
             1);                         // no_bias
-    verbose(28,C18,fc27,C19) 
+    // verbose(28,C18,fc27,C19) 
 
     /* end of 29th layer */
+
+    unsigned long end = read_cycles();
+    printf("Cycles taken: %u\n", end-start);
+
     return 0;
 }
 
