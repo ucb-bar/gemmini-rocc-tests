@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/mman.h>
 #include "include/systolic.h"
 
 #define CHECK_RESULT 0
@@ -75,6 +76,12 @@ void full_matshift(int64_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT
 } 
 
 int main() {
+    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
+      perror("mlockall failed");
+      printf("RLIMIT_MEMLOCK: %d\n", RLIMIT_MEMLOCK);
+      exit(1);
+    }
+
     matmul_flush(0);
 
     static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
