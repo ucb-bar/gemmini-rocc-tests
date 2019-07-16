@@ -20,6 +20,8 @@
 #define MAX_BLOCK_LEN (MAX_BYTES/(DIM*1))
 #define MAX_BLOCK_LEN_ACC (MAX_BYTES/(DIM*4))
 
+#define MAX_Q_LEN 256
+
 // Datatype of the systolic array
 typedef int8_t elem_t;
 elem_t elem_t_max = SCHAR_MAX;
@@ -49,13 +51,48 @@ void matmul_short(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], el
 }
 
 void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], int64_t D[DIM][DIM], int64_t C_full[DIM][DIM]) {
-  // Identical to the other matmul fuction, but with a 64-bit bias
+  // Identical to the other matmul function, but with a 64-bit bias
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       C_full[r][c] = D[r][c];
       for (size_t k = 0; k < DIM; k++)
         C_full[r][c] += A[r][k]*B[k][c];
     }
+}
+
+void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
+        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
+        elem_t C[DIM_I][DIM_J], int shift, int act, int relu6_scale) {
+  for (size_t i = 0; i < DIM_I; i++) {
+    for (size_t j = 0; j < DIM_J; j++) {
+      acc_t result = D[i][j];
+      for (size_t k = 0; k < DIM_K; k++) {
+        result += A[i][k] * B[k][j];
+      }
+
+      // Scale value down and round it
+      const int divisor = 1 << shift;
+      acc_t abs = result > 0 ? result : -result;
+      acc_t shifted = (abs + (divisor/2)) / divisor;
+      if (result < 0)
+          result = -shifted;
+      else
+          result = shifted;
+
+      // Saturate and cast element
+      result = result > elem_t_max ? elem_t_max : (result < elem_t_min ? elem_t_min : result);
+
+      // TODO finish this
+      if (act == 1) {
+        result = result < 0 ? 0 : result;
+      } else if (act == 2) { 
+        int max = 6 * relu6_scale;
+        result = result < 0 ? 0 : (result > max ? max : result);
+      }
+
+      C[i][j] = (elem_t)result;
+    }
+  }
 }
 
 void matadd(int64_t sum[DIM][DIM], int64_t m1[DIM][DIM], int64_t m2[DIM][DIM]) {
@@ -129,13 +166,19 @@ int rand() {
 }
 
 unsigned long read_cycles() {
+#ifndef TEST_QUEUES
     unsigned long cycles;
     asm volatile ("rdcycle %0" : "=r" (cycles));
     return cycles;
+#else
+    return 0;
+#endif
 }
 
 // Accelerator interface
+#ifndef TEST_QUEUES
 #include "rocc-software/src/xcustom.h"
+#endif
 
 #define k_CONFIG 0
 #define k_MVIN 2
@@ -159,8 +202,77 @@ unsigned long read_cycles() {
 #define RELU 1
 #define RELU6 2
 
+#ifndef TEST_QUEUES
 #define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct) \
   ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, funct, 10, 11)
+#else
+static int ld_to_st_q = 0;
+static int ld_to_ex_q = 0;
+static int st_to_ld_q = 0;
+static int st_to_ex_q = 0;
+static int ex_to_ld_q = 0;
+static int ex_to_st_q = 0;
+
+static void push_pull_queues(int funct_, int rs1) {
+  int deps = funct_ >> 3;
+  int funct = funct_ & 7;
+  int config = rs1 & 3;
+
+  int push1 = (deps >> 3) & 1;
+  int pull1 = (deps >> 2) & 1;
+  int push2 = (deps >> 1) & 1;
+  int pull2 = deps & 1;
+
+  int is_ld = funct == k_MVIN || (funct == k_CONFIG && config == CONFIG_LD);
+  int is_st = funct == k_MVOUT || (funct == k_CONFIG && config == CONFIG_ST);
+  int is_ex = funct == k_PRELOAD || funct == k_COMPUTE_PRELOADED || funct == k_COMPUTE_ACCUMULATE || (funct == k_CONFIG && config == CONFIG_EX);
+
+  if (is_ld) {
+    ld_to_st_q += push1;
+    ld_to_ex_q += push2;
+    st_to_ld_q -= pull1;
+    ex_to_ld_q -= pull2;
+  } else if (is_st) {
+    st_to_ld_q += push1;
+    st_to_ex_q += push2;
+    ld_to_st_q -= pull1;
+    ex_to_st_q -= pull2;
+  } else if (is_ex) {
+    ex_to_ld_q += push1;
+    ex_to_st_q += push2;
+    ld_to_ex_q -= pull1;
+    st_to_ex_q -= pull2;
+  }
+
+  if (ld_to_st_q > MAX_Q_LEN || ld_to_st_q < 0) {
+    printf("ld_to_st_q has impossible size: %d\n", ld_to_st_q);
+    exit(1);
+  }
+  if (ld_to_ex_q > MAX_Q_LEN || ld_to_ex_q < 0) {
+    printf("ld_to_ex_q has impossible size: %d\n", ld_to_ex_q);
+    exit(1);
+  }
+  if (st_to_ld_q > MAX_Q_LEN || st_to_ld_q < 0) {
+    printf("st_to_ld_q has impossible size: %d\n", st_to_ld_q);
+    exit(1);
+  }
+  if (st_to_ex_q > MAX_Q_LEN || st_to_ex_q < 0) {
+    printf("st_to_ex_q has impossible size: %d\n", st_to_ex_q);
+    exit(1);
+  }
+  if (ex_to_ld_q > MAX_Q_LEN || ex_to_ld_q < 0) {
+    printf("ex_to_ld_q has impossible size: %d\n", ex_to_ld_q);
+    exit(1);
+  }
+  if (ex_to_st_q > MAX_Q_LEN || ex_to_st_q < 0) {
+    printf("ex_to_st_q has impossible size: %d\n", ex_to_st_q);
+    exit(1);
+  }
+}
+
+#define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct) \
+  push_pull_queues(funct, rs1)
+#endif
 
 #define to_deps(push1, pop1, push2, pop2) \
   (((push1 << 3) | (pop1 << 2) | (push2 << 1) | pop2) << 3)
@@ -204,7 +316,11 @@ unsigned long read_cycles() {
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, skip, 0, k_FLUSH)
 
 // fence
+#ifndef TEST_QUEUES
 #define matmul_fence() asm volatile("fence")
+#else
+#define matmul_fence()
+#endif
 
 // Tiling functions
 static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
@@ -221,13 +337,12 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
   const int B_blocks = J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN;
   const int D_blocks = J <= MAX_BLOCK_LEN_ACC ? J : MAX_BLOCK_LEN_ACC;
 
-  static int old_iterations = 0;
-  static int new_iterations = 0;
-
   const int I_iterations = I;
   const int J_iterations = (J/B_blocks + (J % B_blocks != 0));
   const int K_iterations = (K/A_blocks + (K % A_blocks != 0));
   const int total_iterations = I_iterations * J_iterations * K_iterations;
+
+  int old_iterations = total_iterations;
 
   // Move-in D
   if (D != NULL && !no_bias) {
@@ -264,7 +379,7 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
       const uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
 
       for (size_t k = 0; k < K; k++) {
-        // printf("i: %u, j: %u, k: %u\n", i, j, k);
+        // printf("  i: %u, j: %u, k: %u\n", i, j, k);
 
         elem_t * const A_dram_addr = A + (i*A_row_len + k)*DIM;
         elem_t * const B_dram_addr = B + (k*B_row_len + j)*DIM;
@@ -277,13 +392,9 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
           int A_already_moved_in = j != 0 || k % A_blocks != 0;
           int B_already_moved_in = i != 0 || j % B_blocks != 0;
 
-          // TODO better names
-          int blocks_A = k + A_blocks <= K ? A_blocks : K-k;
-          int blocks_B = j + B_blocks <= J ? B_blocks : J-j;
-
           // Make sure the address we are moving into is not still being used by old compute instructions
           // TODO better names
-          int iterations = i*J_iterations + (j/B_blocks)*K_iterations + (k/A_blocks);
+          int iterations = i*J_iterations*K_iterations + (j/B_blocks)*K_iterations + (k/A_blocks);
           iterations = total_iterations - 1 - iterations;
 
           while (!first_mvin && old_iterations > iterations) {
@@ -293,12 +404,14 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
           }
 
           if (!A_already_moved_in) {
-            matmul_block_mvin(A_dram_addr, A_sp_addr, blocks_A, 0, 0, 0, 0);
+            int blocks = k + A_blocks <= K ? A_blocks : K-k;
+            matmul_block_mvin(A_dram_addr, A_sp_addr, blocks, 0, 0, 0, 0);
           }
 
           if (!B_already_moved_in) {
+            int blocks = j + B_blocks <= J ? B_blocks : J-j;
             matmul_config_ld(B_row_len * sizeof(elem_t), 0, 0, 0, 0);
-            matmul_block_mvin(B_dram_addr, B_sp_addr, blocks_B, 0, 0, 0, 0);
+            matmul_block_mvin(B_dram_addr, B_sp_addr, blocks, 0, 0, 0, 0);
           }
 
           matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 1, 0);
@@ -317,9 +430,12 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 
           int final_submatrix = i == I-1 && j == J-1 && k == K-1 && C != NULL;
 
-          int last_A = j != (J - 1) || k % A_blocks == (A_blocks - 1);
-          int last_B = i != (I - 1) || j % B_blocks == (B_blocks - 1);
-          int push_to_load = !last_mvout && (last_A || last_B);
+          // int last_A = j == (J - 1) && (k % A_blocks == (A_blocks - 1) || k == K-1);
+          // int last_B = i == (I - 1) && (j % B_blocks == (B_blocks - 1) || j == J-1);
+          int last_A = (k % A_blocks == (A_blocks - 1) || k == K-1);
+          int last_B = (j % B_blocks == (B_blocks - 1) || j == J-1);
+          // int push_to_load = !last_mvout && (last_A || last_B);
+          int push_to_load = !last_mvout && (last_A && last_B);
 
           if (!first_mvin && no_bias_new_matrix && final_submatrix) {
             // Both first and last iteration, but only relevant when bias isn't
@@ -357,9 +473,6 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
           } else { // All other iterations
             matmul_compute_accumulated(A_sp_addr, B_sp_addr);
           }
-
-          if (!last_mvout)
-            new_iterations++;
         }
       }
     }
@@ -385,11 +498,8 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
       }
     }
   }
-
-  // Set up iteration counts for next run
-  old_iterations = new_iterations;
-  new_iterations = 0;
 }
+
 
 static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
         size_t I, size_t J, size_t K, size_t A_row_len,
@@ -405,13 +515,13 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
   const int B_blocks = J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN;
   const int D_blocks = J <= MAX_BLOCK_LEN_ACC ? J : MAX_BLOCK_LEN_ACC;
 
-  static int old_iterations = 0;
-  static int new_iterations = 0;
 
   const int I_iterations = I;
   const int J_iterations = (J/B_blocks + (J % B_blocks != 0));
   const int K_iterations = (K/A_blocks + (K % A_blocks != 0));
   const int total_iterations = I_iterations * J_iterations * K_iterations;
+
+  int old_iterations = total_iterations;
 
   // Move-in D
   if (D != NULL && !no_bias) {
@@ -459,13 +569,9 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
           int A_already_moved_in = j != 0 || k % A_blocks != 0;
           int B_already_moved_in = i != 0 || j % B_blocks != 0;
 
-          // TODO better names
-          int blocks_A = k + A_blocks <= K ? A_blocks : K-k;
-          int blocks_B = j + B_blocks <= J ? B_blocks : J-j;
-
           // Make sure the address we are moving into is not still being used by old compute instructions
           // TODO better names
-          int iterations = (j/B_blocks)*K_iterations + (k/A_blocks)*I_iterations + i;
+          int iterations = (j/B_blocks)*K_iterations*I_iterations + (k/A_blocks)*I_iterations + i;
           iterations = total_iterations - 1 - iterations;
 
           while (!first_mvin && old_iterations > iterations) {
@@ -503,9 +609,9 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 
           int final_submatrix = i == I-1 && j == J-1 && k == K-1 && C != NULL;
 
-          int last_A = j != (J - 1) || k % A_blocks == (A_blocks - 1);
-          int last_B = i != (I - 1) || j % B_blocks == (B_blocks - 1);
-          int push_to_load = !last_mvout && (last_A || last_B);
+          int last_A = (k % A_blocks == (A_blocks - 1) || k == K-1);
+          int last_B = (j % B_blocks == (B_blocks - 1) || j == J-1);
+          int push_to_load = !last_mvout && (last_A && last_B);
 
           if (!first_mvin && no_bias_new_matrix && final_submatrix) {
             // Both first and last iteration, but only relevant when bias isn't
@@ -543,9 +649,6 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
           } else { // All other iterations
             matmul_compute_accumulated(A_sp_addr, GARBAGE_ADDR);
           }
-
-          if (!last_mvout)
-            new_iterations++;
         }
       }
     }
@@ -571,10 +674,6 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
       }
     }
   }
-
-  // Set up iteration counts for next run
-  old_iterations = new_iterations;
-  new_iterations = 0;
 }
 
 static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
@@ -610,6 +709,17 @@ static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
               DIM_K, DIM_J, DIM_J, DIM_J,
               first_mvin, last_mvout, no_bias);
         }
+
+    matmul_fence();
+
+#ifdef TEST_QUEUES
+	printf("ld_to_st_q: %d\n", ld_to_st_q);
+	printf("ld_to_ex_q: %d\n", ld_to_ex_q);
+	printf("st_to_ld_q: %d\n", st_to_ld_q);
+	printf("st_to_ex_q: %d\n", st_to_ex_q);
+	printf("ex_to_ld_q: %d\n", ex_to_ld_q);
+	printf("ex_to_st_q: %d\n", ex_to_st_q);
+#endif
 }
 
 static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
@@ -645,6 +755,8 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
               DIM_K, DIM_J, DIM_J, DIM_J,
               first_mvin, last_mvout, no_bias);
         }
+
+    matmul_fence();
 }
 
 #endif  // SRC_MAIN_C_SYSTOLIC_H

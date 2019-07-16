@@ -46,3 +46,4 @@ vpath %.c $(src_dir)
 	# $(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
 
 junk += $(tests)
+
