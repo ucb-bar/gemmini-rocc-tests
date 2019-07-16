@@ -6,10 +6,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/mman.h>
-#include <errno.h>
 #include "include/systolic.h"
 
-#define CHECK_RESULT 0
+#define CHECK_RESULT 1
 
 #define NO_BIAS 1
 
@@ -78,11 +77,7 @@ void full_matshift(int64_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT
 
 int main() {
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
-      int err = errno;
       perror("mlockall failed");
-      if (errno == ENOMEM) {
-        printf("ENOMEM\n");
-      }
       exit(1);
     }
 

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <sys/mman.h>
 #include "include/systolic.h"
 #include "kernels.h"
 #define DIM 16
@@ -90,6 +91,7 @@ void dwconv(int num_imgs, int8_t C[][num_imgs],int8_t old_C[][num_imgs],int8_t f
         }
     }
 }
+
 void pool7(int len, int8_t in[][len],int8_t out[][len]){
     int i, j;
     for(i=0;i<len;i++){
@@ -102,6 +104,11 @@ void pool7(int len, int8_t in[][len],int8_t out[][len]){
 }
 
 int main() {
+    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
+      perror("mlockall failed");
+      exit(1);
+    }
+
     matmul_flush(0);
 
     unsigned long start = read_cycles();
