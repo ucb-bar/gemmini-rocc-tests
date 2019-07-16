@@ -113,12 +113,12 @@ int main() {
     }
 
 #if CHECK_RESULT == 1
-    // printf("Starting CPU matmul\n");
+    printf("Starting CPU matmul\n");
     full_matmul(full_A, full_B, full_D, gold_full);
     full_matshift(gold_full, gold, 0);
 #endif
 
-    // printf("Starting systolic matmul\n");
+    printf("Starting systolic matmul\n");
     unsigned long start = read_cycles();
 
     tiled_matmul_ws(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
