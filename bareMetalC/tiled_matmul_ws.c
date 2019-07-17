@@ -131,8 +131,6 @@ int main() {
             TILE_I_FACTOR, TILE_J_FACTOR, TILE_K_FACTOR,
             NO_BIAS, NO_ACTIVATION, 0, 0);
 
-    matmul_fence();
-
     unsigned long end = read_cycles();
     printf("Cycles taken: %u\n", end-start);
 

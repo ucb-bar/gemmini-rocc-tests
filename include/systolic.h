@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <limits.h>
+// TODO use stdbool.h as well
 
 // Dimension of the systolic array
 // Should be tileColumns*meshColumns
@@ -58,41 +59,6 @@ void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], int64_t D[DIM][DIM], in
       for (size_t k = 0; k < DIM; k++)
         C_full[r][c] += A[r][k]*B[k][c];
     }
-}
-
-void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
-        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
-        elem_t C[DIM_I][DIM_J], int shift, int act, int relu6_shift) {
-  for (size_t i = 0; i < DIM_I; i++) {
-    for (size_t j = 0; j < DIM_J; j++) {
-      acc_t result = D[i][j];
-      for (size_t k = 0; k < DIM_K; k++) {
-        result += A[i][k] * B[k][j];
-      }
-
-      // Scale value down and round it
-      const int divisor = 1 << shift;
-      acc_t abs = result > 0 ? result : -result;
-      acc_t shifted = (abs + (divisor/2)) / divisor;
-      if (result < 0)
-          result = -shifted;
-      else
-          result = shifted;
-
-      // Saturate and cast element
-      result = result > elem_t_max ? elem_t_max : (result < elem_t_min ? elem_t_min : result);
-
-      // TODO finish this
-      if (act == 1) {
-        result = result < 0 ? 0 : result;
-      } else if (act == 2) { 
-        int max = 6 << relu6_shift;
-        result = result < 0 ? 0 : (result > max ? max : result);
-      }
-
-      C[i][j] = (elem_t)result;
-    }
-  }
 }
 
 void matadd(int64_t sum[DIM][DIM], int64_t m1[DIM][DIM], int64_t m2[DIM][DIM]) {
@@ -757,6 +723,70 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         }
 
     matmul_fence();
+}
+
+void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
+        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
+        elem_t C[DIM_I][DIM_J], int no_bias, int shift, int act, int relu6_shift) {
+  for (size_t i = 0; i < DIM_I; i++) {
+    for (size_t j = 0; j < DIM_J; j++) {
+      acc_t result = no_bias ? 0 : D[i][j];
+      for (size_t k = 0; k < DIM_K; k++) {
+        result += A[i][k] * B[k][j];
+      }
+
+      // Scale value down and round it
+      const int divisor = 1 << shift;
+      acc_t abs = result > 0 ? result : -result;
+      acc_t shifted = (abs + (divisor/2)) / divisor;
+      if (result < 0)
+          result = -shifted;
+      else
+          result = shifted;
+
+      // Clip result
+      result = result > elem_t_max ? elem_t_max : (result < elem_t_min ? elem_t_min : result);
+
+      // Apply activation function
+      if (act == RELU) {
+        result = result < 0 ? 0 : result;
+      } else if (act == RELU6) {
+        int max = 6 << relu6_shift;
+        result = result < 0 ? 0 : (result > max ? max : result);
+      }
+
+      C[i][j] = (elem_t)result;
+    }
+  }
+}
+
+// General matmul which can be run with different dataflows, or on the CPU
+enum tiled_matmul_type_t {OS, WS, CPU};
+
+// TODO automatically calculate optimal tiling factors
+void tiled_matmul_option(size_t DIM_I, size_t DIM_J, size_t DIM_K,
+        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
+        elem_t C[DIM_I][DIM_J], size_t TILE_I, size_t TILE_J, size_t TILE_K,
+        int no_bias, int act, int shift, int relu6_shift,
+        enum tiled_matmul_type_t tiled_matmul_type) {
+    if (tiled_matmul_type == OS) {
+        tiled_matmul_os(DIM_I, DIM_J, DIM_K,
+                A, B, D, C,
+                TILE_I, TILE_J, TILE_K,
+                no_bias, act, shift, relu6_shift);
+    } else if (tiled_matmul_type == WS) {
+        tiled_matmul_os(DIM_I, DIM_J, DIM_K,
+                A, B, D, C,
+                TILE_I, TILE_J, TILE_K,
+                no_bias, act, shift, relu6_shift);
+    } else if (tiled_matmul_type == CPU) {
+        matmul_cpu(DIM_I, DIM_J, DIM_K,
+                A, B, D, C,
+                no_bias, act, shift, relu6_shift);
+    } else {
+        printf("unknown tiled matrix type");
+        exit(1);
+    }
 }
 
 #endif  // SRC_MAIN_C_SYSTOLIC_H
