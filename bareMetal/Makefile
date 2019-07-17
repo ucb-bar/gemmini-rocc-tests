@@ -18,8 +18,7 @@ CFLAGS := $(CFLAGS) \
 	-I$(RISCVTOOLS) \
 	-DID_STRING=$(ID_STRING) \
 
-# all: $(tests_p)
-all: 
+all: $(tests_p) $(tests_v)
 
 vpath %.S $(src_dir)
 
