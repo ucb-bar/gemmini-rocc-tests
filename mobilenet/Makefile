@@ -1,7 +1,11 @@
 include $(abs_top_srcdir)/Makefrag
 
-tests = \
-	test
+ifdef BAREMETAL_ONLY
+	tests =
+else
+	tests = \
+		test
+endif
 
 BENCH_COMMON = $(RISCVTOOLS)/riscv-tests/benchmarks/common
 

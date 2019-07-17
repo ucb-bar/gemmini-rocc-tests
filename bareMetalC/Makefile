@@ -13,7 +13,11 @@ tests = \
 	raw_hazard
 
 tests_baremetal = $(tests:=-baremetal)
-tests_linux = $(tests:=-linux)
+ifdef BAREMETAL_ONLY
+	tests_linux =
+else
+	tests_linux = $(tests:=-linux)
+endif
 
 BENCH_COMMON = $(RISCVTOOLS)/riscv-tests/benchmarks/common
 
