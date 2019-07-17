@@ -794,7 +794,7 @@ static void tiled_matmul_option(size_t DIM_I, size_t DIM_J, size_t DIM_K,
                 tile_i, tile_j, tile_k,
                 no_bias, act, shift, relu6_shift);
     } else if (tiled_matmul_type == WS) {
-        tiled_matmul_os(DIM_I, DIM_J, DIM_K,
+        tiled_matmul_ws(DIM_I, DIM_J, DIM_K,
                 A, B, D, C,
                 tile_i, tile_j, tile_k,
                 no_bias, act, shift, relu6_shift);
