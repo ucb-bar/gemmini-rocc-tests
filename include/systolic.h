@@ -4,7 +4,7 @@
 #define SRC_MAIN_C_SYSTOLIC_H
 
 #include <stdint.h>
-#include <assert.h>
+#include <math.h>
 #include <limits.h>
 // TODO use stdbool.h as well
 
@@ -295,7 +295,7 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
         int first_mvin, int last_mvout, int no_bias) {
 
   const uint32_t A_sp_addr_start = 0;
-  const uint32_t B_sp_addr_start = 2*BANK_ROWS;
+  const uint32_t B_sp_addr_start = (BANK_NUM/2)*BANK_ROWS;
   const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
   const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2);
 
@@ -473,7 +473,7 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
         int first_mvin, int last_mvout, int no_bias) {
 
   const uint32_t A_sp_addr_start = 0;
-  const uint32_t B_sp_addr_start = 2*BANK_ROWS;
+  const uint32_t B_sp_addr_start = (BANK_NUM/2)*BANK_ROWS;
   const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
   const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2);
 
@@ -763,30 +763,49 @@ void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
 // General matmul which can be run with different dataflows, or on the CPU
 enum tiled_matmul_type_t {OS, WS, CPU};
 
+static size_t tiling_factor(const size_t dimension, const size_t max_tile_factor) {
+    const size_t start = dimension < max_tile_factor ? dimension : max_tile_factor;
+
+    for (size_t tile_factor = start; tile_factor >= 1; tile_factor--) {
+        if (dimension % tile_factor == 0)
+            return tile_factor;
+    }
+    return 1; // We should never reach here anyway
+}
+
 // TODO automatically calculate optimal tiling factors
-void tiled_matmul_option(size_t DIM_I, size_t DIM_J, size_t DIM_K,
+static void tiled_matmul_option(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
-        elem_t C[DIM_I][DIM_J], size_t TILE_I, size_t TILE_J, size_t TILE_K,
+        elem_t C[DIM_I][DIM_J], // size_t TILE_I, size_t TILE_J, size_t TILE_K,
         int no_bias, int act, int shift, int relu6_shift,
         enum tiled_matmul_type_t tiled_matmul_type) {
+    const int partition_rows = (BANK_NUM/2)*BANK_ROWS;
+    const int mats_in_acc = (ACC_ROWS/BANK_ROWS);
+    const int max_tile_i_j = (int)sqrt(mats_in_acc);
+    const int max_tile_k = (partition_rows/BANK_NUM) / max_tile_i_j;
+
+    const size_t tile_i = tiling_factor(DIM_I, max_tile_i_j);
+    const size_t tile_j = tiling_factor(DIM_J, max_tile_i_j);
+    const size_t tile_k = tiling_factor(DIM_K, max_tile_k);
+
     if (tiled_matmul_type == OS) {
         tiled_matmul_os(DIM_I, DIM_J, DIM_K,
                 A, B, D, C,
-                TILE_I, TILE_J, TILE_K,
+                tile_i, tile_j, tile_k,
                 no_bias, act, shift, relu6_shift);
     } else if (tiled_matmul_type == WS) {
         tiled_matmul_os(DIM_I, DIM_J, DIM_K,
                 A, B, D, C,
-                TILE_I, TILE_J, TILE_K,
+                tile_i, tile_j, tile_k,
                 no_bias, act, shift, relu6_shift);
-    } else if (tiled_matmul_type == CPU) {
+    } else /*if (tiled_matmul_type == CPU)*/ {
         matmul_cpu(DIM_I, DIM_J, DIM_K,
                 A, B, D, C,
                 no_bias, act, shift, relu6_shift);
-    } else {
+    }/* else {
         printf("unknown tiled matrix type");
         exit(1);
-    }
+    }*/
 }
 
 #endif  // SRC_MAIN_C_SYSTOLIC_H
