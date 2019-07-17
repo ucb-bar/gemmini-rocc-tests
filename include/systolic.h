@@ -62,7 +62,7 @@ void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], int64_t D[DIM][DIM], in
 
 void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
-        elem_t C[DIM_I][DIM_J], int shift, int act, int relu6_scale) {
+        elem_t C[DIM_I][DIM_J], int shift, int act, int relu6_shift) {
   for (size_t i = 0; i < DIM_I; i++) {
     for (size_t j = 0; j < DIM_J; j++) {
       acc_t result = D[i][j];
@@ -86,7 +86,7 @@ void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
       if (act == 1) {
         result = result < 0 ? 0 : result;
       } else if (act == 2) { 
-        int max = 6 * relu6_scale;
+        int max = 6 << relu6_shift;
         result = result < 0 ? 0 : (result > max ? max : result);
       }
 
@@ -679,7 +679,7 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
         elem_t C[DIM_I][DIM_J], size_t TILE_I, size_t TILE_J, size_t TILE_K,
-        int no_bias) {
+        int no_bias, int act, int shift, int relu6_shift) {
 
     const int I0 = DIM_I / (TILE_I*DIM);
     const int J0 = DIM_J / (TILE_J*DIM);
@@ -689,7 +689,7 @@ static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
       D = (int (*)[DIM_J]) 1; // Dummy address which isn't NULL
     }
 
-    matmul_config_ex(OUTPUT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0, 0);
+    matmul_config_ex(OUTPUT_STATIONARY, act, shift, relu6_shift, 0, 0, 0, 0);
 
     for (size_t i0 = 0; i0 < I0; i0++)
       for (size_t j0 = 0; j0 < J0; j0++)
@@ -725,7 +725,7 @@ static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
 static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
         elem_t C[DIM_I][DIM_J], size_t TILE_I, size_t TILE_J, size_t TILE_K,
-        int no_bias) {
+        int no_bias, int act, int shift, int relu6_shift) {
 
     const int I0 = DIM_I / (TILE_I*DIM);
     const int J0 = DIM_J / (TILE_J*DIM);
@@ -735,7 +735,7 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
       D = (int (*)[DIM_J]) 1; // Dummy address which isn't NULL
     }
 
-    matmul_config_ex(WEIGHT_STATIONARY, NO_ACTIVATION, 0, 0, 0, 0, 0, 0);
+    matmul_config_ex(WEIGHT_STATIONARY, act, shift, relu6_shift, 0, 0, 0, 0);
 
     for (size_t i0 = 0; i0 < I0; i0++)
       for (size_t j0 = 0; j0 < J0; j0++)

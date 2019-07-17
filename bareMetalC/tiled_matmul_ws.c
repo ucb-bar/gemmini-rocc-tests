@@ -129,7 +129,7 @@ int main() {
     tiled_matmul_ws(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
             full_A, full_B, full_D, full_C,
             TILE_I_FACTOR, TILE_J_FACTOR, TILE_K_FACTOR,
-            NO_BIAS);
+            NO_BIAS, NO_ACTIVATION, 0, 0);
 
     matmul_fence();
 

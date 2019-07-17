@@ -171,7 +171,7 @@ int main() {
     tiled_matmul_os(112*112, 32, 32,    // dimensions
             A, filter0, NULL, C0,       // addresses
             1, 1, 1,                    // tiling
-            1);                         // no_bias
+            1, RELU, 0, 0);             // no_bias, act, shift, r6_shift
     /* end of first layer */
 
     // verbose(0,A,filter0,C0) 
@@ -191,7 +191,7 @@ int main() {
     tiled_matmul_os(112*112, 64, 32,    // dimensions
             C1, filter2, NULL, C2,      // addresses
             1, 1, 1,                    // tiling
-            1);                         // no_bias
+            1, RELU, 0, 0);             // no_bias, act, shift, r6_shift
     // verbose(2,C1,filter2,C2) 
     /* end of third layer */
 
@@ -212,7 +212,7 @@ int main() {
     tiled_matmul_os(56*56, 128, 64,     // dimensions
             C3, filter4, NULL, C4,      // addresses
             1, 1, 1,                    // tiling
-            1);                         // no_bias
+            1, RELU, 0, 0);             // no_bias, act, shift, r6_shift
     // verbose(4,C3,filter4,C4) 
     /* end of fifth layer */
     
@@ -231,7 +231,7 @@ int main() {
     tiled_matmul_os(56*56, 128, 128,    // dimensions
             C5, filter6, NULL, C6,      // addresses
             1, 1, 1,                    // tiling
-            1);                         // no_bias
+            1, RELU, 0, 0);             // no_bias, act, shift, r6_shift
     // verbose(6,C5,filter6,C6) 
     /* end of seventh layer */
 
@@ -247,9 +247,9 @@ int main() {
     int8_t C8[28*28][256] ={0};
     //TODO: call systolic array C8 = C7*filter8
     tiled_matmul_os(28*28, 256, 128,    // dimensions
-            C7, filter8, NULL, C8,       // addresses
+            C7, filter8, NULL, C8,      // addresses
             1, 1, 1,                    // tiling
-            1);                         // no_bias
+            1, RELU, 0, 0);             // no_bias, act, shift, r6_shift
     // verbose(8,C7,filter8,C8) 
     /* end of 9th layer */
 
@@ -268,7 +268,7 @@ int main() {
     tiled_matmul_os(28*28, 256, 256,    // dimensions
             C9, filter10, NULL, C10,    // addresses
             1, 1, 1,                    // tiling
-            1);                         // no_bias
+            1, RELU, 0, 0);             // no_bias, act, shift, r6_shift
     // verbose(10,C9,filter10,C10) 
     /* end of 11th layer */
         
@@ -285,9 +285,9 @@ int main() {
     int8_t C12[13*16][512] ={0};
     //TODO: call systolic array C12 = C11*filter12
     tiled_matmul_os(13*16, 512, 256,    // dimensions
-            C11, filter12, NULL, C12,       // addresses
+            C11, filter12, NULL, C12,   // addresses
             1, 1, 1,                    // tiling
-            1);                         // no_bias
+            1, RELU, 0, 0);             // no_bias, act, shift, r6_shift
     // verbose(12,C11,filter12,C12) 
     /* end of 13th layer */
     
@@ -305,10 +305,10 @@ int main() {
     // verbose(13,C12,filter13,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter14
-    tiled_matmul_os(13*16, 512, 512,    // dimensions
-                C13, filter14, NULL, C12,// addresses
-                1, 1, 1,                    // tiling
-                1);                         // no_bias
+    tiled_matmul_os(13*16, 512, 512,      // dimensions
+                C13, filter14, NULL, C12, // addresses
+                1, 1, 1,                  // tiling
+                1, RELU, 0, 0);           // no_bias, act, shift, r6_shift
     // verbose(14,C13,filter14,C12) 
 
 
@@ -317,10 +317,10 @@ int main() {
     // verbose(15,C12,filter15,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter16
-    tiled_matmul_os(13*16, 512, 512,    // dimensions
-                C13, filter16, NULL, C12,// addresses
+    tiled_matmul_os(13*16, 512, 512,        // dimensions
+                C13, filter16, NULL, C12,   // addresses
                 1, 1, 1,                    // tiling
-                1);                         // no_bias
+                1, RELU, 0, 0);             // no_bias, act, shift, r6_shift
     // verbose(16,C13,filter16,C12) 
 
         
@@ -329,10 +329,10 @@ int main() {
     // verbose(17,C12,filter17,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter18
-    tiled_matmul_os(13*16, 512, 512,    // dimensions
-                C13, filter18, NULL, C12,// addresses
+    tiled_matmul_os(13*16, 512, 512,        // dimensions
+                C13, filter18, NULL, C12,   // addresses
                 1, 1, 1,                    // tiling
-                1);                         // no_bias
+                1, RELU, 0, 0);             // no_bias, act, shift, r6_shift
     // verbose(18,C13,filter18,C12) 
 
         
@@ -341,10 +341,10 @@ int main() {
     // verbose(19,C12,filter19,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter20
-    tiled_matmul_os(13*16, 512, 512,    // dimensions
-                C13, filter20, NULL, C12,// addresses
+    tiled_matmul_os(13*16, 512, 512,        // dimensions
+                C13, filter20, NULL, C12,   // addresses
                 1, 1, 1,                    // tiling
-                1);                         // no_bias
+                1, RELU, 0, 0);             // no_bias, act, shift, r6_shift
     // verbose(20,C13,filter20,C12) 
 
     /* dw conv */
@@ -352,10 +352,10 @@ int main() {
     // verbose(21,C12,filter21,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter22
-    tiled_matmul_os(13*16, 512, 512,    // dimensions
-                C13, filter22, NULL, C12,// addresses
+    tiled_matmul_os(13*16, 512, 512,        // dimensions
+                C13, filter22, NULL, C12,   // addresses
                 1, 1, 1,                    // tiling
-                1);                         // no_bias
+                1, RELU, 0, 0);             // no_bias, act, shift, r6_shift
     // verbose(22,C13,filter22,C12) 
         
 /* end of 5 repeated dw and 1x1 layers*/    
@@ -375,7 +375,7 @@ int main() {
     tiled_matmul_os(64, 1024, 512,      // dimensions
             C14, filter24, NULL, C15,   // addresses
             1, 1, 1,                    // tiling
-            1);                         // no_bias
+            1, RELU, 0, 0);             // no_bias, act, shift, r6_shift
     // verbose(24,C14,filter24,C15)
     
     /* end of 25th layer */
@@ -396,7 +396,7 @@ int main() {
     tiled_matmul_os(64, 1024, 1024,     // dimensions
             C16, filter26, NULL, C17,   // addresses
             1, 1, 1,                    // tiling
-            1);                         // no_bias
+            1, RELU, 0, 0);             // no_bias, act, shift, r6_shift
     // verbose(26,C16,filter26,C17) 
     /* end of 27th layer */
     
@@ -411,10 +411,10 @@ int main() {
     /* 29th and last layer, FC, originally its 1024x1000, zeropadded to 1024x1008 */
     int8_t C19[16][1008];
     //TODO: call systolic array C19 = C18*fc27
-    tiled_matmul_os(16, 1008, 1024,     // dimensions
+    tiled_matmul_os(16, 1008, 1024,    // dimensions
             C18, fc27, NULL, C19,      // addresses
-            1, 1, 1,                    // tiling
-            1);                         // no_bias
+            1, 1, 1,                   // tiling
+            1, RELU, 0, 0);            // no_bias, act, shift, r6_shift
     // verbose(28,C18,fc27,C19) 
 
     /* end of 29th layer */
