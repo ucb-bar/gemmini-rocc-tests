@@ -24,9 +24,9 @@ all:
 vpath %.S $(src_dir)
 
 $(PREFIX)-p-%: %.S
-	$(CC) $(CFLAGS) -I$(ENV_P) -T$(ENV_P)/link.ld $< $(LFLAGS) -o $@ $(LIBS)
+	$(CC_BAREMETAL) $(CFLAGS) -I$(ENV_P) -T$(ENV_P)/link.ld $< $(LFLAGS) -o $@ $(LIBS)
 
 $(PREFIX)-v-%: %.S
-	$(CC) $(CFLAGS) -I$(ENV_V) -T$(ENV_V)/link.ld $< $(LFLAGS) -o $@ $(LIBS)
+	$(CC_BAREMETAL) $(CFLAGS) -I$(ENV_V) -T$(ENV_V)/link.ld $< $(LFLAGS) -o $@ $(LIBS)
 
 junk += $(tests_p) $(tests_v)

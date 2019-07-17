@@ -33,7 +33,7 @@ all: $(tests)
 vpath %.c $(src_dir)
 
 %: %.c
-	$(CC) $(CFLAGS) $< $(LFLAGS) -o $@
+	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@
 	# $(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
 
 junk += $(tests)

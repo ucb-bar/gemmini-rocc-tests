@@ -5,7 +5,9 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#ifndef BAREMETAL
 #include <sys/mman.h>
+#endif
 #include "include/systolic.h"
 
 #define CHECK_RESULT 1
@@ -76,10 +78,12 @@ void full_matshift(int64_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT
 } 
 
 int main() {
+    #ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
       perror("mlockall failed");
       exit(1);
     }
+    #endif
 
     matmul_flush(0);
 

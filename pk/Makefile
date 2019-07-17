@@ -17,6 +17,6 @@ vpath %.c $(src_dir)
 all: $(tests_pk)
 
 $(PREFIX)-%: %.c
-	$(CC) $(CFLAGS) $< -o $@ $(LFLAGS)
+	$(CC_BAREMETAL) $(CFLAGS) $< -o $@ $(LFLAGS)
 
 junk += $(tests_pk)

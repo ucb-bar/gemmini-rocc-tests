@@ -12,6 +12,9 @@ tests = \
 	tiled_matmul_ws \
 	raw_hazard
 
+tests_baremetal = $(tests:=-baremetal)
+tests_linux = $(tests:=-linux)
+
 BENCH_COMMON = $(RISCVTOOLS)/riscv-tests/benchmarks/common
 
 CFLAGS := $(CFLAGS) \
@@ -32,18 +35,25 @@ CFLAGS := $(CFLAGS) \
 	-I$(BENCH_COMMON) \
 	-DID_STRING=$(ID_STRING) \
 
-	#-nostdlib \
-	#-nostartfiles \
-	#-static \
-	#-T $(BENCH_COMMON)/test.ld \
+CFLAGS_BAREMETAL := \
+	$(CFLAGS) \
+	-nostdlib \
+	-nostartfiles \
+	-static \
+	-T $(BENCH_COMMON)/test.ld \
+	-DBAREMETAL=1 \
 
-all: $(tests)
+all: $(tests_baremetal) $(tests_linux)
 
 vpath %.c $(src_dir)
 
-%: %.c
-	$(CC) $(CFLAGS) $< $(LFLAGS) -o $@
-	# $(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
+%-baremetal: %.c
+	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \
+		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
 
-junk += $(tests)
+
+%-linux: %.c
+	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@
+
+junk += $(tests_baremetal) $(tests_linux)
 
