@@ -110,8 +110,9 @@ int main() {
     }
 
     matmul_flush(0);
-
-    unsigned long start = read_cycles();
+    
+    unsigned long cycles[29]={0};
+    unsigned long start,end;
 
     ///////// first layer - sys array///////////
     //stride = 2
@@ -163,8 +164,11 @@ int main() {
     //    printf("\n");
     //}
     
+    
     */
     ////// replace upper part by immediate generation of zeropadded filters ///// 
+    
+    start = read_cycles();
     int8_t C0[112*112][32] = {0};
     /* TODO: call systolic array C0 = A*filter0 */
     // I = 112*112, J = 32, K = 32
@@ -173,7 +177,10 @@ int main() {
             1, 1, 1,                    // tiling
             1);                         // no_bias
     /* end of first layer */
-
+    
+    end = read_cycles();
+    cycles[0] = end-start;
+    start = end;
     // verbose(0,A,filter0,C0) 
     
     /* second layer, depthwise conv, Ameer decided to put it on  on rocket*/
@@ -182,6 +189,10 @@ int main() {
     dwconv(num_imgs, C1,C0,filter1,112,112,3,1);
     // verbose(1,C0,filter1,C1) 
     /* end of second layer*/
+    
+    end = read_cycles();
+    cycles[1] = end-start;
+    start = end;
     
     /* third layer, directly matmul because it is 1x1 conv, hell yeah!!*/
 
@@ -195,6 +206,10 @@ int main() {
     // verbose(2,C1,filter2,C2) 
     /* end of third layer */
 
+    end = read_cycles();
+    cycles[2] = end-start;
+    start = end;
+
     /* fourth layer, depthwise conv, on rocket*/
 
     num_imgs = 64;
@@ -203,6 +218,9 @@ int main() {
     // verbose(3,C2,filter3,C3) 
     /* end of fourth layer*/
 
+    end = read_cycles();
+    cycles[3] = end-start;
+    start = end;
     
     /* fifth layer, directly matmul because it is 1x1 conv, hell yeah!!*/
 
@@ -215,7 +233,10 @@ int main() {
             1);                         // no_bias
     // verbose(4,C3,filter4,C4) 
     /* end of fifth layer */
-    
+      
+    end = read_cycles();
+    cycles[4] = end-start;
+    start = end;
      
     /* sixth layer, depthwise conv, on rocket*/
     num_imgs = 128;
@@ -223,6 +244,10 @@ int main() {
     dwconv(num_imgs, C5,C4,filter5,56,56,3,1);
     // verbose(5,C4,filter5,C5) 
     /* end of sixth layer*/
+
+    end = read_cycles();
+    cycles[5] = end-start;
+    start = end;
 
     /* seventh layer, directly matmul because it is 1x1 conv, hell yeah!!*/
 
@@ -235,12 +260,21 @@ int main() {
     // verbose(6,C5,filter6,C6) 
     /* end of seventh layer */
 
+
+    end = read_cycles();
+    cycles[6] = end-start;
+    start = end;
+
     /* 8th layer, depthwise conv, on rocket*/
     num_imgs = 128;
     int8_t C7[28*28][128] ={0};
     dwconv(num_imgs, C7,C6,filter7,56,56,3,2);
     // verbose(7,C6,filter7,C7) 
     /* end of 8th layer*/
+
+    end = read_cycles();
+    cycles[7] = end-start;
+    start = end;
 
     /* 9th layer, directly matmul because it is 1x1 conv, hell yeah!!*/
 
@@ -253,6 +287,9 @@ int main() {
     // verbose(8,C7,filter8,C8) 
     /* end of 9th layer */
 
+    end = read_cycles();
+    cycles[8] = end-start;
+    start = end;
         
     /* 10th layer, depthwise conv, on rocket*/
     num_imgs = 256;
@@ -260,6 +297,10 @@ int main() {
     dwconv(num_imgs, C9,C8,filter9,28,28,3,1);
     // verbose(9,C8,filter9,C9) 
     /* end of 10th layer*/
+
+    end = read_cycles();
+    cycles[9] = end-start;
+    start = end;
 
     /* 11th layer, directly matmul because it is 1x1 conv, hell yeah!!*/
 
@@ -271,7 +312,11 @@ int main() {
             1);                         // no_bias
     // verbose(10,C9,filter10,C10) 
     /* end of 11th layer */
-        
+       
+    end = read_cycles();
+    cycles[10] = end-start;
+    start = end;
+
     /* 12th layer, depthwise conv, on rocket*/
     num_imgs = 256;
     // it should be 14*14 but it doesn't divide by 16
@@ -279,6 +324,10 @@ int main() {
     dwconv(num_imgs, C11,C10,filter11,28,28,3,2);
     // verbose(11,C10,filter11,C11) 
     /* end of 12th layer*/
+
+    end = read_cycles();
+    cycles[11] = end-start;
+    start = end;
 
     /* 13th layer, directly matmul because it is 1x1 conv, hell yeah!!*/
     // it should be 14*14 but it doesn't divide by 16
@@ -290,7 +339,11 @@ int main() {
             1);                         // no_bias
     // verbose(12,C11,filter12,C12) 
     /* end of 13th layer */
-    
+   
+    end = read_cycles();
+    cycles[12] = end-start;
+    start = end;
+
     /* layers 14-23 that combine 1x1 conv and dw convs */
     //C13 and C12 reused for are savings
     num_imgs = 512;
@@ -303,6 +356,10 @@ int main() {
     /* dw conv */
     dwconv(num_imgs, C13,C12,filter13,14,14,3,1);
     // verbose(13,C12,filter13,C13);
+    end = read_cycles();
+    cycles[13] = end-start;
+    start = end;
+
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter14
     tiled_matmul_os(13*16, 512, 512,    // dimensions
@@ -311,9 +368,17 @@ int main() {
                 1);                         // no_bias
     // verbose(14,C13,filter14,C12) 
 
+    end = read_cycles();
+    cycles[14] = end-start;
+    start = end;
 
     /* dw conv */
     dwconv(num_imgs, C13,C12,filter15,14,14,3,1);
+    
+    end = read_cycles();
+    cycles[15] = end-start;
+    start = end;
+    
     // verbose(15,C12,filter15,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter16
@@ -323,9 +388,16 @@ int main() {
                 1);                         // no_bias
     // verbose(16,C13,filter16,C12) 
 
+    end = read_cycles();
+    cycles[16] = end-start;
+    start = end;
         
     /* dw conv */
     dwconv(num_imgs, C13,C12,filter17,14,14,3,1);
+    
+    end = read_cycles();
+    cycles[17] = end-start;
+    start = end;
     // verbose(17,C12,filter17,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter18
@@ -335,9 +407,16 @@ int main() {
                 1);                         // no_bias
     // verbose(18,C13,filter18,C12) 
 
+    end = read_cycles();
+    cycles[18] = end-start;
+    start = end;
         
     /* dw conv */
     dwconv(num_imgs, C13,C12,filter19,14,14,3,1);
+    
+    end = read_cycles();
+    cycles[19] = end-start;
+    start = end;
     // verbose(19,C12,filter19,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter20
@@ -346,10 +425,19 @@ int main() {
                 1, 1, 1,                    // tiling
                 1);                         // no_bias
     // verbose(20,C13,filter20,C12) 
+    
+    end = read_cycles();
+    cycles[20] = end-start;
+    start = end;
 
     /* dw conv */
     dwconv(num_imgs, C13,C12,filter21,14,14,3,1);
     // verbose(21,C12,filter21,C13);
+    
+    end = read_cycles();
+    cycles[21] = end-start;
+    start = end;
+
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter22
     tiled_matmul_os(13*16, 512, 512,    // dimensions
@@ -357,6 +445,10 @@ int main() {
                 1, 1, 1,                    // tiling
                 1);                         // no_bias
     // verbose(22,C13,filter22,C12) 
+    
+    end = read_cycles();
+    cycles[22] = end-start;
+    start = end;
         
 /* end of 5 repeated dw and 1x1 layers*/    
 
@@ -368,6 +460,10 @@ int main() {
     // verbose(23,C13,filter23,C14) 
     /* end of 24th layer*/
 
+    end = read_cycles();
+    cycles[23] = end-start;
+    start = end;
+
     /* 25th layer, directly matmul because it is 1x1 conv, hell yeah!!*/
     //it should 7*7 but replaced with 64 to divide 16
     int8_t C15[64][1024] ={0};
@@ -377,7 +473,11 @@ int main() {
             1, 1, 1,                    // tiling
             1);                         // no_bias
     // verbose(24,C14,filter24,C15)
-    
+
+    end = read_cycles();
+    cycles[24] = end-start;
+    start = end;
+
     /* end of 25th layer */
 
     /* 26th layer, depthwise conv, on rocket*/
@@ -387,6 +487,10 @@ int main() {
     dwconv(num_imgs, C16,C15,filter25,7,7,3,1);
     // verbose(25,C15,filter25,C16)
     /* end of 26th layer*/
+
+    end = read_cycles();
+    cycles[25] = end-start;
+    start = end;
 
     /* 27th layer, directly matmul because it is 1x1 conv, hell yeah!!*/
     //it should 7*7 but replaced with 64 to divide 16
@@ -400,14 +504,22 @@ int main() {
     // verbose(26,C16,filter26,C17) 
     /* end of 27th layer */
     
+    end = read_cycles();
+    cycles[26] = end-start;
+    start = end;
+    
     /* 28th layer, pooling, on rocket, can be done on the array with fixed point divison*/
     //int8_t C18[1*1][1024] ={0}; this is replaced with 16 for zeropadding for the FC...
     int8_t C18[16][1024] ={0};
     pool7(1024,C17,C18);
-    int8_t garbage[7][7] = {0};
+    //int8_t garbage[7][7] = {0};
     // verbose(27,C17,garbage,C18) 
     /*end of 28th layer */    
 
+    end = read_cycles();
+    cycles[27] = end-start;
+    start = end;
+    
     /* 29th and last layer, FC, originally its 1024x1000, zeropadded to 1024x1008 */
     int8_t C19[16][1008];
     //TODO: call systolic array C19 = C18*fc27
@@ -417,12 +529,17 @@ int main() {
             1);                         // no_bias
     // verbose(28,C18,fc27,C19) 
 
+    end = read_cycles();
+    cycles[28] = end-start;
+    
     /* end of 29th layer */
-
-    unsigned long end = read_cycles();
-    printf("Cycles taken: %u\n", end-start);
+    
+    unsigned long overall_cycles = 0;
+    for(int cyc = 0; cyc < 29 ; cyc++){
+        overall_cycles += cycles[cyc];
+        printf("Cycles taken in layer %d: %lu\n", cyc,cycles[cyc]);
+    }
+    printf("Overall cycles taken: %lu\n",overall_cycles);
 
     return 0;
 }
-
-
