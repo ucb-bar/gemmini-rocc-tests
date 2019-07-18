@@ -15,7 +15,6 @@ CFLAGS := $(CFLAGS) \
 	-nostdlib \
 	-nostartfiles \
 	-I$(abs_top_srcdir) \
-	-I$(RISCVTOOLS) \
 	-DID_STRING=$(ID_STRING) \
 
 all: $(tests_p) $(tests_v)

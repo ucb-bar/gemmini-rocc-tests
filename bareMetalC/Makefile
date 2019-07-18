@@ -19,7 +19,7 @@ else
 	tests_linux = $(tests:=-linux)
 endif
 
-BENCH_COMMON = $(RISCVTOOLS)/riscv-tests/benchmarks/common
+BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
 
 CFLAGS := $(CFLAGS) \
 	-DPREALLOCATE=1 \
@@ -33,8 +33,8 @@ CFLAGS := $(CFLAGS) \
 	-march=rv64gc -Wa,-march=rv64gcxhwacha \
 	-lm \
 	-lgcc \
-	-I$(RISCVTOOLS) \
-	-I$(RISCVTOOLS)/riscv-tests/env \
+	-I$(abs_top_srcdir)/riscv-tests \
+	-I$(abs_top_srcdir)/riscv-tests/env \
 	-I$(abs_top_srcdir) \
 	-I$(BENCH_COMMON) \
 	-DID_STRING=$(ID_STRING) \

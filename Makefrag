@@ -13,8 +13,8 @@ else
     CC_LINUX := riscv$(XLEN)-linux-gnu-gcc
 endif
 
-ENV_P = $(RISCVTOOLS)/riscv-tests/env/p
-ENV_V = $(RISCVTOOLS)/riscv-tests/env/v
+ENV_P = $(abs_top_srcdir)/riscv-tests/env/p
+ENV_V = $(abs_top_srcdir)/riscv-tests/env/v
 
 .PHONY: all clean default
 

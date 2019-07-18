@@ -8,7 +8,9 @@ tests = \
 CFLAGS := $(CFLAGS) \
 	-Wall \
 	-static \
-	-I$(abs_top_srcdir)
+	-I$(abs_top_srcdir) \
+	-lm \
+	-O2 \
 
 tests_pk = $(addprefix $(PREFIX)-, $(tests))
 
