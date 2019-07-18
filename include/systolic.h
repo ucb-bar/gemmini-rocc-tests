@@ -781,13 +781,15 @@ static void tiled_matmul_option(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         enum tiled_matmul_type_t tiled_matmul_type) {
     printf("Entered function\n");
 
-    const int partition_rows = (BANK_NUM/2)*BANK_ROWS;
+    const int partition_rows = BANK_NUM * BANK_ROWS / 2;
     printf("partition_rows: %d\n", partition_rows);
-    const int mats_in_acc = (ACC_ROWS/BANK_ROWS);
+    const int mats_in_partition = partition_rows / DIM;
+    printf("mats_in_partition: %d\n", mats_in_partition);
+    const int mats_in_acc = ACC_ROWS / DIM;
     printf("mats_in_acc: %d\n", mats_in_acc);
     const int max_tile_i_j = (int)sqrt(mats_in_acc);
     printf("max_tile_i_j: %d\n", max_tile_i_j);
-    const int max_tile_k = (partition_rows/BANK_NUM) / max_tile_i_j;
+    const int max_tile_k = mats_in_partition / max_tile_i_j;
     printf("max_tile_k: %d\n", max_tile_k);
 
     const size_t tile_i = tiling_factor(DIM_I, max_tile_i_j);
