@@ -115,11 +115,11 @@ int main (int argc, char * argv[]) {
         // printf("usage: %s matmul_option\n  matmul_option may be 'os', 'ws', or cpu'\n");
         // exit(0);
         tiled_matmul_type = OS;
-    } else if (strcmp(argv[1], "cpu")) {
+    } else if (strcmp(argv[1], "cpu") == 0) {
         tiled_matmul_type = CPU;
-    } else if (strcmp(argv[1], "os")) { 
+    } else if (strcmp(argv[1], "os") == 0) {
         tiled_matmul_type = OS;
-    } else if (strcmp(argv[1], "ws")) { 
+    } else if (strcmp(argv[1], "ws") == 0) {
         tiled_matmul_type = WS;
     }
 
