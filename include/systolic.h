@@ -779,26 +779,38 @@ static void tiled_matmul_option(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t C[DIM_I][DIM_J], // size_t TILE_I, size_t TILE_J, size_t TILE_K,
         int no_bias, int act, int shift, int relu6_shift,
         enum tiled_matmul_type_t tiled_matmul_type) {
+    printf("Entered function\n");
+
     const int partition_rows = (BANK_NUM/2)*BANK_ROWS;
+    printf("partition_rows: %d\n", partition_rows);
     const int mats_in_acc = (ACC_ROWS/BANK_ROWS);
+    printf("mats_in_acc: %d\n", mats_in_acc);
     const int max_tile_i_j = (int)sqrt(mats_in_acc);
+    printf("max_tile_i_j: %d\n", max_tile_i_j);
     const int max_tile_k = (partition_rows/BANK_NUM) / max_tile_i_j;
+    printf("max_tile_k: %d\n", max_tile_k);
 
     const size_t tile_i = tiling_factor(DIM_I, max_tile_i_j);
+    printf("tile_i: %d\n", tile_i);
     const size_t tile_j = tiling_factor(DIM_J, max_tile_i_j);
+    printf("tile_j: %d\n", tile_j);
     const size_t tile_k = tiling_factor(DIM_K, max_tile_k);
+    printf("tile_k: %d\n", tile_k);
 
     if (tiled_matmul_type == OS) {
+        printf("Entered OS\n");
         tiled_matmul_os(DIM_I, DIM_J, DIM_K,
                 A, B, D, C,
                 tile_i, tile_j, tile_k,
                 no_bias, act, shift, relu6_shift);
     } else if (tiled_matmul_type == WS) {
+        printf("Entered WS\n");
         tiled_matmul_ws(DIM_I, DIM_J, DIM_K,
                 A, B, D, C,
                 tile_i, tile_j, tile_k,
                 no_bias, act, shift, relu6_shift);
     } else /*if (tiled_matmul_type == CPU)*/ {
+        printf("Entered CPU\n");
         matmul_cpu(DIM_I, DIM_J, DIM_K,
                 A, B, D, C,
                 no_bias, act, shift, relu6_shift);
@@ -806,6 +818,8 @@ static void tiled_matmul_option(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         printf("unknown tiled matrix type");
         exit(1);
     }*/
+
+    printf("finished function");
 }
 
 #endif  // SRC_MAIN_C_SYSTOLIC_H
