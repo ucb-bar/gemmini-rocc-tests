@@ -779,11 +779,18 @@ static void tiled_matmul_option(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t C[DIM_I][DIM_J], // size_t TILE_I, size_t TILE_J, size_t TILE_K,
         int no_bias, int act, int shift, int relu6_shift,
         enum tiled_matmul_type_t tiled_matmul_type) {
-    const int partition_rows = BANK_NUM * BANK_ROWS / 2;
-    const int mats_in_partition = partition_rows / DIM;
-    const int mats_in_acc = ACC_ROWS / DIM;
-    const int max_tile_i_j = (int)sqrt(mats_in_acc);
-    const int max_tile_k = mats_in_partition / max_tile_i_j;
+    // const int partition_rows = BANK_NUM * BANK_ROWS / 2;
+    // const int mats_in_partition = partition_rows / DIM;
+    // const int mats_in_acc = ACC_ROWS / DIM;
+    // const int max_tile_i_j = (int)sqrt(mats_in_acc);
+    // const int max_tile_k = mats_in_partition / max_tile_i_j;
+
+    // We use macros here instead of "const int" so that GCC const-folds sqrt
+#define partition_rows (BANK_NUM * BANK_ROWS / 2)
+#define mats_in_partition (partition_rows / DIM)
+#define mats_in_acc (ACC_ROWS / DIM)
+#define max_tile_i_j ((int)sqrt(mats_in_acc))
+#define max_tile_k (mats_in_partition / max_tile_i_j)
 
     const size_t tile_i = tiling_factor(DIM_I, max_tile_i_j);
     const size_t tile_j = tiling_factor(DIM_J, max_tile_i_j);
@@ -807,6 +814,12 @@ static void tiled_matmul_option(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         printf("unknown tiled matrix type");
         exit(1);
     }*/
+
+#undef partition_rows
+#undef mats_in_partition
+#undef mats_in_acc
+#undef max_tile_i_j
+#undef max_tile_k
 }
 
 #endif  // SRC_MAIN_C_SYSTOLIC_H
