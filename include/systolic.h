@@ -4,6 +4,7 @@
 #define SRC_MAIN_C_SYSTOLIC_H
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <math.h>
 #include <limits.h>
 // TODO use stdbool.h as well
