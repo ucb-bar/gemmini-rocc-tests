@@ -118,7 +118,10 @@ int main() {
 
 #if CHECK_RESULT == 1
     printf("Starting CPU matmul\n");
+    unsigned long cpu_start = read_cycles();
     full_matmul(full_A, full_B, full_D, gold_full);
+    unsigned long cpu_end = read_cycles();
+    printf("Cycles taken: %u\n", cpu_end-cpu_start);
     full_matshift(gold_full, gold, 0);
 #endif
 
