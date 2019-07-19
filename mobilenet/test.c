@@ -107,7 +107,7 @@ static void tiled_matmul_compare(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
         elem_t C[DIM_I][DIM_J], int no_bias, int act, int shift, int relu6_shift,
         enum tiled_matmul_type_t tiled_matmul_type,
-        bool compare)
+        bool compare, char * layer_name)
 {
     tiled_matmul_option(DIM_I, DIM_J, DIM_K,
         A, B, D, C, no_bias, act, shift, relu6_shift,
@@ -119,10 +119,10 @@ static void tiled_matmul_compare(size_t DIM_I, size_t DIM_J, size_t DIM_K,
             A, B, D, gold, no_bias, act, shift, relu6_shift,
             CPU);
 
-        for (int i = 0; i < DIM_I; i++) {
-            for (int j = 0; j < DIM_J; i++) {
+        for (size_t i = 0; i < DIM_I; i++) {
+            for (size_t j = 0; j < DIM_J; j++) {
                 if (C[i][j] != gold[i][j]) {
-                    printf("Layer calculated incorrectly");
+                    printf("Layer calculated incorrectly: %s\n", layer_name);
                     exit(1);
                 }
             }
@@ -131,10 +131,12 @@ static void tiled_matmul_compare(size_t DIM_I, size_t DIM_J, size_t DIM_K,
 }
 
 int main (int argc, char * argv[]) {
+#ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
       perror("mlockall failed");
       exit(1);
     }
+#endif
 
     matmul_flush(0);
 
@@ -225,7 +227,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_compare(112*112, 32, 32,    // dimensions
             A, filter0, NULL, C0,       // addresses
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type, compare);
+            tiled_matmul_type, compare, "layer_1");
     /* end of first layer */
     
     end = read_cycles();
@@ -252,7 +254,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_compare(112*112, 64, 32,    // dimensions
             C1, filter2, NULL, C2,      // addresses
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type, compare);
+            tiled_matmul_type, compare, "layer_2");
     // verbose(2,C1,filter2,C2) 
     /* end of third layer */
 
@@ -280,7 +282,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_compare(56*56, 128, 64,     // dimensions
             C3, filter4, NULL, C4,      // addresses
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type, compare);
+            tiled_matmul_type, compare, "layer_5");
     // verbose(4,C3,filter4,C4) 
     /* end of fifth layer */
       
@@ -306,7 +308,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_compare(56*56, 128, 128,    // dimensions
             C5, filter6, NULL, C6,      // addresses
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type, compare);
+            tiled_matmul_type, compare, "layer_7");
     // verbose(6,C5,filter6,C6) 
     /* end of seventh layer */
 
@@ -333,7 +335,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_compare(28*28, 256, 128,    // dimensions
             C7, filter8, NULL, C8,      // addresses
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type, compare);
+            tiled_matmul_type, compare, "layer_9");
     // verbose(8,C7,filter8,C8) 
     /* end of 9th layer */
 
@@ -359,7 +361,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_compare(28*28, 256, 256,    // dimensions
             C9, filter10, NULL, C10,    // addresses
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type, compare);
+            tiled_matmul_type, compare, "layer_11");
     // verbose(10,C9,filter10,C10) 
     /* end of 11th layer */
        
@@ -386,7 +388,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_compare(13*16, 512, 256,    // dimensions
             C11, filter12, NULL, C12,   // addresses
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type, compare);
+            tiled_matmul_type, compare, "layer_13");
     // verbose(12,C11,filter12,C12) 
     /* end of 13th layer */
    
@@ -415,7 +417,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_compare(13*16, 512, 512,      // dimensions
                 C13, filter14, NULL, C12, // addresses
                 1, RELU, 0, 0,            // no_bias, act, shift, r6_shift
-            tiled_matmul_type, compare);
+            tiled_matmul_type, compare, "dw_1");
     // verbose(14,C13,filter14,C12) 
 
     end = read_cycles();
@@ -435,7 +437,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_compare(13*16, 512, 512,        // dimensions
                 C13, filter16, NULL, C12,   // addresses
                 1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type, compare);
+            tiled_matmul_type, compare, "dw_2");
     // verbose(16,C13,filter16,C12) 
 
     end = read_cycles();
@@ -454,7 +456,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_compare(13*16, 512, 512,        // dimensions
                 C13, filter18, NULL, C12,   // addresses
                 1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type, compare);
+            tiled_matmul_type, compare, "dw_3");
     // verbose(18,C13,filter18,C12) 
 
     end = read_cycles();
@@ -473,7 +475,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_compare(13*16, 512, 512,        // dimensions
                 C13, filter20, NULL, C12,   // addresses
                 1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type, compare);
+            tiled_matmul_type, compare, "dw_4");
     // verbose(20,C13,filter20,C12) 
     
     end = read_cycles();
@@ -493,7 +495,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_compare(13*16, 512, 512,        // dimensions
                 C13, filter22, NULL, C12,   // addresses
                 1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type, compare);
+            tiled_matmul_type, compare, "dw_5");
     // verbose(22,C13,filter22,C12) 
     
     end = read_cycles();
@@ -521,7 +523,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_compare(64, 1024, 512,      // dimensions
             C14, filter24, NULL, C15,   // addresses
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type, compare);
+            tiled_matmul_type, compare, "layer_25");
     // verbose(24,C14,filter24,C15)
 
     end = read_cycles();
@@ -550,7 +552,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_compare(64, 1024, 1024,     // dimensions
             C16, filter26, NULL, C17,   // addresses
             1, RELU, 0, 0,             // no_bias, act, shift, r6_shift
-            tiled_matmul_type, compare);
+            tiled_matmul_type, compare, "layer_27");
     // verbose(26,C16,filter26,C17) 
     /* end of 27th layer */
     
@@ -576,7 +578,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_compare(16, 1008, 1024,    // dimensions
             C18, fc27, NULL, C19,      // addresses
             1, RELU, 0, 0,             // no_bias, act, shift, r6_shift
-            tiled_matmul_type, compare);
+            tiled_matmul_type, compare, "layer_29");
     // verbose(28,C18,fc27,C19) 
 
     end = read_cycles();

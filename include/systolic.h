@@ -728,7 +728,7 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
 
 void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
-        elem_t C[DIM_I][DIM_J], int no_bias, int shift, int act, int relu6_shift) {
+        elem_t C[DIM_I][DIM_J], int no_bias, int act, int shift, int relu6_shift) {
   for (size_t i = 0; i < DIM_I; i++) {
     for (size_t j = 0; j < DIM_J; j++) {
       acc_t result = no_bias ? 0 : D[i][j];

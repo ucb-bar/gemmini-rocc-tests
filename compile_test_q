@@ -1,3 +1,17 @@
+#!/bin/bash
+
 mkdir -p test_q/
-rm test_q/${1} 2>/dev/null
-gcc -I. bareMetalC/$1.c -o test_q/${1} -std=c99 -g -DTEST_QUEUES
+
+src_dir=bareMetalC
+src_file=$1.c
+output=$1
+
+if [ $1 == "mobilenet" ]; then
+    src_dir="mobilenet"
+    src_file="test.c"
+    output="mobilenet"
+fi
+
+rm test_q/$output 2>/dev/null
+gcc -I. $src_dir/$src_file -o test_q/$output -std=c99 -g -DTEST_QUEUES -DBAREMETAL
+

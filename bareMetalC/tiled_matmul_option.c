@@ -118,7 +118,7 @@ int main() {
 
             printf("Starting CPU matmul\n");
             full_matmul(full_A, full_B, full_D, gold_full);
-            full_matshift(gold_full, gold, 0);
+            full_matshift(gold_full, gold, shift);
 
             if (activation == RELU) {
               full_matrelu(gold, gold);
@@ -133,6 +133,12 @@ int main() {
                     option);
 
             if (!full_is_equal(full_C, gold)) {
+              printf("option: %d\n", option);
+              printf("activation: %d\n", activation);
+              printf("shift: %d\n", shift);
+              printf("relu6_shift: %d\n", relu6_shift);
+              printf("no_bias: %d\n", no_bias);
+
               printf("C:\n");
               full_printMatrix(full_C);
               printf("Gold:\n");
