@@ -8,9 +8,10 @@ tests = \
 	matmul_os \
 	matmul_ws \
 	matmul \
+	raw_hazard \
 	tiled_matmul_os \
 	tiled_matmul_ws \
-	raw_hazard
+	tiled_matmul_option
 
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY

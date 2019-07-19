@@ -775,7 +775,7 @@ static size_t tiling_factor(const size_t dimension, const size_t max_tile_factor
 }
 
 // TODO automatically calculate optimal tiling factors
-static void tiled_matmul_option(size_t DIM_I, size_t DIM_J, size_t DIM_K,
+static void __attribute__((unused)) tiled_matmul_option(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
         elem_t C[DIM_I][DIM_J], // size_t TILE_I, size_t TILE_J, size_t TILE_K,
         int no_bias, int act, int shift, int relu6_shift,
