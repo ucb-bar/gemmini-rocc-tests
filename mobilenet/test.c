@@ -1,5 +1,6 @@
 #include <stdio.h>
-#include<string.h>
+#include <string.h>
+#include <stdbool.h>
 #include <sys/mman.h>
 #include "include/systolic.h"
 #include "kernels.h"
@@ -102,6 +103,33 @@ void pool7(int len, int8_t in[][len],int8_t out[][len]){
     }
 }
 
+static void tiled_matmul_compare(size_t DIM_I, size_t DIM_J, size_t DIM_K,
+        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
+        elem_t C[DIM_I][DIM_J], int no_bias, int act, int shift, int relu6_shift,
+        enum tiled_matmul_type_t tiled_matmul_type,
+        bool compare)
+{
+    tiled_matmul_option(DIM_I, DIM_J, DIM_K,
+        A, B, D, C, no_bias, act, shift, relu6_shift,
+        tiled_matmul_type);
+
+    if (compare) {
+        elem_t gold[DIM_I][DIM_J];
+        tiled_matmul_option(DIM_I, DIM_J, DIM_K,
+            A, B, D, gold, no_bias, act, shift, relu6_shift,
+            CPU);
+
+        for (int i = 0; i < DIM_I; i++) {
+            for (int j = 0; j < DIM_J; i++) {
+                if (C[i][j] != gold[i][j]) {
+                    printf("Layer calculated incorrectly");
+                    exit(1);
+                }
+            }
+        }
+    }
+}
+
 int main (int argc, char * argv[]) {
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
       perror("mlockall failed");
@@ -121,6 +149,16 @@ int main (int argc, char * argv[]) {
         tiled_matmul_type = OS;
     } else if (strcmp(argv[1], "ws") == 0) {
         tiled_matmul_type = WS;
+    }
+
+    bool compare;
+    if (argc < 3) {
+        compare = false;
+    } else if (strcmp(argv[2], "compare") == 0) {
+        compare = true;
+    } else {
+        printf("Unknown command-line argument\n");
+        exit(1);
     }
 
     unsigned long cycles[29]={0};
@@ -184,11 +222,10 @@ int main (int argc, char * argv[]) {
     int8_t C0[112*112][32] = {0};
     /* TODO: call systolic array C0 = A*filter0 */
     // I = 112*112, J = 32, K = 32
-    tiled_matmul_option(112*112, 32, 32,    // dimensions
+    tiled_matmul_compare(112*112, 32, 32,    // dimensions
             A, filter0, NULL, C0,       // addresses
-            //1, 1, 1,                  //tiling
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type);
+            tiled_matmul_type, compare);
     /* end of first layer */
     
     end = read_cycles();
@@ -212,11 +249,10 @@ int main (int argc, char * argv[]) {
     int8_t C2[112*112][64] ={0};
     //TODO: call systolic array C2 = C1*filter2
     // I = 112*112, J = 64, K = 32
-    tiled_matmul_option(112*112, 64, 32,    // dimensions
+    tiled_matmul_compare(112*112, 64, 32,    // dimensions
             C1, filter2, NULL, C2,      // addresses
-            //1, 1, 1,                  //tiling
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type);
+            tiled_matmul_type, compare);
     // verbose(2,C1,filter2,C2) 
     /* end of third layer */
 
@@ -241,11 +277,10 @@ int main (int argc, char * argv[]) {
     int8_t C4[56*56][128] ={0};
     //TODO: call systolic array C4 = C3*filter4
     // I = 56*56, J = 128, K = 64
-    tiled_matmul_option(56*56, 128, 64,     // dimensions
+    tiled_matmul_compare(56*56, 128, 64,     // dimensions
             C3, filter4, NULL, C4,      // addresses
-            //1, 1, 1,                  //tiling
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type);
+            tiled_matmul_type, compare);
     // verbose(4,C3,filter4,C4) 
     /* end of fifth layer */
       
@@ -268,11 +303,10 @@ int main (int argc, char * argv[]) {
 
     int8_t C6[56*56][128] ={0};
     //TODO: call systolic array C6 = C5*filter6
-    tiled_matmul_option(56*56, 128, 128,    // dimensions
+    tiled_matmul_compare(56*56, 128, 128,    // dimensions
             C5, filter6, NULL, C6,      // addresses
-            //1, 1, 1,                  //tiling
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type);
+            tiled_matmul_type, compare);
     // verbose(6,C5,filter6,C6) 
     /* end of seventh layer */
 
@@ -296,11 +330,10 @@ int main (int argc, char * argv[]) {
 
     int8_t C8[28*28][256] ={0};
     //TODO: call systolic array C8 = C7*filter8
-    tiled_matmul_option(28*28, 256, 128,    // dimensions
+    tiled_matmul_compare(28*28, 256, 128,    // dimensions
             C7, filter8, NULL, C8,      // addresses
-            //1, 1, 1,                  //tiling
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type);
+            tiled_matmul_type, compare);
     // verbose(8,C7,filter8,C8) 
     /* end of 9th layer */
 
@@ -323,11 +356,10 @@ int main (int argc, char * argv[]) {
 
     int8_t C10[28*28][256] ={0};
     //TODO: call systolic array C10 = C9*filter10
-    tiled_matmul_option(28*28, 256, 256,    // dimensions
+    tiled_matmul_compare(28*28, 256, 256,    // dimensions
             C9, filter10, NULL, C10,    // addresses
-            //1, 1, 1,                  //tiling
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type);
+            tiled_matmul_type, compare);
     // verbose(10,C9,filter10,C10) 
     /* end of 11th layer */
        
@@ -351,11 +383,10 @@ int main (int argc, char * argv[]) {
     // it should be 14*14 but it doesn't divide by 16
     int8_t C12[13*16][512] ={0};
     //TODO: call systolic array C12 = C11*filter12
-    tiled_matmul_option(13*16, 512, 256,    // dimensions
+    tiled_matmul_compare(13*16, 512, 256,    // dimensions
             C11, filter12, NULL, C12,   // addresses
-            //1, 1, 1,                  //tiling
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type);
+            tiled_matmul_type, compare);
     // verbose(12,C11,filter12,C12) 
     /* end of 13th layer */
    
@@ -381,11 +412,10 @@ int main (int argc, char * argv[]) {
 
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter14
-    tiled_matmul_option(13*16, 512, 512,      // dimensions
+    tiled_matmul_compare(13*16, 512, 512,      // dimensions
                 C13, filter14, NULL, C12, // addresses
-                //1, 1, 1,                //tiling
                 1, RELU, 0, 0,            // no_bias, act, shift, r6_shift
-            tiled_matmul_type);
+            tiled_matmul_type, compare);
     // verbose(14,C13,filter14,C12) 
 
     end = read_cycles();
@@ -402,11 +432,10 @@ int main (int argc, char * argv[]) {
     // verbose(15,C12,filter15,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter16
-    tiled_matmul_option(13*16, 512, 512,        // dimensions
+    tiled_matmul_compare(13*16, 512, 512,        // dimensions
                 C13, filter16, NULL, C12,   // addresses
-                //1, 1, 1,                  //tiling
                 1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type);
+            tiled_matmul_type, compare);
     // verbose(16,C13,filter16,C12) 
 
     end = read_cycles();
@@ -422,11 +451,10 @@ int main (int argc, char * argv[]) {
     // verbose(17,C12,filter17,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter18
-    tiled_matmul_option(13*16, 512, 512,        // dimensions
+    tiled_matmul_compare(13*16, 512, 512,        // dimensions
                 C13, filter18, NULL, C12,   // addresses
-                //1, 1, 1,                  //tiling
                 1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type);
+            tiled_matmul_type, compare);
     // verbose(18,C13,filter18,C12) 
 
     end = read_cycles();
@@ -442,11 +470,10 @@ int main (int argc, char * argv[]) {
     // verbose(19,C12,filter19,C13);
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter20
-    tiled_matmul_option(13*16, 512, 512,        // dimensions
+    tiled_matmul_compare(13*16, 512, 512,        // dimensions
                 C13, filter20, NULL, C12,   // addresses
-                //1, 1, 1,                  //tiling
                 1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type);
+            tiled_matmul_type, compare);
     // verbose(20,C13,filter20,C12) 
     
     end = read_cycles();
@@ -463,11 +490,10 @@ int main (int argc, char * argv[]) {
 
     /* 1x1 conv */
     //TODO: call systolic array C12 = C13*filter22
-    tiled_matmul_option(13*16, 512, 512,        // dimensions
+    tiled_matmul_compare(13*16, 512, 512,        // dimensions
                 C13, filter22, NULL, C12,   // addresses
-                //1, 1, 1,                  //tiling
                 1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type);
+            tiled_matmul_type, compare);
     // verbose(22,C13,filter22,C12) 
     
     end = read_cycles();
@@ -492,11 +518,10 @@ int main (int argc, char * argv[]) {
     //it should 7*7 but replaced with 64 to divide 16
     int8_t C15[64][1024] ={0};
     //TODO: call systolic array C15 = C14*filter24
-    tiled_matmul_option(64, 1024, 512,      // dimensions
+    tiled_matmul_compare(64, 1024, 512,      // dimensions
             C14, filter24, NULL, C15,   // addresses
-            //1, 1, 1,                  //tiling
             1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
-            tiled_matmul_type);
+            tiled_matmul_type, compare);
     // verbose(24,C14,filter24,C15)
 
     end = read_cycles();
@@ -522,11 +547,10 @@ int main (int argc, char * argv[]) {
 
     int8_t C17[64][1024] ={0};
     //TODO: call systolic array C17 = C16*filter26
-    tiled_matmul_option(64, 1024, 1024,     // dimensions
+    tiled_matmul_compare(64, 1024, 1024,     // dimensions
             C16, filter26, NULL, C17,   // addresses
-            //1, 1, 1,                  //tiling
             1, RELU, 0, 0,             // no_bias, act, shift, r6_shift
-            tiled_matmul_type);
+            tiled_matmul_type, compare);
     // verbose(26,C16,filter26,C17) 
     /* end of 27th layer */
     
@@ -549,11 +573,10 @@ int main (int argc, char * argv[]) {
     /* 29th and last layer, FC, originally its 1024x1000, zeropadded to 1024x1008 */
     int8_t C19[16][1008];
     //TODO: call systolic array C19 = C18*fc27
-    tiled_matmul_option(16, 1008, 1024,    // dimensions
+    tiled_matmul_compare(16, 1008, 1024,    // dimensions
             C18, fc27, NULL, C19,      // addresses
-            //1, 1, 1,                 //tiling
             1, RELU, 0, 0,             // no_bias, act, shift, r6_shift
-            tiled_matmul_type);
+            tiled_matmul_type, compare);
     // verbose(28,C18,fc27,C19) 
 
     end = read_cycles();

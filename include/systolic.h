@@ -4,7 +4,7 @@
 #define SRC_MAIN_C_SYSTOLIC_H
 
 #include <stdint.h>
-#include <stdlib.h>
+#include <stdlib.h> // TODO remove this after we're sure all the tests include this explicitly
 #include <math.h>
 #include <limits.h>
 // TODO use stdbool.h as well
@@ -764,6 +764,7 @@ void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
 // General matmul which can be run with different dataflows, or on the CPU
 enum tiled_matmul_type_t {OS, WS, CPU};
 
+// TODO add support for non-divisible tiling factors
 static size_t tiling_factor(const size_t dimension, const size_t max_tile_factor) {
     const size_t start = dimension < max_tile_factor ? dimension : max_tile_factor;
 
@@ -774,11 +775,9 @@ static size_t tiling_factor(const size_t dimension, const size_t max_tile_factor
     return 1; // We should never reach here anyway
 }
 
-// TODO automatically calculate optimal tiling factors
 static void __attribute__((unused)) tiled_matmul_option(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
-        elem_t C[DIM_I][DIM_J], // size_t TILE_I, size_t TILE_J, size_t TILE_K,
-        int no_bias, int act, int shift, int relu6_shift,
+        elem_t C[DIM_I][DIM_J], int no_bias, int act, int shift, int relu6_shift,
         enum tiled_matmul_type_t tiled_matmul_type) {
     // const int partition_rows = BANK_NUM * BANK_ROWS / 2;
     // const int mats_in_partition = partition_rows / DIM;
