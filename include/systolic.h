@@ -661,7 +661,7 @@ static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
     for (size_t i0 = 0; i0 < I0; i0++)
       for (size_t j0 = 0; j0 < J0; j0++)
         for (size_t k0 = 0; k0 < K0; k0++) {
-          printf("i0: %lu, j0: %lu, k0: %lu\n", i0, j0, k0);
+          // printf("i0: %lu, j0: %lu, k0: %lu\n", i0, j0, k0);
 
           int first_mvin = i0 == 0 && j0 == 0 && k0 == 0;
           int last_mvout = (i0 == I0-1) && (j0 == J0-1) && (k0 == K0-1);
