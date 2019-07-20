@@ -661,7 +661,7 @@ static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
     for (size_t i0 = 0; i0 < I0; i0++)
       for (size_t j0 = 0; j0 < J0; j0++)
         for (size_t k0 = 0; k0 < K0; k0++) {
-          // printf("i0: %lu, j0: %lu, k0: %lu\n", i0, j0, k0);
+          printf("i0: %lu, j0: %lu, k0: %lu\n", i0, j0, k0);
 
           int first_mvin = i0 == 0 && j0 == 0 && k0 == 0;
           int last_mvout = (i0 == I0-1) && (j0 == J0-1) && (k0 == K0-1);
@@ -792,9 +792,13 @@ static void __attribute__((unused)) tiled_matmul_option(size_t DIM_I, size_t DIM
 #define max_tile_i_j ((int)sqrt(mats_in_acc))
 #define max_tile_k (mats_in_partition / max_tile_i_j)
 
-    const size_t tile_i = tiling_factor(DIM_I, max_tile_i_j);
-    const size_t tile_j = tiling_factor(DIM_J, max_tile_i_j);
-    const size_t tile_k = tiling_factor(DIM_K, max_tile_k);
+    const size_t tile_i = tiling_factor(DIM_I/DIM, max_tile_i_j);
+    const size_t tile_j = tiling_factor(DIM_J/DIM, max_tile_i_j);
+    const size_t tile_k = tiling_factor(DIM_K/DIM, max_tile_k);
+
+    // printf("tile_i: %lu\n", tile_i);
+    // printf("tile_j: %lu\n", tile_j);
+    // printf("tile_k: %lu\n", tile_k);
 
     if (tiled_matmul_type == OS) {
         tiled_matmul_os(DIM_I, DIM_J, DIM_K,

@@ -31,6 +31,14 @@ void full_printMatrix(elem_t m[MAT_DIM_I][MAT_DIM_J]) {
   }
 }
 
+void full_printMatrix64Bit(int64_t m[MAT_DIM_I][MAT_DIM_J]) {
+  for (size_t i = 0; i < MAT_DIM_I; ++i) {
+    for (size_t j = 0; j < MAT_DIM_J; ++j)
+      printf("%lld ", m[i][j]);
+    printf("\n");
+  }
+}
+
 int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]) {
   for (size_t i = 0; i < MAT_DIM_I; ++i)
     for (size_t j = 0; j < MAT_DIM_J; ++j)
@@ -85,7 +93,7 @@ int main() {
   for (enum tiled_matmul_type_t option = OS; option <= CPU; option++) {
     for (int activation = 0; activation <= 2; ++activation) {
       for (int shift = 0; shift <= 12; shift += 6) {
-        for (int relu6_shift = 0; shift <= 6; shift += 3) {
+        for (int relu6_shift = 0; relu6_shift <= 6; relu6_shift += 3) {
           for (int no_bias = 0; no_bias <= 1; no_bias += 1) {
             static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
             static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
@@ -143,6 +151,8 @@ int main() {
               full_printMatrix(full_C);
               printf("Gold:\n");
               full_printMatrix(gold);
+              printf("Gold full:\n");
+              full_printMatrix64Bit(gold_full);
               printf("\n");
 
               exit(1);
