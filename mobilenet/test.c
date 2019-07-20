@@ -109,16 +109,20 @@ static void tiled_matmul_compare(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         enum tiled_matmul_type_t tiled_matmul_type,
         bool compare, char * layer_name)
 {
+    if (compare)
+        printf("%s: systolic\n", layer_name);
     tiled_matmul_option(DIM_I, DIM_J, DIM_K,
         A, B, D, C, no_bias, act, shift, relu6_shift,
         tiled_matmul_type);
 
     if (compare) {
+        printf("%s: CPU\n", layer_name);
         elem_t gold[DIM_I][DIM_J];
         tiled_matmul_option(DIM_I, DIM_J, DIM_K,
             A, B, D, gold, no_bias, act, shift, relu6_shift,
             CPU);
 
+        printf("%s: comparing\n", layer_name);
         for (size_t i = 0; i < DIM_I; i++) {
             for (size_t j = 0; j < DIM_J; j++) {
                 if (C[i][j] != gold[i][j]) {
@@ -169,6 +173,14 @@ int main (int argc, char * argv[]) {
     ///////// first layer - sys array///////////
     //stride = 2
     int8_t img[rgb][img_dim1][img_dim2] = {0};
+    // TODO initialize img with random values
+    /*for (size_t i = 0; i < img_dim1; i++) {
+        for (size_t j = 0; j < img_dim2; j++) {
+            for (size_t k = 0; k < rgb; k++) {
+                img[k][i][j] = (rand()%3)-1;
+            }
+        }
+    }*/
     int8_t A[img_dim1*img_dim2/2/2][32] = {0};//it should be 27 but for zeropad
     int kdim = 3;
     //reshape(img,rgb,img_dim1,img_dim2,kdim,A);// reshape img and store it in A
@@ -592,6 +604,13 @@ int main (int argc, char * argv[]) {
         printf("Cycles taken in layer %d: %lu\n", cyc,cycles[cyc]);
     }
     printf("Overall cycles taken: %lu\n",overall_cycles);
+
+    /*for (int i = 0; i < LEN(C19); i++) {
+        for (int j = 0; j < LEN(C19[0]); j++) {
+            printf ("%d,", C19[i][j]);
+        }
+        printf("\n");
+    }*/
 
     return 0;
 }
