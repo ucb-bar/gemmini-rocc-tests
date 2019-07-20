@@ -14,12 +14,21 @@
 
 #define NO_BIAS 1
 
+#ifndef BAREMETAL
 #define MAT_DIM_I 512
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
 #define TILE_I_FACTOR 8
 #define TILE_J_FACTOR 8
 #define TILE_K_FACTOR 32
+#else
+#define MAT_DIM_I 64
+#define MAT_DIM_K 64
+#define MAT_DIM_J 64
+#define TILE_I_FACTOR 2
+#define TILE_J_FACTOR 2
+#define TILE_K_FACTOR 2
+#endif
 
 #if ((MAT_DIM_I % (TILE_I_FACTOR*DIM)) != 0) || ((MAT_DIM_J % (TILE_J_FACTOR*DIM)) != 0) || ((MAT_DIM_K % (TILE_K_FACTOR*DIM)) != 0)
 #error Matrix dimensions are not divisble by tiling factors
@@ -79,12 +88,12 @@ void full_matshift(int64_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT
 } 
 
 int main() {
-    #ifndef BAREMETAL
+#ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
       perror("mlockall failed");
       exit(1);
     }
-    #endif
+#endif
 
     matmul_flush(0);
 

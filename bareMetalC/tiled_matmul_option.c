@@ -10,9 +10,15 @@
 #endif
 #include "include/systolic.h"
 
+#ifndef BAREMETAL
 #define MAT_DIM_I 256
 #define MAT_DIM_K 256
 #define MAT_DIM_J 256
+#else
+#define MAT_DIM_I 32
+#define MAT_DIM_K 32
+#define MAT_DIM_J 32
+#endif
 
 void full_matmul(elem_t A[MAT_DIM_I][MAT_DIM_K], elem_t B[MAT_DIM_K][MAT_DIM_J], acc_t D[MAT_DIM_I][MAT_DIM_J], int64_t C_full[MAT_DIM_I][MAT_DIM_J]) {
   for (size_t r = 0; r < MAT_DIM_I; r++)
@@ -81,20 +87,28 @@ void full_matrelu6(elem_t in[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_DI
 }
 
 int main() {
-  #ifndef BAREMETAL
+#ifndef BAREMETAL
   if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
     perror("mlockall failed");
     exit(1);
   }
-  #endif
+#endif
 
   matmul_flush(0);
 
+#ifdef BAREMETAL
+  for (enum tiled_matmul_type_t option = OS; option <= WS; option++) {
+    for (int activation = 0; activation <= 1; activation++) {
+      for (int shift = 0; shift <= 6; shift += 6) {
+        for (int relu6_shift = 0; relu6_shift <= 3; relu6_shift += 3) {
+          for (int no_bias = 0; no_bias <= 1; no_bias += 1) {
+#else
   for (enum tiled_matmul_type_t option = OS; option <= CPU; option++) {
-    for (int activation = 0; activation <= 2; ++activation) {
+    for (int activation = 0; activation <= 2; activation++) {
       for (int shift = 0; shift <= 12; shift += 6) {
         for (int relu6_shift = 0; relu6_shift <= 6; relu6_shift += 3) {
           for (int no_bias = 0; no_bias <= 1; no_bias += 1) {
+#endif
             static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
             static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
             static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
