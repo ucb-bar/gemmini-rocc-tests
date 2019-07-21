@@ -108,6 +108,11 @@ int main() {
       for (int shift = 0; shift <= 12; shift += 6) {
         for (int relu6_shift = 0; relu6_shift <= 6; relu6_shift += 3) {
           for (int no_bias = 0; no_bias <= 1; no_bias += 1) {
+            // printf("option: %d\n", option);
+            // printf("activation: %d\n", activation);
+            // printf("shift: %d\n", shift);
+            // printf("relu6_shift: %d\n", relu6_shift);
+            // printf("no_bias: %d\n", no_bias);
 #endif
             static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
             static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
@@ -155,6 +160,7 @@ int main() {
                     option);
 
             if (!full_is_equal(full_C, gold)) {
+              printf("\nINCORRECT!\n");
               printf("option: %d\n", option);
               printf("activation: %d\n", activation);
               printf("shift: %d\n", shift);

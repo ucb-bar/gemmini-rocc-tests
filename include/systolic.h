@@ -4,7 +4,7 @@
 #define SRC_MAIN_C_SYSTOLIC_H
 
 #include <stdint.h>
-#include <stdlib.h> // TODO remove this after we're sure all the tests include this explicitly
+#include <stdlib.h>
 #include <math.h>
 #include <limits.h>
 // TODO use stdbool.h as well
@@ -103,6 +103,15 @@ int is_equal(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
   return 1;
 }
 
+#define MAT_CHECK_EQUAL(dim_i, dim_j, x, y, errmsg) \
+    for (size_t i = 0; i < dim_i; i++) \
+        for (size_t j = 0; j < dim_j; ++j) \
+          if (x[i][j] != y[i][j]) { \
+              if (errmsg != NULL) { \
+                  puts(errmsg); \
+              } \
+              exit(1); \
+          }
 
 int rand() {
   static uint32_t x = 777;

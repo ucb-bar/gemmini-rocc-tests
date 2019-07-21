@@ -123,14 +123,18 @@ static void tiled_matmul_compare(size_t DIM_I, size_t DIM_J, size_t DIM_K,
             CPU);
 
         printf("%s: comparing\n", layer_name);
-        for (size_t i = 0; i < DIM_I; i++) {
-            for (size_t j = 0; j < DIM_J; j++) {
-                if (C[i][j] != gold[i][j]) {
-                    printf("Layer calculated incorrectly: %s\n", layer_name);
-                    exit(1);
-                }
-            }
-        }
+        char errmsg[256];
+        sprintf(errmsg, "Layer calculated incorrectly: %s\n", layer_name);
+        MAT_CHECK_EQUAL(DIM_I, DIM_J, C, gold, errmsg);
+
+        // for (size_t i = 0; i < DIM_I; i++) {
+        //     for (size_t j = 0; j < DIM_J; j++) {
+        //         if (C[i][j] != gold[i][j]) {
+        //             printf("Layer calculated incorrectly: %s\n", layer_name);
+        //             exit(1);
+        //         }
+        //     }
+        // }
     }
 }
 
