@@ -15,7 +15,7 @@ int compute_index(int c,int i, int j, int dim1, int dim2){
 
 }
 /*
-void reshape(int8_t* img, int channels,int dim1,int dim2,int kdim,int8_t* A){
+void reshape(elem_t* img, int channels,int dim1,int dim2,int kdim,elem_t* A){
     int w1,w2,channel,i,j;
     int k = 0;
     int row = 0;
@@ -37,7 +37,7 @@ void reshape(int8_t* img, int channels,int dim1,int dim2,int kdim,int8_t* A){
         }
     }
 }
-    void zeropad(int8_t* img,int channels,int dim1,int dim2,int kdim1,int kdim2,int8_t* new_img){
+    void zeropad(elem_t* img,int channels,int dim1,int dim2,int kdim1,int kdim2,elem_t* new_img){
         int i,j,c;
         for(c=0;c<channels;c++)
         for(i = 0; i<dim1;i++){
@@ -48,7 +48,7 @@ void reshape(int8_t* img, int channels,int dim1,int dim2,int kdim,int8_t* A){
 
     }
     */
-    void zeropad_array(int8_t array[][32],int dim1,int dim2, int8_t* new_array){
+    void zeropad_array(elem_t array[][32],int dim1,int dim2, elem_t* new_array){
     //    if(dim1%DIM ==0 && dim2%DIM==0){
     //        new_array=array;
     //        return;
@@ -63,12 +63,12 @@ void reshape(int8_t* img, int channels,int dim1,int dim2,int kdim,int8_t* A){
     }
     
 
-    void check_dimensions(int8_t* a, int8_t* b){
+    void check_dimensions(elem_t* a, elem_t* b){
         printf("a %d b %d ", LEN(a),LEN(b));
     }
 
 
-void dwconv(int num_imgs, int8_t C[][num_imgs],int8_t old_C[][num_imgs],int8_t filter[][num_imgs],int dim1,int dim2,int kdim,int stride){
+void dwconv(int num_imgs, elem_t C[][num_imgs],elem_t old_C[][num_imgs],elem_t filter[][num_imgs],int dim1,int dim2,int kdim,int stride){
     int id,comp_pixel,res_pixel,fidx,w1,w2,i,j;
     for(id=0;id<num_imgs;id++){
         for(w1=0;w1<dim1;w1+=stride){
@@ -93,7 +93,7 @@ void dwconv(int num_imgs, int8_t C[][num_imgs],int8_t old_C[][num_imgs],int8_t f
     }
 }
 
-void pool7(int len, int8_t in[][len],int8_t out[][len]){
+void pool7(int len, elem_t in[][len],elem_t out[][len]){
     int i, j;
     for(i=0;i<len;i++){
         for(j=0;j<7*7;j++){
@@ -176,7 +176,7 @@ int main (int argc, char * argv[]) {
 
     ///////// first layer - sys array///////////
     //stride = 2
-    int8_t img[rgb][img_dim1][img_dim2] = {0};
+    elem_t img[rgb][img_dim1][img_dim2] row_align(1) = {0};
     // TODO initialize img with random values
     /*for (size_t i = 0; i < img_dim1; i++) {
         for (size_t j = 0; j < img_dim2; j++) {
@@ -185,7 +185,7 @@ int main (int argc, char * argv[]) {
             }
         }
     }*/
-    int8_t A[img_dim1*img_dim2/2/2][32] = {0};//it should be 27 but for zeropad
+    elem_t A[img_dim1*img_dim2/2/2][32] row_align(1) = {0};//it should be 27 but for zeropad
     int kdim = 3;
     //reshape(img,rgb,img_dim1,img_dim2,kdim,A);// reshape img and store it in A
     int w1,w2,channel,i,j;
@@ -214,7 +214,7 @@ int main (int argc, char * argv[]) {
     int new_fdim1 = fdim1-fdim1%DIM+DIM;//32
     int new_fdim2 = fdim2-fdim2%DIM+DIM;//32
     
-    int8_t zpf0[32][32]={0}; //new_fdim1*new_fdim2
+    elem_t zpf0[32][32]={0}; //new_fdim1*new_fdim2
     int dim1=27;
     int dim2=32;
     for(i = 0; i<dim1;i++){
@@ -237,7 +237,7 @@ int main (int argc, char * argv[]) {
     ////// replace upper part by immediate generation of zeropadded filters ///// 
     
     start = read_cycles();
-    int8_t C0[112*112][32] = {0};
+    elem_t C0[112*112][32] row_align(1) = {0};
     /* TODO: call systolic array C0 = A*filter0 */
     // I = 112*112, J = 32, K = 32
     tiled_matmul_compare(112*112, 32, 32,    // dimensions
@@ -253,7 +253,7 @@ int main (int argc, char * argv[]) {
     
     /* second layer, depthwise conv, Ameer decided to put it on  on rocket*/
     int num_imgs = 32;
-    int8_t C1[112*112][32] ={0};
+    elem_t C1[112*112][32] row_align(1) = {0};
     dwconv(num_imgs, C1,C0,filter1,112,112,3,1);
     // verbose(1,C0,filter1,C1) 
     /* end of second layer*/
@@ -264,7 +264,7 @@ int main (int argc, char * argv[]) {
     
     /* third layer, directly matmul because it is 1x1 conv, hell yeah!!*/
 
-    int8_t C2[112*112][64] ={0};
+    elem_t C2[112*112][64] row_align(1) = {0};
     //TODO: call systolic array C2 = C1*filter2
     // I = 112*112, J = 64, K = 32
     tiled_matmul_compare(112*112, 64, 32,    // dimensions
@@ -281,7 +281,7 @@ int main (int argc, char * argv[]) {
     /* fourth layer, depthwise conv, on rocket*/
 
     num_imgs = 64;
-    int8_t C3[56*56][64] ={0};
+    elem_t C3[56*56][64] row_align(1) = {0};
     dwconv(num_imgs, C3,C2,filter3,112,112,3,2);
     // verbose(3,C2,filter3,C3) 
     /* end of fourth layer*/
@@ -292,7 +292,7 @@ int main (int argc, char * argv[]) {
     
     /* fifth layer, directly matmul because it is 1x1 conv, hell yeah!!*/
 
-    int8_t C4[56*56][128] ={0};
+    elem_t C4[56*56][128] row_align(1) = {0};
     //TODO: call systolic array C4 = C3*filter4
     // I = 56*56, J = 128, K = 64
     tiled_matmul_compare(56*56, 128, 64,     // dimensions
@@ -308,7 +308,7 @@ int main (int argc, char * argv[]) {
      
     /* sixth layer, depthwise conv, on rocket*/
     num_imgs = 128;
-    int8_t C5[56*56][128] ={0};
+    elem_t C5[56*56][128] row_align(1) = {0};
     dwconv(num_imgs, C5,C4,filter5,56,56,3,1);
     // verbose(5,C4,filter5,C5) 
     /* end of sixth layer*/
@@ -319,7 +319,7 @@ int main (int argc, char * argv[]) {
 
     /* seventh layer, directly matmul because it is 1x1 conv, hell yeah!!*/
 
-    int8_t C6[56*56][128] ={0};
+    elem_t C6[56*56][128] row_align(1) = {0};
     //TODO: call systolic array C6 = C5*filter6
     tiled_matmul_compare(56*56, 128, 128,    // dimensions
             C5, filter6, NULL, C6,      // addresses
@@ -335,7 +335,7 @@ int main (int argc, char * argv[]) {
 
     /* 8th layer, depthwise conv, on rocket*/
     num_imgs = 128;
-    int8_t C7[28*28][128] ={0};
+    elem_t C7[28*28][128] row_align(1) = {0};
     dwconv(num_imgs, C7,C6,filter7,56,56,3,2);
     // verbose(7,C6,filter7,C7) 
     /* end of 8th layer*/
@@ -346,7 +346,7 @@ int main (int argc, char * argv[]) {
 
     /* 9th layer, directly matmul because it is 1x1 conv, hell yeah!!*/
 
-    int8_t C8[28*28][256] ={0};
+    elem_t C8[28*28][256] row_align(1) = {0};
     //TODO: call systolic array C8 = C7*filter8
     tiled_matmul_compare(28*28, 256, 128,    // dimensions
             C7, filter8, NULL, C8,      // addresses
@@ -361,7 +361,7 @@ int main (int argc, char * argv[]) {
         
     /* 10th layer, depthwise conv, on rocket*/
     num_imgs = 256;
-    int8_t C9[28*28][256] ={0};
+    elem_t C9[28*28][256] row_align(1) = {0};
     dwconv(num_imgs, C9,C8,filter9,28,28,3,1);
     // verbose(9,C8,filter9,C9) 
     /* end of 10th layer*/
@@ -372,7 +372,7 @@ int main (int argc, char * argv[]) {
 
     /* 11th layer, directly matmul because it is 1x1 conv, hell yeah!!*/
 
-    int8_t C10[28*28][256] ={0};
+    elem_t C10[28*28][256] row_align(1) = {0};
     //TODO: call systolic array C10 = C9*filter10
     tiled_matmul_compare(28*28, 256, 256,    // dimensions
             C9, filter10, NULL, C10,    // addresses
@@ -388,7 +388,7 @@ int main (int argc, char * argv[]) {
     /* 12th layer, depthwise conv, on rocket*/
     num_imgs = 256;
     // it should be 14*14 but it doesn't divide by 16
-    int8_t C11[13*16][256] ={0};
+    elem_t C11[13*16][256] row_align(1) = {0};
     dwconv(num_imgs, C11,C10,filter11,28,28,3,2);
     // verbose(11,C10,filter11,C11) 
     /* end of 12th layer*/
@@ -399,7 +399,7 @@ int main (int argc, char * argv[]) {
 
     /* 13th layer, directly matmul because it is 1x1 conv, hell yeah!!*/
     // it should be 14*14 but it doesn't divide by 16
-    int8_t C12[13*16][512] ={0};
+    elem_t C12[13*16][512] row_align(1) = {0};
     //TODO: call systolic array C12 = C11*filter12
     tiled_matmul_compare(13*16, 512, 256,    // dimensions
             C11, filter12, NULL, C12,   // addresses
@@ -417,8 +417,8 @@ int main (int argc, char * argv[]) {
     num_imgs = 512;
     
     // it should be 14*14 but it doesn't divide by 16
-    int8_t C13[13*16][512] = {0};
-    //int8_t C14[14*14][512] = {0};
+    elem_t C13[13*16][512] row_align(1) = {0};
+    //elem_t C14[14*14][512] row_align(1) = {0};
 
 /* 5 repeated depthwise and 1x1 layers */
     /* dw conv */
@@ -523,7 +523,7 @@ int main (int argc, char * argv[]) {
     /* 24th layer, depthwise conv, on rocket*/
     num_imgs = 512;
     //it should 7*7 but replaced with 64 to divide 16
-    int8_t C14[64][512] ={0};
+    elem_t C14[64][512] row_align(1) = {0};
     dwconv(num_imgs, C14,C13,filter23,14,14,3,2);
     // verbose(23,C13,filter23,C14) 
     /* end of 24th layer*/
@@ -534,7 +534,7 @@ int main (int argc, char * argv[]) {
 
     /* 25th layer, directly matmul because it is 1x1 conv, hell yeah!!*/
     //it should 7*7 but replaced with 64 to divide 16
-    int8_t C15[64][1024] ={0};
+    elem_t C15[64][1024] row_align(1) = {0};
     //TODO: call systolic array C15 = C14*filter24
     tiled_matmul_compare(64, 1024, 512,      // dimensions
             C14, filter24, NULL, C15,   // addresses
@@ -551,7 +551,7 @@ int main (int argc, char * argv[]) {
     /* 26th layer, depthwise conv, on rocket*/
     //it should 7*7 but replaced with 64 to divide 16
     num_imgs = 1024;
-    int8_t C16[64][1024] ={0};
+    elem_t C16[64][1024] row_align(1) = {0};
     dwconv(num_imgs, C16,C15,filter25,7,7,3,1);
     // verbose(25,C15,filter25,C16)
     /* end of 26th layer*/
@@ -563,7 +563,7 @@ int main (int argc, char * argv[]) {
     /* 27th layer, directly matmul because it is 1x1 conv, hell yeah!!*/
     //it should 7*7 but replaced with 64 to divide 16
 
-    int8_t C17[64][1024] ={0};
+    elem_t C17[64][1024] row_align(1) = {0};
     //TODO: call systolic array C17 = C16*filter26
     tiled_matmul_compare(64, 1024, 1024,     // dimensions
             C16, filter26, NULL, C17,   // addresses
@@ -577,10 +577,10 @@ int main (int argc, char * argv[]) {
     start = end;
     
     /* 28th layer, pooling, on rocket, can be done on the array with fixed point divison*/
-    //int8_t C18[1*1][1024] ={0}; this is replaced with 16 for zeropadding for the FC...
-    int8_t C18[16][1024] ={0};
+    //elem_t C18[1*1][1024] row_align(1) = {0}; this is replaced with 16 for zeropadding for the FC...
+    elem_t C18[16][1024] row_align(1) = {0};
     pool7(1024,C17,C18);
-    //int8_t garbage[7][7] = {0};
+    //elem_t garbage[7][7] row_align(1) = {0};
     // verbose(27,C17,garbage,C18) 
     /*end of 28th layer */    
 
@@ -589,7 +589,7 @@ int main (int argc, char * argv[]) {
     start = end;
     
     /* 29th and last layer, FC, originally its 1024x1000, zeropadded to 1024x1008 */
-    int8_t C19[16][1008];
+    elem_t C19[16][1008] row_align(1) = {0};
     //TODO: call systolic array C19 = C18*fc27
     tiled_matmul_compare(16, 1008, 1024,    // dimensions
             C18, fc27, NULL, C19,      // addresses
@@ -618,3 +618,4 @@ int main (int argc, char * argv[]) {
 
     return 0;
 }
+
