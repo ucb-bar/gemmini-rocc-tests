@@ -45,14 +45,6 @@ void full_printMatrix64Bit(int64_t m[MAT_DIM_I][MAT_DIM_J]) {
   }
 }
 
-int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]) {
-  for (size_t i = 0; i < MAT_DIM_I; ++i)
-    for (size_t j = 0; j < MAT_DIM_J; ++j)
-      if (x[i][j] != y[i][j])
-        return 0;
-  return 1;
-}
-
 void full_matshift(int64_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_DIM_J], int shift) {
   int divisor = 1 << shift;
 
@@ -99,8 +91,8 @@ int main() {
 #ifdef BAREMETAL
   for (enum tiled_matmul_type_t option = OS; option <= WS; option++) {
     for (int activation = 0; activation <= 1; activation++) {
-      for (int shift = 0; shift <= 6; shift += 6) {
-        for (int relu6_shift = 0; relu6_shift <= 3; relu6_shift += 3) {
+      for (int shift = 0; shift <= 1; shift += 1) {
+        for (int relu6_shift = 0; relu6_shift <= 1; relu6_shift += 1) {
           for (int no_bias = 0; no_bias <= 1; no_bias += 1) {
 #else
   for (enum tiled_matmul_type_t option = OS; option <= CPU; option++) {
@@ -108,11 +100,6 @@ int main() {
       for (int shift = 0; shift <= 12; shift += 6) {
         for (int relu6_shift = 0; relu6_shift <= 6; relu6_shift += 3) {
           for (int no_bias = 0; no_bias <= 1; no_bias += 1) {
-            // printf("option: %d\n", option);
-            // printf("activation: %d\n", activation);
-            // printf("shift: %d\n", shift);
-            // printf("relu6_shift: %d\n", relu6_shift);
-            // printf("no_bias: %d\n", no_bias);
 #endif
             static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
             static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);

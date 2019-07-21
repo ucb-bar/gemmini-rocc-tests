@@ -103,15 +103,20 @@ int is_equal(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
   return 1;
 }
 
-#define MAT_CHECK_EQUAL(dim_i, dim_j, x, y, errmsg) \
-    for (size_t i = 0; i < dim_i; i++) \
+// This is a GNU extension known as statment expressions
+#ifndef TEST_QUEUES
+#define MAT_IS_EQUAL(dim_i, dim_j, x, y, errmsg) \
+    ({int result = 1; \
+      for (size_t i = 0; i < dim_i; i++) \
         for (size_t j = 0; j < dim_j; ++j) \
           if (x[i][j] != y[i][j]) { \
-              if (errmsg != NULL) { \
-                  puts(errmsg); \
-              } \
-              exit(1); \
-          }
+            result = 0; \
+            break; \
+          } \
+      result;})
+#else
+#define MAT_IS_EQUAL(dim_i, dim_j, x, y, errmsg) 1
+#endif
 
 int rand() {
   static uint32_t x = 777;
@@ -119,15 +124,18 @@ int rand() {
   return x >> 24;
 }
 
-unsigned long read_cycles() {
 #ifndef TEST_QUEUES
+unsigned long read_cycles() {
     unsigned long cycles;
     asm volatile ("rdcycle %0" : "=r" (cycles));
     return cycles;
-#else
-    return 0;
-#endif
 }
+#else
+#include <x86intrin.h>
+unsigned long read_cycles() {
+    return __rdtsc();
+}
+#endif
 
 // Accelerator interface
 #ifndef TEST_QUEUES
@@ -167,7 +175,7 @@ static int st_to_ex_q = 0;
 static int ex_to_ld_q = 0;
 static int ex_to_st_q = 0;
 
-static void push_pull_queues(int funct_, int rs1) {
+static void push_pull_queues(uint64_t funct_, uint64_t rs1) {
   int deps = funct_ >> 3;
   int funct = funct_ & 7;
   int config = rs1 & 3;
@@ -224,8 +232,24 @@ static void push_pull_queues(int funct_, int rs1) {
   }
 }
 
+static int all_queues_empty() {
+	if(ld_to_st_q != 0)
+		return 0;
+	if(ld_to_ex_q != 0)
+		return 0;
+	if(st_to_ld_q != 0)
+		return 0;
+	if(st_to_ex_q != 0)
+		return 0;
+	if(ex_to_ld_q != 0)
+		return 0;
+	if(ex_to_st_q != 0)
+		return 0;
+    return 1;
+}
+
 #define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct) \
-  push_pull_queues(funct, rs1)
+  push_pull_queues((uint64_t)funct, (uint64_t)rs1)
 #endif
 
 #define to_deps(push1, pop1, push2, pop2) \
@@ -667,12 +691,16 @@ static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
     matmul_fence();
 
 #ifdef TEST_QUEUES
-	printf("ld_to_st_q: %d\n", ld_to_st_q);
-	printf("ld_to_ex_q: %d\n", ld_to_ex_q);
-	printf("st_to_ld_q: %d\n", st_to_ld_q);
-	printf("st_to_ex_q: %d\n", st_to_ex_q);
-	printf("ex_to_ld_q: %d\n", ex_to_ld_q);
-	printf("ex_to_st_q: %d\n", ex_to_st_q);
+    if (!all_queues_empty()) {
+        printf("All queues not empty!");
+        printf("ld_to_st_q: %d\n", ld_to_st_q);
+        printf("ld_to_ex_q: %d\n", ld_to_ex_q);
+        printf("st_to_ld_q: %d\n", st_to_ld_q);
+        printf("st_to_ex_q: %d\n", st_to_ex_q);
+        printf("ex_to_ld_q: %d\n", ex_to_ld_q);
+        printf("ex_to_st_q: %d\n", ex_to_st_q);
+        exit(1);
+    }
 #endif
 }
 
@@ -711,6 +739,19 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         }
 
     matmul_fence();
+
+#ifdef TEST_QUEUES
+    if (!all_queues_empty()) {
+        printf("All queues not empty!");
+        printf("ld_to_st_q: %d\n", ld_to_st_q);
+        printf("ld_to_ex_q: %d\n", ld_to_ex_q);
+        printf("st_to_ld_q: %d\n", st_to_ld_q);
+        printf("st_to_ex_q: %d\n", st_to_ex_q);
+        printf("ex_to_ld_q: %d\n", ex_to_ld_q);
+        printf("ex_to_st_q: %d\n", ex_to_st_q);
+        exit(1);
+    }
+#endif
 }
 
 void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
