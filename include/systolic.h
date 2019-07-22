@@ -573,7 +573,7 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
             } else {
               matmul_preload(pre_sp_addr, out_sp_addr, 0, 1, 0, 1);
             }
-          } else if (final_submatrix) { 
+          } else if (final_submatrix) {
             // Last iteration, when we calculate final sub-matrix
             if (push_to_load) {
               matmul_preload(pre_sp_addr, out_sp_addr, 1, 1, 1, 0);
@@ -707,12 +707,66 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
 void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
         elem_t C[DIM_I][DIM_J], int no_bias, int act, int shift, int relu6_shift) {
+  if (DIM_I % 4 == 0 && DIM_J % 4 == 0) {
+    for (size_t i = 0; i < DIM_I; i += 4) {
+      for (size_t j = 0; j < DIM_J; j += 4) {
+        acc_t result[4][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}};
+        for (size_t k = 0; k < DIM_K; k++) {
+          result[0][0] += A[i  ][k] * B[k][j  ];
+          result[0][1] += A[i  ][k] * B[k][j+1];
+          result[0][2] += A[i  ][k] * B[k][j+2];
+          result[0][3] += A[i  ][k] * B[k][j+3];
+
+          result[1][0] += A[i+1][k] * B[k][j  ];
+          result[1][1] += A[i+1][k] * B[k][j+1];
+          result[1][2] += A[i+1][k] * B[k][j+2];
+          result[1][3] += A[i+1][k] * B[k][j+3];
+
+          result[2][0] += A[i+2][k] * B[k][j  ];
+          result[2][1] += A[i+2][k] * B[k][j+1];
+          result[2][2] += A[i+2][k] * B[k][j+2];
+          result[2][3] += A[i+2][k] * B[k][j+3];
+
+          result[3][0] += A[i+3][k] * B[k][j  ];
+          result[3][1] += A[i+3][k] * B[k][j+1];
+          result[3][2] += A[i+3][k] * B[k][j+2];
+          result[3][3] += A[i+3][k] * B[k][j+3];
+        }
+        C[i  ][j  ] = result[0][0];
+        C[i  ][j+1] = result[0][1];
+        C[i  ][j+2] = result[0][2];
+        C[i  ][j+3] = result[0][3];
+
+        C[i+1][j  ] = result[1][0];
+        C[i+1][j+1] = result[1][1];
+        C[i+1][j+2] = result[1][2];
+        C[i+1][j+3] = result[1][3];
+
+        C[i+2][j  ] = result[2][0];
+        C[i+2][j+1] = result[2][1];
+        C[i+2][j+2] = result[2][2];
+        C[i+2][j+3] = result[2][3];
+
+        C[i+3][j  ] = result[3][0];
+        C[i+3][j+1] = result[3][1];
+        C[i+3][j+2] = result[3][2];
+        C[i+3][j+3] = result[3][3];
+      }
+    }
+  } else {
+    for (size_t i = 0; i < DIM_I; i++) {
+      for (size_t j = 0; j < DIM_J; j++) {
+        acc_t result = 0;
+        for (size_t k = 0; k < DIM_K; k++) {
+          result += A[i][k] * B[k][j];
+        }
+        C[i][j] = result;
+      }
+    }
+  }
   for (size_t i = 0; i < DIM_I; i++) {
     for (size_t j = 0; j < DIM_J; j++) {
-      acc_t result = no_bias ? 0 : D[i][j];
-      for (size_t k = 0; k < DIM_K; k++) {
-        result += A[i][k] * B[k][j];
-      }
+      acc_t result = C[i][j] + (no_bias ? 0 : D[i][j]);
 
       // Scale value down and round it
       const int divisor = 1 << shift;
@@ -805,4 +859,3 @@ static void __attribute__((unused)) tiled_matmul_option(size_t DIM_I, size_t DIM
 }
 
 #endif  // SRC_MAIN_C_SYSTOLIC_H
-
