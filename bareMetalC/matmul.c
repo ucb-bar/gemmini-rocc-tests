@@ -118,7 +118,7 @@ void test_os() {
       }
 
       // printf("Setting mode\n");
-      matmul_config_ex(OUTPUT_STATIONARY, activation, shift, relu6_shift, 0, 1, 0, 0);
+      matmul_config_ex(OUTPUT_STATIONARY, activation, shift, 0, relu6_shift, 0, 1, 0, 0);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
@@ -298,7 +298,6 @@ void test_ws() {
       int A_addr = 0;
       int B_addr = BANK_ROWS; // N*DIM;
       int D_addr = 2*BANK_ROWS; // 2*N*DIM;
-      int C_addr = 3*BANK_ROWS; // 3*N*DIM;
       uint32_t C_addr_acc = 1 << (ADDR_LEN-1);
 
       // Calculate the proper destination addresses of everything
@@ -329,7 +328,7 @@ void test_ws() {
         }
 
       // printf("Setting mode\n");
-      matmul_config_ex(WEIGHT_STATIONARY, activation, shift, relu6_shift, 0, 1, 0, 0);
+      matmul_config_ex(WEIGHT_STATIONARY, activation, 0, shift, relu6_shift, 0, 1, 0, 0);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {

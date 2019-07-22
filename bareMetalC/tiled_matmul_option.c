@@ -78,6 +78,14 @@ void full_matrelu6(elem_t in[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_DI
     }
 }
 
+int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]) {
+  for (size_t i = 0; i < MAT_DIM_I; ++i)
+    for (size_t j = 0; j < MAT_DIM_J; ++j)
+      if (x[i][j] != y[i][j])
+        return 0;
+  return 1;
+}
+
 int main() {
 #ifndef BAREMETAL
   if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {

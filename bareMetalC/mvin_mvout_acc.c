@@ -55,7 +55,7 @@ int main() {
 
       // printf("Config\n");
       matmul_config_ld(DIM*sizeof(acc_t), 0, 0, 0, 0);
-      matmul_config_ex(0, activation, shift, relu6_shift, 0, 0, 1, 0);
+      matmul_config_ex(0, activation, 0, shift, relu6_shift, 0, 0, 1, 0);
       matmul_config_st(DIM*sizeof(elem_t), 0, 0, 0, 1);
 
       for (size_t n = 0; n < N; ++n) {

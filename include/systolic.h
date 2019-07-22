@@ -105,7 +105,7 @@ int is_equal(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
 
 // This is a GNU extension known as statment expressions
 #ifndef TEST_QUEUES
-#define MAT_IS_EQUAL(dim_i, dim_j, x, y, errmsg) \
+#define MAT_IS_EQUAL(dim_i, dim_j, x, y) \
     ({int result = 1; \
       for (size_t i = 0; i < dim_i; i++) \
         for (size_t j = 0; j < dim_j; ++j) \
@@ -280,8 +280,8 @@ static int all_queues_empty() {
   matmul_preload(GARBAGE_ADDR, C, push_mvin, pop_mvin, push_mvout, pop_mvout)
 
 // config
-#define matmul_config_ex(mode, act, shift, relu6_shift, push_mvin, pop_mvin, push_mvout, pop_mvout) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((act) << 3) | ((mode) << 2) | CONFIG_EX, ((uint64_t)relu6_shift << 32) | shift, (to_deps(push_mvin, pop_mvin, push_mvout, pop_mvout)) | (k_CONFIG))
+#define matmul_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, push_mvin, pop_mvin, push_mvout, pop_mvout) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(acc_shift) << 32) | ((act) << 3) | ((mode) << 2) | CONFIG_EX, ((uint64_t)(relu6_shift) << 32) | (sys_shift), (to_deps(push_mvin, pop_mvin, push_mvout, pop_mvout)) | (k_CONFIG))
 
 #define matmul_config_ld(stride, push_mvout, pop_mvout, push_ex, pop_ex) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_LD, stride, (to_deps(push_mvout, pop_mvout, push_ex, pop_ex)) | (k_CONFIG))
@@ -667,7 +667,7 @@ static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
       D = (int (*)[DIM_J]) 1; // Dummy address which isn't NULL
     }
 
-    matmul_config_ex(OUTPUT_STATIONARY, act, shift, relu6_shift, 0, 0, 0, 0);
+    matmul_config_ex(OUTPUT_STATIONARY, act, 0, shift, relu6_shift, 0, 0, 0, 0);
 
     for (size_t i0 = 0; i0 < I0; i0++)
       for (size_t j0 = 0; j0 < J0; j0++)
@@ -717,7 +717,7 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
       D = (int (*)[DIM_J]) 1; // Dummy address which isn't NULL
     }
 
-    matmul_config_ex(WEIGHT_STATIONARY, act, shift, relu6_shift, 0, 0, 0, 0);
+    matmul_config_ex(WEIGHT_STATIONARY, act, 0, shift, relu6_shift, 0, 0, 0, 0);
 
     for (size_t i0 = 0; i0 < I0; i0++)
       for (size_t j0 = 0; j0 < J0; j0++)

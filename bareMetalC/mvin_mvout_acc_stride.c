@@ -113,7 +113,7 @@ int main() {
         const uint32_t acc_addr = 1 << (ADDR_LEN-1);
 
         matmul_config_ld(BIG_DIM*sizeof(acc_t), 0, 0, 0, 0);
-        matmul_config_ex(0, activation, shift, relu6_shift, 0, 0, 1, 0);
+        matmul_config_ex(0, activation, 0, shift, relu6_shift, 0, 0, 1, 0);
         matmul_config_st(BIG_DIM*sizeof(elem_t), 0, 0, 0, 1);
 
         for (size_t i = 0; i < BIG_DIM; i += DIM) {

@@ -121,7 +121,7 @@ int main() {
       }
 
       // printf("Setting mode\n");
-      matmul_config_ex(OUTPUT_STATIONARY, activation, shift, relu6_shift, 0, 1, 0, 0);
+      matmul_config_ex(OUTPUT_STATIONARY, activation, shift, 0, relu6_shift, 0, 1, 0, 0);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {

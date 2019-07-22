@@ -51,7 +51,7 @@ int main() {
   matmul_mvin(IDENTITY, D_addr, 0, 0, 1, 0);
   
   // printf("Setting mode\n");
-  matmul_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0, 0, 0, 0);
+  matmul_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0, 0, 0, 0, 0);
 
   // printf("RAW with A\n");
   for (int i = 0; i < a_additions; i++) {

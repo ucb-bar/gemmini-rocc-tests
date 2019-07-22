@@ -122,7 +122,7 @@ static void tiled_matmul_compare(size_t DIM_I, size_t DIM_J, size_t DIM_K,
             A, B, D, gold, no_bias, act, shift, relu6_shift,
             CPU);
 
-        if (!MAT_IS_EQUAL(DIM_I, DIM_J, C, gold, errmsg)) {
+        if (!MAT_IS_EQUAL(DIM_I, DIM_J, C, gold)) {
             printf("Layer calculated incorrectly: %s\n", layer_name);
             exit(1);
         }
