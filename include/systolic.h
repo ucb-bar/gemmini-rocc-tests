@@ -115,7 +115,7 @@ int is_equal(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
           } \
       result;})
 #else
-#define MAT_IS_EQUAL(dim_i, dim_j, x, y, errmsg) 1
+#define MAT_IS_EQUAL(dim_i, dim_j, x, y) 1
 #endif
 
 int rand() {
