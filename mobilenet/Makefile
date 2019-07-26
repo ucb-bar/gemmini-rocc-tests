@@ -4,7 +4,8 @@ ifdef BAREMETAL_ONLY
 	tests =
 else
 	tests = \
-		test
+		test \
+		mobilenet32
 endif
 
 BENCH_COMMON = $(RISCVTOOLS)/riscv-tests/benchmarks/common
