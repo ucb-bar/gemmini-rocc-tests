@@ -10,7 +10,7 @@
 #endif
 #include "include/systolic.h"
 
-#define N 8
+#define N 4
 
 #if (N*DIM) > ACC_ROWS
 #error not enough accumulator space

@@ -18,9 +18,9 @@
 #define MAT_DIM_I 512
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
-#define TILE_I_FACTOR 8
-#define TILE_J_FACTOR 8
-#define TILE_K_FACTOR 32
+#define TILE_I_FACTOR 1
+#define TILE_J_FACTOR 1
+#define TILE_K_FACTOR 1
 #else
 #define MAT_DIM_I 64
 #define MAT_DIM_K 64
