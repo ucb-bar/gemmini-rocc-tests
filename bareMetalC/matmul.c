@@ -6,6 +6,9 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#ifndef BAREMETAL
+#include <sys/mman.h>
+#endif
 #include <time.h>
 #include "include/systolic.h"
 
@@ -388,6 +391,13 @@ void test_ws() {
 }
 
 int main() {
+#ifndef BAREMETAL
+    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
+      perror("mlockall failed");
+      exit(1);
+    }
+#endif
+
   matmul_flush(0);
 
   for (size_t i = 0; i < 8; i++) {

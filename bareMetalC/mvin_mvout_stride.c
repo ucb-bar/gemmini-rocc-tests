@@ -5,6 +5,9 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#ifndef BAREMETAL
+#include <sys/mman.h>
+#endif
 #include "include/systolic.h"
 
 #define BIG_DIM 64
@@ -34,6 +37,13 @@ void printMatrix_big(elem_t m[BIG_DIM][BIG_DIM]) {
 }
 
 int main() {
+#ifndef BAREMETAL
+    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
+      perror("mlockall failed");
+      exit(1);
+    }
+#endif
+
   matmul_flush(0);
 
   for (int block_len = 1; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN; block_len++) {

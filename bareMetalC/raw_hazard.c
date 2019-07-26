@@ -5,6 +5,9 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#ifndef BAREMETAL
+#include <sys/mman.h>
+#endif
 #include "include/systolic.h"
 
 #if BANK_NUM*BANK_ROWS < 5*DIM
@@ -12,6 +15,13 @@
 #endif
 
 int main() {
+#ifndef BAREMETAL
+    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
+      perror("mlockall failed");
+      exit(1);
+    }
+#endif
+
   matmul_flush(0);
 
   const int a_additions = 10;

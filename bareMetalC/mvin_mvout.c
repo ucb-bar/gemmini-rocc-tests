@@ -5,6 +5,9 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#ifndef BAREMETAL
+#include <sys/mman.h>
+#endif
 #include "include/systolic.h"
 
 #define N 8
@@ -14,6 +17,13 @@
 #endif
 
 int main() {
+#ifndef BAREMETAL
+    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
+      perror("mlockall failed");
+      exit(1);
+    }
+#endif
+
   matmul_flush(0);
 
   static elem_t In[N][DIM][DIM] row_align(1);

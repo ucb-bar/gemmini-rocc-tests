@@ -5,6 +5,9 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#ifndef BAREMETAL
+#include <sys/mman.h>
+#endif
 #include <time.h>
 #include "include/systolic.h"
 
@@ -21,6 +24,13 @@ void operands(int c, int * a, int * b, int * d) {
 #endif
 
 int main() {
+#ifndef BAREMETAL
+    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
+      perror("mlockall failed");
+      exit(1);
+    }
+#endif
+
   static elem_t ZERO[DIM][DIM];
 
   matmul_flush(0);
