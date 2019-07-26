@@ -94,7 +94,7 @@ int main (int argc, char * argv[]) {
 
     /* matmul number: 1 */
 
-    tiled_matmul_compare(32, 800, 32,    // dimensions
+    tiled_matmul_compare(32, 32, 800,    // dimensions
     inter_results0, weights1, NULL, inter_results1,      // addresses
     1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
     tiled_matmul_type, compare, "layer_1");

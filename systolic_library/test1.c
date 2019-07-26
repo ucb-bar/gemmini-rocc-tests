@@ -80,7 +80,7 @@ int main (int argc, char * argv[]) {
 
     /* matmul number: 0 */
 
-    tiled_matmul_compare(16, 784, 2512,    // dimensions
+    tiled_matmul_compare(16, 2512, 784,    // dimensions
     input_mat, weights0, NULL, inter_results0,      // addresses
     1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
     tiled_matmul_type, compare, "layer_0");
@@ -94,7 +94,7 @@ int main (int argc, char * argv[]) {
 
     /* matmul number: 1 */
 
-    tiled_matmul_compare(16, 2512, 2000,    // dimensions
+    tiled_matmul_compare(16, 2000, 2512,    // dimensions
     inter_results0, weights1, NULL, inter_results1,      // addresses
     1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
     tiled_matmul_type, compare, "layer_1");
@@ -108,7 +108,7 @@ int main (int argc, char * argv[]) {
 
     /* matmul number: 2 */
 
-    tiled_matmul_compare(16, 2000, 1504,    // dimensions
+    tiled_matmul_compare(16, 1504, 2000,    // dimensions
     inter_results1, weights2, NULL, inter_results2,      // addresses
     1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
     tiled_matmul_type, compare, "layer_2");
@@ -122,7 +122,7 @@ int main (int argc, char * argv[]) {
 
     /* matmul number: 3 */
 
-    tiled_matmul_compare(16, 1504, 1008,    // dimensions
+    tiled_matmul_compare(16, 1008, 1504,    // dimensions
     inter_results2, weights3, NULL, inter_results3,      // addresses
     1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
     tiled_matmul_type, compare, "layer_3");
@@ -136,7 +136,7 @@ int main (int argc, char * argv[]) {
 
     /* matmul number: 4 */
 
-    tiled_matmul_compare(16, 1008, 512,    // dimensions
+    tiled_matmul_compare(16, 512, 1008,    // dimensions
     inter_results3, weights4, NULL, inter_results4,      // addresses
     1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
     tiled_matmul_type, compare, "layer_4");
@@ -150,7 +150,7 @@ int main (int argc, char * argv[]) {
 
     /* matmul number: 5 */
 
-    tiled_matmul_compare(16, 512, 16,    // dimensions
+    tiled_matmul_compare(16, 16, 512,    // dimensions
     inter_results4, weights5, NULL, inter_results5,      // addresses
     1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
     tiled_matmul_type, compare, "layer_5");
