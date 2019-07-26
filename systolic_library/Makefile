@@ -4,7 +4,15 @@ ifdef BAREMETAL_ONLY
 	tests =
 else
 	tests = \
-		test
+		test \
+		test1 \
+		test2 \
+		test3 \
+		test4 \
+		test5 \
+		test6 \
+		test7 \
+		test8
 endif
 
 BENCH_COMMON = $(RISCVTOOLS)/riscv-tests/benchmarks/common
