@@ -138,10 +138,15 @@ int main() {
     printf("Starting systolic matmul\n");
     unsigned long start = read_cycles();
 
-    tiled_matmul_ws(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+    // tiled_matmul_ws(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+    //         full_A, full_B, full_D, full_C,
+    //         TILE_I_FACTOR, TILE_J_FACTOR, TILE_K_FACTOR,
+    //         NO_BIAS, NO_ACTIVATION, 0, 0);
+    // TODO calculate tiling factors at compile time
+    tiled_matmul_option(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
             full_A, full_B, full_D, full_C,
-            TILE_I_FACTOR, TILE_J_FACTOR, TILE_K_FACTOR,
-            NO_BIAS, NO_ACTIVATION, 0, 0);
+            NO_BIAS, NO_ACTIVATION, 0, 0,
+            WS);
 
     unsigned long end = read_cycles();
     printf("Cycles taken: %u\n", end-start);
