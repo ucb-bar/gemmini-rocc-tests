@@ -493,7 +493,6 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
   const int B_blocks = J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN;
   const int D_blocks = J <= MAX_BLOCK_LEN_ACC ? J : MAX_BLOCK_LEN_ACC;
 
-
   const int I_iterations = I;
   const int J_iterations = (J/B_blocks + (J % B_blocks != 0));
   const int K_iterations = (K/A_blocks + (K % A_blocks != 0));

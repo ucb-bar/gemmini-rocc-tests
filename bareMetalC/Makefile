@@ -11,6 +11,7 @@ tests = \
 	raw_hazard \
 	tiled_matmul_os \
 	tiled_matmul_ws \
+	tiled_matmul_cpu \
 	tiled_matmul_option
 
 tests_baremetal = $(tests:=-baremetal)
