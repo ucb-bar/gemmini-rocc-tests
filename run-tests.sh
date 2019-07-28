@@ -6,6 +6,8 @@ echo "=========tiled_matmul_os-linux=========" >> test_output.txt
 /root/systolic-rocc-tests/build/bareMetalC/tiled_matmul_os-linux >> test_output.txt
 echo "=========tiled_matmul_ws-linux=========" >> test_output.txt
 /root/systolic-rocc-tests/build/bareMetalC/tiled_matmul_ws-linux >> test_output.txt
+echo "=========tiled_matmul_cpu-linux=========" >> test_output.txt
+/root/systolic-rocc-tests/build/bareMetalC/tiled_matmul_cpu-linux >> test_output.txt
 echo "========mobilenet========="
 echo "========mobilenet OS=========" >> test_output.txt
 /root/systolic-rocc-tests/build/mobilenet/test os >> test_output.txt
@@ -70,3 +72,4 @@ echo "========Systolic Library Test 8 WS=========" >> test_output.txt
 echo "========Systolic Library Test 8 CPU=========" >> test_output.txt
 /root/systolic-rocc-tests/build/systolic_library/test8 cpu >> test_output.txt
 cat test_output.txt
+poweroff -f

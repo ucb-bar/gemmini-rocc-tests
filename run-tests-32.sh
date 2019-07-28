@@ -6,6 +6,8 @@ echo "=========tiled_matmul_os-linux=========" >> test_output.txt
 /root/systolic-rocc-tests/build/bareMetalC/tiled_matmul_os-linux >> test_output.txt
 echo "=========tiled_matmul_ws-linux=========" >> test_output.txt
 /root/systolic-rocc-tests/build/bareMetalC/tiled_matmul_ws-linux >> test_output.txt
+echo "=========tiled_matmul_cpu-linux=========" >> test_output.txt
+/root/systolic-rocc-tests/build/bareMetalC/tiled_matmul_cpu-linux >> test_output.txt
 echo "========mobilenet========="
 echo "========mobilenet OS=========" >> test_output.txt
 /root/systolic-rocc-tests/build/mobilenet/mobilenet32 os >> test_output.txt
