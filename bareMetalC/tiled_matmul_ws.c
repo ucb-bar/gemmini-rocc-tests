@@ -13,6 +13,13 @@
 #define CHECK_RESULT 1
 
 #define NO_BIAS 1
+#define FULL_BIAS_WIDTH 0
+
+#if FULL_BIAS_WIDTH
+typedef acc_t ACC_T;
+#else
+typedef elem_t ACC_T;
+#endif
 
 #ifndef BAREMETAL
 #define MAT_DIM_I 512
@@ -44,7 +51,7 @@ void print_tile(elem_t* in, int tile_dim) {
   }
 }
 
-void full_matmul(elem_t A[MAT_DIM_I][MAT_DIM_K], elem_t B[MAT_DIM_K][MAT_DIM_J], acc_t D[MAT_DIM_I][MAT_DIM_J], int64_t C_full[MAT_DIM_I][MAT_DIM_J]) {
+void full_matmul(elem_t A[MAT_DIM_I][MAT_DIM_K], elem_t B[MAT_DIM_K][MAT_DIM_J], ACC_T D[MAT_DIM_I][MAT_DIM_J], int64_t C_full[MAT_DIM_I][MAT_DIM_J]) {
 // void full_matmul(elem_t A[MAT_DIM_I][MAT_DIM_K], elem_t B[MAT_DIM_K][MAT_DIM_J], elem_t D[MAT_DIM_I][MAT_DIM_J], int64_t C_full[MAT_DIM_I][MAT_DIM_J]) {
   for (size_t r = 0; r < MAT_DIM_I; r++)
     for (size_t c = 0; c < MAT_DIM_J; c++) {
@@ -100,7 +107,7 @@ int main() {
     static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
     static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
     static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
-    static acc_t full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
+    static ACC_T full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
 
     static int64_t gold_full[MAT_DIM_I][MAT_DIM_J];
     static elem_t gold[MAT_DIM_I][MAT_DIM_J];
@@ -122,12 +129,12 @@ int main() {
     // printf("Init D\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_D[i][j] = NO_BIAS ? 0 : rand() % 2;
+        full_D[i][j] = 0; // NO_BIAS ? 0 : rand() % 2;
       }
     }
 
 #if CHECK_RESULT == 1
-    printf("Starting CPU matmul\n");
+    printf("Starting slow CPU matmul\n");
     unsigned long cpu_start = read_cycles();
     full_matmul(full_A, full_B, full_D, gold_full);
     unsigned long cpu_end = read_cycles();
@@ -144,8 +151,8 @@ int main() {
     //         NO_BIAS, NO_ACTIVATION, 0, 0);
     // TODO calculate tiling factors at compile time
     tiled_matmul_option(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-            full_A, full_B, full_D, full_C,
-            NO_BIAS, NO_ACTIVATION, 0, 0,
+            full_A, full_B, NO_BIAS ? NULL : full_D, full_C,
+            NO_ACTIVATION, 0, 0, FULL_BIAS_WIDTH,
             WS);
 
     unsigned long end = read_cycles();

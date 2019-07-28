@@ -150,8 +150,8 @@ int main() {
 
             printf("Starting systolic matmul\n");
             tiled_matmul_option(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-                    full_A, full_B, full_D, full_C,
-                    no_bias, activation, shift, relu6_shift,
+                    full_A, full_B, no_bias ? NULL : full_D, full_C,
+                    activation, shift, relu6_shift, 1,
                     option);
 
             if (!full_is_equal(full_C, gold)) {

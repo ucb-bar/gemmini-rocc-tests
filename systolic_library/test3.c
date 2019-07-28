@@ -11,21 +11,21 @@
 
 static void tiled_matmul_compare(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
-        elem_t C[DIM_I][DIM_J], int no_bias, int act, int shift, int relu6_shift,
+        elem_t C[DIM_I][DIM_J], int act, int shift, int relu6_shift, int full_bias_width,
         enum tiled_matmul_type_t tiled_matmul_type,
         bool compare, char * layer_name)
 {
     if (compare)
         printf("%s: systolic\n", layer_name);
     tiled_matmul_option(DIM_I, DIM_J, DIM_K,
-        A, B, D, C, no_bias, act, shift, relu6_shift,
+        A, B, D, C, act, shift, relu6_shift, full_bias_width,
         tiled_matmul_type);
 
     if (compare) {
         printf("%s: CPU\n", layer_name);
         elem_t gold[DIM_I][DIM_J];
         tiled_matmul_option(DIM_I, DIM_J, DIM_K,
-            A, B, D, gold, no_bias, act, shift, relu6_shift,
+            A, B, D, gold, act, shift, relu6_shift, full_bias_width,
             CPU);
 
         printf("%s: comparing\n", layer_name);
@@ -82,7 +82,7 @@ int main (int argc, char * argv[]) {
 
     tiled_matmul_compare(16, 512, 448,    // dimensions
     input_mat, weights0, NULL, inter_results0,      // addresses
-    1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
+    RELU, 0, 0, 0,           // act, shift, r6_shift
     tiled_matmul_type, compare, "layer_0");
     // verbose(0,input_mat,weights0,inter_results0)
     /* end of matmul number: 0 */
@@ -96,7 +96,7 @@ int main (int argc, char * argv[]) {
 
     tiled_matmul_compare(16, 448, 512,    // dimensions
     inter_results0, weights1, NULL, inter_results1,      // addresses
-    1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
+    RELU, 0, 0, 0,           // act, shift, r6_shift
     tiled_matmul_type, compare, "layer_1");
     // verbose(1,inter_results0,weights1,inter_results1)
     /* end of matmul number: 1 */

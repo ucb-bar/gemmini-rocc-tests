@@ -301,10 +301,11 @@ static int all_queues_empty() {
 #endif
 
 // Tiling functions
-static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
+// static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
+static void sp_tiled_matmul_os(elem_t * A, elem_t * B, void * D, elem_t * C,
         size_t I, size_t J, size_t K, size_t A_row_len,
         size_t B_row_len, size_t D_row_len, size_t C_row_len,
-        int first_mvin, int last_mvout, int no_bias) {
+        int first_mvin, int last_mvout, int no_bias, int full_bias_width) {
 
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS / 2;
@@ -313,7 +314,10 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 
   const int A_blocks = K <= MAX_BLOCK_LEN ? K : MAX_BLOCK_LEN;
   const int B_blocks = J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN;
-  const int D_blocks = J <= MAX_BLOCK_LEN_ACC ? J : MAX_BLOCK_LEN_ACC;
+  const int D_blocks_max = full_bias_width ? MAX_BLOCK_LEN_ACC : MAX_BLOCK_LEN;
+  const int D_blocks = J <= D_blocks_max ? J : D_blocks_max;
+
+  const int sizeof_bias = full_bias_width ? sizeof(acc_t) : sizeof(elem_t);
 
   const int I_iterations = I;
   const int J_iterations = (J/B_blocks + (J % B_blocks != 0));
@@ -324,31 +328,60 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 
   // Move-in D
   if (D != NULL && !no_bias) {
-    matmul_config_ld(D_row_len * sizeof(acc_t), 0, 0, 0, 0);
+    matmul_config_ld(D_row_len * sizeof_bias, 0, 0, 0, 0);
 
     for (size_t i = 0; i < I; i++) {
       for (size_t j = 0; j < J; j++) {
-        acc_t * const D_dram_addr = D + (i*D_row_len + j)*DIM;
-        const uint32_t D_sp_addr = D_sp_addr_start + (i*J + j)*DIM;
+        void * D_dram_addr;
+        uint32_t D_sp_addr_acc = D_sp_addr_start + (i*J + j)*DIM;
+        uint32_t D_sp_addr_sp = (i*J + j)*DIM;
+
+        if (full_bias_width) {
+          acc_t * const D_ = (acc_t *) D;
+          D_dram_addr = (void*)(D_ + (i*D_row_len + j)*DIM);
+        } else {
+          elem_t * const D_ = (elem_t *) D;
+          D_dram_addr = (void*)(D_ + (i*D_row_len + j)*DIM);
+        }
 
         int already_moved_in = j % D_blocks != 0;
 
         if (!already_moved_in) {
           int blocks = j + D_blocks <= J ? D_blocks : J-j;
 
-          if (first_mvin) {
-            matmul_block_mvin(D_dram_addr, D_sp_addr, blocks, 0, 0, 0, 0);
-          } else {
-            matmul_block_mvin(D_dram_addr, D_sp_addr, blocks, 0, 1, 0, 0);
+          if (first_mvin && full_bias_width) {
+            matmul_block_mvin(D_dram_addr, D_sp_addr_acc, blocks, 0, 0, 0, 0);
+          } else if (first_mvin && !full_bias_width) {
+            matmul_block_mvin(D_dram_addr, D_sp_addr_sp, blocks, 0, 0, 1, 0);
+          } else if (full_bias_width) {
+            matmul_block_mvin(D_dram_addr, D_sp_addr_acc, blocks, 0, 1, 0, 0);
+          } else /*if (!full_bias_width)*/ {
+            matmul_block_mvin(D_dram_addr, D_sp_addr_sp, blocks, 0, 1, 1, 0);
           }
-        } else {
-          matmul_config_ld(D_row_len * sizeof(acc_t), 0, 1, 0, 0);
+        } else if (!first_mvin && full_bias_width) {
+          matmul_config_ld(D_row_len * sizeof_bias, 0, 1, 0, 0);
+        } else if (!first_mvin && !full_bias_width) {
+          matmul_config_ld(D_row_len * sizeof_bias, 0, 1, 1, 0);
+        } else if (first_mvin && !full_bias_width) {
+          matmul_config_ld(D_row_len * sizeof_bias, 0, 0, 1, 0);
+        }
+
+        if (!full_bias_width) {
+          int last = i == I-1 && j == J-1;
+          if (last) {
+            matmul_preload(D_sp_addr_sp, D_sp_addr_acc, 1, 1, 0, 0);
+          } else {
+            matmul_preload(D_sp_addr_sp, D_sp_addr_acc, 0, 1, 0, 0);
+          }
+          matmul_compute_preloaded(GARBAGE_ADDR, GARBAGE_ADDR);
         }
       }
     }
   }
 
-  if (first_mvin) {
+  if (!no_bias && !full_bias_width) {
+    matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 1);
+  } else if (first_mvin) {
     matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 0);
   }
 
@@ -408,11 +441,8 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 
           int final_submatrix = i == I-1 && j == J-1 && k == K-1 && C != NULL;
 
-          // int last_A = j == (J - 1) && (k % A_blocks == (A_blocks - 1) || k == K-1);
-          // int last_B = i == (I - 1) && (j % B_blocks == (B_blocks - 1) || j == J-1);
           int last_A = (k % A_blocks == (A_blocks - 1) || k == K-1);
           int last_B = (j % B_blocks == (B_blocks - 1) || j == J-1);
-          // int push_to_load = !last_mvout && (last_A || last_B);
           int push_to_load = !last_mvout && (last_A && last_B);
 
           if (!first_mvin && no_bias_new_matrix && final_submatrix) {
@@ -479,10 +509,11 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 }
 
 
-static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
+// static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
+static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, void * D, elem_t * C,
         size_t I, size_t J, size_t K, size_t A_row_len,
         size_t B_row_len, size_t D_row_len, size_t C_row_len,
-        int first_mvin, int last_mvout, int no_bias) {
+        int first_mvin, int last_mvout, int no_bias, int full_bias_width) {
 
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS / 2;
@@ -491,7 +522,10 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 
   const int A_blocks = K <= MAX_BLOCK_LEN ? K : MAX_BLOCK_LEN;
   const int B_blocks = J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN;
-  const int D_blocks = J <= MAX_BLOCK_LEN_ACC ? J : MAX_BLOCK_LEN_ACC;
+  const int D_blocks_max = full_bias_width ? MAX_BLOCK_LEN_ACC : MAX_BLOCK_LEN;
+  const int D_blocks = J <= D_blocks_max ? J : D_blocks_max;
+
+  const int sizeof_bias = full_bias_width ? sizeof(acc_t) : sizeof(elem_t);
 
   const int I_iterations = I;
   const int J_iterations = (J/B_blocks + (J % B_blocks != 0));
@@ -502,31 +536,60 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 
   // Move-in D
   if (D != NULL && !no_bias) {
-    matmul_config_ld(D_row_len * sizeof(acc_t), 0, 0, 0, 0);
+    matmul_config_ld(D_row_len * sizeof_bias, 0, 0, 0, 0);
 
     for (size_t i = 0; i < I; i++) {
       for (size_t j = 0; j < J; j++) {
-        acc_t * D_dram_addr = D + (i*D_row_len + j)*DIM;
-        uint32_t D_sp_addr = D_sp_addr_start + (i*J + j)*DIM;
+        void * D_dram_addr;
+        uint32_t D_sp_addr_acc = D_sp_addr_start + (i*J + j)*DIM;
+        uint32_t D_sp_addr_sp = (i*J + j)*DIM;
+
+        if (full_bias_width) {
+          acc_t * const D_ = (acc_t *) D;
+          D_dram_addr = (void*)(D_ + (i*D_row_len + j)*DIM);
+        } else {
+          elem_t * const D_ = (elem_t *) D;
+          D_dram_addr = (void*)(D_ + (i*D_row_len + j)*DIM);
+        }
 
         int already_moved_in = j % D_blocks != 0;
 
         if (!already_moved_in) {
           int blocks = j + D_blocks <= J ? D_blocks : J-j;
 
-          if (first_mvin) {
-            matmul_block_mvin(D_dram_addr, D_sp_addr, blocks, 0, 0, 0, 0);
-          } else {
-            matmul_block_mvin(D_dram_addr, D_sp_addr, blocks, 0, 1, 0, 0);
+          if (first_mvin && full_bias_width) {
+            matmul_block_mvin(D_dram_addr, D_sp_addr_acc, blocks, 0, 0, 0, 0);
+          } else if (first_mvin && !full_bias_width) {
+            matmul_block_mvin(D_dram_addr, D_sp_addr_sp, blocks, 0, 0, 1, 0);
+          } else if (full_bias_width) {
+            matmul_block_mvin(D_dram_addr, D_sp_addr_acc, blocks, 0, 1, 0, 0);
+          } else /*if (!full_bias_width)*/ {
+            matmul_block_mvin(D_dram_addr, D_sp_addr_sp, blocks, 0, 1, 1, 0);
           }
-        } else {
-          matmul_config_ld(D_row_len * sizeof(acc_t), 0, 1, 0, 0);
+        } else if (!first_mvin && full_bias_width) {
+          matmul_config_ld(D_row_len * sizeof_bias, 0, 1, 0, 0);
+        } else if (!first_mvin && !full_bias_width) {
+          matmul_config_ld(D_row_len * sizeof_bias, 0, 1, 1, 0);
+        } else if (first_mvin && !full_bias_width) {
+          matmul_config_ld(D_row_len * sizeof_bias, 0, 0, 1, 0);
+        }
+
+        if (!full_bias_width) {
+          int last = i == I-1 && j == J-1;
+          if (last) {
+            matmul_preload(GARBAGE_ADDR, D_sp_addr_acc, 1, 1, 0, 0);
+          } else {
+            matmul_preload(GARBAGE_ADDR, D_sp_addr_acc, 0, 1, 0, 0);
+          }
+          matmul_compute_preloaded(GARBAGE_ADDR, D_sp_addr_sp);
         }
       }
     }
   }
 
-  if (first_mvin) {
+  if (!no_bias && !full_bias_width) {
+    matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 1);
+  } else if (first_mvin) {
     matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 0);
   }
 
@@ -654,16 +717,20 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, acc_t * D, elem_t * C,
 }
 
 static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
-        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
+        // elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
+        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], void* D,
         elem_t C[DIM_I][DIM_J], size_t TILE_I, size_t TILE_J, size_t TILE_K,
-        int no_bias, int act, int shift, int relu6_shift) {
+        int act, int shift, int relu6_shift, int full_bias_width) {
 
     const int I0 = DIM_I / (TILE_I*DIM);
     const int J0 = DIM_J / (TILE_J*DIM);
     const int K0 = DIM_K / (TILE_K*DIM);
 
+    const int no_bias = D == NULL;
+
     if (no_bias) {
-      D = (int (*)[DIM_J]) 1; // Dummy address which isn't NULL
+      // D = (acc_t (*)[DIM_J]) 1; // Dummy address which isn't NULL
+      D = (void*) 1; // Dummy address which isn't NULL
     }
 
     matmul_config_ex(OUTPUT_STATIONARY, act, 0, shift, relu6_shift, 0, 0, 0, 0);
@@ -676,7 +743,16 @@ static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
           int first_mvin = i0 == 0 && j0 == 0 && k0 == 0;
           int last_mvout = (i0 == I0-1) && (j0 == J0-1) && (k0 == K0-1);
 
-          acc_t * pre = k0 == 0 ? &D[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
+          // acc_t * pre = k0 == 0 ? &D[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
+          void * pre;
+          if (k0 != 0) {
+            pre = NULL;
+          } else if (full_bias_width) {
+            pre = &((acc_t (*)[DIM_J])D)[i0*TILE_I*DIM][j0*TILE_J*DIM];
+          } else {
+            pre = &((elem_t (*)[DIM_J])D)[i0*TILE_I*DIM][j0*TILE_J*DIM];
+          }
+
           elem_t * out = k0 == K0-1 ? &C[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
 
           sp_tiled_matmul_os(&A[i0*TILE_I*DIM][k0*TILE_K*DIM],
@@ -684,7 +760,7 @@ static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
               pre, out,
               TILE_I, TILE_J, TILE_K,
               DIM_K, DIM_J, DIM_J, DIM_J,
-              first_mvin, last_mvout, no_bias);
+              first_mvin, last_mvout, no_bias, full_bias_width);
         }
 
     matmul_fence();
@@ -704,16 +780,20 @@ static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
 }
 
 static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
-        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
+        // elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
+        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], void * D,
         elem_t C[DIM_I][DIM_J], size_t TILE_I, size_t TILE_J, size_t TILE_K,
-        int no_bias, int act, int shift, int relu6_shift) {
+        int act, int shift, int relu6_shift, int full_bias_width) {
 
     const int I0 = DIM_I / (TILE_I*DIM);
     const int J0 = DIM_J / (TILE_J*DIM);
     const int K0 = DIM_K / (TILE_K*DIM);
 
+    const int no_bias = D == NULL;
+
     if (no_bias) {
-      D = (int (*)[DIM_J]) 1; // Dummy address which isn't NULL
+      // D = (acc_t (*)[DIM_J]) 1; // Dummy address which isn't NULL
+      D = (void*) 1; // Dummy address which isn't NULL
     }
 
     matmul_config_ex(WEIGHT_STATIONARY, act, 0, shift, relu6_shift, 0, 0, 0, 0);
@@ -726,7 +806,16 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
           int first_mvin = i0 == 0 && j0 == 0 && k0 == 0;
           int last_mvout = (i0 == I0-1) && (j0 == J0-1) && (k0 == K0-1);
 
-          acc_t * pre = k0 == 0 ? &D[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
+          // acc_t * pre = k0 == 0 ? &D[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
+          void * pre;
+          if (k0 != 0) {
+            pre = NULL;
+          } else if (full_bias_width) {
+            pre = &((acc_t (*)[DIM_J])D)[i0*TILE_I*DIM][j0*TILE_J*DIM];
+          } else {
+            pre = &((elem_t (*)[DIM_J])D)[i0*TILE_I*DIM][j0*TILE_J*DIM];
+          }
+          
           elem_t * out = k0 == K0-1 ? &C[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
 
           sp_tiled_matmul_ws(&A[i0*TILE_I*DIM][k0*TILE_K*DIM],
@@ -734,7 +823,7 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
               pre, out,
               TILE_I, TILE_J, TILE_K,
               DIM_K, DIM_J, DIM_J, DIM_J,
-              first_mvin, last_mvout, no_bias);
+              first_mvin, last_mvout, no_bias, full_bias_width);
         }
 
     matmul_fence();
@@ -753,9 +842,16 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
 #endif
 }
 
-void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
-        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
-        elem_t C[DIM_I][DIM_J], int no_bias, int act, int shift, int relu6_shift) {
+static void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
+        // elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
+        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], void * D,
+        elem_t C[DIM_I][DIM_J],
+        int act, int shift, int relu6_shift, int full_bias_width) {
+  // TODO This function is incorrect. The activation functions, scaling down,
+  // and clipping must be done BEFORE acc_t is cast down to elem_t
+  
+  const int no_bias = D == NULL;
+
   if (DIM_I % 4 == 0 && DIM_J % 4 == 0) {
     for (size_t i = 0; i < DIM_I; i += 4) {
       for (size_t j = 0; j < DIM_J; j += 4) {
@@ -815,7 +911,13 @@ void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
   }
   for (size_t i = 0; i < DIM_I; i++) {
     for (size_t j = 0; j < DIM_J; j++) {
-      acc_t result = C[i][j] + (no_bias ? 0 : D[i][j]);
+      // acc_t result = C[i][j] + (no_bias ? 0 : D[i][j]);
+      acc_t result = C[i][j];
+      if (!no_bias && full_bias_width) {
+        result += ((acc_t (*)[DIM_J])D)[i][j];
+      } else if (!no_bias && !full_bias_width) {
+        result += ((elem_t (*)[DIM_J])D)[i][j];
+      }
 
       // Scale value down and round it
       const int divisor = 1 << shift;
@@ -857,8 +959,10 @@ static size_t tiling_factor(const size_t dimension, const size_t max_tile_factor
 }
 
 static void __attribute__((unused)) tiled_matmul_option(size_t DIM_I, size_t DIM_J, size_t DIM_K,
-        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
-        elem_t C[DIM_I][DIM_J], int no_bias, int act, int shift, int relu6_shift,
+        // elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
+        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], void * D,
+        elem_t C[DIM_I][DIM_J],
+        int act, int shift, int relu6_shift, int full_bias_width,
         enum tiled_matmul_type_t tiled_matmul_type) {
     // const int partition_rows = BANK_NUM * BANK_ROWS / 2;
     // const int mats_in_partition = partition_rows / DIM;
@@ -885,16 +989,16 @@ static void __attribute__((unused)) tiled_matmul_option(size_t DIM_I, size_t DIM
         tiled_matmul_os(DIM_I, DIM_J, DIM_K,
                 A, B, D, C,
                 tile_i, tile_j, tile_k,
-                no_bias, act, shift, relu6_shift);
+                act, shift, relu6_shift, full_bias_width);
     } else if (tiled_matmul_type == WS) {
         tiled_matmul_ws(DIM_I, DIM_J, DIM_K,
-                A, B, D, C,
+                A, B, (acc_t (*)[DIM_J])D, C,
                 tile_i, tile_j, tile_k,
-                no_bias, act, shift, relu6_shift);
+                act, shift, relu6_shift, full_bias_width);
     } else /*if (tiled_matmul_type == CPU)*/ {
         matmul_cpu(DIM_I, DIM_J, DIM_K,
-                A, B, D, C,
-                no_bias, act, shift, relu6_shift);
+                A, B, (acc_t (*)[DIM_J])D, C,
+                act, shift, relu6_shift, full_bias_width);
     }/* else {
         printf("unknown tiled matrix type");
         exit(1);
