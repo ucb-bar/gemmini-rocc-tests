@@ -5,7 +5,9 @@ ifdef BAREMETAL_ONLY
 else
 	tests = \
 		resnet50-16 \
-		resnet50-32
+		resnet50-32 \
+		resnet152-16 \
+		resnet152-32
 endif
 
 BENCH_COMMON = $(RISCVTOOLS)/riscv-tests/benchmarks/common
