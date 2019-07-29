@@ -203,7 +203,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor4[3136][64] row_align(1)= {0};
     static elem_t result4[3136][256] row_align(1)= {0};
     static elem_t inter_result4[3136][256] row_align(1)= {0};
-    rocket_zeropad(3136,64,result2, ,256,  inter_result4);
+    rocket_zeropad(3136,64,result2,256,  inter_result4);
 
 
     /* matmul number: 4 */
@@ -257,7 +257,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor7[3136][64] row_align(1)= {0};
     static elem_t result7[3136][256] row_align(1)= {0};
     static elem_t inter_result7[3136][256] row_align(1)= {0};
-    rocket_zeropad(3136,64,result5, ,256,  inter_result7);
+    rocket_zeropad(3136,64,result5,256,  inter_result7);
 
 
     /* matmul number: 7 */
@@ -311,7 +311,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor10[3136][64] row_align(1)= {0};
     static elem_t result10[3136][256] row_align(1)= {0};
     static elem_t inter_result10[3136][256] row_align(1)= {0};
-    rocket_zeropad(3136,64,result8, ,256,  inter_result10);
+    rocket_zeropad(3136,64,result8,256,  inter_result10);
 
 
     /* matmul number: 10 */
@@ -419,7 +419,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor16[784][128] row_align(1)= {0};
     static elem_t result16[784][512] row_align(1)= {0};
     static elem_t inter_result16[784][512] row_align(1)= {0};
-    rocket_zeropad(784,128,result14, ,512,  inter_result16);
+    rocket_zeropad(784,128,result14,512,  inter_result16);
 
 
     /* matmul number: 16 */
@@ -473,7 +473,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor19[784][128] row_align(1)= {0};
     static elem_t result19[784][512] row_align(1)= {0};
     static elem_t inter_result19[784][512] row_align(1)= {0};
-    rocket_zeropad(784,128,result17, ,512,  inter_result19);
+    rocket_zeropad(784,128,result17,512,  inter_result19);
 
 
     /* matmul number: 19 */
@@ -527,7 +527,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor22[784][128] row_align(1)= {0};
     static elem_t result22[784][512] row_align(1)= {0};
     static elem_t inter_result22[784][512] row_align(1)= {0};
-    rocket_zeropad(784,128,result20, ,512,  inter_result22);
+    rocket_zeropad(784,128,result20,512,  inter_result22);
 
 
     /* matmul number: 22 */
@@ -635,7 +635,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor28[208][256] row_align(1)= {0};
     static elem_t result28[208][1024] row_align(1)= {0};
     static elem_t inter_result28[208][1024] row_align(1)= {0};
-    rocket_zeropad(208,256,result26, ,1024,  inter_result28);
+    rocket_zeropad(208,256,result26,1024,  inter_result28);
 
 
     /* matmul number: 28 */
@@ -689,7 +689,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor31[208][256] row_align(1)= {0};
     static elem_t result31[208][1024] row_align(1)= {0};
     static elem_t inter_result31[208][1024] row_align(1)= {0};
-    rocket_zeropad(208,256,result29, ,1024,  inter_result31);
+    rocket_zeropad(208,256,result29,1024,  inter_result31);
 
 
     /* matmul number: 31 */
@@ -743,7 +743,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor34[208][256] row_align(1)= {0};
     static elem_t result34[208][1024] row_align(1)= {0};
     static elem_t inter_result34[208][1024] row_align(1)= {0};
-    rocket_zeropad(208,256,result32, ,1024,  inter_result34);
+    rocket_zeropad(208,256,result32,1024,  inter_result34);
 
 
     /* matmul number: 34 */
@@ -797,7 +797,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor37[208][256] row_align(1)= {0};
     static elem_t result37[208][1024] row_align(1)= {0};
     static elem_t inter_result37[208][1024] row_align(1)= {0};
-    rocket_zeropad(208,256,result35, ,1024,  inter_result37);
+    rocket_zeropad(208,256,result35,1024,  inter_result37);
 
 
     /* matmul number: 37 */
@@ -851,7 +851,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor40[208][256] row_align(1)= {0};
     static elem_t result40[208][1024] row_align(1)= {0};
     static elem_t inter_result40[208][1024] row_align(1)= {0};
-    rocket_zeropad(208,256,result38, ,1024,  inter_result40);
+    rocket_zeropad(208,256,result38,1024,  inter_result40);
 
 
     /* matmul number: 40 */
@@ -959,7 +959,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor46[64][512] row_align(1)= {0};
     static elem_t result46[64][2048] row_align(1)= {0};
     static elem_t inter_result46[64][2048] row_align(1)= {0};
-    rocket_zeropad(64,512,result44, ,2048,  inter_result46);
+    rocket_zeropad(64,512,result44,2048,  inter_result46);
 
 
     /* matmul number: 46 */
@@ -1013,7 +1013,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor49[64][512] row_align(1)= {0};
     static elem_t result49[64][2048] row_align(1)= {0};
     static elem_t inter_result49[64][2048] row_align(1)= {0};
-    rocket_zeropad(64,512,result47, ,2048,  inter_result49);
+    rocket_zeropad(64,512,result47,2048,  inter_result49);
 
 
     /* matmul number: 49 */
