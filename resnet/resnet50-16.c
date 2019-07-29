@@ -127,11 +127,11 @@ int main (int argc, char * argv[]) {
     static elem_t img[N*N][3] = {0};
     unsigned long cycles[52]={0};
     unsigned long start,end;
-    start = read_cycles();
     static elem_t kernel0[160][64] row_align(1)= {0};
     static elem_t tensor0[12544][160] row_align(1)= {0};
     static elem_t result0[12544][64] row_align(1)= {0};
     tensor_reshape(3,img,224, 224, 7, 2, tensor0);
+    start = read_cycles();
 
 
     /* matmul number: 0 */
