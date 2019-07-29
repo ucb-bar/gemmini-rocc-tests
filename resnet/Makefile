@@ -4,7 +4,7 @@ ifdef BAREMETAL_ONLY
 	tests =
 else
 	tests = \
-		resnet \
+		resnet16 \
 		resnet32
 endif
 
