@@ -365,7 +365,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor13[784][128] row_align(1)= {0};
     static elem_t result13[784][512] row_align(1)= {0};
     static elem_t inter_result13[784][512] row_align(1)= {0};
-    rocket_fix_strided_dimension(56,128,result11, ,512,  inter_result13);
+    rocket_fix_strided_dimension(56,128,result11,512,  inter_result13);
 
 
     /* matmul number: 13 */
@@ -581,7 +581,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor25[208][256] row_align(1)= {0};
     static elem_t result25[208][1024] row_align(1)= {0};
     static elem_t inter_result25[208][1024] row_align(1)= {0};
-    rocket_fix_strided_dimension(28,256,result23, ,1024,  inter_result25);
+    rocket_fix_strided_dimension(28,256,result23,1024,  inter_result25);
 
 
     /* matmul number: 25 */
@@ -905,7 +905,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor43[64][512] row_align(1)= {0};
     static elem_t result43[64][2048] row_align(1)= {0};
     static elem_t inter_result43[64][2048] row_align(1)= {0};
-    rocket_fix_strided_dimension(14,512,result41, ,2048,  inter_result43);
+    rocket_fix_strided_dimension(14,512,result41,2048,  inter_result43);
 
 
     /* matmul number: 43 */
