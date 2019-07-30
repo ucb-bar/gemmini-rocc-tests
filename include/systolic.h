@@ -379,11 +379,13 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, void * D, elem_t * C,
     }
   }
 
-  if (!no_bias && !full_bias_width) {
+  if (D != NULL && !no_bias && !full_bias_width) {
     matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 1);
   } else if (first_mvin) {
     matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 0);
   }
+
+  // printf("Enter main inner loop\n");
 
   for (size_t i = 0; i < I; i++) {
     for (size_t j = 0; j < J; j++) {
@@ -400,6 +402,8 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, void * D, elem_t * C,
 
         // Move-in A and B
         {
+          // printf("    Enter mvin\n");
+
           int A_already_moved_in = j != 0 || k % A_blocks != 0;
           int B_already_moved_in = i != 0 || j % B_blocks != 0;
 
@@ -426,10 +430,12 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, void * D, elem_t * C,
           }
 
           matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 1, 0);
+          // printf("    Exit mvin\n");
         }
 
         // Compute
         {
+          // printf("    Enter compute\n");
           uint32_t out_sp_addr = k == K-1 ? C_sp_addr : GARBAGE_ADDR;
 
           // If we're not using a bias, then we want to overwrite what's in the
@@ -481,18 +487,26 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, void * D, elem_t * C,
           } else { // All other iterations
             matmul_compute_accumulated(A_sp_addr, B_sp_addr);
           }
+
+          // printf("    Exit compute\n");
         }
       }
     }
   }
 
+  // printf("Exit main inner loop\n");
+
   // TODO this should be overlapped with the next "Move-in D"
   // Move-out C
   if (C != NULL) {
+    // printf("  Enter mvout loop\n");
+
     matmul_config_st(C_row_len * sizeof(elem_t), 0, 0, 0, 1);
 
     for (size_t i = 0; i < I; i++) {
       for (size_t j = 0; j < J; j++) {
+        // printf("    i: %lu, j: %lu\n", i, j);
+
         elem_t * const C_dram_addr = C + (i*C_row_len + j)*DIM;
         const uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
 
@@ -505,6 +519,8 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, void * D, elem_t * C,
         }
       }
     }
+
+    // printf("  Exit mvout loop\n");
   }
 }
 
@@ -587,7 +603,7 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, void * D, elem_t * C,
     }
   }
 
-  if (!no_bias && !full_bias_width) {
+  if (D != NULL && !no_bias && !full_bias_width) {
     matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 1);
   } else if (first_mvin) {
     matmul_config_ld(A_row_len * sizeof(elem_t), 0, 0, 0, 0);
