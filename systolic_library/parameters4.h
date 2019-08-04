@@ -4,11 +4,11 @@
 
 #define LEN(arr) ((int) (sizeof (arr) / sizeof (arr[0])))
 
-// batch size: 16
+// batch size: 64
 // before zeropad: 3036x4554x3036
-// after zeropad: 3040x4560x3040
-elem_t input_mat[16][3040] row_align(1)= {0};
-elem_t weights0[3040][4560] row_align(1)= {0};
-elem_t inter_results0[16][4560] row_align(1)= {0};
-elem_t weights1[4560][3040] row_align(1)= {0};
-elem_t inter_results1[16][3040] row_align(1)= {0};
+// after zeropad: 3072x4608x3072
+static elem_t input_mat[64][3072] row_align(1)= {0};
+static elem_t weights0[3072][4608] row_align(1)= {0};
+static elem_t inter_results0[64][4608] row_align(1)= {0};
+static elem_t weights1[4608][3072] row_align(1)= {0};
+static elem_t inter_results1[64][3072] row_align(1)= {0};
