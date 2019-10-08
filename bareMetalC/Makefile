@@ -12,7 +12,8 @@ tests = \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_cpu \
-	tiled_matmul_option
+	tiled_matmul_option \
+	aligned
 
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY
