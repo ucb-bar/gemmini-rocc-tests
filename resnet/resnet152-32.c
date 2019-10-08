@@ -127,16 +127,16 @@ int main (int argc, char * argv[]) {
     static elem_t img[N*N][3] = {0};
     unsigned long cycles[154]={0};
     unsigned long start,end;
-    static elem_t kernel0[160][64] row_align(1)= {0};
-    static elem_t tensor0[12544][160] row_align(1)= {0};
+    start = read_cycles();
+    static elem_t kernel0[192][64] row_align(1)= {0};
+    static elem_t tensor0[12544][192] row_align(1)= {0};
     static elem_t result0[12544][64] row_align(1)= {0};
     tensor_reshape(3,img,224, 224, 7, 2, tensor0);
 
-    start = read_cycles();
 
     /* matmul number: 0 */
 
-    tiled_matmul_compare(12544, 64, 160,    // dimensions
+    tiled_matmul_compare(12544, 64, 192,    // dimensions
     tensor0, kernel0, NULL, result0,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_0");
@@ -344,14 +344,14 @@ int main (int argc, char * argv[]) {
     cycles[11] = end-start;
     start = end;
     static elem_t kernel12[1152][128] row_align(1)= {0};
-    static elem_t tensor12[800][1152] row_align(1)= {0};
-    static elem_t result12[800][128] row_align(1)= {0};
+    static elem_t tensor12[832][1152] row_align(1)= {0};
+    static elem_t result12[832][128] row_align(1)= {0};
     tensor_reshape(128,result11,56, 56, 3, 2, tensor12);
 
 
     /* matmul number: 12 */
 
-    tiled_matmul_compare(800, 128, 1152,    // dimensions
+    tiled_matmul_compare(832, 128, 1152,    // dimensions
     tensor12, kernel12, NULL, result12,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_12");
@@ -362,15 +362,15 @@ int main (int argc, char * argv[]) {
     cycles[12] = end-start;
     start = end;
     static elem_t kernel13[128][512] row_align(1)= {0};
-    static elem_t tensor13[800][128] row_align(1)= {0};
-    static elem_t result13[800][512] row_align(1)= {0};
-    static elem_t inter_result13[800][512] row_align(1)= {0};
+    static elem_t tensor13[832][128] row_align(1)= {0};
+    static elem_t result13[832][512] row_align(1)= {0};
+    static elem_t inter_result13[832][512] row_align(1)= {0};
     rocket_fix_strided_dimension(56,128,result11,512,  inter_result13);
 
 
     /* matmul number: 13 */
 
-    tiled_matmul_compare(800, 512, 128,    // dimensions
+    tiled_matmul_compare(832, 512, 128,    // dimensions
     tensor13, kernel13, inter_result13, result13,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_13");
@@ -381,13 +381,13 @@ int main (int argc, char * argv[]) {
     cycles[13] = end-start;
     start = end;
     static elem_t kernel14[256][128] row_align(1)= {0};
-    static elem_t tensor14[800][256] row_align(1)= {0};
-    static elem_t result14[800][128] row_align(1)= {0};
+    static elem_t tensor14[832][256] row_align(1)= {0};
+    static elem_t result14[832][128] row_align(1)= {0};
 
 
     /* matmul number: 14 */
 
-    tiled_matmul_compare(800, 128, 256,    // dimensions
+    tiled_matmul_compare(832, 128, 256,    // dimensions
     tensor14, kernel14, NULL, result14,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_14");
@@ -398,14 +398,14 @@ int main (int argc, char * argv[]) {
     cycles[14] = end-start;
     start = end;
     static elem_t kernel15[1152][128] row_align(1)= {0};
-    static elem_t tensor15[800][1152] row_align(1)= {0};
-    static elem_t result15[800][128] row_align(1)= {0};
+    static elem_t tensor15[832][1152] row_align(1)= {0};
+    static elem_t result15[832][128] row_align(1)= {0};
     tensor_reshape(128,result14,28, 28, 3, 1, tensor15);
 
 
     /* matmul number: 15 */
 
-    tiled_matmul_compare(800, 128, 1152,    // dimensions
+    tiled_matmul_compare(832, 128, 1152,    // dimensions
     tensor15, kernel15, NULL, result15,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_15");
@@ -416,15 +416,15 @@ int main (int argc, char * argv[]) {
     cycles[15] = end-start;
     start = end;
     static elem_t kernel16[128][512] row_align(1)= {0};
-    static elem_t tensor16[800][128] row_align(1)= {0};
-    static elem_t result16[800][512] row_align(1)= {0};
-    static elem_t inter_result16[800][512] row_align(1)= {0};
-    rocket_zeropad(800,128,result14,512,  inter_result16);
+    static elem_t tensor16[832][128] row_align(1)= {0};
+    static elem_t result16[832][512] row_align(1)= {0};
+    static elem_t inter_result16[832][512] row_align(1)= {0};
+    rocket_zeropad(832,128,result14,512,  inter_result16);
 
 
     /* matmul number: 16 */
 
-    tiled_matmul_compare(800, 512, 128,    // dimensions
+    tiled_matmul_compare(832, 512, 128,    // dimensions
     tensor16, kernel16, inter_result16, result16,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_16");
@@ -435,13 +435,13 @@ int main (int argc, char * argv[]) {
     cycles[16] = end-start;
     start = end;
     static elem_t kernel17[256][128] row_align(1)= {0};
-    static elem_t tensor17[800][256] row_align(1)= {0};
-    static elem_t result17[800][128] row_align(1)= {0};
+    static elem_t tensor17[832][256] row_align(1)= {0};
+    static elem_t result17[832][128] row_align(1)= {0};
 
 
     /* matmul number: 17 */
 
-    tiled_matmul_compare(800, 128, 256,    // dimensions
+    tiled_matmul_compare(832, 128, 256,    // dimensions
     tensor17, kernel17, NULL, result17,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_17");
@@ -452,14 +452,14 @@ int main (int argc, char * argv[]) {
     cycles[17] = end-start;
     start = end;
     static elem_t kernel18[1152][128] row_align(1)= {0};
-    static elem_t tensor18[800][1152] row_align(1)= {0};
-    static elem_t result18[800][128] row_align(1)= {0};
+    static elem_t tensor18[832][1152] row_align(1)= {0};
+    static elem_t result18[832][128] row_align(1)= {0};
     tensor_reshape(128,result17,28, 28, 3, 1, tensor18);
 
 
     /* matmul number: 18 */
 
-    tiled_matmul_compare(800, 128, 1152,    // dimensions
+    tiled_matmul_compare(832, 128, 1152,    // dimensions
     tensor18, kernel18, NULL, result18,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_18");
@@ -470,15 +470,15 @@ int main (int argc, char * argv[]) {
     cycles[18] = end-start;
     start = end;
     static elem_t kernel19[128][512] row_align(1)= {0};
-    static elem_t tensor19[800][128] row_align(1)= {0};
-    static elem_t result19[800][512] row_align(1)= {0};
-    static elem_t inter_result19[800][512] row_align(1)= {0};
-    rocket_zeropad(800,128,result17,512,  inter_result19);
+    static elem_t tensor19[832][128] row_align(1)= {0};
+    static elem_t result19[832][512] row_align(1)= {0};
+    static elem_t inter_result19[832][512] row_align(1)= {0};
+    rocket_zeropad(832,128,result17,512,  inter_result19);
 
 
     /* matmul number: 19 */
 
-    tiled_matmul_compare(800, 512, 128,    // dimensions
+    tiled_matmul_compare(832, 512, 128,    // dimensions
     tensor19, kernel19, inter_result19, result19,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_19");
@@ -489,13 +489,13 @@ int main (int argc, char * argv[]) {
     cycles[19] = end-start;
     start = end;
     static elem_t kernel20[256][128] row_align(1)= {0};
-    static elem_t tensor20[800][256] row_align(1)= {0};
-    static elem_t result20[800][128] row_align(1)= {0};
+    static elem_t tensor20[832][256] row_align(1)= {0};
+    static elem_t result20[832][128] row_align(1)= {0};
 
 
     /* matmul number: 20 */
 
-    tiled_matmul_compare(800, 128, 256,    // dimensions
+    tiled_matmul_compare(832, 128, 256,    // dimensions
     tensor20, kernel20, NULL, result20,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_20");
@@ -506,14 +506,14 @@ int main (int argc, char * argv[]) {
     cycles[20] = end-start;
     start = end;
     static elem_t kernel21[1152][128] row_align(1)= {0};
-    static elem_t tensor21[800][1152] row_align(1)= {0};
-    static elem_t result21[800][128] row_align(1)= {0};
+    static elem_t tensor21[832][1152] row_align(1)= {0};
+    static elem_t result21[832][128] row_align(1)= {0};
     tensor_reshape(128,result20,28, 28, 3, 1, tensor21);
 
 
     /* matmul number: 21 */
 
-    tiled_matmul_compare(800, 128, 1152,    // dimensions
+    tiled_matmul_compare(832, 128, 1152,    // dimensions
     tensor21, kernel21, NULL, result21,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_21");
@@ -524,15 +524,15 @@ int main (int argc, char * argv[]) {
     cycles[21] = end-start;
     start = end;
     static elem_t kernel22[128][512] row_align(1)= {0};
-    static elem_t tensor22[800][128] row_align(1)= {0};
-    static elem_t result22[800][512] row_align(1)= {0};
-    static elem_t inter_result22[800][512] row_align(1)= {0};
-    rocket_zeropad(800,128,result20,512,  inter_result22);
+    static elem_t tensor22[832][128] row_align(1)= {0};
+    static elem_t result22[832][512] row_align(1)= {0};
+    static elem_t inter_result22[832][512] row_align(1)= {0};
+    rocket_zeropad(832,128,result20,512,  inter_result22);
 
 
     /* matmul number: 22 */
 
-    tiled_matmul_compare(800, 512, 128,    // dimensions
+    tiled_matmul_compare(832, 512, 128,    // dimensions
     tensor22, kernel22, inter_result22, result22,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_22");
@@ -543,13 +543,13 @@ int main (int argc, char * argv[]) {
     cycles[22] = end-start;
     start = end;
     static elem_t kernel23[256][128] row_align(1)= {0};
-    static elem_t tensor23[800][256] row_align(1)= {0};
-    static elem_t result23[800][128] row_align(1)= {0};
+    static elem_t tensor23[832][256] row_align(1)= {0};
+    static elem_t result23[832][128] row_align(1)= {0};
 
 
     /* matmul number: 23 */
 
-    tiled_matmul_compare(800, 128, 256,    // dimensions
+    tiled_matmul_compare(832, 128, 256,    // dimensions
     tensor23, kernel23, NULL, result23,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_23");
@@ -560,14 +560,14 @@ int main (int argc, char * argv[]) {
     cycles[23] = end-start;
     start = end;
     static elem_t kernel24[1152][128] row_align(1)= {0};
-    static elem_t tensor24[800][1152] row_align(1)= {0};
-    static elem_t result24[800][128] row_align(1)= {0};
+    static elem_t tensor24[832][1152] row_align(1)= {0};
+    static elem_t result24[832][128] row_align(1)= {0};
     tensor_reshape(128,result23,28, 28, 3, 1, tensor24);
 
 
     /* matmul number: 24 */
 
-    tiled_matmul_compare(800, 128, 1152,    // dimensions
+    tiled_matmul_compare(832, 128, 1152,    // dimensions
     tensor24, kernel24, NULL, result24,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_24");
@@ -578,15 +578,15 @@ int main (int argc, char * argv[]) {
     cycles[24] = end-start;
     start = end;
     static elem_t kernel25[128][512] row_align(1)= {0};
-    static elem_t tensor25[800][128] row_align(1)= {0};
-    static elem_t result25[800][512] row_align(1)= {0};
-    static elem_t inter_result25[800][512] row_align(1)= {0};
-    rocket_zeropad(800,128,result23,512,  inter_result25);
+    static elem_t tensor25[832][128] row_align(1)= {0};
+    static elem_t result25[832][512] row_align(1)= {0};
+    static elem_t inter_result25[832][512] row_align(1)= {0};
+    rocket_zeropad(832,128,result23,512,  inter_result25);
 
 
     /* matmul number: 25 */
 
-    tiled_matmul_compare(800, 512, 128,    // dimensions
+    tiled_matmul_compare(832, 512, 128,    // dimensions
     tensor25, kernel25, inter_result25, result25,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_25");
@@ -597,13 +597,13 @@ int main (int argc, char * argv[]) {
     cycles[25] = end-start;
     start = end;
     static elem_t kernel26[256][128] row_align(1)= {0};
-    static elem_t tensor26[800][256] row_align(1)= {0};
-    static elem_t result26[800][128] row_align(1)= {0};
+    static elem_t tensor26[832][256] row_align(1)= {0};
+    static elem_t result26[832][128] row_align(1)= {0};
 
 
     /* matmul number: 26 */
 
-    tiled_matmul_compare(800, 128, 256,    // dimensions
+    tiled_matmul_compare(832, 128, 256,    // dimensions
     tensor26, kernel26, NULL, result26,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_26");
@@ -614,14 +614,14 @@ int main (int argc, char * argv[]) {
     cycles[26] = end-start;
     start = end;
     static elem_t kernel27[1152][128] row_align(1)= {0};
-    static elem_t tensor27[800][1152] row_align(1)= {0};
-    static elem_t result27[800][128] row_align(1)= {0};
+    static elem_t tensor27[832][1152] row_align(1)= {0};
+    static elem_t result27[832][128] row_align(1)= {0};
     tensor_reshape(128,result26,28, 28, 3, 1, tensor27);
 
 
     /* matmul number: 27 */
 
-    tiled_matmul_compare(800, 128, 1152,    // dimensions
+    tiled_matmul_compare(832, 128, 1152,    // dimensions
     tensor27, kernel27, NULL, result27,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_27");
@@ -632,15 +632,15 @@ int main (int argc, char * argv[]) {
     cycles[27] = end-start;
     start = end;
     static elem_t kernel28[128][512] row_align(1)= {0};
-    static elem_t tensor28[800][128] row_align(1)= {0};
-    static elem_t result28[800][512] row_align(1)= {0};
-    static elem_t inter_result28[800][512] row_align(1)= {0};
-    rocket_zeropad(800,128,result26,512,  inter_result28);
+    static elem_t tensor28[832][128] row_align(1)= {0};
+    static elem_t result28[832][512] row_align(1)= {0};
+    static elem_t inter_result28[832][512] row_align(1)= {0};
+    rocket_zeropad(832,128,result26,512,  inter_result28);
 
 
     /* matmul number: 28 */
 
-    tiled_matmul_compare(800, 512, 128,    // dimensions
+    tiled_matmul_compare(832, 512, 128,    // dimensions
     tensor28, kernel28, inter_result28, result28,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_28");
@@ -651,13 +651,13 @@ int main (int argc, char * argv[]) {
     cycles[28] = end-start;
     start = end;
     static elem_t kernel29[256][128] row_align(1)= {0};
-    static elem_t tensor29[800][256] row_align(1)= {0};
-    static elem_t result29[800][128] row_align(1)= {0};
+    static elem_t tensor29[832][256] row_align(1)= {0};
+    static elem_t result29[832][128] row_align(1)= {0};
 
 
     /* matmul number: 29 */
 
-    tiled_matmul_compare(800, 128, 256,    // dimensions
+    tiled_matmul_compare(832, 128, 256,    // dimensions
     tensor29, kernel29, NULL, result29,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_29");
@@ -668,14 +668,14 @@ int main (int argc, char * argv[]) {
     cycles[29] = end-start;
     start = end;
     static elem_t kernel30[1152][128] row_align(1)= {0};
-    static elem_t tensor30[800][1152] row_align(1)= {0};
-    static elem_t result30[800][128] row_align(1)= {0};
+    static elem_t tensor30[832][1152] row_align(1)= {0};
+    static elem_t result30[832][128] row_align(1)= {0};
     tensor_reshape(128,result29,28, 28, 3, 1, tensor30);
 
 
     /* matmul number: 30 */
 
-    tiled_matmul_compare(800, 128, 1152,    // dimensions
+    tiled_matmul_compare(832, 128, 1152,    // dimensions
     tensor30, kernel30, NULL, result30,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_30");
@@ -686,15 +686,15 @@ int main (int argc, char * argv[]) {
     cycles[30] = end-start;
     start = end;
     static elem_t kernel31[128][512] row_align(1)= {0};
-    static elem_t tensor31[800][128] row_align(1)= {0};
-    static elem_t result31[800][512] row_align(1)= {0};
-    static elem_t inter_result31[800][512] row_align(1)= {0};
-    rocket_zeropad(800,128,result29,512,  inter_result31);
+    static elem_t tensor31[832][128] row_align(1)= {0};
+    static elem_t result31[832][512] row_align(1)= {0};
+    static elem_t inter_result31[832][512] row_align(1)= {0};
+    rocket_zeropad(832,128,result29,512,  inter_result31);
 
 
     /* matmul number: 31 */
 
-    tiled_matmul_compare(800, 512, 128,    // dimensions
+    tiled_matmul_compare(832, 512, 128,    // dimensions
     tensor31, kernel31, inter_result31, result31,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_31");
@@ -705,13 +705,13 @@ int main (int argc, char * argv[]) {
     cycles[31] = end-start;
     start = end;
     static elem_t kernel32[256][128] row_align(1)= {0};
-    static elem_t tensor32[800][256] row_align(1)= {0};
-    static elem_t result32[800][128] row_align(1)= {0};
+    static elem_t tensor32[832][256] row_align(1)= {0};
+    static elem_t result32[832][128] row_align(1)= {0};
 
 
     /* matmul number: 32 */
 
-    tiled_matmul_compare(800, 128, 256,    // dimensions
+    tiled_matmul_compare(832, 128, 256,    // dimensions
     tensor32, kernel32, NULL, result32,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_32");
@@ -722,14 +722,14 @@ int main (int argc, char * argv[]) {
     cycles[32] = end-start;
     start = end;
     static elem_t kernel33[1152][128] row_align(1)= {0};
-    static elem_t tensor33[800][1152] row_align(1)= {0};
-    static elem_t result33[800][128] row_align(1)= {0};
+    static elem_t tensor33[832][1152] row_align(1)= {0};
+    static elem_t result33[832][128] row_align(1)= {0};
     tensor_reshape(128,result32,28, 28, 3, 1, tensor33);
 
 
     /* matmul number: 33 */
 
-    tiled_matmul_compare(800, 128, 1152,    // dimensions
+    tiled_matmul_compare(832, 128, 1152,    // dimensions
     tensor33, kernel33, NULL, result33,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_33");
@@ -740,15 +740,15 @@ int main (int argc, char * argv[]) {
     cycles[33] = end-start;
     start = end;
     static elem_t kernel34[128][512] row_align(1)= {0};
-    static elem_t tensor34[800][128] row_align(1)= {0};
-    static elem_t result34[800][512] row_align(1)= {0};
-    static elem_t inter_result34[800][512] row_align(1)= {0};
-    rocket_zeropad(800,128,result32,512,  inter_result34);
+    static elem_t tensor34[832][128] row_align(1)= {0};
+    static elem_t result34[832][512] row_align(1)= {0};
+    static elem_t inter_result34[832][512] row_align(1)= {0};
+    rocket_zeropad(832,128,result32,512,  inter_result34);
 
 
     /* matmul number: 34 */
 
-    tiled_matmul_compare(800, 512, 128,    // dimensions
+    tiled_matmul_compare(832, 512, 128,    // dimensions
     tensor34, kernel34, inter_result34, result34,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_34");
@@ -759,13 +759,13 @@ int main (int argc, char * argv[]) {
     cycles[34] = end-start;
     start = end;
     static elem_t kernel35[512][256] row_align(1)= {0};
-    static elem_t tensor35[800][512] row_align(1)= {0};
-    static elem_t result35[800][256] row_align(1)= {0};
+    static elem_t tensor35[832][512] row_align(1)= {0};
+    static elem_t result35[832][256] row_align(1)= {0};
 
 
     /* matmul number: 35 */
 
-    tiled_matmul_compare(800, 256, 512,    // dimensions
+    tiled_matmul_compare(832, 256, 512,    // dimensions
     tensor35, kernel35, NULL, result35,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_35");
@@ -776,14 +776,14 @@ int main (int argc, char * argv[]) {
     cycles[35] = end-start;
     start = end;
     static elem_t kernel36[2304][256] row_align(1)= {0};
-    static elem_t tensor36[224][2304] row_align(1)= {0};
-    static elem_t result36[224][256] row_align(1)= {0};
+    static elem_t tensor36[256][2304] row_align(1)= {0};
+    static elem_t result36[256][256] row_align(1)= {0};
     tensor_reshape(256,result35,28, 28, 3, 2, tensor36);
 
 
     /* matmul number: 36 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor36, kernel36, NULL, result36,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_36");
@@ -794,15 +794,15 @@ int main (int argc, char * argv[]) {
     cycles[36] = end-start;
     start = end;
     static elem_t kernel37[256][1024] row_align(1)= {0};
-    static elem_t tensor37[224][256] row_align(1)= {0};
-    static elem_t result37[224][1024] row_align(1)= {0};
-    static elem_t inter_result37[224][1024] row_align(1)= {0};
+    static elem_t tensor37[256][256] row_align(1)= {0};
+    static elem_t result37[256][1024] row_align(1)= {0};
+    static elem_t inter_result37[256][1024] row_align(1)= {0};
     rocket_fix_strided_dimension(28,256,result35,1024,  inter_result37);
 
 
     /* matmul number: 37 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor37, kernel37, inter_result37, result37,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_37");
@@ -813,13 +813,13 @@ int main (int argc, char * argv[]) {
     cycles[37] = end-start;
     start = end;
     static elem_t kernel38[512][256] row_align(1)= {0};
-    static elem_t tensor38[224][512] row_align(1)= {0};
-    static elem_t result38[224][256] row_align(1)= {0};
+    static elem_t tensor38[256][512] row_align(1)= {0};
+    static elem_t result38[256][256] row_align(1)= {0};
 
 
     /* matmul number: 38 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor38, kernel38, NULL, result38,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_38");
@@ -830,14 +830,14 @@ int main (int argc, char * argv[]) {
     cycles[38] = end-start;
     start = end;
     static elem_t kernel39[2304][256] row_align(1)= {0};
-    static elem_t tensor39[224][2304] row_align(1)= {0};
-    static elem_t result39[224][256] row_align(1)= {0};
+    static elem_t tensor39[256][2304] row_align(1)= {0};
+    static elem_t result39[256][256] row_align(1)= {0};
     tensor_reshape(256,result38,14, 14, 3, 1, tensor39);
 
 
     /* matmul number: 39 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor39, kernel39, NULL, result39,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_39");
@@ -848,15 +848,15 @@ int main (int argc, char * argv[]) {
     cycles[39] = end-start;
     start = end;
     static elem_t kernel40[256][1024] row_align(1)= {0};
-    static elem_t tensor40[224][256] row_align(1)= {0};
-    static elem_t result40[224][1024] row_align(1)= {0};
-    static elem_t inter_result40[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result38,1024,  inter_result40);
+    static elem_t tensor40[256][256] row_align(1)= {0};
+    static elem_t result40[256][1024] row_align(1)= {0};
+    static elem_t inter_result40[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result38,1024,  inter_result40);
 
 
     /* matmul number: 40 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor40, kernel40, inter_result40, result40,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_40");
@@ -867,13 +867,13 @@ int main (int argc, char * argv[]) {
     cycles[40] = end-start;
     start = end;
     static elem_t kernel41[512][256] row_align(1)= {0};
-    static elem_t tensor41[224][512] row_align(1)= {0};
-    static elem_t result41[224][256] row_align(1)= {0};
+    static elem_t tensor41[256][512] row_align(1)= {0};
+    static elem_t result41[256][256] row_align(1)= {0};
 
 
     /* matmul number: 41 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor41, kernel41, NULL, result41,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_41");
@@ -884,14 +884,14 @@ int main (int argc, char * argv[]) {
     cycles[41] = end-start;
     start = end;
     static elem_t kernel42[2304][256] row_align(1)= {0};
-    static elem_t tensor42[224][2304] row_align(1)= {0};
-    static elem_t result42[224][256] row_align(1)= {0};
+    static elem_t tensor42[256][2304] row_align(1)= {0};
+    static elem_t result42[256][256] row_align(1)= {0};
     tensor_reshape(256,result41,14, 14, 3, 1, tensor42);
 
 
     /* matmul number: 42 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor42, kernel42, NULL, result42,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_42");
@@ -902,15 +902,15 @@ int main (int argc, char * argv[]) {
     cycles[42] = end-start;
     start = end;
     static elem_t kernel43[256][1024] row_align(1)= {0};
-    static elem_t tensor43[224][256] row_align(1)= {0};
-    static elem_t result43[224][1024] row_align(1)= {0};
-    static elem_t inter_result43[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result41,1024,  inter_result43);
+    static elem_t tensor43[256][256] row_align(1)= {0};
+    static elem_t result43[256][1024] row_align(1)= {0};
+    static elem_t inter_result43[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result41,1024,  inter_result43);
 
 
     /* matmul number: 43 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor43, kernel43, inter_result43, result43,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_43");
@@ -921,13 +921,13 @@ int main (int argc, char * argv[]) {
     cycles[43] = end-start;
     start = end;
     static elem_t kernel44[512][256] row_align(1)= {0};
-    static elem_t tensor44[224][512] row_align(1)= {0};
-    static elem_t result44[224][256] row_align(1)= {0};
+    static elem_t tensor44[256][512] row_align(1)= {0};
+    static elem_t result44[256][256] row_align(1)= {0};
 
 
     /* matmul number: 44 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor44, kernel44, NULL, result44,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_44");
@@ -938,14 +938,14 @@ int main (int argc, char * argv[]) {
     cycles[44] = end-start;
     start = end;
     static elem_t kernel45[2304][256] row_align(1)= {0};
-    static elem_t tensor45[224][2304] row_align(1)= {0};
-    static elem_t result45[224][256] row_align(1)= {0};
+    static elem_t tensor45[256][2304] row_align(1)= {0};
+    static elem_t result45[256][256] row_align(1)= {0};
     tensor_reshape(256,result44,14, 14, 3, 1, tensor45);
 
 
     /* matmul number: 45 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor45, kernel45, NULL, result45,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_45");
@@ -956,15 +956,15 @@ int main (int argc, char * argv[]) {
     cycles[45] = end-start;
     start = end;
     static elem_t kernel46[256][1024] row_align(1)= {0};
-    static elem_t tensor46[224][256] row_align(1)= {0};
-    static elem_t result46[224][1024] row_align(1)= {0};
-    static elem_t inter_result46[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result44,1024,  inter_result46);
+    static elem_t tensor46[256][256] row_align(1)= {0};
+    static elem_t result46[256][1024] row_align(1)= {0};
+    static elem_t inter_result46[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result44,1024,  inter_result46);
 
 
     /* matmul number: 46 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor46, kernel46, inter_result46, result46,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_46");
@@ -975,13 +975,13 @@ int main (int argc, char * argv[]) {
     cycles[46] = end-start;
     start = end;
     static elem_t kernel47[512][256] row_align(1)= {0};
-    static elem_t tensor47[224][512] row_align(1)= {0};
-    static elem_t result47[224][256] row_align(1)= {0};
+    static elem_t tensor47[256][512] row_align(1)= {0};
+    static elem_t result47[256][256] row_align(1)= {0};
 
 
     /* matmul number: 47 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor47, kernel47, NULL, result47,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_47");
@@ -992,14 +992,14 @@ int main (int argc, char * argv[]) {
     cycles[47] = end-start;
     start = end;
     static elem_t kernel48[2304][256] row_align(1)= {0};
-    static elem_t tensor48[224][2304] row_align(1)= {0};
-    static elem_t result48[224][256] row_align(1)= {0};
+    static elem_t tensor48[256][2304] row_align(1)= {0};
+    static elem_t result48[256][256] row_align(1)= {0};
     tensor_reshape(256,result47,14, 14, 3, 1, tensor48);
 
 
     /* matmul number: 48 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor48, kernel48, NULL, result48,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_48");
@@ -1010,15 +1010,15 @@ int main (int argc, char * argv[]) {
     cycles[48] = end-start;
     start = end;
     static elem_t kernel49[256][1024] row_align(1)= {0};
-    static elem_t tensor49[224][256] row_align(1)= {0};
-    static elem_t result49[224][1024] row_align(1)= {0};
-    static elem_t inter_result49[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result47,1024,  inter_result49);
+    static elem_t tensor49[256][256] row_align(1)= {0};
+    static elem_t result49[256][1024] row_align(1)= {0};
+    static elem_t inter_result49[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result47,1024,  inter_result49);
 
 
     /* matmul number: 49 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor49, kernel49, inter_result49, result49,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_49");
@@ -1029,13 +1029,13 @@ int main (int argc, char * argv[]) {
     cycles[49] = end-start;
     start = end;
     static elem_t kernel50[512][256] row_align(1)= {0};
-    static elem_t tensor50[224][512] row_align(1)= {0};
-    static elem_t result50[224][256] row_align(1)= {0};
+    static elem_t tensor50[256][512] row_align(1)= {0};
+    static elem_t result50[256][256] row_align(1)= {0};
 
 
     /* matmul number: 50 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor50, kernel50, NULL, result50,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_50");
@@ -1046,14 +1046,14 @@ int main (int argc, char * argv[]) {
     cycles[50] = end-start;
     start = end;
     static elem_t kernel51[2304][256] row_align(1)= {0};
-    static elem_t tensor51[224][2304] row_align(1)= {0};
-    static elem_t result51[224][256] row_align(1)= {0};
+    static elem_t tensor51[256][2304] row_align(1)= {0};
+    static elem_t result51[256][256] row_align(1)= {0};
     tensor_reshape(256,result50,14, 14, 3, 1, tensor51);
 
 
     /* matmul number: 51 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor51, kernel51, NULL, result51,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_51");
@@ -1064,15 +1064,15 @@ int main (int argc, char * argv[]) {
     cycles[51] = end-start;
     start = end;
     static elem_t kernel52[256][1024] row_align(1)= {0};
-    static elem_t tensor52[224][256] row_align(1)= {0};
-    static elem_t result52[224][1024] row_align(1)= {0};
-    static elem_t inter_result52[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result50,1024,  inter_result52);
+    static elem_t tensor52[256][256] row_align(1)= {0};
+    static elem_t result52[256][1024] row_align(1)= {0};
+    static elem_t inter_result52[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result50,1024,  inter_result52);
 
 
     /* matmul number: 52 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor52, kernel52, inter_result52, result52,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_52");
@@ -1083,13 +1083,13 @@ int main (int argc, char * argv[]) {
     cycles[52] = end-start;
     start = end;
     static elem_t kernel53[512][256] row_align(1)= {0};
-    static elem_t tensor53[224][512] row_align(1)= {0};
-    static elem_t result53[224][256] row_align(1)= {0};
+    static elem_t tensor53[256][512] row_align(1)= {0};
+    static elem_t result53[256][256] row_align(1)= {0};
 
 
     /* matmul number: 53 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor53, kernel53, NULL, result53,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_53");
@@ -1100,14 +1100,14 @@ int main (int argc, char * argv[]) {
     cycles[53] = end-start;
     start = end;
     static elem_t kernel54[2304][256] row_align(1)= {0};
-    static elem_t tensor54[224][2304] row_align(1)= {0};
-    static elem_t result54[224][256] row_align(1)= {0};
+    static elem_t tensor54[256][2304] row_align(1)= {0};
+    static elem_t result54[256][256] row_align(1)= {0};
     tensor_reshape(256,result53,14, 14, 3, 1, tensor54);
 
 
     /* matmul number: 54 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor54, kernel54, NULL, result54,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_54");
@@ -1118,15 +1118,15 @@ int main (int argc, char * argv[]) {
     cycles[54] = end-start;
     start = end;
     static elem_t kernel55[256][1024] row_align(1)= {0};
-    static elem_t tensor55[224][256] row_align(1)= {0};
-    static elem_t result55[224][1024] row_align(1)= {0};
-    static elem_t inter_result55[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result53,1024,  inter_result55);
+    static elem_t tensor55[256][256] row_align(1)= {0};
+    static elem_t result55[256][1024] row_align(1)= {0};
+    static elem_t inter_result55[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result53,1024,  inter_result55);
 
 
     /* matmul number: 55 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor55, kernel55, inter_result55, result55,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_55");
@@ -1137,13 +1137,13 @@ int main (int argc, char * argv[]) {
     cycles[55] = end-start;
     start = end;
     static elem_t kernel56[512][256] row_align(1)= {0};
-    static elem_t tensor56[224][512] row_align(1)= {0};
-    static elem_t result56[224][256] row_align(1)= {0};
+    static elem_t tensor56[256][512] row_align(1)= {0};
+    static elem_t result56[256][256] row_align(1)= {0};
 
 
     /* matmul number: 56 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor56, kernel56, NULL, result56,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_56");
@@ -1154,14 +1154,14 @@ int main (int argc, char * argv[]) {
     cycles[56] = end-start;
     start = end;
     static elem_t kernel57[2304][256] row_align(1)= {0};
-    static elem_t tensor57[224][2304] row_align(1)= {0};
-    static elem_t result57[224][256] row_align(1)= {0};
+    static elem_t tensor57[256][2304] row_align(1)= {0};
+    static elem_t result57[256][256] row_align(1)= {0};
     tensor_reshape(256,result56,14, 14, 3, 1, tensor57);
 
 
     /* matmul number: 57 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor57, kernel57, NULL, result57,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_57");
@@ -1172,15 +1172,15 @@ int main (int argc, char * argv[]) {
     cycles[57] = end-start;
     start = end;
     static elem_t kernel58[256][1024] row_align(1)= {0};
-    static elem_t tensor58[224][256] row_align(1)= {0};
-    static elem_t result58[224][1024] row_align(1)= {0};
-    static elem_t inter_result58[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result56,1024,  inter_result58);
+    static elem_t tensor58[256][256] row_align(1)= {0};
+    static elem_t result58[256][1024] row_align(1)= {0};
+    static elem_t inter_result58[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result56,1024,  inter_result58);
 
 
     /* matmul number: 58 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor58, kernel58, inter_result58, result58,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_58");
@@ -1191,13 +1191,13 @@ int main (int argc, char * argv[]) {
     cycles[58] = end-start;
     start = end;
     static elem_t kernel59[512][256] row_align(1)= {0};
-    static elem_t tensor59[224][512] row_align(1)= {0};
-    static elem_t result59[224][256] row_align(1)= {0};
+    static elem_t tensor59[256][512] row_align(1)= {0};
+    static elem_t result59[256][256] row_align(1)= {0};
 
 
     /* matmul number: 59 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor59, kernel59, NULL, result59,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_59");
@@ -1208,14 +1208,14 @@ int main (int argc, char * argv[]) {
     cycles[59] = end-start;
     start = end;
     static elem_t kernel60[2304][256] row_align(1)= {0};
-    static elem_t tensor60[224][2304] row_align(1)= {0};
-    static elem_t result60[224][256] row_align(1)= {0};
+    static elem_t tensor60[256][2304] row_align(1)= {0};
+    static elem_t result60[256][256] row_align(1)= {0};
     tensor_reshape(256,result59,14, 14, 3, 1, tensor60);
 
 
     /* matmul number: 60 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor60, kernel60, NULL, result60,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_60");
@@ -1226,15 +1226,15 @@ int main (int argc, char * argv[]) {
     cycles[60] = end-start;
     start = end;
     static elem_t kernel61[256][1024] row_align(1)= {0};
-    static elem_t tensor61[224][256] row_align(1)= {0};
-    static elem_t result61[224][1024] row_align(1)= {0};
-    static elem_t inter_result61[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result59,1024,  inter_result61);
+    static elem_t tensor61[256][256] row_align(1)= {0};
+    static elem_t result61[256][1024] row_align(1)= {0};
+    static elem_t inter_result61[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result59,1024,  inter_result61);
 
 
     /* matmul number: 61 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor61, kernel61, inter_result61, result61,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_61");
@@ -1245,13 +1245,13 @@ int main (int argc, char * argv[]) {
     cycles[61] = end-start;
     start = end;
     static elem_t kernel62[512][256] row_align(1)= {0};
-    static elem_t tensor62[224][512] row_align(1)= {0};
-    static elem_t result62[224][256] row_align(1)= {0};
+    static elem_t tensor62[256][512] row_align(1)= {0};
+    static elem_t result62[256][256] row_align(1)= {0};
 
 
     /* matmul number: 62 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor62, kernel62, NULL, result62,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_62");
@@ -1262,14 +1262,14 @@ int main (int argc, char * argv[]) {
     cycles[62] = end-start;
     start = end;
     static elem_t kernel63[2304][256] row_align(1)= {0};
-    static elem_t tensor63[224][2304] row_align(1)= {0};
-    static elem_t result63[224][256] row_align(1)= {0};
+    static elem_t tensor63[256][2304] row_align(1)= {0};
+    static elem_t result63[256][256] row_align(1)= {0};
     tensor_reshape(256,result62,14, 14, 3, 1, tensor63);
 
 
     /* matmul number: 63 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor63, kernel63, NULL, result63,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_63");
@@ -1280,15 +1280,15 @@ int main (int argc, char * argv[]) {
     cycles[63] = end-start;
     start = end;
     static elem_t kernel64[256][1024] row_align(1)= {0};
-    static elem_t tensor64[224][256] row_align(1)= {0};
-    static elem_t result64[224][1024] row_align(1)= {0};
-    static elem_t inter_result64[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result62,1024,  inter_result64);
+    static elem_t tensor64[256][256] row_align(1)= {0};
+    static elem_t result64[256][1024] row_align(1)= {0};
+    static elem_t inter_result64[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result62,1024,  inter_result64);
 
 
     /* matmul number: 64 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor64, kernel64, inter_result64, result64,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_64");
@@ -1299,13 +1299,13 @@ int main (int argc, char * argv[]) {
     cycles[64] = end-start;
     start = end;
     static elem_t kernel65[512][256] row_align(1)= {0};
-    static elem_t tensor65[224][512] row_align(1)= {0};
-    static elem_t result65[224][256] row_align(1)= {0};
+    static elem_t tensor65[256][512] row_align(1)= {0};
+    static elem_t result65[256][256] row_align(1)= {0};
 
 
     /* matmul number: 65 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor65, kernel65, NULL, result65,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_65");
@@ -1316,14 +1316,14 @@ int main (int argc, char * argv[]) {
     cycles[65] = end-start;
     start = end;
     static elem_t kernel66[2304][256] row_align(1)= {0};
-    static elem_t tensor66[224][2304] row_align(1)= {0};
-    static elem_t result66[224][256] row_align(1)= {0};
+    static elem_t tensor66[256][2304] row_align(1)= {0};
+    static elem_t result66[256][256] row_align(1)= {0};
     tensor_reshape(256,result65,14, 14, 3, 1, tensor66);
 
 
     /* matmul number: 66 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor66, kernel66, NULL, result66,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_66");
@@ -1334,15 +1334,15 @@ int main (int argc, char * argv[]) {
     cycles[66] = end-start;
     start = end;
     static elem_t kernel67[256][1024] row_align(1)= {0};
-    static elem_t tensor67[224][256] row_align(1)= {0};
-    static elem_t result67[224][1024] row_align(1)= {0};
-    static elem_t inter_result67[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result65,1024,  inter_result67);
+    static elem_t tensor67[256][256] row_align(1)= {0};
+    static elem_t result67[256][1024] row_align(1)= {0};
+    static elem_t inter_result67[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result65,1024,  inter_result67);
 
 
     /* matmul number: 67 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor67, kernel67, inter_result67, result67,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_67");
@@ -1353,13 +1353,13 @@ int main (int argc, char * argv[]) {
     cycles[67] = end-start;
     start = end;
     static elem_t kernel68[512][256] row_align(1)= {0};
-    static elem_t tensor68[224][512] row_align(1)= {0};
-    static elem_t result68[224][256] row_align(1)= {0};
+    static elem_t tensor68[256][512] row_align(1)= {0};
+    static elem_t result68[256][256] row_align(1)= {0};
 
 
     /* matmul number: 68 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor68, kernel68, NULL, result68,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_68");
@@ -1370,14 +1370,14 @@ int main (int argc, char * argv[]) {
     cycles[68] = end-start;
     start = end;
     static elem_t kernel69[2304][256] row_align(1)= {0};
-    static elem_t tensor69[224][2304] row_align(1)= {0};
-    static elem_t result69[224][256] row_align(1)= {0};
+    static elem_t tensor69[256][2304] row_align(1)= {0};
+    static elem_t result69[256][256] row_align(1)= {0};
     tensor_reshape(256,result68,14, 14, 3, 1, tensor69);
 
 
     /* matmul number: 69 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor69, kernel69, NULL, result69,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_69");
@@ -1388,15 +1388,15 @@ int main (int argc, char * argv[]) {
     cycles[69] = end-start;
     start = end;
     static elem_t kernel70[256][1024] row_align(1)= {0};
-    static elem_t tensor70[224][256] row_align(1)= {0};
-    static elem_t result70[224][1024] row_align(1)= {0};
-    static elem_t inter_result70[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result68,1024,  inter_result70);
+    static elem_t tensor70[256][256] row_align(1)= {0};
+    static elem_t result70[256][1024] row_align(1)= {0};
+    static elem_t inter_result70[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result68,1024,  inter_result70);
 
 
     /* matmul number: 70 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor70, kernel70, inter_result70, result70,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_70");
@@ -1407,13 +1407,13 @@ int main (int argc, char * argv[]) {
     cycles[70] = end-start;
     start = end;
     static elem_t kernel71[512][256] row_align(1)= {0};
-    static elem_t tensor71[224][512] row_align(1)= {0};
-    static elem_t result71[224][256] row_align(1)= {0};
+    static elem_t tensor71[256][512] row_align(1)= {0};
+    static elem_t result71[256][256] row_align(1)= {0};
 
 
     /* matmul number: 71 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor71, kernel71, NULL, result71,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_71");
@@ -1424,14 +1424,14 @@ int main (int argc, char * argv[]) {
     cycles[71] = end-start;
     start = end;
     static elem_t kernel72[2304][256] row_align(1)= {0};
-    static elem_t tensor72[224][2304] row_align(1)= {0};
-    static elem_t result72[224][256] row_align(1)= {0};
+    static elem_t tensor72[256][2304] row_align(1)= {0};
+    static elem_t result72[256][256] row_align(1)= {0};
     tensor_reshape(256,result71,14, 14, 3, 1, tensor72);
 
 
     /* matmul number: 72 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor72, kernel72, NULL, result72,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_72");
@@ -1442,15 +1442,15 @@ int main (int argc, char * argv[]) {
     cycles[72] = end-start;
     start = end;
     static elem_t kernel73[256][1024] row_align(1)= {0};
-    static elem_t tensor73[224][256] row_align(1)= {0};
-    static elem_t result73[224][1024] row_align(1)= {0};
-    static elem_t inter_result73[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result71,1024,  inter_result73);
+    static elem_t tensor73[256][256] row_align(1)= {0};
+    static elem_t result73[256][1024] row_align(1)= {0};
+    static elem_t inter_result73[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result71,1024,  inter_result73);
 
 
     /* matmul number: 73 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor73, kernel73, inter_result73, result73,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_73");
@@ -1461,13 +1461,13 @@ int main (int argc, char * argv[]) {
     cycles[73] = end-start;
     start = end;
     static elem_t kernel74[512][256] row_align(1)= {0};
-    static elem_t tensor74[224][512] row_align(1)= {0};
-    static elem_t result74[224][256] row_align(1)= {0};
+    static elem_t tensor74[256][512] row_align(1)= {0};
+    static elem_t result74[256][256] row_align(1)= {0};
 
 
     /* matmul number: 74 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor74, kernel74, NULL, result74,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_74");
@@ -1478,14 +1478,14 @@ int main (int argc, char * argv[]) {
     cycles[74] = end-start;
     start = end;
     static elem_t kernel75[2304][256] row_align(1)= {0};
-    static elem_t tensor75[224][2304] row_align(1)= {0};
-    static elem_t result75[224][256] row_align(1)= {0};
+    static elem_t tensor75[256][2304] row_align(1)= {0};
+    static elem_t result75[256][256] row_align(1)= {0};
     tensor_reshape(256,result74,14, 14, 3, 1, tensor75);
 
 
     /* matmul number: 75 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor75, kernel75, NULL, result75,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_75");
@@ -1496,15 +1496,15 @@ int main (int argc, char * argv[]) {
     cycles[75] = end-start;
     start = end;
     static elem_t kernel76[256][1024] row_align(1)= {0};
-    static elem_t tensor76[224][256] row_align(1)= {0};
-    static elem_t result76[224][1024] row_align(1)= {0};
-    static elem_t inter_result76[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result74,1024,  inter_result76);
+    static elem_t tensor76[256][256] row_align(1)= {0};
+    static elem_t result76[256][1024] row_align(1)= {0};
+    static elem_t inter_result76[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result74,1024,  inter_result76);
 
 
     /* matmul number: 76 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor76, kernel76, inter_result76, result76,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_76");
@@ -1515,13 +1515,13 @@ int main (int argc, char * argv[]) {
     cycles[76] = end-start;
     start = end;
     static elem_t kernel77[512][256] row_align(1)= {0};
-    static elem_t tensor77[224][512] row_align(1)= {0};
-    static elem_t result77[224][256] row_align(1)= {0};
+    static elem_t tensor77[256][512] row_align(1)= {0};
+    static elem_t result77[256][256] row_align(1)= {0};
 
 
     /* matmul number: 77 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor77, kernel77, NULL, result77,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_77");
@@ -1532,14 +1532,14 @@ int main (int argc, char * argv[]) {
     cycles[77] = end-start;
     start = end;
     static elem_t kernel78[2304][256] row_align(1)= {0};
-    static elem_t tensor78[224][2304] row_align(1)= {0};
-    static elem_t result78[224][256] row_align(1)= {0};
+    static elem_t tensor78[256][2304] row_align(1)= {0};
+    static elem_t result78[256][256] row_align(1)= {0};
     tensor_reshape(256,result77,14, 14, 3, 1, tensor78);
 
 
     /* matmul number: 78 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor78, kernel78, NULL, result78,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_78");
@@ -1550,15 +1550,15 @@ int main (int argc, char * argv[]) {
     cycles[78] = end-start;
     start = end;
     static elem_t kernel79[256][1024] row_align(1)= {0};
-    static elem_t tensor79[224][256] row_align(1)= {0};
-    static elem_t result79[224][1024] row_align(1)= {0};
-    static elem_t inter_result79[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result77,1024,  inter_result79);
+    static elem_t tensor79[256][256] row_align(1)= {0};
+    static elem_t result79[256][1024] row_align(1)= {0};
+    static elem_t inter_result79[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result77,1024,  inter_result79);
 
 
     /* matmul number: 79 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor79, kernel79, inter_result79, result79,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_79");
@@ -1569,13 +1569,13 @@ int main (int argc, char * argv[]) {
     cycles[79] = end-start;
     start = end;
     static elem_t kernel80[512][256] row_align(1)= {0};
-    static elem_t tensor80[224][512] row_align(1)= {0};
-    static elem_t result80[224][256] row_align(1)= {0};
+    static elem_t tensor80[256][512] row_align(1)= {0};
+    static elem_t result80[256][256] row_align(1)= {0};
 
 
     /* matmul number: 80 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor80, kernel80, NULL, result80,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_80");
@@ -1586,14 +1586,14 @@ int main (int argc, char * argv[]) {
     cycles[80] = end-start;
     start = end;
     static elem_t kernel81[2304][256] row_align(1)= {0};
-    static elem_t tensor81[224][2304] row_align(1)= {0};
-    static elem_t result81[224][256] row_align(1)= {0};
+    static elem_t tensor81[256][2304] row_align(1)= {0};
+    static elem_t result81[256][256] row_align(1)= {0};
     tensor_reshape(256,result80,14, 14, 3, 1, tensor81);
 
 
     /* matmul number: 81 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor81, kernel81, NULL, result81,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_81");
@@ -1604,15 +1604,15 @@ int main (int argc, char * argv[]) {
     cycles[81] = end-start;
     start = end;
     static elem_t kernel82[256][1024] row_align(1)= {0};
-    static elem_t tensor82[224][256] row_align(1)= {0};
-    static elem_t result82[224][1024] row_align(1)= {0};
-    static elem_t inter_result82[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result80,1024,  inter_result82);
+    static elem_t tensor82[256][256] row_align(1)= {0};
+    static elem_t result82[256][1024] row_align(1)= {0};
+    static elem_t inter_result82[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result80,1024,  inter_result82);
 
 
     /* matmul number: 82 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor82, kernel82, inter_result82, result82,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_82");
@@ -1623,13 +1623,13 @@ int main (int argc, char * argv[]) {
     cycles[82] = end-start;
     start = end;
     static elem_t kernel83[512][256] row_align(1)= {0};
-    static elem_t tensor83[224][512] row_align(1)= {0};
-    static elem_t result83[224][256] row_align(1)= {0};
+    static elem_t tensor83[256][512] row_align(1)= {0};
+    static elem_t result83[256][256] row_align(1)= {0};
 
 
     /* matmul number: 83 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor83, kernel83, NULL, result83,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_83");
@@ -1640,14 +1640,14 @@ int main (int argc, char * argv[]) {
     cycles[83] = end-start;
     start = end;
     static elem_t kernel84[2304][256] row_align(1)= {0};
-    static elem_t tensor84[224][2304] row_align(1)= {0};
-    static elem_t result84[224][256] row_align(1)= {0};
+    static elem_t tensor84[256][2304] row_align(1)= {0};
+    static elem_t result84[256][256] row_align(1)= {0};
     tensor_reshape(256,result83,14, 14, 3, 1, tensor84);
 
 
     /* matmul number: 84 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor84, kernel84, NULL, result84,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_84");
@@ -1658,15 +1658,15 @@ int main (int argc, char * argv[]) {
     cycles[84] = end-start;
     start = end;
     static elem_t kernel85[256][1024] row_align(1)= {0};
-    static elem_t tensor85[224][256] row_align(1)= {0};
-    static elem_t result85[224][1024] row_align(1)= {0};
-    static elem_t inter_result85[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result83,1024,  inter_result85);
+    static elem_t tensor85[256][256] row_align(1)= {0};
+    static elem_t result85[256][1024] row_align(1)= {0};
+    static elem_t inter_result85[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result83,1024,  inter_result85);
 
 
     /* matmul number: 85 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor85, kernel85, inter_result85, result85,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_85");
@@ -1677,13 +1677,13 @@ int main (int argc, char * argv[]) {
     cycles[85] = end-start;
     start = end;
     static elem_t kernel86[512][256] row_align(1)= {0};
-    static elem_t tensor86[224][512] row_align(1)= {0};
-    static elem_t result86[224][256] row_align(1)= {0};
+    static elem_t tensor86[256][512] row_align(1)= {0};
+    static elem_t result86[256][256] row_align(1)= {0};
 
 
     /* matmul number: 86 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor86, kernel86, NULL, result86,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_86");
@@ -1694,14 +1694,14 @@ int main (int argc, char * argv[]) {
     cycles[86] = end-start;
     start = end;
     static elem_t kernel87[2304][256] row_align(1)= {0};
-    static elem_t tensor87[224][2304] row_align(1)= {0};
-    static elem_t result87[224][256] row_align(1)= {0};
+    static elem_t tensor87[256][2304] row_align(1)= {0};
+    static elem_t result87[256][256] row_align(1)= {0};
     tensor_reshape(256,result86,14, 14, 3, 1, tensor87);
 
 
     /* matmul number: 87 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor87, kernel87, NULL, result87,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_87");
@@ -1712,15 +1712,15 @@ int main (int argc, char * argv[]) {
     cycles[87] = end-start;
     start = end;
     static elem_t kernel88[256][1024] row_align(1)= {0};
-    static elem_t tensor88[224][256] row_align(1)= {0};
-    static elem_t result88[224][1024] row_align(1)= {0};
-    static elem_t inter_result88[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result86,1024,  inter_result88);
+    static elem_t tensor88[256][256] row_align(1)= {0};
+    static elem_t result88[256][1024] row_align(1)= {0};
+    static elem_t inter_result88[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result86,1024,  inter_result88);
 
 
     /* matmul number: 88 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor88, kernel88, inter_result88, result88,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_88");
@@ -1731,13 +1731,13 @@ int main (int argc, char * argv[]) {
     cycles[88] = end-start;
     start = end;
     static elem_t kernel89[512][256] row_align(1)= {0};
-    static elem_t tensor89[224][512] row_align(1)= {0};
-    static elem_t result89[224][256] row_align(1)= {0};
+    static elem_t tensor89[256][512] row_align(1)= {0};
+    static elem_t result89[256][256] row_align(1)= {0};
 
 
     /* matmul number: 89 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor89, kernel89, NULL, result89,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_89");
@@ -1748,14 +1748,14 @@ int main (int argc, char * argv[]) {
     cycles[89] = end-start;
     start = end;
     static elem_t kernel90[2304][256] row_align(1)= {0};
-    static elem_t tensor90[224][2304] row_align(1)= {0};
-    static elem_t result90[224][256] row_align(1)= {0};
+    static elem_t tensor90[256][2304] row_align(1)= {0};
+    static elem_t result90[256][256] row_align(1)= {0};
     tensor_reshape(256,result89,14, 14, 3, 1, tensor90);
 
 
     /* matmul number: 90 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor90, kernel90, NULL, result90,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_90");
@@ -1766,15 +1766,15 @@ int main (int argc, char * argv[]) {
     cycles[90] = end-start;
     start = end;
     static elem_t kernel91[256][1024] row_align(1)= {0};
-    static elem_t tensor91[224][256] row_align(1)= {0};
-    static elem_t result91[224][1024] row_align(1)= {0};
-    static elem_t inter_result91[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result89,1024,  inter_result91);
+    static elem_t tensor91[256][256] row_align(1)= {0};
+    static elem_t result91[256][1024] row_align(1)= {0};
+    static elem_t inter_result91[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result89,1024,  inter_result91);
 
 
     /* matmul number: 91 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor91, kernel91, inter_result91, result91,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_91");
@@ -1785,13 +1785,13 @@ int main (int argc, char * argv[]) {
     cycles[91] = end-start;
     start = end;
     static elem_t kernel92[512][256] row_align(1)= {0};
-    static elem_t tensor92[224][512] row_align(1)= {0};
-    static elem_t result92[224][256] row_align(1)= {0};
+    static elem_t tensor92[256][512] row_align(1)= {0};
+    static elem_t result92[256][256] row_align(1)= {0};
 
 
     /* matmul number: 92 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor92, kernel92, NULL, result92,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_92");
@@ -1802,14 +1802,14 @@ int main (int argc, char * argv[]) {
     cycles[92] = end-start;
     start = end;
     static elem_t kernel93[2304][256] row_align(1)= {0};
-    static elem_t tensor93[224][2304] row_align(1)= {0};
-    static elem_t result93[224][256] row_align(1)= {0};
+    static elem_t tensor93[256][2304] row_align(1)= {0};
+    static elem_t result93[256][256] row_align(1)= {0};
     tensor_reshape(256,result92,14, 14, 3, 1, tensor93);
 
 
     /* matmul number: 93 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor93, kernel93, NULL, result93,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_93");
@@ -1820,15 +1820,15 @@ int main (int argc, char * argv[]) {
     cycles[93] = end-start;
     start = end;
     static elem_t kernel94[256][1024] row_align(1)= {0};
-    static elem_t tensor94[224][256] row_align(1)= {0};
-    static elem_t result94[224][1024] row_align(1)= {0};
-    static elem_t inter_result94[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result92,1024,  inter_result94);
+    static elem_t tensor94[256][256] row_align(1)= {0};
+    static elem_t result94[256][1024] row_align(1)= {0};
+    static elem_t inter_result94[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result92,1024,  inter_result94);
 
 
     /* matmul number: 94 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor94, kernel94, inter_result94, result94,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_94");
@@ -1839,13 +1839,13 @@ int main (int argc, char * argv[]) {
     cycles[94] = end-start;
     start = end;
     static elem_t kernel95[512][256] row_align(1)= {0};
-    static elem_t tensor95[224][512] row_align(1)= {0};
-    static elem_t result95[224][256] row_align(1)= {0};
+    static elem_t tensor95[256][512] row_align(1)= {0};
+    static elem_t result95[256][256] row_align(1)= {0};
 
 
     /* matmul number: 95 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor95, kernel95, NULL, result95,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_95");
@@ -1856,14 +1856,14 @@ int main (int argc, char * argv[]) {
     cycles[95] = end-start;
     start = end;
     static elem_t kernel96[2304][256] row_align(1)= {0};
-    static elem_t tensor96[224][2304] row_align(1)= {0};
-    static elem_t result96[224][256] row_align(1)= {0};
+    static elem_t tensor96[256][2304] row_align(1)= {0};
+    static elem_t result96[256][256] row_align(1)= {0};
     tensor_reshape(256,result95,14, 14, 3, 1, tensor96);
 
 
     /* matmul number: 96 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor96, kernel96, NULL, result96,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_96");
@@ -1874,15 +1874,15 @@ int main (int argc, char * argv[]) {
     cycles[96] = end-start;
     start = end;
     static elem_t kernel97[256][1024] row_align(1)= {0};
-    static elem_t tensor97[224][256] row_align(1)= {0};
-    static elem_t result97[224][1024] row_align(1)= {0};
-    static elem_t inter_result97[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result95,1024,  inter_result97);
+    static elem_t tensor97[256][256] row_align(1)= {0};
+    static elem_t result97[256][1024] row_align(1)= {0};
+    static elem_t inter_result97[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result95,1024,  inter_result97);
 
 
     /* matmul number: 97 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor97, kernel97, inter_result97, result97,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_97");
@@ -1893,13 +1893,13 @@ int main (int argc, char * argv[]) {
     cycles[97] = end-start;
     start = end;
     static elem_t kernel98[512][256] row_align(1)= {0};
-    static elem_t tensor98[224][512] row_align(1)= {0};
-    static elem_t result98[224][256] row_align(1)= {0};
+    static elem_t tensor98[256][512] row_align(1)= {0};
+    static elem_t result98[256][256] row_align(1)= {0};
 
 
     /* matmul number: 98 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor98, kernel98, NULL, result98,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_98");
@@ -1910,14 +1910,14 @@ int main (int argc, char * argv[]) {
     cycles[98] = end-start;
     start = end;
     static elem_t kernel99[2304][256] row_align(1)= {0};
-    static elem_t tensor99[224][2304] row_align(1)= {0};
-    static elem_t result99[224][256] row_align(1)= {0};
+    static elem_t tensor99[256][2304] row_align(1)= {0};
+    static elem_t result99[256][256] row_align(1)= {0};
     tensor_reshape(256,result98,14, 14, 3, 1, tensor99);
 
 
     /* matmul number: 99 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor99, kernel99, NULL, result99,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_99");
@@ -1928,15 +1928,15 @@ int main (int argc, char * argv[]) {
     cycles[99] = end-start;
     start = end;
     static elem_t kernel100[256][1024] row_align(1)= {0};
-    static elem_t tensor100[224][256] row_align(1)= {0};
-    static elem_t result100[224][1024] row_align(1)= {0};
-    static elem_t inter_result100[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result98,1024,  inter_result100);
+    static elem_t tensor100[256][256] row_align(1)= {0};
+    static elem_t result100[256][1024] row_align(1)= {0};
+    static elem_t inter_result100[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result98,1024,  inter_result100);
 
 
     /* matmul number: 100 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor100, kernel100, inter_result100, result100,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_100");
@@ -1947,13 +1947,13 @@ int main (int argc, char * argv[]) {
     cycles[100] = end-start;
     start = end;
     static elem_t kernel101[512][256] row_align(1)= {0};
-    static elem_t tensor101[224][512] row_align(1)= {0};
-    static elem_t result101[224][256] row_align(1)= {0};
+    static elem_t tensor101[256][512] row_align(1)= {0};
+    static elem_t result101[256][256] row_align(1)= {0};
 
 
     /* matmul number: 101 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor101, kernel101, NULL, result101,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_101");
@@ -1964,14 +1964,14 @@ int main (int argc, char * argv[]) {
     cycles[101] = end-start;
     start = end;
     static elem_t kernel102[2304][256] row_align(1)= {0};
-    static elem_t tensor102[224][2304] row_align(1)= {0};
-    static elem_t result102[224][256] row_align(1)= {0};
+    static elem_t tensor102[256][2304] row_align(1)= {0};
+    static elem_t result102[256][256] row_align(1)= {0};
     tensor_reshape(256,result101,14, 14, 3, 1, tensor102);
 
 
     /* matmul number: 102 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor102, kernel102, NULL, result102,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_102");
@@ -1982,15 +1982,15 @@ int main (int argc, char * argv[]) {
     cycles[102] = end-start;
     start = end;
     static elem_t kernel103[256][1024] row_align(1)= {0};
-    static elem_t tensor103[224][256] row_align(1)= {0};
-    static elem_t result103[224][1024] row_align(1)= {0};
-    static elem_t inter_result103[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result101,1024,  inter_result103);
+    static elem_t tensor103[256][256] row_align(1)= {0};
+    static elem_t result103[256][1024] row_align(1)= {0};
+    static elem_t inter_result103[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result101,1024,  inter_result103);
 
 
     /* matmul number: 103 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor103, kernel103, inter_result103, result103,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_103");
@@ -2001,13 +2001,13 @@ int main (int argc, char * argv[]) {
     cycles[103] = end-start;
     start = end;
     static elem_t kernel104[512][256] row_align(1)= {0};
-    static elem_t tensor104[224][512] row_align(1)= {0};
-    static elem_t result104[224][256] row_align(1)= {0};
+    static elem_t tensor104[256][512] row_align(1)= {0};
+    static elem_t result104[256][256] row_align(1)= {0};
 
 
     /* matmul number: 104 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor104, kernel104, NULL, result104,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_104");
@@ -2018,14 +2018,14 @@ int main (int argc, char * argv[]) {
     cycles[104] = end-start;
     start = end;
     static elem_t kernel105[2304][256] row_align(1)= {0};
-    static elem_t tensor105[224][2304] row_align(1)= {0};
-    static elem_t result105[224][256] row_align(1)= {0};
+    static elem_t tensor105[256][2304] row_align(1)= {0};
+    static elem_t result105[256][256] row_align(1)= {0};
     tensor_reshape(256,result104,14, 14, 3, 1, tensor105);
 
 
     /* matmul number: 105 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor105, kernel105, NULL, result105,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_105");
@@ -2036,15 +2036,15 @@ int main (int argc, char * argv[]) {
     cycles[105] = end-start;
     start = end;
     static elem_t kernel106[256][1024] row_align(1)= {0};
-    static elem_t tensor106[224][256] row_align(1)= {0};
-    static elem_t result106[224][1024] row_align(1)= {0};
-    static elem_t inter_result106[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result104,1024,  inter_result106);
+    static elem_t tensor106[256][256] row_align(1)= {0};
+    static elem_t result106[256][1024] row_align(1)= {0};
+    static elem_t inter_result106[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result104,1024,  inter_result106);
 
 
     /* matmul number: 106 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor106, kernel106, inter_result106, result106,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_106");
@@ -2055,13 +2055,13 @@ int main (int argc, char * argv[]) {
     cycles[106] = end-start;
     start = end;
     static elem_t kernel107[512][256] row_align(1)= {0};
-    static elem_t tensor107[224][512] row_align(1)= {0};
-    static elem_t result107[224][256] row_align(1)= {0};
+    static elem_t tensor107[256][512] row_align(1)= {0};
+    static elem_t result107[256][256] row_align(1)= {0};
 
 
     /* matmul number: 107 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor107, kernel107, NULL, result107,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_107");
@@ -2072,14 +2072,14 @@ int main (int argc, char * argv[]) {
     cycles[107] = end-start;
     start = end;
     static elem_t kernel108[2304][256] row_align(1)= {0};
-    static elem_t tensor108[224][2304] row_align(1)= {0};
-    static elem_t result108[224][256] row_align(1)= {0};
+    static elem_t tensor108[256][2304] row_align(1)= {0};
+    static elem_t result108[256][256] row_align(1)= {0};
     tensor_reshape(256,result107,14, 14, 3, 1, tensor108);
 
 
     /* matmul number: 108 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor108, kernel108, NULL, result108,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_108");
@@ -2090,15 +2090,15 @@ int main (int argc, char * argv[]) {
     cycles[108] = end-start;
     start = end;
     static elem_t kernel109[256][1024] row_align(1)= {0};
-    static elem_t tensor109[224][256] row_align(1)= {0};
-    static elem_t result109[224][1024] row_align(1)= {0};
-    static elem_t inter_result109[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result107,1024,  inter_result109);
+    static elem_t tensor109[256][256] row_align(1)= {0};
+    static elem_t result109[256][1024] row_align(1)= {0};
+    static elem_t inter_result109[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result107,1024,  inter_result109);
 
 
     /* matmul number: 109 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor109, kernel109, inter_result109, result109,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_109");
@@ -2109,13 +2109,13 @@ int main (int argc, char * argv[]) {
     cycles[109] = end-start;
     start = end;
     static elem_t kernel110[512][256] row_align(1)= {0};
-    static elem_t tensor110[224][512] row_align(1)= {0};
-    static elem_t result110[224][256] row_align(1)= {0};
+    static elem_t tensor110[256][512] row_align(1)= {0};
+    static elem_t result110[256][256] row_align(1)= {0};
 
 
     /* matmul number: 110 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor110, kernel110, NULL, result110,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_110");
@@ -2126,14 +2126,14 @@ int main (int argc, char * argv[]) {
     cycles[110] = end-start;
     start = end;
     static elem_t kernel111[2304][256] row_align(1)= {0};
-    static elem_t tensor111[224][2304] row_align(1)= {0};
-    static elem_t result111[224][256] row_align(1)= {0};
+    static elem_t tensor111[256][2304] row_align(1)= {0};
+    static elem_t result111[256][256] row_align(1)= {0};
     tensor_reshape(256,result110,14, 14, 3, 1, tensor111);
 
 
     /* matmul number: 111 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor111, kernel111, NULL, result111,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_111");
@@ -2144,15 +2144,15 @@ int main (int argc, char * argv[]) {
     cycles[111] = end-start;
     start = end;
     static elem_t kernel112[256][1024] row_align(1)= {0};
-    static elem_t tensor112[224][256] row_align(1)= {0};
-    static elem_t result112[224][1024] row_align(1)= {0};
-    static elem_t inter_result112[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result110,1024,  inter_result112);
+    static elem_t tensor112[256][256] row_align(1)= {0};
+    static elem_t result112[256][1024] row_align(1)= {0};
+    static elem_t inter_result112[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result110,1024,  inter_result112);
 
 
     /* matmul number: 112 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor112, kernel112, inter_result112, result112,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_112");
@@ -2163,13 +2163,13 @@ int main (int argc, char * argv[]) {
     cycles[112] = end-start;
     start = end;
     static elem_t kernel113[512][256] row_align(1)= {0};
-    static elem_t tensor113[224][512] row_align(1)= {0};
-    static elem_t result113[224][256] row_align(1)= {0};
+    static elem_t tensor113[256][512] row_align(1)= {0};
+    static elem_t result113[256][256] row_align(1)= {0};
 
 
     /* matmul number: 113 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor113, kernel113, NULL, result113,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_113");
@@ -2180,14 +2180,14 @@ int main (int argc, char * argv[]) {
     cycles[113] = end-start;
     start = end;
     static elem_t kernel114[2304][256] row_align(1)= {0};
-    static elem_t tensor114[224][2304] row_align(1)= {0};
-    static elem_t result114[224][256] row_align(1)= {0};
+    static elem_t tensor114[256][2304] row_align(1)= {0};
+    static elem_t result114[256][256] row_align(1)= {0};
     tensor_reshape(256,result113,14, 14, 3, 1, tensor114);
 
 
     /* matmul number: 114 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor114, kernel114, NULL, result114,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_114");
@@ -2198,15 +2198,15 @@ int main (int argc, char * argv[]) {
     cycles[114] = end-start;
     start = end;
     static elem_t kernel115[256][1024] row_align(1)= {0};
-    static elem_t tensor115[224][256] row_align(1)= {0};
-    static elem_t result115[224][1024] row_align(1)= {0};
-    static elem_t inter_result115[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result113,1024,  inter_result115);
+    static elem_t tensor115[256][256] row_align(1)= {0};
+    static elem_t result115[256][1024] row_align(1)= {0};
+    static elem_t inter_result115[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result113,1024,  inter_result115);
 
 
     /* matmul number: 115 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor115, kernel115, inter_result115, result115,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_115");
@@ -2217,13 +2217,13 @@ int main (int argc, char * argv[]) {
     cycles[115] = end-start;
     start = end;
     static elem_t kernel116[512][256] row_align(1)= {0};
-    static elem_t tensor116[224][512] row_align(1)= {0};
-    static elem_t result116[224][256] row_align(1)= {0};
+    static elem_t tensor116[256][512] row_align(1)= {0};
+    static elem_t result116[256][256] row_align(1)= {0};
 
 
     /* matmul number: 116 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor116, kernel116, NULL, result116,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_116");
@@ -2234,14 +2234,14 @@ int main (int argc, char * argv[]) {
     cycles[116] = end-start;
     start = end;
     static elem_t kernel117[2304][256] row_align(1)= {0};
-    static elem_t tensor117[224][2304] row_align(1)= {0};
-    static elem_t result117[224][256] row_align(1)= {0};
+    static elem_t tensor117[256][2304] row_align(1)= {0};
+    static elem_t result117[256][256] row_align(1)= {0};
     tensor_reshape(256,result116,14, 14, 3, 1, tensor117);
 
 
     /* matmul number: 117 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor117, kernel117, NULL, result117,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_117");
@@ -2252,15 +2252,15 @@ int main (int argc, char * argv[]) {
     cycles[117] = end-start;
     start = end;
     static elem_t kernel118[256][1024] row_align(1)= {0};
-    static elem_t tensor118[224][256] row_align(1)= {0};
-    static elem_t result118[224][1024] row_align(1)= {0};
-    static elem_t inter_result118[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result116,1024,  inter_result118);
+    static elem_t tensor118[256][256] row_align(1)= {0};
+    static elem_t result118[256][1024] row_align(1)= {0};
+    static elem_t inter_result118[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result116,1024,  inter_result118);
 
 
     /* matmul number: 118 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor118, kernel118, inter_result118, result118,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_118");
@@ -2271,13 +2271,13 @@ int main (int argc, char * argv[]) {
     cycles[118] = end-start;
     start = end;
     static elem_t kernel119[512][256] row_align(1)= {0};
-    static elem_t tensor119[224][512] row_align(1)= {0};
-    static elem_t result119[224][256] row_align(1)= {0};
+    static elem_t tensor119[256][512] row_align(1)= {0};
+    static elem_t result119[256][256] row_align(1)= {0};
 
 
     /* matmul number: 119 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor119, kernel119, NULL, result119,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_119");
@@ -2288,14 +2288,14 @@ int main (int argc, char * argv[]) {
     cycles[119] = end-start;
     start = end;
     static elem_t kernel120[2304][256] row_align(1)= {0};
-    static elem_t tensor120[224][2304] row_align(1)= {0};
-    static elem_t result120[224][256] row_align(1)= {0};
+    static elem_t tensor120[256][2304] row_align(1)= {0};
+    static elem_t result120[256][256] row_align(1)= {0};
     tensor_reshape(256,result119,14, 14, 3, 1, tensor120);
 
 
     /* matmul number: 120 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor120, kernel120, NULL, result120,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_120");
@@ -2306,15 +2306,15 @@ int main (int argc, char * argv[]) {
     cycles[120] = end-start;
     start = end;
     static elem_t kernel121[256][1024] row_align(1)= {0};
-    static elem_t tensor121[224][256] row_align(1)= {0};
-    static elem_t result121[224][1024] row_align(1)= {0};
-    static elem_t inter_result121[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result119,1024,  inter_result121);
+    static elem_t tensor121[256][256] row_align(1)= {0};
+    static elem_t result121[256][1024] row_align(1)= {0};
+    static elem_t inter_result121[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result119,1024,  inter_result121);
 
 
     /* matmul number: 121 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor121, kernel121, inter_result121, result121,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_121");
@@ -2325,13 +2325,13 @@ int main (int argc, char * argv[]) {
     cycles[121] = end-start;
     start = end;
     static elem_t kernel122[512][256] row_align(1)= {0};
-    static elem_t tensor122[224][512] row_align(1)= {0};
-    static elem_t result122[224][256] row_align(1)= {0};
+    static elem_t tensor122[256][512] row_align(1)= {0};
+    static elem_t result122[256][256] row_align(1)= {0};
 
 
     /* matmul number: 122 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor122, kernel122, NULL, result122,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_122");
@@ -2342,14 +2342,14 @@ int main (int argc, char * argv[]) {
     cycles[122] = end-start;
     start = end;
     static elem_t kernel123[2304][256] row_align(1)= {0};
-    static elem_t tensor123[224][2304] row_align(1)= {0};
-    static elem_t result123[224][256] row_align(1)= {0};
+    static elem_t tensor123[256][2304] row_align(1)= {0};
+    static elem_t result123[256][256] row_align(1)= {0};
     tensor_reshape(256,result122,14, 14, 3, 1, tensor123);
 
 
     /* matmul number: 123 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor123, kernel123, NULL, result123,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_123");
@@ -2360,15 +2360,15 @@ int main (int argc, char * argv[]) {
     cycles[123] = end-start;
     start = end;
     static elem_t kernel124[256][1024] row_align(1)= {0};
-    static elem_t tensor124[224][256] row_align(1)= {0};
-    static elem_t result124[224][1024] row_align(1)= {0};
-    static elem_t inter_result124[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result122,1024,  inter_result124);
+    static elem_t tensor124[256][256] row_align(1)= {0};
+    static elem_t result124[256][1024] row_align(1)= {0};
+    static elem_t inter_result124[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result122,1024,  inter_result124);
 
 
     /* matmul number: 124 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor124, kernel124, inter_result124, result124,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_124");
@@ -2379,13 +2379,13 @@ int main (int argc, char * argv[]) {
     cycles[124] = end-start;
     start = end;
     static elem_t kernel125[512][256] row_align(1)= {0};
-    static elem_t tensor125[224][512] row_align(1)= {0};
-    static elem_t result125[224][256] row_align(1)= {0};
+    static elem_t tensor125[256][512] row_align(1)= {0};
+    static elem_t result125[256][256] row_align(1)= {0};
 
 
     /* matmul number: 125 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor125, kernel125, NULL, result125,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_125");
@@ -2396,14 +2396,14 @@ int main (int argc, char * argv[]) {
     cycles[125] = end-start;
     start = end;
     static elem_t kernel126[2304][256] row_align(1)= {0};
-    static elem_t tensor126[224][2304] row_align(1)= {0};
-    static elem_t result126[224][256] row_align(1)= {0};
+    static elem_t tensor126[256][2304] row_align(1)= {0};
+    static elem_t result126[256][256] row_align(1)= {0};
     tensor_reshape(256,result125,14, 14, 3, 1, tensor126);
 
 
     /* matmul number: 126 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor126, kernel126, NULL, result126,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_126");
@@ -2414,15 +2414,15 @@ int main (int argc, char * argv[]) {
     cycles[126] = end-start;
     start = end;
     static elem_t kernel127[256][1024] row_align(1)= {0};
-    static elem_t tensor127[224][256] row_align(1)= {0};
-    static elem_t result127[224][1024] row_align(1)= {0};
-    static elem_t inter_result127[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result125,1024,  inter_result127);
+    static elem_t tensor127[256][256] row_align(1)= {0};
+    static elem_t result127[256][1024] row_align(1)= {0};
+    static elem_t inter_result127[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result125,1024,  inter_result127);
 
 
     /* matmul number: 127 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor127, kernel127, inter_result127, result127,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_127");
@@ -2433,13 +2433,13 @@ int main (int argc, char * argv[]) {
     cycles[127] = end-start;
     start = end;
     static elem_t kernel128[512][256] row_align(1)= {0};
-    static elem_t tensor128[224][512] row_align(1)= {0};
-    static elem_t result128[224][256] row_align(1)= {0};
+    static elem_t tensor128[256][512] row_align(1)= {0};
+    static elem_t result128[256][256] row_align(1)= {0};
 
 
     /* matmul number: 128 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor128, kernel128, NULL, result128,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_128");
@@ -2450,14 +2450,14 @@ int main (int argc, char * argv[]) {
     cycles[128] = end-start;
     start = end;
     static elem_t kernel129[2304][256] row_align(1)= {0};
-    static elem_t tensor129[224][2304] row_align(1)= {0};
-    static elem_t result129[224][256] row_align(1)= {0};
+    static elem_t tensor129[256][2304] row_align(1)= {0};
+    static elem_t result129[256][256] row_align(1)= {0};
     tensor_reshape(256,result128,14, 14, 3, 1, tensor129);
 
 
     /* matmul number: 129 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor129, kernel129, NULL, result129,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_129");
@@ -2468,15 +2468,15 @@ int main (int argc, char * argv[]) {
     cycles[129] = end-start;
     start = end;
     static elem_t kernel130[256][1024] row_align(1)= {0};
-    static elem_t tensor130[224][256] row_align(1)= {0};
-    static elem_t result130[224][1024] row_align(1)= {0};
-    static elem_t inter_result130[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result128,1024,  inter_result130);
+    static elem_t tensor130[256][256] row_align(1)= {0};
+    static elem_t result130[256][1024] row_align(1)= {0};
+    static elem_t inter_result130[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result128,1024,  inter_result130);
 
 
     /* matmul number: 130 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor130, kernel130, inter_result130, result130,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_130");
@@ -2487,13 +2487,13 @@ int main (int argc, char * argv[]) {
     cycles[130] = end-start;
     start = end;
     static elem_t kernel131[512][256] row_align(1)= {0};
-    static elem_t tensor131[224][512] row_align(1)= {0};
-    static elem_t result131[224][256] row_align(1)= {0};
+    static elem_t tensor131[256][512] row_align(1)= {0};
+    static elem_t result131[256][256] row_align(1)= {0};
 
 
     /* matmul number: 131 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor131, kernel131, NULL, result131,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_131");
@@ -2504,14 +2504,14 @@ int main (int argc, char * argv[]) {
     cycles[131] = end-start;
     start = end;
     static elem_t kernel132[2304][256] row_align(1)= {0};
-    static elem_t tensor132[224][2304] row_align(1)= {0};
-    static elem_t result132[224][256] row_align(1)= {0};
+    static elem_t tensor132[256][2304] row_align(1)= {0};
+    static elem_t result132[256][256] row_align(1)= {0};
     tensor_reshape(256,result131,14, 14, 3, 1, tensor132);
 
 
     /* matmul number: 132 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor132, kernel132, NULL, result132,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_132");
@@ -2522,15 +2522,15 @@ int main (int argc, char * argv[]) {
     cycles[132] = end-start;
     start = end;
     static elem_t kernel133[256][1024] row_align(1)= {0};
-    static elem_t tensor133[224][256] row_align(1)= {0};
-    static elem_t result133[224][1024] row_align(1)= {0};
-    static elem_t inter_result133[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result131,1024,  inter_result133);
+    static elem_t tensor133[256][256] row_align(1)= {0};
+    static elem_t result133[256][1024] row_align(1)= {0};
+    static elem_t inter_result133[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result131,1024,  inter_result133);
 
 
     /* matmul number: 133 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor133, kernel133, inter_result133, result133,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_133");
@@ -2541,13 +2541,13 @@ int main (int argc, char * argv[]) {
     cycles[133] = end-start;
     start = end;
     static elem_t kernel134[512][256] row_align(1)= {0};
-    static elem_t tensor134[224][512] row_align(1)= {0};
-    static elem_t result134[224][256] row_align(1)= {0};
+    static elem_t tensor134[256][512] row_align(1)= {0};
+    static elem_t result134[256][256] row_align(1)= {0};
 
 
     /* matmul number: 134 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor134, kernel134, NULL, result134,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_134");
@@ -2558,14 +2558,14 @@ int main (int argc, char * argv[]) {
     cycles[134] = end-start;
     start = end;
     static elem_t kernel135[2304][256] row_align(1)= {0};
-    static elem_t tensor135[224][2304] row_align(1)= {0};
-    static elem_t result135[224][256] row_align(1)= {0};
+    static elem_t tensor135[256][2304] row_align(1)= {0};
+    static elem_t result135[256][256] row_align(1)= {0};
     tensor_reshape(256,result134,14, 14, 3, 1, tensor135);
 
 
     /* matmul number: 135 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor135, kernel135, NULL, result135,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_135");
@@ -2576,15 +2576,15 @@ int main (int argc, char * argv[]) {
     cycles[135] = end-start;
     start = end;
     static elem_t kernel136[256][1024] row_align(1)= {0};
-    static elem_t tensor136[224][256] row_align(1)= {0};
-    static elem_t result136[224][1024] row_align(1)= {0};
-    static elem_t inter_result136[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result134,1024,  inter_result136);
+    static elem_t tensor136[256][256] row_align(1)= {0};
+    static elem_t result136[256][1024] row_align(1)= {0};
+    static elem_t inter_result136[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result134,1024,  inter_result136);
 
 
     /* matmul number: 136 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor136, kernel136, inter_result136, result136,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_136");
@@ -2595,13 +2595,13 @@ int main (int argc, char * argv[]) {
     cycles[136] = end-start;
     start = end;
     static elem_t kernel137[512][256] row_align(1)= {0};
-    static elem_t tensor137[224][512] row_align(1)= {0};
-    static elem_t result137[224][256] row_align(1)= {0};
+    static elem_t tensor137[256][512] row_align(1)= {0};
+    static elem_t result137[256][256] row_align(1)= {0};
 
 
     /* matmul number: 137 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor137, kernel137, NULL, result137,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_137");
@@ -2612,14 +2612,14 @@ int main (int argc, char * argv[]) {
     cycles[137] = end-start;
     start = end;
     static elem_t kernel138[2304][256] row_align(1)= {0};
-    static elem_t tensor138[224][2304] row_align(1)= {0};
-    static elem_t result138[224][256] row_align(1)= {0};
+    static elem_t tensor138[256][2304] row_align(1)= {0};
+    static elem_t result138[256][256] row_align(1)= {0};
     tensor_reshape(256,result137,14, 14, 3, 1, tensor138);
 
 
     /* matmul number: 138 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor138, kernel138, NULL, result138,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_138");
@@ -2630,15 +2630,15 @@ int main (int argc, char * argv[]) {
     cycles[138] = end-start;
     start = end;
     static elem_t kernel139[256][1024] row_align(1)= {0};
-    static elem_t tensor139[224][256] row_align(1)= {0};
-    static elem_t result139[224][1024] row_align(1)= {0};
-    static elem_t inter_result139[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result137,1024,  inter_result139);
+    static elem_t tensor139[256][256] row_align(1)= {0};
+    static elem_t result139[256][1024] row_align(1)= {0};
+    static elem_t inter_result139[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result137,1024,  inter_result139);
 
 
     /* matmul number: 139 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor139, kernel139, inter_result139, result139,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_139");
@@ -2649,13 +2649,13 @@ int main (int argc, char * argv[]) {
     cycles[139] = end-start;
     start = end;
     static elem_t kernel140[512][256] row_align(1)= {0};
-    static elem_t tensor140[224][512] row_align(1)= {0};
-    static elem_t result140[224][256] row_align(1)= {0};
+    static elem_t tensor140[256][512] row_align(1)= {0};
+    static elem_t result140[256][256] row_align(1)= {0};
 
 
     /* matmul number: 140 */
 
-    tiled_matmul_compare(224, 256, 512,    // dimensions
+    tiled_matmul_compare(256, 256, 512,    // dimensions
     tensor140, kernel140, NULL, result140,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_140");
@@ -2666,14 +2666,14 @@ int main (int argc, char * argv[]) {
     cycles[140] = end-start;
     start = end;
     static elem_t kernel141[2304][256] row_align(1)= {0};
-    static elem_t tensor141[224][2304] row_align(1)= {0};
-    static elem_t result141[224][256] row_align(1)= {0};
+    static elem_t tensor141[256][2304] row_align(1)= {0};
+    static elem_t result141[256][256] row_align(1)= {0};
     tensor_reshape(256,result140,14, 14, 3, 1, tensor141);
 
 
     /* matmul number: 141 */
 
-    tiled_matmul_compare(224, 256, 2304,    // dimensions
+    tiled_matmul_compare(256, 256, 2304,    // dimensions
     tensor141, kernel141, NULL, result141,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_141");
@@ -2684,15 +2684,15 @@ int main (int argc, char * argv[]) {
     cycles[141] = end-start;
     start = end;
     static elem_t kernel142[256][1024] row_align(1)= {0};
-    static elem_t tensor142[224][256] row_align(1)= {0};
-    static elem_t result142[224][1024] row_align(1)= {0};
-    static elem_t inter_result142[224][1024] row_align(1)= {0};
-    rocket_zeropad(224,256,result140,1024,  inter_result142);
+    static elem_t tensor142[256][256] row_align(1)= {0};
+    static elem_t result142[256][1024] row_align(1)= {0};
+    static elem_t inter_result142[256][1024] row_align(1)= {0};
+    rocket_zeropad(256,256,result140,1024,  inter_result142);
 
 
     /* matmul number: 142 */
 
-    tiled_matmul_compare(224, 1024, 256,    // dimensions
+    tiled_matmul_compare(256, 1024, 256,    // dimensions
     tensor142, kernel142, inter_result142, result142,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_142");
@@ -2703,13 +2703,13 @@ int main (int argc, char * argv[]) {
     cycles[142] = end-start;
     start = end;
     static elem_t kernel143[1024][512] row_align(1)= {0};
-    static elem_t tensor143[224][1024] row_align(1)= {0};
-    static elem_t result143[224][512] row_align(1)= {0};
+    static elem_t tensor143[256][1024] row_align(1)= {0};
+    static elem_t result143[256][512] row_align(1)= {0};
 
 
     /* matmul number: 143 */
 
-    tiled_matmul_compare(224, 512, 1024,    // dimensions
+    tiled_matmul_compare(256, 512, 1024,    // dimensions
     tensor143, kernel143, NULL, result143,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_143");
@@ -2741,7 +2741,7 @@ int main (int argc, char * argv[]) {
     static elem_t tensor145[64][512] row_align(1)= {0};
     static elem_t result145[64][2048] row_align(1)= {0};
     static elem_t inter_result145[64][2048] row_align(1)= {0};
-    rocket_fix_strided_dimension(14,512,result143,2048,  inter_result145);
+    rocket_fix_strided_dimension(16,512,result143,2048,  inter_result145);
 
 
     /* matmul number: 145 */
@@ -2868,7 +2868,7 @@ int main (int argc, char * argv[]) {
 
     /* AVG Pool: 152 */
 
-    static elem_t tensor153[32][2048] row_align(1)= {0};
+    static elem_t tensor153[64][2048] row_align(1)= {0};
     avg_pool7(2048,result151,tensor153);
     end = read_cycles();
     cycles[152] = end-start;
@@ -2876,12 +2876,12 @@ int main (int argc, char * argv[]) {
 
 
     static elem_t kernel153[2048][1024] row_align(1)= {0};
-    static elem_t result153[32][1024] row_align(1)= {0};
+    static elem_t result153[64][1024] row_align(1)= {0};
 
 
     /* matmul number: 153 */
 
-    tiled_matmul_compare(32, 1024, 2048,    // dimensions
+    tiled_matmul_compare(64, 1024, 2048,    // dimensions
     tensor153, kernel153, NULL, result153,      // addresses
     RELU, 0, 0, 0,              // activation, shift, r6_shift, full_width_bias
     tiled_matmul_type, compare, "layer_153");

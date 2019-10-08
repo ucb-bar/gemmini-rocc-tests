@@ -11,21 +11,21 @@
 
 static void tiled_matmul_compare(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
-        elem_t C[DIM_I][DIM_J], int act, int shift, int relu6_shift, int full_bias_width,
+        elem_t C[DIM_I][DIM_J], int no_bias, int act, int shift, int relu6_shift,
         enum tiled_matmul_type_t tiled_matmul_type,
         bool compare, char * layer_name)
 {
     if (compare)
         printf("%s: systolic\n", layer_name);
     tiled_matmul_option(DIM_I, DIM_J, DIM_K,
-        A, B, D, C, act, shift, relu6_shift, full_bias_width,
+        A, B, D, C, no_bias, act, shift, relu6_shift,
         tiled_matmul_type);
 
     if (compare) {
         printf("%s: CPU\n", layer_name);
         elem_t gold[DIM_I][DIM_J];
         tiled_matmul_option(DIM_I, DIM_J, DIM_K,
-            A, B, D, gold, act, shift, relu6_shift, full_bias_width,
+            A, B, D, gold, no_bias, act, shift, relu6_shift,
             CPU);
 
         printf("%s: comparing\n", layer_name);
@@ -80,9 +80,9 @@ int main (int argc, char * argv[]) {
 
     /* matmul number: 0 */
 
-    tiled_matmul_compare(32, 2528, 800,    // dimensions
+    tiled_matmul_compare(64, 2560, 832,    // dimensions
     input_mat, weights0, NULL, inter_results0,      // addresses
-    RELU, 0, 0, 0,           // act, shift, r6_shift
+    1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
     tiled_matmul_type, compare, "layer_0");
     // verbose(0,input_mat,weights0,inter_results0)
     /* end of matmul number: 0 */
@@ -94,9 +94,9 @@ int main (int argc, char * argv[]) {
 
     /* matmul number: 1 */
 
-    tiled_matmul_compare(32, 2016, 2528,    // dimensions
+    tiled_matmul_compare(64, 2048, 2560,    // dimensions
     inter_results0, weights1, NULL, inter_results1,      // addresses
-    RELU, 0, 0, 0,           // act, shift, r6_shift
+    1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
     tiled_matmul_type, compare, "layer_1");
     // verbose(1,inter_results0,weights1,inter_results1)
     /* end of matmul number: 1 */
@@ -108,9 +108,9 @@ int main (int argc, char * argv[]) {
 
     /* matmul number: 2 */
 
-    tiled_matmul_compare(32, 1504, 2016,    // dimensions
+    tiled_matmul_compare(64, 1536, 2048,    // dimensions
     inter_results1, weights2, NULL, inter_results2,      // addresses
-    RELU, 0, 0, 0,           // act, shift, r6_shift
+    1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
     tiled_matmul_type, compare, "layer_2");
     // verbose(2,inter_results1,weights2,inter_results2)
     /* end of matmul number: 2 */
@@ -122,9 +122,9 @@ int main (int argc, char * argv[]) {
 
     /* matmul number: 3 */
 
-    tiled_matmul_compare(32, 1024, 1504,    // dimensions
+    tiled_matmul_compare(64, 1024, 1536,    // dimensions
     inter_results2, weights3, NULL, inter_results3,      // addresses
-    RELU, 0, 0, 0,           // act, shift, r6_shift
+    1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
     tiled_matmul_type, compare, "layer_3");
     // verbose(3,inter_results2,weights3,inter_results3)
     /* end of matmul number: 3 */
@@ -136,9 +136,9 @@ int main (int argc, char * argv[]) {
 
     /* matmul number: 4 */
 
-    tiled_matmul_compare(32, 512, 1024,    // dimensions
+    tiled_matmul_compare(64, 512, 1024,    // dimensions
     inter_results3, weights4, NULL, inter_results4,      // addresses
-    RELU, 0, 0, 0,           // act, shift, r6_shift
+    1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
     tiled_matmul_type, compare, "layer_4");
     // verbose(4,inter_results3,weights4,inter_results4)
     /* end of matmul number: 4 */
@@ -150,9 +150,9 @@ int main (int argc, char * argv[]) {
 
     /* matmul number: 5 */
 
-    tiled_matmul_compare(32, 32, 512,    // dimensions
+    tiled_matmul_compare(64, 64, 512,    // dimensions
     inter_results4, weights5, NULL, inter_results5,      // addresses
-    RELU, 0, 0, 0,           // act, shift, r6_shift
+    1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
     tiled_matmul_type, compare, "layer_5");
     // verbose(5,inter_results4,weights5,inter_results5)
     /* end of matmul number: 5 */
