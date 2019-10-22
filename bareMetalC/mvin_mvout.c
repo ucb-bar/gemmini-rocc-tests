@@ -24,6 +24,7 @@ int main() {
     }
 #endif
 
+  // printf("Flush\n");
   matmul_flush(0);
 
   static elem_t In[N][DIM][DIM] row_align(1);
@@ -35,10 +36,13 @@ int main() {
         In[n][i][j] = i*DIM + j + n;
 
   for (size_t n = 0; n < N; ++n) {
-    matmul_mvin(In[n], n*DIM, 1, 0, 0, 0);
-    matmul_mvout(Out[n], n*DIM, 0, 1, 0, 0);
+    // printf("Mvin %d\n", n);
+    matmul_mvin(In[n], n*DIM);
+    // printf("Mvout %d\n", n);
+    matmul_mvout(Out[n], n*DIM);
   }
 
+  // printf("Fence");
   matmul_fence();
 
   for (size_t n = 0; n < N; ++n)

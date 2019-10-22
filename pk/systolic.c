@@ -33,17 +33,17 @@ int main() {
 
 
   for (size_t i = 0; i < DIM; ++i) {
-    matmul_mvin(A[i], i, 0, 0, 0, 0);
-    matmul_mvin(B[i], DIM + i, 0, 0, 0, 0);
-    matmul_mvin(D[i], 2*DIM + i, 0, 0, 0, 0);
+    matmul_mvin(A[i], i);
+    matmul_mvin(B[i], DIM + i);
+    matmul_mvin(D[i], 2*DIM + i);
   }
 
-  matmul_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0, 0, 0, 0, 0);
-  matmul_preload(3*DIM, 2*DIM, 0, 0, 0, 0);
+  matmul_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0);
+  matmul_preload(3*DIM, 2*DIM);
   matmul_compute_preloaded(0x0, DIM);
 
   for (size_t i = 0; i < DIM; ++i) {
-    matmul_mvout(C[i], 3*DIM + i, 0, 0, 0, 0);
+    matmul_mvout(C[i], 3*DIM + i);
   }
 #define DEBUG_PRINTS
   for (size_t i = 0; i < DIM; ++i) {

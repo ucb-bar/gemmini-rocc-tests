@@ -111,6 +111,7 @@ int main() {
     static int64_t gold_full[MAT_DIM_I][MAT_DIM_J];
     static elem_t gold[MAT_DIM_I][MAT_DIM_J];
 
+#if CHECK_RESULT == 1
     // printf("Init A\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
@@ -131,6 +132,7 @@ int main() {
         full_D[i][j] = NO_BIAS ? 0 : rand() % 2;
       }
     }
+#endif
 
 #if CHECK_RESULT == 1
     printf("Starting slow CPU matmul\n");

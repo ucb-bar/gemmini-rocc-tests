@@ -122,9 +122,9 @@ int main() {
 
         const uint32_t acc_addr = 1 << (ADDR_LEN-1);
 
-        matmul_config_ld(BIG_DIM*sizeof(acc_t), 0, 0, 0, 0);
-        matmul_config_ex(0, activation, 0, shift, relu6_shift, 0, 0, 1, 0);
-        matmul_config_st(BIG_DIM*sizeof(elem_t), 0, 0, 0, 1);
+        matmul_config_ld(BIG_DIM*sizeof(acc_t));
+        matmul_config_ex(0, activation, 0, shift, relu6_shift);
+        matmul_config_st(BIG_DIM*sizeof(elem_t));
 
         for (size_t i = 0; i < BIG_DIM; i += DIM) {
           for (size_t j = 0; j < BIG_DIM; j += DIM) {
@@ -139,17 +139,19 @@ int main() {
             if (!already_moved_in) {
               int len = j + block_len*DIM <= BIG_DIM ? block_len : (BIG_DIM-j)/DIM;
               // printf("Moving in with len: %d\n", len);
-              matmul_block_mvin(dram_addr_in, sp_addr, len, 1, 0, 0, 0);
-              matmul_mvout(dram_addr_out, sp_addr, 0, 1, 0, 0);
+              matmul_block_mvin(dram_addr_in, sp_addr, len);
+              matmul_mvout(dram_addr_out, sp_addr);
             } else {
               // printf("Already moved in\n");
-              matmul_mvout(dram_addr_out, sp_addr, 0, 0, 0, 0);
+              matmul_mvout(dram_addr_out, sp_addr);
             }
           }
         }
 
+        // printf("Fence\n");
         matmul_fence();
 
+        // printf("Check\n");
         if (!is_equal_big(Out, Out_gold)) {
           printf("activation: %d, shift: %d\n", activation, shift);
 

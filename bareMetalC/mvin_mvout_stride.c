@@ -58,8 +58,8 @@ int main() {
         Out[i][j] = 0;
       }
 
-    matmul_config_ld(BIG_DIM*sizeof(elem_t), 0, 0, 0, 0);
-    matmul_config_st(BIG_DIM*sizeof(elem_t), 0, 0, 0, 0);
+    matmul_config_ld(BIG_DIM*sizeof(elem_t));
+    matmul_config_st(BIG_DIM*sizeof(elem_t));
 
     for (size_t i = 0; i < BIG_DIM; i += DIM) {
       for (size_t j = 0; j < BIG_DIM; j += DIM) {
@@ -74,11 +74,11 @@ int main() {
         if (!already_moved_in) {
           int len = j + block_len*DIM <= BIG_DIM ? block_len : (BIG_DIM-j)/DIM;
           // printf("Moving in with len: %d\n", len);
-          matmul_block_mvin(dram_addr_in, sp_addr, len, 1, 0, 0, 0);
-          matmul_mvout(dram_addr_out, sp_addr, 0, 1, 0, 0);
+          matmul_block_mvin(dram_addr_in, sp_addr, len);
+          matmul_mvout(dram_addr_out, sp_addr);
         } else {
-          // printf("Already moved in\n");
-          matmul_mvout(dram_addr_out, sp_addr, 0, 0, 0, 0);
+          // printf("Already moved in, so moving out\n");
+          matmul_mvout(dram_addr_out, sp_addr);
         }
       }
     }
@@ -86,13 +86,13 @@ int main() {
     matmul_fence();
 
     if (!is_equal_big(In, Out)) {
-      printf("block_len: %d\n", block_len);
+      printf("fails at block_len: %d\n", block_len);
 
-      printf("Matrix output:\n");
-      printMatrix_big(Out);
-      printf("Matrix gold:\n");
-      printMatrix_big(In);
-      printf("\n");
+      // printf("Matrix output:\n");
+      // printMatrix_big(Out);
+      // printf("Matrix gold:\n");
+      // printMatrix_big(In);
+      // printf("\n");
 
       exit(1);
     }

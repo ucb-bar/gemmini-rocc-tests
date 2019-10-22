@@ -36,7 +36,7 @@ int main() {
   matmul_flush(0);
 
   for (int activation = 0; activation <= 2; ++activation) {
-    for (int shift = 0; shift <= 12; shift += 4) {
+    for (int shift = 4; shift <= 12; shift += 4) { // TODO
       static elem_t A[N][DIM][DIM] row_align(1);
       static elem_t B[N][DIM][DIM] row_align(1);
       static elem_t D[N][DIM][DIM] row_align(1);
@@ -146,20 +146,20 @@ int main() {
 
       // printf("Moving in\n");
       for (size_t n = 0; n < N; ++n)
-        matmul_mvin(A[n], A_addr + n*DIM, 0, 0, 0, 0);
+        matmul_mvin(A[n], A_addr + n*DIM);
 
       for (size_t n = 0; n < N; ++n)
-        matmul_mvin(B[n], B_addr + n*DIM, 0, 0, 0, 0);
+        matmul_mvin(B[n], B_addr + n*DIM);
 
       for (size_t n = 0; n < N; ++n)
         if (n == N-1) {
-          matmul_mvin(D[n], D_addr + n*DIM, 0, 0, 1, 0);
+          matmul_mvin(D[n], D_addr + n*DIM);
         } else {
-          matmul_mvin(D[n], D_addr + n*DIM, 0, 0, 0, 0);
+          matmul_mvin(D[n], D_addr + n*DIM);
         }
 
       // printf("Setting mode\n");
-      matmul_config_ex(WEIGHT_STATIONARY, activation, 0, shift, relu6_shift, 0, 1, 0, 0);
+      matmul_config_ex(WEIGHT_STATIONARY, activation, 0, shift, relu6_shift);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
@@ -171,32 +171,19 @@ int main() {
           d_addr = GARBAGE_ADDR;
 
         if (!preload[c]) {
-          if (c == N*N*N-1) {
-            matmul_preload_zeros(C_addrs[c], 0, 0, 1, 0);
-          } else {
-            matmul_preload_zeros(C_addrs[c], 0, 0, 0, 0);
-          }
+          matmul_preload_zeros(C_addrs[c]);
           matmul_compute_accumulated(A_addr + a*DIM, d_addr);
         } else {
-          if (c == N*N*N-1) {
-            matmul_preload(B_addr + b*DIM, C_addrs[c], 0, 0, 1, 0);
-          } else {
-            matmul_preload(B_addr + b*DIM, C_addrs[c], 0, 0, 0, 0);
-          }
+          matmul_preload(B_addr + b*DIM, C_addrs[c]);
           matmul_compute_preloaded(A_addr + a*DIM, d_addr);
         }
       }
 
       // printf("Moving out\n");
-      int first_store = 1;
       for (size_t c = 0; c < N*N*N; ++c)
-        if (!no_output[c])
-          if (first_store) {
-            matmul_mvout(C[c], C_addrs[c] & ~(1 << (ADDR_LEN-2)), 0, 0, 0, 1);
-            first_store = 0;
-          } else {
-            matmul_mvout(C[c], C_addrs[c] & ~(1 << (ADDR_LEN-2)), 0, 0, 0, 0);
-          }
+        if (!no_output[c]) {
+          matmul_mvout(C[c], C_addrs[c] & ~(1 << (ADDR_LEN-2)));
+        }
 
       matmul_fence();
 
@@ -211,9 +198,14 @@ int main() {
         }
       }*/
 
+      // printf("Checking\n");
       for (int n = 0; n < N*N*N; ++n)
         if (!no_output[n] && !is_equal(C[n], gold[n])) {
           printf("activation: %d, shift: %d\n", activation, shift);
+          printf("Actual (%d):\n", n);
+          printMatrix(C[n]);
+          printf("\nGold:\n");
+          printMatrix(gold[n]);
           exit(1);
         }
     }

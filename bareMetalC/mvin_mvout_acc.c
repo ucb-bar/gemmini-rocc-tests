@@ -64,18 +64,22 @@ int main() {
       const uint32_t acc_addr = 1 << (ADDR_LEN-1);
 
       // printf("Config\n");
-      matmul_config_ld(DIM*sizeof(acc_t), 0, 0, 0, 0);
-      matmul_config_ex(0, activation, 0, shift, relu6_shift, 0, 0, 1, 0);
-      matmul_config_st(DIM*sizeof(elem_t), 0, 0, 0, 1);
+      matmul_config_ld(DIM*sizeof(acc_t));
+      matmul_config_ex(0, activation, 0, shift, relu6_shift);
+      matmul_config_st(DIM*sizeof(elem_t));
 
+      // printf("Mvin and mvout\n");
       for (size_t n = 0; n < N; ++n) {
-        // printf("n: %u\n", n);
-        matmul_mvin(In[n], acc_addr + n*DIM, 1, 0, 0, 0);
-        matmul_mvout(Out[n], acc_addr + n*DIM, 0, 1, 0, 0);
+        // printf("Mvin n: %u\n", n);
+        matmul_mvin(In[n], acc_addr + n*DIM);
+        // printf("Mvout n: %u\n", n);
+        matmul_mvout(Out[n], acc_addr + n*DIM);
       }
 
+      // printf("Fence\n");
       matmul_fence();
 
+      // printf("Check\n");
       for (size_t n = 0; n < N; ++n)
         if (!is_equal(Out[n], Out_gold[n])) {
           printf("activation: %d, shift: %d\n", activation, shift);

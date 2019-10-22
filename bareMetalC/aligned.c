@@ -35,9 +35,9 @@ int main() {
       In.data[i][j] = i*DIM + j;
 
   // printf("Mvin\n");
-  matmul_mvin(In.data, 0, 1, 0, 0, 0);
+  matmul_mvin(In.data, 0);
   // printf("Mvout\n");
-  matmul_mvout(Out.data, 0, 0, 1, 0, 0);
+  matmul_mvout(Out.data, 0);
 
   // printf("Fence\n");
   matmul_fence();
