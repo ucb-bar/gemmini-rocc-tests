@@ -1,6 +1,7 @@
 XLEN ?= 64
 
 CC_BAREMETAL := riscv$(XLEN)-unknown-elf-gcc
+CPP_BAREMETAL := riscv$(XLEN)-unknown-elf-g++
 
 CC_LINUX_PRESENT := $(shell command -v riscv$(XLEN)-unknown-linux-gnu-gcc 2> /dev/null)
 
@@ -9,8 +10,10 @@ CC_LINUX_PRESENT := $(shell command -v riscv$(XLEN)-unknown-linux-gnu-gcc 2> /de
 # riscv64-linux-gnu-gcc comes from a system package
 ifdef CC_LINUX_PRESENT
     CC_LINUX := riscv$(XLEN)-unknown-linux-gnu-gcc
+    CPP_LINUX := riscv$(XLEN)-unknown-linux-gnu-g++
 else
     CC_LINUX := riscv$(XLEN)-linux-gnu-gcc
+    CC_LINUX := riscv$(XLEN)-linux-gnu-g++
 endif
 
 ENV_P = $(abs_top_srcdir)/riscv-tests/env/p

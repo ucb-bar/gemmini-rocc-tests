@@ -4,8 +4,8 @@ XLEN            := @XLEN@
 RISCVTOOLS      := @RISCVTOOLS@
 ROCC = examples
 
-.PHONY: all bareMetal bareMetalC clean pk mobilenet systolic_library resnet
-all: bareMetal bareMetalC pk mobilenet systolic_library resnet
+.PHONY: all bareMetal bareMetalC bareMetalCpp clean pk mobilenet systolic_library resnet
+all: bareMetal bareMetalC bareMetalCpp pk mobilenet systolic_library resnet
 
 vars = \
 	abs_top_srcdir=$(abs_top_srcdir) \
@@ -19,6 +19,10 @@ bareMetal:
 	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
 
 bareMetalC:
+	mkdir -p $@
+	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
+
+bareMetalCpp:
 	mkdir -p $@
 	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
 
@@ -42,6 +46,7 @@ clean:
 	$(MAKE) -C pk -f $(abs_top_srcdir)/pk/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-pk clean
 	$(MAKE) -C bareMetal -f $(abs_top_srcdir)/bareMetal/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-bareMetal clean
 	$(MAKE) -C bareMetalC -f $(abs_top_srcdir)/bareMetalC/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-bareMetalC clean
+	$(MAKE) -C bareMetalCpp -f $(abs_top_srcdir)/bareMetalCpp/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-bareMetalCpp clean
 	$(MAKE) -C mobilenet -f $(abs_top_srcdir)/mobilenet/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-mobilenet clean
 	$(MAKE) -C systolic_library -f $(abs_top_srcdir)/systolic_library/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-systolic_library clean
 	$(MAKE) -C resnet -f $(abs_top_srcdir)/resnet/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-resnet clean
