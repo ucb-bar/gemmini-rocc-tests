@@ -10,13 +10,6 @@ AC_ARG_WITH(xlen,
         AC_SUBST(XLEN, 64)
         )
 
-AC_ARG_WITH(riscvtools,
-        [AS_HELP_STRING([--with-riscvtools=RISCVTOOLS],
-                [Set the path to an instanllation of riscv-tools])],
-        AC_SUBST(RISCVTOOLS, $withval),
-        AC_MSG_ERROR("You must specify a path to a riscv-tools repo (--with-riscvtools)", 1)
-        )
-
 AC_OUTPUT(
   Makefile
 )

@@ -58,7 +58,6 @@ vpath %.c $(src_dir)
 	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \
 		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
 
-
 %-linux: %.c
 	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@
 
