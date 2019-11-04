@@ -37,8 +37,10 @@ int main() {
   static struct offset_buffer In __attribute__((aligned(PG_SIZE)));
   static struct offset_buffer Out __attribute__((aligned(PG_SIZE)));
 
-  for (size_t i = 0; i < OFFSET; ++i)
+  for (size_t i = 0; i < OFFSET; ++i) {
       In.garbage[i] = ~0;
+      Out.garbage[i] = 1;
+  }
 
   for (size_t i = 0; i < DIM; ++i)
     for (size_t j = 0; j < DIM; ++j) {
