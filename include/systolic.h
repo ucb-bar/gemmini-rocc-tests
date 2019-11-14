@@ -524,7 +524,7 @@ static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
     }
 
     matmul_config_ex(OUTPUT_STATIONARY, act, 0, shift, relu6_shift);
-    matmul_config_st(DIM_I * sizeof(elem_t));
+    matmul_config_st(DIM_J * sizeof(elem_t));
 
     for (size_t i0 = 0; i0 < I0; i0++)
       for (size_t j0 = 0; j0 < J0; j0++)
@@ -575,7 +575,7 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
     }
 
     matmul_config_ex(WEIGHT_STATIONARY, act, 0, shift, relu6_shift);
-    matmul_config_st(DIM_I * sizeof(elem_t));
+    matmul_config_st(DIM_J * sizeof(elem_t));
 
     for (size_t i0 = 0; i0 < I0; i0++)
       for (size_t j0 = 0; j0 < J0; j0++)
