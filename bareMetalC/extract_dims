@@ -1,0 +1,24 @@
+#!/bin/bash
+
+file=$1
+baremetal=$2
+
+if [ "$baremetal" = "BAREMETAL" ]; then
+    # selector="head -n2 | tail -n1"
+    selector () {
+        head -n2 | tail -n1
+    }
+else
+    # selector="head -n1"
+    selector () {
+        head -n1
+    }
+fi
+
+I=$(grep MAT_DIM_I $file | selector | awk 'NF{ print $NF }')
+J=$(grep MAT_DIM_J $file | selector | awk 'NF{ print $NF }')
+K=$(grep MAT_DIM_K $file | selector | awk 'NF{ print $NF }')
+NO_BIAS=$(grep NO_BIAS $file | head -n1 | awk 'NF{ print $NF }')
+
+echo $I $J $K $NO_BIAS
+

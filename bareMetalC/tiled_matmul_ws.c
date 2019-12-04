@@ -10,7 +10,7 @@
 #endif
 #include "include/systolic.h"
 
-#define CHECK_RESULT 1
+#define CHECK_RESULT 0
 
 #define NO_BIAS 1
 #define FULL_BIAS_WIDTH 0
@@ -29,12 +29,18 @@ typedef elem_t ACC_T;
 #define TILE_J_FACTOR 1
 #define TILE_K_FACTOR 1
 #else
-#define MAT_DIM_I 64
-#define MAT_DIM_K 64
-#define MAT_DIM_J 64
+#define MAT_DIM_I 256
+#define MAT_DIM_K 256
+#define MAT_DIM_J 256
 #define TILE_I_FACTOR 2
 #define TILE_J_FACTOR 2
 #define TILE_K_FACTOR 2
+#endif
+
+#ifndef BAREMETAL
+#include "tiled_matmul_ws_mats_linux.h"
+#else
+#include "tiled_matmul_ws_mats_baremetal.h"
 #endif
 
 #if ((MAT_DIM_I % (TILE_I_FACTOR*DIM)) != 0) || ((MAT_DIM_J % (TILE_J_FACTOR*DIM)) != 0) || ((MAT_DIM_K % (TILE_K_FACTOR*DIM)) != 0)
@@ -104,14 +110,16 @@ int main() {
 
     matmul_flush(0);
 
-    static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
-    static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
+    // static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
+    // static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
     static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
-    static ACC_T full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
+    // static ACC_T full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
 
     static int64_t gold_full[MAT_DIM_I][MAT_DIM_J];
     static elem_t gold[MAT_DIM_I][MAT_DIM_J];
 
+#if CHECK_RESULT == 1
+    /*
     // printf("Init A\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
@@ -132,8 +140,8 @@ int main() {
         full_D[i][j] = 0; // NO_BIAS ? 0 : rand() % 2;
       }
     }
+    */
 
-#if CHECK_RESULT == 1
     printf("Starting slow CPU matmul\n");
     unsigned long cpu_start = read_cycles();
     full_matmul(full_A, full_B, full_D, gold_full);
@@ -142,8 +150,8 @@ int main() {
     full_matshift(gold_full, gold, 0);
 #endif
 
-    printf("Starting systolic matmul\n");
-    unsigned long start = read_cycles();
+    // printf("Starting systolic matmul\n");
+    // unsigned long start = read_cycles();
 
     // tiled_matmul_ws(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
     //         full_A, full_B, full_D, full_C,
@@ -155,8 +163,8 @@ int main() {
             NO_ACTIVATION, 0, 0, FULL_BIAS_WIDTH,
             WS);
 
-    unsigned long end = read_cycles();
-    printf("Cycles taken: %u\n", end-start);
+    // unsigned long end = read_cycles();
+    // printf("Cycles taken: %u\n", end-start);
 
 #if CHECK_RESULT == 1
     if (!full_is_equal(full_C, gold)) {

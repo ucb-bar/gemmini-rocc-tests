@@ -54,6 +54,18 @@ all: $(tests_baremetal) $(tests_linux)
 
 vpath %.c $(src_dir)
 
+# tiled_matmul_os_mats_baremetal.h: tiled_matmul_os.c
+# 	python3 generate-matrices.py $(./extract_dims $< BAREMETAL) >$@
+# 
+# tiled_matmul_os_mats_linux.h: tiled_matmul_os.c
+# 	python3 generate-matrices.py $(./extract_dims $< LINUX) >$@
+# 
+# tiled_matmul_ws_mats_baremetal.h: tiled_matmul_ws.c
+# 	python3 generate-matrices.py $(./extract_dims $< BAREMETAL) >$@
+# 
+# tiled_matmul_ws_mats_linux.h: tiled_matmul_ws.c
+# 	python3 generate-matrices.py $(./extract_dims $< LINUX) >$@
+
 %-baremetal: %.c
 	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \
 		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
