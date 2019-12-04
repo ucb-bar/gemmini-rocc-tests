@@ -1,8 +1,10 @@
 # Quickstart
 1. Clone submodules:
-    - `git submodule update --init --recursive`
-1. Build the tests in this repo:
+    ```bash
+    git submodule update --init --recursive
     ```
+1. Build the tests in this repo:
+    ```bash
     ./build.sh
     ```
 
@@ -15,3 +17,13 @@ To run the tests yourself on a Gemmini ISA simulator, follow these steps:
     cd build/bareMetalC
     spike --extension=systolic mvin_mvout-baremetal
     ```
+
+# Writing Your Own Gemmini Programs
+`bareMetalC/template.c` is a template Gemmini program that you can base your own Gemmini programs off of. To write your own Gemmini program, run:
+
+```bash
+cp bareMetalC/template.c bareMetalC/my_program.c
+```
+
+Then, add `my_program` to the `tests` list at the top of `bareMetalC/Makefile`. Afterwards, running `./build.sh` will install `my_program-baremetal` in `build/bareMetalC`.
+
