@@ -9,7 +9,7 @@
 #include <sys/mman.h>
 #endif
 #include <time.h>
-#include "include/systolic.h"
+#include "include/gemmini.h"
 
 #define N (2)
 

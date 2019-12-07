@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <sys/mman.h>
-#include "include/systolic.h"
+#include "include/gemmini.h"
 #include "parameters8.h"
 
 #define verbose(layer_num,old_C,filter,C) printf("layer %d: operand %d %d filter %d %d result %d %d\n", layer_num, LEN(old_C),LEN(old_C[0]),LEN(filter),LEN(filter[0]),LEN(C),LEN(C[0]));
@@ -16,7 +16,7 @@ static void tiled_matmul_compare(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         bool compare, char * layer_name)
 {
     if (compare)
-        printf("%s: systolic\n", layer_name);
+        printf("%s: gemmini\n", layer_name);
     tiled_matmul_option(DIM_I, DIM_J, DIM_K,
         A, B, D, C, no_bias, act, shift, relu6_shift,
         tiled_matmul_type);

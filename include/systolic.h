@@ -9,7 +9,7 @@
 #include <limits.h>
 // TODO use stdbool.h as well
 
-#include "include/systolic_params.h"
+#include "include/gemmini_params.h"
 
 // Matmul utility functions
 void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], int64_t C_full[DIM][DIM]) {

@@ -1,6 +1,6 @@
 
 #include <stdio.h>
-#include "include/systolic.h"
+#include "include/gemmini.h"
 
 #define LEN(arr) ((int) (sizeof (arr) / sizeof (arr[0])))
 

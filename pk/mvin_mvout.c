@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
-#include "include/systolic.h"
+#include "include/gemmini.h"
 
 int main() {
   static uint8_t A[DIM][DIM];

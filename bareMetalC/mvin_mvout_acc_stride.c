@@ -8,7 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/systolic.h"
+#include "include/gemmini.h"
 
 #define BIG_DIM 64
 

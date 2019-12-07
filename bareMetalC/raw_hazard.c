@@ -8,7 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/systolic.h"
+#include "include/gemmini.h"
 
 #if BANK_NUM*BANK_ROWS < 5*DIM
 #error need more memory capacity
