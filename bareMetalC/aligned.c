@@ -8,7 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/systolic.h"
+#include "include/gemmini.h"
 
 #define PG_SIZE (4*1024)
 #define OFFSET 1

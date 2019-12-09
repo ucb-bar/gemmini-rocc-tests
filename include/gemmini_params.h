@@ -1,5 +1,5 @@
-#ifndef SYSTOLIC_PARAMS_H
-#define SYSTOLIC_PARAMS_H
+#ifndef GEMMINI_PARAMS_H
+#define GEMMINI_PARAMS_H
 
 #include <stdint.h>
 #include <limits.h>
@@ -28,4 +28,4 @@ typedef int32_t acc_t;
 #define row_align(blocks) __attribute__((aligned(blocks*DIM*sizeof(elem_t))))
 #define row_align_acc(blocks) __attribute__((aligned(blocks*DIM*sizeof(acc_t))))
 
-#endif // SYSTOLIC_PARAMS_H
+#endif // GEMMINI_PARAMS_H

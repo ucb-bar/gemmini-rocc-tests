@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdbool.h>
 #include <sys/mman.h>
-#include "include/systolic.h"
-#include "parameters2.h"
+#include "include/gemmini.h"
+#include "parameters7.h"
 
 #define verbose(layer_num,old_C,filter,C) printf("layer %d: operand %d %d filter %d %d result %d %d\n", layer_num, LEN(old_C),LEN(old_C[0]),LEN(filter),LEN(filter[0]),LEN(C),LEN(C[0]));
 
@@ -16,7 +16,7 @@ static void tiled_matmul_compare(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         bool compare, char * layer_name)
 {
     if (compare)
-        printf("%s: systolic\n", layer_name);
+        printf("%s: gemmini\n", layer_name);
     tiled_matmul_option(DIM_I, DIM_J, DIM_K,
         A, B, D, C, no_bias, act, shift, relu6_shift,
         tiled_matmul_type);
@@ -80,7 +80,7 @@ int main (int argc, char * argv[]) {
 
     /* matmul number: 0 */
 
-    tiled_matmul_compare(64, 832, 832,    // dimensions
+    tiled_matmul_compare(64, 512, 448,    // dimensions
     input_mat, weights0, NULL, inter_results0,      // addresses
     1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
     tiled_matmul_type, compare, "layer_0");
@@ -94,7 +94,7 @@ int main (int argc, char * argv[]) {
 
     /* matmul number: 1 */
 
-    tiled_matmul_compare(64, 64, 832,    // dimensions
+    tiled_matmul_compare(64, 448, 512,    // dimensions
     inter_results0, weights1, NULL, inter_results1,      // addresses
     1, RELU, 0, 0,              // no_bias, act, shift, r6_shift
     tiled_matmul_type, compare, "layer_1");

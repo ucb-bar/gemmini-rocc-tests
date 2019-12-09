@@ -2,7 +2,7 @@ include $(abs_top_srcdir)/Makefrag
 
 tests = \
 	accumulator \
-	systolic \
+	gemmini \
 	mvin_mvout
 
 CFLAGS := $(CFLAGS) \

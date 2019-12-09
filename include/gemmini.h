@@ -1,7 +1,7 @@
 // See LICENSE for license details.
 
-#ifndef SRC_MAIN_C_SYSTOLIC_H
-#define SRC_MAIN_C_SYSTOLIC_H
+#ifndef SRC_MAIN_C_GEMMINI_H
+#define SRC_MAIN_C_GEMMINI_H
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -9,7 +9,7 @@
 #include <limits.h>
 // TODO use stdbool.h as well
 
-#include "include/systolic_params.h"
+#include "include/gemmini_params.h"
 
 // Matmul utility functions
 void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], int64_t C_full[DIM][DIM]) {
@@ -777,4 +777,4 @@ static void __attribute__((unused)) tiled_matmul_option(size_t DIM_I, size_t DIM
 #undef max_tile_k
 }
 
-#endif  // SRC_MAIN_C_SYSTOLIC_H
+#endif  // SRC_MAIN_C_GEMMINI_H

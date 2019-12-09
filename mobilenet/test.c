@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <sys/mman.h>
-#include "include/systolic.h"
+#include "include/gemmini.h"
 #include "kernels.h"
 #define img_dim1 224
 #define img_dim2 224
@@ -113,7 +113,7 @@ static void tiled_matmul_compare(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         bool compare, char * layer_name)
 {
     if (compare)
-        printf("%s: systolic\n", layer_name);
+        printf("%s: gemmini\n", layer_name);
     tiled_matmul_option(DIM_I, DIM_J, DIM_K,
         A, B, D, C, act, shift, relu6_shift, full_bias_width,
         tiled_matmul_type);

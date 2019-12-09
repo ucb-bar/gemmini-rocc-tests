@@ -15,7 +15,7 @@ To run the tests yourself on a Gemmini ISA simulator, follow these steps:
 1. Run test programs on `spike`:
     ```bash
     cd build/bareMetalC
-    spike --extension=systolic mvin_mvout-baremetal
+    spike --extension=gemmini mvin_mvout-baremetal
     ```
 
 # Writing Your Own Gemmini Programs

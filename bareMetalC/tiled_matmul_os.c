@@ -8,7 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/systolic.h"
+#include "include/gemmini.h"
 
 #define CHECK_RESULT 1
 
@@ -143,7 +143,7 @@ int main() {
     full_matshift(gold_full, gold, 0);
 #endif
 
-    printf("Starting systolic matmul\n");
+    printf("Starting gemmini matmul\n");
     unsigned long start = read_cycles();
 
     // tiled_matmul_os(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
