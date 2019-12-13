@@ -18,12 +18,12 @@ To run the tests yourself on a Gemmini ISA simulator, follow these steps:
     spike --extension=gemmini mvin_mvout-baremetal
     ```
 
-# Writing Your Own Gemmini Programs
-`bareMetalC/template.c` is a template Gemmini program that you can base your own Gemmini programs off of. To write your own Gemmini program, run:
+# Writing Your Own Gemmini Tests
+`bareMetalC/template.c` is a template Gemmini test that you can base your own Gemmini tests off of. To write your own Gemmini test, run:
 
 ```bash
-cp bareMetalC/template.c bareMetalC/my_program.c
+cp bareMetalC/template.c bareMetalC/my_test.c
 ```
 
-Then, add `my_program` to the `tests` list at the top of `bareMetalC/Makefile`. Afterwards, running `./build.sh` will install `my_program-baremetal` in `build/bareMetalC`.
+Then, add `my_test` to the `tests` list at the top of `bareMetalC/Makefile`. Afterwards, running `./build.sh` will install `my_test-baremetal` in `build/bareMetalC`.
 
