@@ -78,15 +78,10 @@ int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]
 }
 
 void full_matshift(int64_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_DIM_J], int shift) {
-  int divisor = 1 << shift;
-
   for (size_t r = 0; r < MAT_DIM_I; r++)                             
     for (size_t c = 0; c < MAT_DIM_J; c++) {
       // Bitshift and round element
-      int64_t abs = full[r][c] > 0 ? full[r][c] : -full[r][c];
-      int64_t shifted = (abs + (divisor/2)) / divisor;
-      if (full[r][c] < 0)
-        shifted = -shifted;
+      int64_t shifted = ROUNDING_RIGHT_SHIFT(full[r][c], shift);
 
       // Saturate and cast element
       int64_t elem = shifted > elem_t_max ? elem_t_max : (shifted < elem_t_min ? elem_t_min : shifted);

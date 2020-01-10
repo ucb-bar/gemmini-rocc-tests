@@ -29,15 +29,10 @@ int is_equal_big(elem_t x[BIG_DIM][BIG_DIM], elem_t y[BIG_DIM][BIG_DIM]) {
 }
 
 void matshift_big(int64_t full[BIG_DIM][BIG_DIM], elem_t out[BIG_DIM][BIG_DIM], int shift) {
-  int divisor = 1 << shift;
-
   for (size_t r = 0; r < BIG_DIM; r++)
     for (size_t c = 0; c < BIG_DIM; c++) {
       // Bitshift and round element
-      int64_t abs = full[r][c] > 0 ? full[r][c] : -full[r][c];
-      int64_t shifted = (abs + (divisor/2)) / divisor;
-      if (full[r][c] < 0)
-        shifted = -shifted;
+      int64_t shifted = ROUNDING_RIGHT_SHIFT(full[r][c], shift);
 
       // Saturate and cast element
       int64_t elem = shifted > elem_t_max ? elem_t_max : (shifted < elem_t_min ? elem_t_min : shifted);
