@@ -46,17 +46,18 @@ void matadd(int64_t sum[DIM][DIM], int64_t m1[DIM][DIM], int64_t m2[DIM][DIM]) {
       sum[r][c] = m1[r][c] + m2[r][c];
 }
 
+// Rounding right shift equation: https://riscv.github.io/documents/riscv-v-spec/#_vector_fixed_point_rounding_mode_register_vxrm
+#define ROUNDING_RIGHT_SHIFT(x, shift) \
+    ({((x) >> (shift)) + \
+        (((shift) == 0 ? 0 : (((x) >> ((shift)-1)) & 1)) & \
+             ((((shift) <= 1 ? 0 : ((x) & ((1 << ((shift)-1)) - 1))) != 0) | (((x) >> (shift)) & 1)));})
+
 // THIS IS A ROUNDING SHIFT! It also performs a saturating cast
 void matshift(int64_t full[DIM][DIM], elem_t out[DIM][DIM], int shift) {
-  int divisor = 1 << shift;
-
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       // Bitshift and round element
-      int64_t abs = full[r][c] > 0 ? full[r][c] : -full[r][c];
-      int64_t shifted = (abs + (divisor/2)) / divisor;
-      if (full[r][c] < 0)
-        shifted = -shifted;
+      int64_t shifted = ROUNDING_RIGHT_SHIFT(full[r][c], shift);
 
       // Saturate and cast element
       int64_t elem = shifted > elem_t_max ? elem_t_max : (shifted < elem_t_min ? elem_t_min : shifted);
@@ -580,7 +581,11 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
     for (size_t i0 = 0; i0 < I0; i0++)
       for (size_t j0 = 0; j0 < J0; j0++)
         for (size_t k0 = 0; k0 < K0; k0++) {
-          // printf("Outer: i0: %u, j0: %u, k0: %u\n", i0, j0, k0);
+          /*
+          if (i0 == 0 && j0 == 0) {
+            printf("Outer: i0: %u, j0: %u, k0: %u\n", i0, j0, k0);
+          }
+          */
 
           int first_mvin = i0 == 0 && j0 == 0 && k0 == 0;
           int last_mvout = (i0 == I0-1) && (j0 == J0-1) && (k0 == K0-1);
@@ -594,8 +599,19 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
           } else {
             pre = &((elem_t (*)[DIM_J])D)[i0*TILE_I*DIM][j0*TILE_J*DIM];
           }
-          
+
           elem_t * out = k0 == K0-1 ? &C[i0*TILE_I*DIM][j0*TILE_J*DIM] : NULL;
+
+          /*
+          if (i0 == 0 && j0 == 0) {
+            printf("  pre is %p\n", pre);
+            if (pre != NULL) {
+              printf("    bias is %d\n", ((acc_t (*)[DIM_J])pre)[0][1]);
+            }
+
+            printf("  out is %p\n", out);
+          }
+          */
 
           sp_tiled_matmul_ws(&A[i0*TILE_I*DIM][k0*TILE_K*DIM],
               &B[k0*TILE_K*DIM][j0*TILE_J*DIM],
@@ -603,11 +619,63 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
               TILE_I, TILE_J, TILE_K,
               DIM_K, DIM_J, DIM_J, DIM_J,
               first_mvin, last_mvout, no_bias, full_bias_width);
+
+          /*
+          if (i0 == 0 && j0 == 0) {
+            if (out != NULL) {
+              printf("    result is %d\n", ((elem_t (*)[DIM_J])out)[0][1]);
+              printf("    actual result is %d\n", C[0][1]);
+            }
+          }
+          */
         }
 
     matmul_fence();
+
+    // printf("    final result is %d\n", C[0][1]);
 }
 
+static void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
+        // elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
+        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], void * D,
+        elem_t C[DIM_I][DIM_J],
+        int act, int shift, int relu6_shift, int full_bias_width) {
+
+  const int no_bias = D == NULL;
+
+  for (size_t i = 0; i < DIM_I; i++) {
+    for (size_t j = 0; j < DIM_J; j++) {
+      acc_t result;
+      if (full_bias_width) {
+        result = no_bias ? 0 : ((acc_t (*)[DIM_J])D)[i][j];
+      } else {
+        result = no_bias ? 0 : ((elem_t (*)[DIM_J])D)[i][j];
+      }
+
+      for (size_t k = 0; k < DIM_K; k++) {
+        result += A[i][k] * B[k][j];
+      }
+
+      // Shift while rounding to nearest integer (ties round to negative infinity)
+      result = ROUNDING_RIGHT_SHIFT(result, shift);
+
+      // Clip result
+      result = result > elem_t_max ? elem_t_max : (result < elem_t_min ? elem_t_min : result);
+
+      // Apply activation function
+      if (act == RELU) {
+        result = result < 0 ? 0 : result;
+      } else if (act == RELU6) {
+        int max = 6 << relu6_shift;
+        result = result < 0 ? 0 : (result > max ? max : result);
+      }
+
+      C[i][j] = (elem_t)result;
+    }
+  }
+}
+
+/*
 static void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         // elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
         elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], void * D,
@@ -709,6 +777,7 @@ static void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
     }
   }
 }
+*/
 
 // General matmul which can be run with different dataflows, or on the CPU
 enum tiled_matmul_type_t {OS, WS, CPU};
