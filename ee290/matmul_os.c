@@ -19,8 +19,8 @@ void operands(int c, int * a, int * b, int * d) {
   *a = c / (N*N);
 }
 
-#if 3*N*DIM > (BANK_NUM * BANK_ROWS) || N*N*N*DIM > ACC_ROWS
-//#error scratchpad or accumulator not big enough
+#if (3*N + N*N*N)*DIM > (BANK_NUM * BANK_ROWS)
+#error scratchpad not big enough
 #endif
 
 int main() {
@@ -31,41 +31,39 @@ int main() {
     }
 #endif
 
-  static elem_t ZERO[DIM][DIM];
-
   matmul_flush(0);
+
+  static elem_t ZERO[DIM][DIM];
 
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 12; shift += 4) {
+      // printf("activation: %d, shift: %d\n", activation, shift);
+
       static elem_t A[N][DIM][DIM] row_align(1);
       static elem_t B[N][DIM][DIM] row_align(1);
       static elem_t D[N][DIM][DIM] row_align(1);
+
+      int relu6_shift = shift+1;
 
       // We will try out every combination of A, B, D possible
       static elem_t C[N*N*N][DIM][DIM] row_align(1);
       static int64_t gold_full[N*N*N][DIM][DIM];
       static elem_t gold[N*N*N][DIM][DIM];
 
-      int relu6_shift = shift+1;
-
-      // ...taking into account whether we preload new weights or re-use the old ones
+      // ...taking into account the preloads or accumulates
       static int preload[N*N*N] = {1};
       for (int i = 1; i < N*N*N; ++i)
         preload[i] = rand() % 2;
 
-      // ...whether we pass in a D or just use zeros
-      static int add_to_zeros[N*N*N];
+      // ...and for the actual preloads, do we just preload zeros?
+      static int preload_zeros[N*N*N];
       for (int i = 0; i < N*N*N; ++i)
-        add_to_zeros[i] = rand() % 2;
+        preload_zeros[i] = rand() % 2;
 
-      // ...and whether we accumulate on top of the previous result
-      static int accumulate[N*N*N] = {0};
-      for (int i = 1; i < N*N*N; ++i)
-        accumulate[i] = rand() % 2;
-
+      // ...and finally, which results won't produce any output
       static int no_output[N*N*N];
       for (int i = 0; i < N*N*N-1; ++i)
-        no_output[i] = accumulate[i+1];
+        no_output[i] = !preload[i+1];
       no_output[N*N*N-1] = 0;
 
       // Print the sequence out
@@ -75,11 +73,7 @@ int main() {
       printf("\n");
       printf("Zeros: ");
       for (int i = 0; i < N*N*N; ++i)
-        printf("%d, ", add_to_zeros[i]);
-      printf("\n");
-      printf("Accumulates: ");
-      for (int i = 0; i < N*N*N; ++i)
-        printf("%d, ", accumulate[i]);
+        printf("%d, ", preload_zeros[i]);
       printf("\n");
       printf("No outputs: ");
       for (int i = 0; i < N*N*N; ++i)
@@ -97,94 +91,75 @@ int main() {
       }
 
       for (size_t g = 0; g < N*N*N; ++g) {
-        int a, b, d;
+        int a, b, d; 
         operands(g, &a, &b, &d);
 
-        // We need to find the last B value in case we aren't preloading new weights
-        for (int last_g = g; last_g >= 0; --last_g) {
-            int tmp_a, tmp_d;
-            if (preload[last_g]) {
-                operands(last_g, &tmp_a, &b, &tmp_d);
-                break;
-            }
-        }
-
-        if (add_to_zeros[g])
+        if (!preload[g])
+          matmul_full(A[a], B[b], gold_full[g-1], gold_full[g]);
+        else if (preload_zeros[g])
           matmul(A[a], B[b], ZERO, gold_full[g]);
         else
           matmul(A[a], B[b], D[d], gold_full[g]);
-
-        if (accumulate[g])
-          matadd(gold_full[g], gold_full[g-1], gold_full[g]);
       }
 
       for (size_t g = 0; g < N*N*N; ++g) {
-        matshift(gold_full[g], gold[g], shift);
-        if (activation == RELU)
-          matrelu(gold[g], gold[g]);
-        else if (activation == RELU6)
-          matrelu6(gold[g], gold[g], 1 << relu6_shift);
+          matshift(gold_full[g], gold[g], shift);
+          if (activation == RELU)
+            matrelu(gold[g], gold[g]);
+          else if (activation == RELU6)
+            matrelu6(gold[g], gold[g], 1 << relu6_shift);
       }
 
       int A_addr = 0;
       int B_addr = N*DIM;
       int D_addr = 2*N*DIM;
-      uint32_t C_addr_acc = 1 << (ADDR_LEN-1);
-
-      // Calculate the proper destination addresses of everything
-      int C_addrs[N*N*N];
-      for (size_t c = 0; c < N*N*N; ++c)
-        C_addrs[c] = C_addr_acc + c*DIM;
-      for (size_t c = 0; c < N*N*N; ++c) {
-        int last_c;
-        for (last_c = c; last_c >= 0; --last_c)
-          if (!accumulate[last_c])
-            break;
-        if (c != last_c)
-          C_addrs[c] = C_addrs[last_c] | (1 << (ADDR_LEN-2));
-      }
+      int C_addr = 3*N*DIM;
 
       // printf("Moving in\n");
       for (size_t n = 0; n < N; ++n)
         matmul_mvin(A[n], A_addr + n*DIM);
-
+      
       for (size_t n = 0; n < N; ++n)
         matmul_mvin(B[n], B_addr + n*DIM);
 
-      for (size_t n = 0; n < N; ++n)
-        if (n == N-1) {
-          matmul_mvin(D[n], D_addr + n*DIM);
-        } else {
-          matmul_mvin(D[n], D_addr + n*DIM);
-        }
+      for (size_t n = 0; n < N; ++n) {
+        matmul_mvin(D[n], D_addr + n*DIM);
+      }
 
       // printf("Setting mode\n");
-      matmul_config_ex(WEIGHT_STATIONARY, activation, 0, shift, relu6_shift);
+      matmul_config_ex(OUTPUT_STATIONARY, activation, shift, 0, relu6_shift);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
+        // printf("\tc: %u\n", c);
+
         int a, b, d;
         operands(c, &a, &b, &d);
-
-        uint64_t d_addr = D_addr + d*DIM;
-        if (add_to_zeros[c])
-          d_addr = GARBAGE_ADDR;
+        
+        uint64_t out_addr = C_addr + c*DIM;
+        if (no_output[c])
+          out_addr = GARBAGE_ADDR;
 
         if (!preload[c]) {
-          matmul_preload_zeros(C_addrs[c]);
-          matmul_compute_accumulated(A_addr + a*DIM, d_addr);
+          matmul_preload_zeros(out_addr);
+          matmul_compute_accumulated(A_addr + a*DIM, B_addr + b*DIM);
+        } else if (preload_zeros[c]) {
+          matmul_preload_zeros(out_addr);
+          matmul_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
         } else {
-          matmul_preload(B_addr + b*DIM, C_addrs[c]);
-          matmul_compute_preloaded(A_addr + a*DIM, d_addr);
+          matmul_preload(D_addr + d*DIM, out_addr);
+          matmul_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
         }
       }
 
       // printf("Moving out\n");
       for (size_t c = 0; c < N*N*N; ++c)
         if (!no_output[c]) {
-          matmul_mvout(C[c], C_addrs[c] & ~(1 << (ADDR_LEN-2)));
+          // printf("\tc: %u\n", c);
+          matmul_mvout(&C[c][0][0], C_addr + c*DIM);
         }
 
+      // printf("Fencing\n");
       matmul_fence();
 
       /*printf("Moved out\n");
@@ -201,12 +176,22 @@ int main() {
       // printf("Checking\n");
       for (int n = 0; n < N*N*N; ++n)
         if (!no_output[n] && !is_equal(C[n], gold[n])) {
-          printf("activation: %d, shift: %d\n", activation, shift);
-          printf("Actual (%d):\n", n);
-          printMatrix(C[n]);
-          printf("\nGold:\n");
-          printMatrix(gold[n]);
-          exit(1);
+            printf("activation: %d, shift: %d\n", activation, shift);
+
+            printf("C:\n");
+            printMatrix(C[n]);
+            printf("Gold:\n");
+            printMatrix(gold[n]);
+            printf("Gold_full:\n");
+            for (size_t i = 0; i < DIM; ++i) {
+                for (size_t j = 0; j < DIM; ++j) {
+                    printf("%lld ", gold_full[n][i][j]);
+                }
+                printf("\n");
+            }
+            printf("\n");
+
+            exit(1);
         }
     }
   }
