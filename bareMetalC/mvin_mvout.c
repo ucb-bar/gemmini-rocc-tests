@@ -25,7 +25,7 @@ int main() {
 #endif
 
   // printf("Flush\n");
-  matmul_flush(0);
+  gemmini_flush(0);
 
   static elem_t In[N][DIM][DIM] row_align(1);
   static elem_t Out[N][DIM][DIM] row_align(1);
@@ -37,9 +37,9 @@ int main() {
 
   for (size_t n = 0; n < N; ++n) {
     // printf("Mvin %d\n", n);
-    matmul_mvin(In[n], n*DIM);
+    gemmini_mvin(In[n], n*DIM);
     // printf("Mvout %d\n", n);
-    matmul_mvout(Out[n], n*DIM);
+    gemmini_mvout(Out[n], n*DIM);
   }
 
   // printf("Fence");

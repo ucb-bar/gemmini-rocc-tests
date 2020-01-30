@@ -156,41 +156,41 @@ unsigned long read_cycles() {
   ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, funct, 10, 11)
 
 // mvin and mvout
-#define matmul_mvin(dram_addr, spad_addr) \
+#define gemmini_mvin(dram_addr, spad_addr) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)1 << ADDR_LEN) | (spad_addr), k_MVIN)
 
-#define matmul_block_mvin(dram_addr, spad_addr, len) \
+#define gemmini_block_mvin(dram_addr, spad_addr, len) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)(len) << ADDR_LEN) | (spad_addr), k_MVIN)
 
-#define matmul_mvout(dram_addr, spad_addr) \
+#define gemmini_mvout(dram_addr, spad_addr) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, spad_addr, k_MVOUT)
 
 // compute
-#define matmul_compute_preloaded(A, BD) \
+#define gemmini_compute_preloaded(A, BD) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, BD, k_COMPUTE_PRELOADED)
 
-#define matmul_compute_accumulated(A, BD) \
+#define gemmini_compute_accumulated(A, BD) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, BD, k_COMPUTE_ACCUMULATE)
 
 // preload
-#define matmul_preload(BD, C) \
+#define gemmini_preload(BD, C) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, BD, C, k_PRELOAD)
 
 #define matmul_preload_zeros(C) \
-  matmul_preload(GARBAGE_ADDR, C)
+  gemmini_preload(GARBAGE_ADDR, C)
 
 // config
-#define matmul_config_ex(mode, act, sys_shift, acc_shift, relu6_shift) \
+#define gemmini_config_ex(mode, act, sys_shift, acc_shift, relu6_shift) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(acc_shift) << 32) | ((act) << 3) | ((mode) << 2) | CONFIG_EX, ((uint64_t)(relu6_shift) << 32) | (sys_shift), k_CONFIG)
 
-#define matmul_config_ld(stride) \
+#define gemmini_config_ld(stride) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_LD, stride, k_CONFIG)
 
-#define matmul_config_st(stride) \
+#define gemmini_config_st(stride) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_ST, stride, k_CONFIG)
 
 // flush
-#define matmul_flush(skip) \
+#define gemmini_flush(skip) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, skip, 0, k_FLUSH)
 
 // fence
@@ -217,7 +217,7 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, void * D, elem_t * C,
 
   // Move-in D
   if (D != NULL && !no_bias) {
-    matmul_config_ld(D_row_len * sizeof_bias);
+    gemmini_config_ld(D_row_len * sizeof_bias);
 
     for (size_t i = 0; i < I; i++) {
       for (size_t j = 0; j < J; j++) {
@@ -239,15 +239,15 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, void * D, elem_t * C,
           int blocks = j + D_blocks <= J ? D_blocks : J-j;
 
           if (full_bias_width) {
-            matmul_block_mvin(D_dram_addr, D_sp_addr_acc, blocks);
+            gemmini_block_mvin(D_dram_addr, D_sp_addr_acc, blocks);
           } else {
-            matmul_block_mvin(D_dram_addr, D_sp_addr_sp, blocks);
+            gemmini_block_mvin(D_dram_addr, D_sp_addr_sp, blocks);
           }
         }
 
         if (!full_bias_width) {
-          matmul_preload(D_sp_addr_sp, D_sp_addr_acc);
-          matmul_compute_preloaded(GARBAGE_ADDR, GARBAGE_ADDR);
+          gemmini_preload(D_sp_addr_sp, D_sp_addr_acc);
+          gemmini_compute_preloaded(GARBAGE_ADDR, GARBAGE_ADDR);
         }
       }
     }
@@ -261,8 +261,8 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, void * D, elem_t * C,
 
       const int blocks = k + A_blocks <= K ? A_blocks : K-k;
 
-      matmul_config_ld(A_row_len * sizeof(elem_t));
-      matmul_block_mvin(A_dram_addr, A_sp_addr, blocks);
+      gemmini_config_ld(A_row_len * sizeof(elem_t));
+      gemmini_block_mvin(A_dram_addr, A_sp_addr, blocks);
     }
   }
 
@@ -273,8 +273,8 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, void * D, elem_t * C,
 
         const int blocks = j + B_blocks <= J ? B_blocks : J-j;
 
-        matmul_config_ld(B_row_len * sizeof(elem_t));
-        matmul_block_mvin(B_dram_addr, B_sp_addr, blocks);
+        gemmini_config_ld(B_row_len * sizeof(elem_t));
+        gemmini_block_mvin(B_dram_addr, B_sp_addr, blocks);
     }
   }
   */
@@ -300,17 +300,17 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, void * D, elem_t * C,
           int B_already_moved_in = i != 0 || j % B_blocks != 0;
 
           if (!A_already_moved_in) {
-            matmul_config_ld(A_row_len * sizeof(elem_t));
+            gemmini_config_ld(A_row_len * sizeof(elem_t));
 
             const int blocks = k + A_blocks <= K ? A_blocks : K-k;
-            matmul_block_mvin(A_dram_addr, A_sp_addr, blocks);
+            gemmini_block_mvin(A_dram_addr, A_sp_addr, blocks);
           }
 
           if (!B_already_moved_in) {
-            matmul_config_ld(B_row_len * sizeof(elem_t));
+            gemmini_config_ld(B_row_len * sizeof(elem_t));
 
             const int blocks = j + B_blocks <= J ? B_blocks : J-j;
-            matmul_block_mvin(B_dram_addr, B_sp_addr, blocks);
+            gemmini_block_mvin(B_dram_addr, B_sp_addr, blocks);
           }
 
           // printf("    Exit mvin\n");
@@ -328,12 +328,12 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, void * D, elem_t * C,
             out_sp_addr &= ~(1 << (ADDR_LEN-2));
           }
 
-          matmul_preload(GARBAGE_ADDR, out_sp_addr);
+          gemmini_preload(GARBAGE_ADDR, out_sp_addr);
 
           if (k == 0) { // First iteration
-            matmul_compute_preloaded(A_sp_addr, B_sp_addr);
+            gemmini_compute_preloaded(A_sp_addr, B_sp_addr);
           } else { // All other iterations
-            matmul_compute_accumulated(A_sp_addr, B_sp_addr);
+            gemmini_compute_accumulated(A_sp_addr, B_sp_addr);
           }
 
           // printf("    Exit compute\n");
@@ -343,7 +343,7 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, void * D, elem_t * C,
       // Move-out C
       // if (C != NULL) {
       //   elem_t * const C_dram_addr = C + (i*C_row_len + j)*DIM;
-      //   matmul_mvout(C_dram_addr, C_sp_addr);
+      //   gemmini_mvout(C_dram_addr, C_sp_addr);
       // }
     }
   }
@@ -362,7 +362,7 @@ static void sp_tiled_matmul_os(elem_t * A, elem_t * B, void * D, elem_t * C,
         elem_t * const C_dram_addr = C + (i*C_row_len + j)*DIM;
         const uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
 
-        matmul_mvout(C_dram_addr, C_sp_addr);
+        gemmini_mvout(C_dram_addr, C_sp_addr);
       }
     }
 
@@ -398,7 +398,7 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, void * D, elem_t * C,
 
   // Move-in D
   if (D != NULL && !no_bias) {
-    matmul_config_ld(D_row_len * sizeof_bias);
+    gemmini_config_ld(D_row_len * sizeof_bias);
 
     for (size_t i = 0; i < I; i++) {
       for (size_t j = 0; j < J; j++) {
@@ -420,15 +420,15 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, void * D, elem_t * C,
           int blocks = j + D_blocks <= J ? D_blocks : J-j;
 
           if (full_bias_width) {
-            matmul_block_mvin(D_dram_addr, D_sp_addr_acc, blocks);
+            gemmini_block_mvin(D_dram_addr, D_sp_addr_acc, blocks);
           } else /*if (!full_bias_width)*/ {
-            matmul_block_mvin(D_dram_addr, D_sp_addr_sp, blocks);
+            gemmini_block_mvin(D_dram_addr, D_sp_addr_sp, blocks);
           }
         }
 
         if (!full_bias_width) {
-          matmul_preload(GARBAGE_ADDR, D_sp_addr_acc);
-          matmul_compute_preloaded(GARBAGE_ADDR, D_sp_addr_sp);
+          gemmini_preload(GARBAGE_ADDR, D_sp_addr_acc);
+          gemmini_compute_preloaded(GARBAGE_ADDR, D_sp_addr_sp);
         }
       }
     }
@@ -451,19 +451,19 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, void * D, elem_t * C,
           int B_already_moved_in = i != 0 || j % B_blocks != 0;
 
           if (!A_already_moved_in) {
-            matmul_config_ld(A_row_len * sizeof(elem_t));
+            gemmini_config_ld(A_row_len * sizeof(elem_t));
 
             int blocks = k + A_blocks <= K ? A_blocks : K-k;
             // printf("Moving in %d blocks of A: %u\n", blocks, A_sp_addr);
-            matmul_block_mvin(A_dram_addr, A_sp_addr, blocks);
+            gemmini_block_mvin(A_dram_addr, A_sp_addr, blocks);
           }
 
           if (!B_already_moved_in) {
-            matmul_config_ld(B_row_len * sizeof(elem_t));
+            gemmini_config_ld(B_row_len * sizeof(elem_t));
 
             int blocks = j + B_blocks <= J ? B_blocks : J-j;
             // printf("Moving in %d blocks of B: %u\n", blocks, B_sp_addr);
-            matmul_block_mvin(B_dram_addr, B_sp_addr, blocks);
+            gemmini_block_mvin(B_dram_addr, B_sp_addr, blocks);
           }
         }
 
@@ -481,12 +481,12 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, void * D, elem_t * C,
 
           int final_submatrix = i == I-1 && j == J-1 && k == K-1 && C != NULL;
 
-          matmul_preload(pre_sp_addr, out_sp_addr);
+          gemmini_preload(pre_sp_addr, out_sp_addr);
 
           if (i == 0) { // First iteration
-            matmul_compute_preloaded(A_sp_addr, GARBAGE_ADDR);
+            gemmini_compute_preloaded(A_sp_addr, GARBAGE_ADDR);
           } else { // All other iterations
-            matmul_compute_accumulated(A_sp_addr, GARBAGE_ADDR);
+            gemmini_compute_accumulated(A_sp_addr, GARBAGE_ADDR);
           }
         }
       }
@@ -501,7 +501,7 @@ static void sp_tiled_matmul_ws(elem_t * A, elem_t * B, void * D, elem_t * C,
         elem_t * const C_dram_addr = C + (i*C_row_len + j)*DIM;
         const uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
 
-        matmul_mvout(C_dram_addr, C_sp_addr);
+        gemmini_mvout(C_dram_addr, C_sp_addr);
       }
     }
   }
@@ -524,8 +524,8 @@ static void tiled_matmul_os(size_t DIM_I, size_t DIM_J, size_t DIM_K,
       D = (void*) 1; // Dummy address which isn't NULL
     }
 
-    matmul_config_ex(OUTPUT_STATIONARY, act, 0, shift, relu6_shift);
-    matmul_config_st(DIM_J * sizeof(elem_t));
+    gemmini_config_ex(OUTPUT_STATIONARY, act, 0, shift, relu6_shift);
+    gemmini_config_st(DIM_J * sizeof(elem_t));
 
     for (size_t i0 = 0; i0 < I0; i0++)
       for (size_t j0 = 0; j0 < J0; j0++)
@@ -575,8 +575,8 @@ static void tiled_matmul_ws(size_t DIM_I, size_t DIM_J, size_t DIM_K,
       D = (void*) 1; // Dummy address which isn't NULL
     }
 
-    matmul_config_ex(WEIGHT_STATIONARY, act, 0, shift, relu6_shift);
-    matmul_config_st(DIM_J * sizeof(elem_t));
+    gemmini_config_ex(WEIGHT_STATIONARY, act, 0, shift, relu6_shift);
+    gemmini_config_st(DIM_J * sizeof(elem_t));
 
     for (size_t i0 = 0; i0 < I0; i0++)
       for (size_t j0 = 0; j0 < J0; j0++)

@@ -21,7 +21,7 @@ int main() {
 #endif
 
   // Flush Gemmini TLB of stale virtual addresses
-  matmul_flush(0);
+  gemmini_flush(0);
 
   // Initialize our input and output matrices in main memory
   elem_t A[N][DIM][DIM];
@@ -52,22 +52,22 @@ int main() {
   const size_t C_sp_addr = 2*BANK_ROWS;
 
   for (size_t n = 0; n < N; n++) {
-    matmul_mvin(A[n], A_sp_addr + n*DIM);
-    matmul_mvin(B[n], B_sp_addr + n*DIM);
+    gemmini_mvin(A[n], A_sp_addr + n*DIM);
+    gemmini_mvin(B[n], B_sp_addr + n*DIM);
   }
 
   // Multiply A matrices with B matrices in Gemmini;
-  matmul_config_ex(WEIGHT_STATIONARY, 0, 0, 0, 0);
+  gemmini_config_ex(WEIGHT_STATIONARY, 0, 0, 0, 0);
 
   for (size_t n; n < N; n++) {
-    matmul_preload(B_sp_addr + n*DIM, C_sp_addr + n*DIM);
-    matmul_compute_preloaded(A_sp_addr + n*DIM, GARBAGE_ADDR);
+    gemmini_preload(B_sp_addr + n*DIM, C_sp_addr + n*DIM);
+    gemmini_compute_preloaded(A_sp_addr + n*DIM, GARBAGE_ADDR);
   }
 
   // Move C matrices from Gemmini's scratchpad into main memory
   elem_t Out[N][DIM][DIM];
   for (size_t n; n < N; n++) {
-    matmul_mvout(Out[n], C_sp_addr + n*DIM);
+    gemmini_mvout(Out[n], C_sp_addr + n*DIM);
   }
 
   // Fence till Gemmini completes all memory operations

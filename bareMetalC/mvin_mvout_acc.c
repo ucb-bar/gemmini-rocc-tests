@@ -24,7 +24,7 @@ int main() {
     }
 #endif
 
-  matmul_flush(0);
+  gemmini_flush(0);
 
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 12; shift += 4) {
@@ -64,16 +64,16 @@ int main() {
       const uint32_t acc_addr = 1 << (ADDR_LEN-1);
 
       // printf("Config\n");
-      matmul_config_ld(DIM*sizeof(acc_t));
-      matmul_config_ex(0, activation, 0, shift, relu6_shift);
-      matmul_config_st(DIM*sizeof(elem_t));
+      gemmini_config_ld(DIM*sizeof(acc_t));
+      gemmini_config_ex(0, activation, 0, shift, relu6_shift);
+      gemmini_config_st(DIM*sizeof(elem_t));
 
       // printf("Mvin and mvout\n");
       for (size_t n = 0; n < N; ++n) {
         // printf("Mvin n: %u\n", n);
-        matmul_mvin(In[n], acc_addr + n*DIM);
+        gemmini_mvin(In[n], acc_addr + n*DIM);
         // printf("Mvout n: %u\n", n);
-        matmul_mvout(Out[n], acc_addr + n*DIM);
+        gemmini_mvout(Out[n], acc_addr + n*DIM);
       }
 
       // printf("Fence\n");

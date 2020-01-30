@@ -174,7 +174,7 @@ int main (int argc, char * argv[]) {
     }
 #endif
 
-    matmul_flush(0);
+    gemmini_flush(0);
 
     enum tiled_matmul_type_t tiled_matmul_type;
     tiled_matmul_type = WS;

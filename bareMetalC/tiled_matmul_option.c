@@ -89,7 +89,7 @@ int main() {
   }
 #endif
 
-  matmul_flush(0);
+  gemmini_flush(0);
 
 #ifdef BAREMETAL
   for (enum tiled_matmul_type_t option = OS; option <= WS; option++) {

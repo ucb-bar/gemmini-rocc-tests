@@ -22,7 +22,7 @@ int main() {
     }
 #endif
 
-  matmul_flush(0);
+  gemmini_flush(0);
 
   const int a_additions = 10;
   const int b_additions = 10;
@@ -54,41 +54,41 @@ int main() {
   int D_addr = 4*DIM;
 
   // printf("Moving in\n");
-  matmul_mvin(IDENTITY, IDENTITY1_addr);
-  matmul_mvin(IDENTITY, IDENTITY2_addr);
-  matmul_mvin(IDENTITY, A_addr);
-  matmul_mvin(IDENTITY, B_addr);
-  matmul_mvin(IDENTITY, D_addr);
+  gemmini_mvin(IDENTITY, IDENTITY1_addr);
+  gemmini_mvin(IDENTITY, IDENTITY2_addr);
+  gemmini_mvin(IDENTITY, A_addr);
+  gemmini_mvin(IDENTITY, B_addr);
+  gemmini_mvin(IDENTITY, D_addr);
   
   // printf("Setting mode\n");
-  matmul_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0);
+  gemmini_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0);
 
   // printf("RAW with A\n");
   for (int i = 0; i < a_additions; i++) {
     // printf("  %d\n", i);
 
-    matmul_preload(IDENTITY1_addr, A_addr);
-    matmul_compute_preloaded(A_addr, IDENTITY2_addr);
+    gemmini_preload(IDENTITY1_addr, A_addr);
+    gemmini_compute_preloaded(A_addr, IDENTITY2_addr);
   }
 
   // printf("RAW with B\n");
   for (int i = 0; i < b_additions; i++) {
-    matmul_preload(IDENTITY1_addr, B_addr);
-    matmul_compute_preloaded(IDENTITY2_addr, B_addr);
+    gemmini_preload(IDENTITY1_addr, B_addr);
+    gemmini_compute_preloaded(IDENTITY2_addr, B_addr);
   }
 
   // printf("RAW with D\n");
   for (int i = 0; i < d_additions; i++) {
-    matmul_preload(D_addr, D_addr);
-    matmul_compute_preloaded(IDENTITY1_addr, IDENTITY2_addr);
+    gemmini_preload(D_addr, D_addr);
+    gemmini_compute_preloaded(IDENTITY1_addr, IDENTITY2_addr);
   }
 
   // printf("Moving out A\n");
-  matmul_mvout(result_A, A_addr);
+  gemmini_mvout(result_A, A_addr);
   // printf("Moving out B\n");
-  matmul_mvout(result_B, B_addr);
+  gemmini_mvout(result_B, B_addr);
   // printf("Moving out D\n");
-  matmul_mvout(result_D, D_addr);
+  gemmini_mvout(result_D, D_addr);
 
   // printf("Fencing\n");
   matmul_fence();

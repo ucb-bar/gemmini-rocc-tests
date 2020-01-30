@@ -31,7 +31,7 @@ int main() {
     }
 #endif
 
-  matmul_flush(0);
+  gemmini_flush(0);
 
   // static struct aligned_buffer In __attribute__((aligned(PG_SIZE)));
   static struct offset_buffer In __attribute__((aligned(PG_SIZE)));
@@ -49,9 +49,9 @@ int main() {
     }
 
   // printf("Mvin\n");
-  matmul_mvin(In.data, 0);
+  gemmini_mvin(In.data, 0);
   // printf("Mvout\n");
-  matmul_mvout(Out.data, 0);
+  gemmini_mvout(Out.data, 0);
 
   // printf("Fence\n");
   matmul_fence();

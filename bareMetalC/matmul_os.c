@@ -31,7 +31,7 @@ int main() {
     }
 #endif
 
-  matmul_flush(0);
+  gemmini_flush(0);
 
   static elem_t ZERO[DIM][DIM];
 
@@ -117,17 +117,17 @@ int main() {
 
       // printf("Moving in\n");
       for (size_t n = 0; n < N; ++n)
-        matmul_mvin(A[n], A_addr + n*DIM);
+        gemmini_mvin(A[n], A_addr + n*DIM);
       
       for (size_t n = 0; n < N; ++n)
-        matmul_mvin(B[n], B_addr + n*DIM);
+        gemmini_mvin(B[n], B_addr + n*DIM);
 
       for (size_t n = 0; n < N; ++n) {
-        matmul_mvin(D[n], D_addr + n*DIM);
+        gemmini_mvin(D[n], D_addr + n*DIM);
       }
 
       // printf("Setting mode\n");
-      matmul_config_ex(OUTPUT_STATIONARY, activation, shift, 0, relu6_shift);
+      gemmini_config_ex(OUTPUT_STATIONARY, activation, shift, 0, relu6_shift);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
@@ -142,13 +142,13 @@ int main() {
 
         if (!preload[c]) {
           matmul_preload_zeros(out_addr);
-          matmul_compute_accumulated(A_addr + a*DIM, B_addr + b*DIM);
+          gemmini_compute_accumulated(A_addr + a*DIM, B_addr + b*DIM);
         } else if (preload_zeros[c]) {
           matmul_preload_zeros(out_addr);
-          matmul_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
+          gemmini_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
         } else {
-          matmul_preload(D_addr + d*DIM, out_addr);
-          matmul_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
+          gemmini_preload(D_addr + d*DIM, out_addr);
+          gemmini_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
         }
       }
 
@@ -156,7 +156,7 @@ int main() {
       for (size_t c = 0; c < N*N*N; ++c)
         if (!no_output[c]) {
           // printf("\tc: %u\n", c);
-          matmul_mvout(&C[c][0][0], C_addr + c*DIM);
+          gemmini_mvout(&C[c][0][0], C_addr + c*DIM);
         }
 
       // printf("Fencing\n");

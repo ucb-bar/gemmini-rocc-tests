@@ -81,7 +81,7 @@ int main() {
     }
 #endif
 
-  matmul_flush(0);
+  gemmini_flush(0);
 
   for (int block_len = 1; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN_ACC; block_len++) {
     for (int activation = 0; activation <= 2; ++activation) {
@@ -117,9 +117,9 @@ int main() {
 
         const uint32_t acc_addr = 1 << (ADDR_LEN-1);
 
-        matmul_config_ld(BIG_DIM*sizeof(acc_t));
-        matmul_config_ex(0, activation, 0, shift, relu6_shift);
-        matmul_config_st(BIG_DIM*sizeof(elem_t));
+        gemmini_config_ld(BIG_DIM*sizeof(acc_t));
+        gemmini_config_ex(0, activation, 0, shift, relu6_shift);
+        gemmini_config_st(BIG_DIM*sizeof(elem_t));
 
         for (size_t i = 0; i < BIG_DIM; i += DIM) {
           for (size_t j = 0; j < BIG_DIM; j += DIM) {
@@ -134,11 +134,11 @@ int main() {
             if (!already_moved_in) {
               int len = j + block_len*DIM <= BIG_DIM ? block_len : (BIG_DIM-j)/DIM;
               // printf("Moving in with len: %d\n", len);
-              matmul_block_mvin(dram_addr_in, sp_addr, len);
-              matmul_mvout(dram_addr_out, sp_addr);
+              gemmini_block_mvin(dram_addr_in, sp_addr, len);
+              gemmini_mvout(dram_addr_out, sp_addr);
             } else {
               // printf("Already moved in\n");
-              matmul_mvout(dram_addr_out, sp_addr);
+              gemmini_mvout(dram_addr_out, sp_addr);
             }
           }
         }
