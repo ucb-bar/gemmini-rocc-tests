@@ -1,21 +1,12 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	mvin_mvout \
-	mvin_mvout_stride \
-	mvin_mvout_acc \
-	mvin_mvout_acc_stride \
-	matmul_os \
-	matmul_ws \
-	matmul \
-	raw_hazard \
-	tiled_matmul_os \
-	tiled_matmul_ws \
-	tiled_matmul_cpu \
-	tiled_matmul_option \
-	aligned \
 	identity \
-	template
+	double \
+	double_keep_weights \
+	double_keep_weights_then_change \
+	matmul_ws \
+	large_matmul_ws
 
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY
