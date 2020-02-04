@@ -185,7 +185,7 @@ int main() {
           gemmini_mvout(C[c], C_addrs[c] & ~(1 << (ADDR_LEN-2)));
         }
 
-      matmul_fence();
+      gemmini_fence();
 
       /*printf("Moved out\n");
       for (int n = 0; n < N*N*N; ++n) {

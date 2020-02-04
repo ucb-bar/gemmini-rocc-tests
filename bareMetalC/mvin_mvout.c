@@ -43,7 +43,7 @@ int main() {
   }
 
   // printf("Fence");
-  matmul_fence();
+  gemmini_fence();
 
   for (size_t n = 0; n < N; ++n)
     if (!is_equal(In[n], Out[n])) {

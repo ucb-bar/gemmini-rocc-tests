@@ -160,7 +160,7 @@ int main() {
         }
 
       // printf("Fencing\n");
-      matmul_fence();
+      gemmini_fence();
 
       /*printf("Moved out\n");
       for (int n = 0; n < N*N*N; ++n) {

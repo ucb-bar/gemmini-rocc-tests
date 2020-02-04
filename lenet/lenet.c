@@ -206,7 +206,6 @@ int main (int argc, char * argv[]) {
         conv_1_out_reshaped, conv_1_out_pooled, conv_1_params.pool_size, conv_1_params.pool_stride);
 
 
-
     // conv_2
     im2col(conv_2_params.batch_size, conv_2_params.in_channels, conv_2_params.in_dim,
         conv_2_params.I, conv_2_params.K,
@@ -216,14 +215,12 @@ int main (int argc, char * argv[]) {
         conv_2_in, conv_2_w, NULL, conv_2_out,      // addresses
         RELU, conv_2_params.output_scale, 0, 1,              // activation, shift, r6_shift, full_width_bias
         tiled_matmul_type, compare, "conv_2");
-        
+
     col2im(conv_2_params.I, conv_2_params.J, conv_2_params.batch_size, conv_2_params.out_channels, conv_2_params.out_dim,
         conv_2_out, conv_2_out_reshaped, &conv_2_params);
 
     pool(conv_2_params.batch_size, conv_2_params.in_channels, conv_2_params.out_dim, conv_2_params.out_dim_pooled,
         conv_2_out_reshaped, conv_2_out_pooled, conv_2_params.pool_size, conv_2_params.pool_stride);
-
-
 
     // Convert conv output to fc input
     // static elem_t fc_3_in[fc_3_params.K][fc_3_params.J];

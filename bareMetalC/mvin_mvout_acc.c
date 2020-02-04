@@ -77,7 +77,7 @@ int main() {
       }
 
       // printf("Fence\n");
-      matmul_fence();
+      gemmini_fence();
 
       // printf("Check\n");
       for (size_t n = 0; n < N; ++n)

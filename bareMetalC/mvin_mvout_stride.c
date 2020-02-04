@@ -83,7 +83,7 @@ int main() {
       }
     }
 
-    matmul_fence();
+    gemmini_fence();
 
     if (!is_equal_big(In, Out)) {
       printf("fails at block_len: %d\n", block_len);

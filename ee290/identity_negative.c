@@ -28,8 +28,8 @@ int main() {
 
   for (size_t i = 0; i < DIM; i++)
     for (size_t j = 0; j < DIM; j++) {
-      In[i][j] = -1; // 10 + i * DIM + j;
-      Identity[i][j] = i == j;
+      In[i][j] = 10 + i * DIM + j;
+      Identity[i][j] = -(i == j);
     }
 
   // printf("Calculate the scratchpad addresses of all our matrices\n");

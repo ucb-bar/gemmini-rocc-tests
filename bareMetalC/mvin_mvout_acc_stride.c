@@ -144,7 +144,7 @@ int main() {
         }
 
         // printf("Fence\n");
-        matmul_fence();
+        gemmini_fence();
 
         // printf("Check\n");
         if (!is_equal_big(Out, Out_gold)) {

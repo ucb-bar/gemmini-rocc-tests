@@ -54,7 +54,7 @@ int main() {
   gemmini_mvout(Out.data, 0);
 
   // printf("Fence\n");
-  matmul_fence();
+  gemmini_fence();
 
   if (!is_equal(In.data, Out.data)) {
     printf("Matrix:\n");

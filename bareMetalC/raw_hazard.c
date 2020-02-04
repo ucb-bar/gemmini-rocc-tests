@@ -91,7 +91,7 @@ int main() {
   gemmini_mvout(result_D, D_addr);
 
   // printf("Fencing\n");
-  matmul_fence();
+  gemmini_fence();
 
   // printf("Checking\n");
   int fail = 0;

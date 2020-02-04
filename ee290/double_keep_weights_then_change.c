@@ -45,11 +45,18 @@ int main() {
   for (size_t n = 0; n < N; n++)
     for (size_t i = 0; i < DIM; i++)
       for (size_t j = 0; j < DIM; j++) {
-        C[n][i][j] = 0;
+        int result = 0;
+
         for (size_t k = 0; k < DIM; k++) {
           size_t b = n < 2 ? 0 : 1;
-          C[n][i][j] += A[n][i][k] * B[b][k][j];
+          result += A[n][i][k] * B[b][k][j];
         }
+
+        // Gemmini will saturate results, instead of simply overflowing
+        result = result < elem_t_max ? result : elem_t_max;
+        result = result > elem_t_min ? result : elem_t_min;
+
+        C[n][i][j] = result;
       }
 
   // Move in A and B matrices from main memory to Gemmini's scratchpad
@@ -86,7 +93,7 @@ int main() {
   }
 
   // Fence till Gemmini completes all memory operations
-  matmul_fence();
+  gemmini_fence();
 
   // Check whether Gemmini calculated C matrices correctly
   for (size_t n = 0; n < N; n++) {

@@ -2,6 +2,7 @@ include $(abs_top_srcdir)/Makefrag
 
 tests = \
 	identity \
+	identity_negative \
 	double \
 	double_keep_weights \
 	double_keep_weights_then_change \

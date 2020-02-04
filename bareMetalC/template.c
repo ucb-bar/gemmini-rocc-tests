@@ -51,7 +51,7 @@ int main() {
   gemmini_mvout(Out, Out_sp_addr);
 
   printf("Fence till Gemmini completes all memory operations\n");
-  matmul_fence();
+  gemmini_fence();
 
   printf("Check whether \"In\" and \"Out\" matrices are identical\n");
   if (!is_equal(In, Out)) {

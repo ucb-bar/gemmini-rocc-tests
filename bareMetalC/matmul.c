@@ -146,7 +146,7 @@ void test_os() {
           gemmini_mvout(C[c], C_addr + c*DIM);
         }
 
-      matmul_fence();
+      gemmini_fence();
 
       /*
       printf("Moved out\n");
@@ -332,7 +332,7 @@ void test_ws() {
           gemmini_mvout(C[c], C_addrs[c] & ~(1 << (ADDR_LEN-2)));
         }
 
-      matmul_fence();
+      gemmini_fence();
 
       /*printf("Moved out\n");
       for (int n = 0; n < N*N*N; ++n) {

@@ -37,7 +37,6 @@ int main() {
 
   static elem_t A[N][DIM][DIM] row_align(1);
   static elem_t B[N][DIM][DIM] row_align(1);
-  static elem_t D[N][DIM][DIM] row_align(1);
 
   // We will try out every combination of A, B, D possible
   static elem_t C[N*N*N][DIM][DIM] row_align(1);
@@ -48,11 +47,6 @@ int main() {
   static int preload[N*N*N] = {1};
   for (int i = 1; i < N*N*N; ++i)
     preload[i] = rand() % 2;
-
-  // ...whether we pass in a D or just use zeros
-  static int add_to_zeros[N*N*N];
-  for (int i = 0; i < N*N*N; ++i)
-    add_to_zeros[i] = rand() % 2;
 
   // ...and whether we accumulate on top of the previous result
   static int accumulate[N*N*N] = {0};
@@ -69,9 +63,6 @@ int main() {
   for (int i = 0; i < N*N*N; ++i)
     printf("%d, ", preload[i]);
   printf("\n");
-  printf("Zeros: ");
-  for (int i = 0; i < N*N*N; ++i)
-    printf("%d, ", add_to_zeros[i]);
   printf("\n");
   printf("Accumulates: ");
   for (int i = 0; i < N*N*N; ++i)
@@ -87,7 +78,6 @@ int main() {
       for (size_t j = 0; j < DIM; ++j) {
         A[n][i][j] = (rand() % 64) - 32;
         B[n][i][j] = (rand() % 64) - 32;
-        D[n][i][j] = (rand() % 64) - 32;
       }
     }
   }
@@ -105,10 +95,7 @@ int main() {
         }
     }
 
-    if (add_to_zeros[g])
-      matmul(A[a], B[b], ZERO, gold_full[g]);
-    else
-      matmul(A[a], B[b], D[d], gold_full[g]);
+    matmul(A[a], B[b], ZERO, gold_full[g]);
 
     if (accumulate[g])
       matadd(gold_full[g], gold_full[g-1], gold_full[g]);
@@ -120,7 +107,6 @@ int main() {
 
   int A_addr = 0;
   int B_addr = N*DIM;
-  int D_addr = 2*N*DIM;
   uint32_t C_addr_acc = 1 << (ADDR_LEN-1);
 
   // Calculate the proper destination addresses of everything
@@ -143,13 +129,6 @@ int main() {
   for (size_t n = 0; n < N; ++n)
     gemmini_mvin(B[n], B_addr + n*DIM);
 
-  for (size_t n = 0; n < N; ++n)
-    if (n == N-1) {
-      gemmini_mvin(D[n], D_addr + n*DIM);
-    } else {
-      gemmini_mvin(D[n], D_addr + n*DIM);
-    }
-
   // printf("Setting mode\n");
   gemmini_config_ex(WEIGHT_STATIONARY, NO_ACTIVATION, 0, 0, 0);
 
@@ -158,16 +137,12 @@ int main() {
     int a, b, d;
     operands(c, &a, &b, &d);
 
-    uint64_t d_addr = D_addr + d*DIM;
-    if (add_to_zeros[c])
-      d_addr = GARBAGE_ADDR;
-
     if (!preload[c]) {
       matmul_preload_zeros(C_addrs[c]);
-      gemmini_compute_accumulated(A_addr + a*DIM, d_addr);
+      gemmini_compute_accumulated(A_addr + a*DIM, GARBAGE_ADDR);
     } else {
       gemmini_preload(B_addr + b*DIM, C_addrs[c]);
-      gemmini_compute_preloaded(A_addr + a*DIM, d_addr);
+      gemmini_compute_preloaded(A_addr + a*DIM, GARBAGE_ADDR);
     }
   }
 
@@ -177,14 +152,14 @@ int main() {
       gemmini_mvout(C[c], C_addrs[c] & ~(1 << (ADDR_LEN-2)));
     }
 
-  matmul_fence();
+  gemmini_fence();
 
   // printf("Checking\n");
   for (int n = 0; n < N*N*N; ++n)
     if (!no_output[n] && !is_equal(C[n], gold[n])) {
       printf("Actual (matrix %d):\n", n);
       printMatrix(C[n]);
-      printf("\nGold:\n");
+      printf("\nCorrect:\n");
       printMatrix(gold[n]);
       exit(1);
     }
