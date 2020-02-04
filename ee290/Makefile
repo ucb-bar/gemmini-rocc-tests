@@ -6,8 +6,8 @@ tests = \
 	double \
 	double_keep_weights \
 	double_keep_weights_then_change \
-	matmul_ws \
-	large_matmul_ws
+	random_matmuls \
+	large_matmul
 
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY
