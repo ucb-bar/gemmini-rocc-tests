@@ -124,10 +124,12 @@ int main() {
       full_printMatrix(gold);
       printf("\n");
 
+      printf("FAIL\n");
       exit(1);
     }
 #endif
 
+  printf("PASS\n");
   exit(0);
 }
 

@@ -161,9 +161,12 @@ int main() {
       printMatrix(C[n]);
       printf("\nCorrect:\n");
       printMatrix(gold[n]);
+
+      printf("\nFAIL\n");
       exit(1);
     }
 
+  printf("PASS\n");
   exit(0);
 }
 

@@ -64,10 +64,11 @@ int main() {
     printMatrix(Out);
     printf("\n");
 
+    printf("FAIL\n");
     exit(1);
   }
 
-  printf("Input and output matrices are identical, as expected\n");
+  printf("Input and output matrices are identical, as expected\nPASS\n");
   exit(0);
 }
 

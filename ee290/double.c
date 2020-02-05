@@ -96,11 +96,12 @@ int main() {
       printMatrix(B[n]);
       printf("\n");
 
+      printf("FAIL\n");
       exit(1);
     }
   }
 
-  printf("You're all good!\n");
+  printf("PASS\n");
   exit(0);
 }
 
