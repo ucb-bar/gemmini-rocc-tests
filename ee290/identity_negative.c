@@ -25,11 +25,13 @@ int main() {
   elem_t In[DIM][DIM];
   elem_t Out[DIM][DIM];
   elem_t Identity[DIM][DIM];
+  elem_t Correct[DIM][DIM];
 
   for (size_t i = 0; i < DIM; i++)
     for (size_t j = 0; j < DIM; j++) {
       In[i][j] = 10 + i * DIM + j;
       Identity[i][j] = -(i == j);
+      Correct[i][j] = -In[i][j];
     }
 
   // printf("Calculate the scratchpad addresses of all our matrices\n");
@@ -56,8 +58,8 @@ int main() {
   gemmini_fence();
 
   // printf("Check whether \"In\" and \"Out\" matrices are identical\n");
-  if (!is_equal(In, Out)) {
-    printf("Input and output matrices are different!\n");
+  if (!is_equal(Correct, Out)) {
+    printf("Output matrix is not negative one multiplied by the input matrix!\n");
     printf("\"In\" matrix:\n");
     printMatrix(In);
     printf("\"Out\" matrix:\n");
@@ -68,7 +70,7 @@ int main() {
     exit(1);
   }
 
-  printf("Input and output matrices are identical, as expected\nPASS\n");
+  printf("Output matrix is correct\nPASS\n");
   exit(0);
 }
 
