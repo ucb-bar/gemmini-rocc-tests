@@ -4,18 +4,18 @@
 #include <stdint.h>
 #include <limits.h>
 
-#define DIM 4
+#define DIM 8
 #define ADDR_LEN 32
 #define BANK_NUM 4
-#define BANK_ROWS 4096
-#define ACC_ROWS 4096
+#define BANK_ROWS 8192
+#define ACC_ROWS 2048
 #define MAX_BYTES 64
-#define MAX_BLOCK_LEN (MAX_BYTES/(DIM*4))
+#define MAX_BLOCK_LEN (MAX_BYTES/(DIM*1))
 #define MAX_BLOCK_LEN_ACC (MAX_BYTES/(DIM*4))
 
-typedef int32_t elem_t;
-elem_t elem_t_max = 2147483647;
-elem_t elem_t_min = -2147483648;
+typedef int8_t elem_t;
+elem_t elem_t_max = 127;
+elem_t elem_t_min = -128;
 typedef int32_t acc_t;
 typedef int64_t full_t;
 
