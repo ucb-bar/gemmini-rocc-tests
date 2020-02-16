@@ -229,6 +229,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         const uint32_t D_sp_addr_acc = D_sp_addr_start + (i*J + j)*DIM;
 
         size_t blocks = j + D_blocks <= J ? D_blocks : J-j;
+
         gemmini_block_mvin(D_dram_addr, D_sp_addr_acc, blocks);
       }
     }
@@ -315,9 +316,9 @@ static void tiled_matmul_ws(size_t dim_I, size_t dim_J, size_t dim_K,
 
   // These lines here are supposed to help us deal with when the dimensions of
   // the systolic array aren't divisible by the tiling factors
-  const size_t last_I = dim_I % (tile_I*DIM) == 0 ? tile_I : dim_I % (tile_I*DIM);
-  const size_t last_J = dim_J % (tile_J*DIM) == 0 ? tile_J : dim_J % (tile_J*DIM);
-  const size_t last_K = dim_K % (tile_K*DIM) == 0 ? tile_K : dim_K % (tile_K*DIM);
+  const size_t last_I = dim_I % (tile_I*DIM) == 0 ? tile_I : (dim_I/DIM) % tile_I;
+  const size_t last_J = dim_J % (tile_J*DIM) == 0 ? tile_J : (dim_J/DIM) % tile_J;
+  const size_t last_K = dim_K % (tile_K*DIM) == 0 ? tile_K : (dim_K/DIM) % tile_K;
 
   const bool no_bias = D == NULL;
 
