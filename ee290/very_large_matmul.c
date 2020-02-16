@@ -10,11 +10,11 @@
 #endif
 #include "include/gemmini.h"
 
-#define CHECK_RESULT 1
+#define CHECK_RESULT 0
 
-#define DIM_I 64
-#define DIM_K 64
-#define DIM_J 64
+#define DIM_I 256
+#define DIM_K 544
+#define DIM_J 256
 
 #define TILE_I 1
 #define TILE_J 1
@@ -88,14 +88,16 @@ int main() {
   // printf("Init A\n");
   for (size_t i = 0; i < DIM_I; ++i) {
     for (size_t j = 0; j < DIM_K; ++j) {
-      full_A[i][j] = rand() % 2;
+      int sign = rand() % 2 ? 1 : -1;
+      full_A[i][j] = sign * (rand() % 2);
     }
   }
 
   // printf("Init B\n");
   for (size_t i = 0; i < DIM_K; ++i) {
     for (size_t j = 0; j < DIM_J; ++j) {
-      full_B[i][j] = rand() % 2;
+      int sign = rand() % 2 ? 1 : -1;
+      full_B[i][j] = sign * (rand() % 2);
     }
   }
 #endif
