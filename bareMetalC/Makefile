@@ -9,10 +9,6 @@ tests = \
 	matmul_ws \
 	matmul \
 	raw_hazard \
-	tiled_matmul_os \
-	tiled_matmul_ws \
-	tiled_matmul_cpu \
-	tiled_matmul_option \
 	aligned \
 	template
 
@@ -24,6 +20,7 @@ else
 endif
 
 BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
+GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h
 
 CFLAGS := $(CFLAGS) \
 	-DPREALLOCATE=1 \
@@ -55,11 +52,11 @@ all: $(tests_baremetal) $(tests_linux)
 
 vpath %.c $(src_dir)
 
-%-baremetal: %.c
+%-baremetal: %.c $(GEMMINI_HEADERS)
 	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \
 		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
 
-%-linux: %.c
+%-linux: %.c $(GEMMINI_HEADERS)
 	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@
 
 junk += $(tests_baremetal) $(tests_linux)

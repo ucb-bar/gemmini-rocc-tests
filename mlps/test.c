@@ -1,44 +1,14 @@
-
-
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#ifndef BAREMETAL
 #include <sys/mman.h>
+#endif
+
 #include "include/gemmini.h"
+#include "include/gemmini_nn.h"
+
 #include "parameters.h"
-
-#define verbose(layer_num,old_C,filter,C) printf("layer %d: operand %d %d filter %d %d result %d %d\n", layer_num, LEN(old_C),LEN(old_C[0]),LEN(filter),LEN(filter[0]),LEN(C),LEN(C[0]));
-
-static void tiled_matmul_compare(size_t DIM_I, size_t DIM_J, size_t DIM_K,
-        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
-        elem_t C[DIM_I][DIM_J], int act, int shift, int relu6_shift, int full_bias_width,
-        enum tiled_matmul_type_t tiled_matmul_type,
-        bool compare, char * layer_name)
-{
-    if (compare)
-        printf("%s: gemmini\n", layer_name);
-    tiled_matmul_option(DIM_I, DIM_J, DIM_K,
-        A, B, D, C, act, shift, relu6_shift, full_bias_width,
-        tiled_matmul_type);
-
-    if (compare) {
-        printf("%s: CPU\n", layer_name);
-        elem_t gold[DIM_I][DIM_J];
-        tiled_matmul_option(DIM_I, DIM_J, DIM_K,
-            A, B, D, gold, act, shift, relu6_shift, full_bias_width,
-            CPU);
-
-        printf("%s: comparing\n", layer_name);
-        for (size_t i = 0; i < DIM_I; i++) {
-            for (size_t j = 0; j < DIM_J; j++) {
-                if (C[i][j] != gold[i][j]) {
-                    printf("Layer calculated incorrectly: %s\n", layer_name);
-                    exit(1);
-                }
-            }
-        }
-    }
-}
 
 int main (int argc, char * argv[]) {
 #ifndef BAREMETAL
@@ -52,94 +22,86 @@ int main (int argc, char * argv[]) {
 
     enum tiled_matmul_type_t tiled_matmul_type;
     if (argc < 2) {
-        // printf("usage: %s matmul_option\n  matmul_option may be 'os', 'ws', or cpu'\n");
-        // exit(0);
-        tiled_matmul_type = OS;
+        tiled_matmul_type = WS;
     } else if (strcmp(argv[1], "cpu") == 0) {
         tiled_matmul_type = CPU;
     } else if (strcmp(argv[1], "os") == 0) {
         tiled_matmul_type = OS;
     } else if (strcmp(argv[1], "ws") == 0) {
         tiled_matmul_type = WS;
-    }
-
-    bool compare;
-    if (argc < 3) {
-        compare = false;
-    } else if (strcmp(argv[2], "compare") == 0) {
-        compare = true;
+    } else if (strcmp(argv[1], "-h") == 0) {
+        printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
+        exit(0);
     } else {
         printf("Unknown command-line argument\n");
+        printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
         exit(1);
     }
 
+    bool check;
+    if (argc < 3) {
+        check = false;
+    } else if (strcmp(argv[2], "check") == 0) {
+        check = true;
+    } else {
+        printf("Unknown command-line argument\n");
+        printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
+        exit(1);
+    }
 
-    unsigned long cycles[4]={0};
-    unsigned long start,end;
-    start = read_cycles();
+    uint32_t cycles[4]={0};
+    uint32_t start, end;
 
     /* matmul number: 0 */
+    start = read_cycles();
 
-    tiled_matmul_compare(16, 112, 144,    // dimensions
-    input_mat, weights0, NULL, inter_results0,      // addresses
-    RELU, 0, 0, 0,           // act, shift, r6_shift
-    tiled_matmul_type, compare, "layer_0");
-    // verbose(0,input_mat,weights0,inter_results0)
-    /* end of matmul number: 0 */
+    tiled_matmul_nn_auto(16, 112, 144,
+        input_mat, weights0, NULL, inter_results0,
+        RELU, 0, false,
+        tiled_matmul_type, check, "layer_0");
 
     end = read_cycles();
     cycles[0] = end-start;
-    start = end;
-
 
     /* matmul number: 1 */
+    start = read_cycles();
 
-    tiled_matmul_compare(16, 144, 32,    // dimensions
-    inter_results0, weights1, NULL, inter_results1,      // addresses
-    RELU, 0, 0, 0,           // act, shift, r6_shift
-    tiled_matmul_type, compare, "layer_1");
-    // verbose(1,inter_results0,weights1,inter_results1)
-    /* end of matmul number: 1 */
+    tiled_matmul_nn_auto(16, 144, 32,
+        inter_results0, weights1, NULL, inter_results1,
+        RELU, 0, false,
+        tiled_matmul_type, check, "layer_1");
 
     end = read_cycles();
     cycles[1] = end-start;
-    start = end;
-
 
     /* matmul number: 2 */
+    start = read_cycles();
 
-    tiled_matmul_compare(16, 32, 64,    // dimensions
-    inter_results1, weights2, NULL, inter_results2,      // addresses
-    RELU, 0, 0, 0,           // act, shift, r6_shift
-    tiled_matmul_type, compare, "layer_2");
-    // verbose(2,inter_results1,weights2,inter_results2)
-    /* end of matmul number: 2 */
+    tiled_matmul_nn_auto(16, 32, 64,
+        inter_results1, weights2, NULL, inter_results2,
+        RELU, 0, false,
+        tiled_matmul_type, check, "layer_2");
 
     end = read_cycles();
     cycles[2] = end-start;
-    start = end;
-
 
     /* matmul number: 3 */
+    start = read_cycles();
 
-    tiled_matmul_compare(16, 64, 16,    // dimensions
-    inter_results2, weights3, NULL, inter_results3,      // addresses
-    RELU, 0, 0, 0,           // act, shift, r6_shift
-    tiled_matmul_type, compare, "layer_3");
-    // verbose(3,inter_results2,weights3,inter_results3)
-    /* end of matmul number: 3 */
+    tiled_matmul_nn_auto(16, 64, 16,
+        inter_results2, weights3, NULL, inter_results3,
+        RELU, 0, false,
+        tiled_matmul_type, check, "layer_3");
 
     end = read_cycles();
     cycles[3] = end-start;
-    start = end;
 
-    unsigned long overall_cycles = 0;
+    uint32_t overall_cycles = 0;
     for(int cyc = 0; cyc < 4 ; cyc++){
         overall_cycles += cycles[cyc];
         printf("Cycles taken in layer %d: %lu\n", cyc,cycles[cyc]);
     }
     printf("Overall cycles taken: %lu\n",overall_cycles);
-
 
     return 0;
 }

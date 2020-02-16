@@ -1,21 +1,25 @@
 include $(abs_top_srcdir)/Makefrag
 
+tests = \
+	test \
+	mlp1 \
+	mlp2 \
+	mlp3 \
+	mlp4 \
+	mlp1_32 \
+	mlp2_32 \
+	mlp3_32 \
+	mlp4_32
+
+tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY
-	tests =
+	tests_linux =
 else
-	tests = \
-		test \
-		test1 \
-		test2 \
-		test3 \
-		test4 \
-		test5 \
-		test6 \
-		test7 \
-		test8
+	tests_linux = $(tests:=-linux)
 endif
 
 BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
+GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_nn.h
 
 CFLAGS := $(CFLAGS) \
 	-DPREALLOCATE=1 \
@@ -35,11 +39,24 @@ CFLAGS := $(CFLAGS) \
 	-I$(BENCH_COMMON) \
 	-DID_STRING=$(ID_STRING) \
 
-all: $(tests)
+CFLAGS_BAREMETAL := \
+	$(CFLAGS) \
+	-nostdlib \
+	-nostartfiles \
+	-static \
+	-T $(BENCH_COMMON)/test.ld \
+	-DBAREMETAL=1 \
+
+all: $(tests_baremetal) $(tests_linux)
 
 vpath %.c $(src_dir)
 
-%: %.c
+%-baremetal: %.c $(GEMMINI_HEADERS)
+	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \
+		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
+
+%-linux: %.c $(GEMMINI_HEADERS)
 	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@
 
-junk += $(tests)
+junk += $(tests_baremetal) $(tests_linux)
+
