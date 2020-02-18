@@ -49,8 +49,8 @@ int main (int argc, char * argv[]) {
         exit(1);
     }
 
-    uint32_t start, end;
-    uint32_t im2col_cycles = 0, matmul_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, res_add_cycles = 0, other_cycles = 0;
+    uint64_t start, end;
+    uint64_t im2col_cycles = 0, matmul_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, res_add_cycles = 0, other_cycles = 0;
 
     // conv_1
     start = read_cycles();
@@ -1122,14 +1122,14 @@ int main (int argc, char * argv[]) {
         preds[batch] = max_idx;
     }
 
-    uint32_t total_cycles = im2col_cycles + matmul_cycles + pool_cycles + conv_dw_cycles + res_add_cycles + other_cycles;
+    uint64_t total_cycles = im2col_cycles + matmul_cycles + pool_cycles + conv_dw_cycles + res_add_cycles + other_cycles;
 
-    printf("\nTotal cycles: %u\n", total_cycles);
-    printf("Matmul cycles: %u\n", matmul_cycles);
-    printf("Im2col cycles: %u\n", im2col_cycles);
-    printf("Pooling cycles: %u\n", pool_cycles);
-    printf("Depthwise convolution cycles: %u\n", conv_dw_cycles);
-    printf("Other cycles: %u\n", other_cycles);
+    printf("\nTotal cycles: %llu\n", total_cycles);
+    printf("Matmul cycles: %llu\n", matmul_cycles);
+    printf("Im2col cycles: %llu\n", im2col_cycles);
+    printf("Pooling cycles: %llu\n", pool_cycles);
+    printf("Depthwise convolution cycles: %llu\n", conv_dw_cycles);
+    printf("Other cycles: %llu\n", other_cycles);
 
     int correct[] = {330, 977, 392, 176};
     for (int i = 0; i < fc_54_params.batch_size; i++) {
