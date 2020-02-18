@@ -16,10 +16,6 @@
 #define DIM_K 64
 #define DIM_J 64
 
-#define TILE_I 1
-#define TILE_J 1
-#define TILE_K 1
-
 void print_tile(elem_t* in, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++) {
     printf("row starts at: %p\n", in +r*DIM_J);
@@ -112,11 +108,24 @@ int main() {
   printf("Starting gemmini matmul\n");
   unsigned long start = read_cycles();
 
+  tiled_matmul_auto(DIM_I, DIM_J, DIM_K,
+                    full_A, full_B, NULL, full_C,
+                    NO_ACTIVATION, 0, false, // activation, shift, repeating_bias
+                    WS);
+
+  /* To run with hardcoded tiling factors, you can use this function instead:
+
+  const size_t tile_I = 1;
+  const size_t tile_J = 1;
+  const size_t tile_K = 1;
+
   tiled_matmul(DIM_I, DIM_J, DIM_K,
                full_A, full_B, NULL, full_C,
                NO_ACTIVATION, 0, false, // activation, shift, repeating_bias
-               TILE_I, TILE_J, TILE_K,
+               tile_I, tile_J, tile_K,
                WS);
+
+  */
 
   unsigned long end = read_cycles();
   printf("Cycles taken by Gemmini: %u\n", end-start);

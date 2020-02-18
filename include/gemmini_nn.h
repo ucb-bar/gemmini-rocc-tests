@@ -91,9 +91,8 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
     if (check) {
         printf("%s: CPU\n", layer_name);
         elem_t gold[dim_I][dim_J];
-        tiled_matmul(dim_I, dim_J, dim_K,
+        tiled_matmul_auto(dim_I, dim_J, dim_K,
             A, B, D, gold, act, shift, repeating_bias,
-            tile_I, tile_J, tile_K,
             CPU);
 
         if (!MAT_IS_EQUAL(dim_I, dim_J, C, gold)) {
@@ -112,28 +111,18 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         enum tiled_matmul_type_t tiled_matmul_type,
         bool check, char * layer_name)
 {
-    /*
-     * REPLACE THE THREE LINES BELOW IF YOU WANT TO USE THE
-     * "tiled_matmul_nn_auto" BELOW
-     */
-    size_t tile_I = 1;
-    size_t tile_J = 1;
-    size_t tile_K = 1;
-
     if (check)
         printf("%s: gemmini\n", layer_name);
 
-    tiled_matmul(dim_I, dim_J, dim_K,
+    tiled_matmul_auto(dim_I, dim_J, dim_K,
         A, B, D, C, act, shift, repeating_bias,
-        tile_I, tile_J, tile_K,
         tiled_matmul_type);
 
     if (check) {
         printf("%s: CPU\n", layer_name);
         elem_t gold[dim_I][dim_J];
-        tiled_matmul(dim_I, dim_J, dim_K,
+        tiled_matmul_auto(dim_I, dim_J, dim_K,
             A, B, D, gold, act, shift, repeating_bias,
-            tile_I, tile_J, tile_K,
             CPU);
 
         if (!MAT_IS_EQUAL(dim_I, dim_J, C, gold)) {

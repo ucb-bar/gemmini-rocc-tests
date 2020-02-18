@@ -236,6 +236,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   }
 
   // Move-in B
+  gemmini_config_ld(B_row_len * sizeof(elem_t));
   for (size_t j = 0; j < J; j += B_blocks) {
     for (size_t k = 0; k < K; k++) {
       const elem_t * const B_dram_addr = B + (k * B_row_len + j)*DIM;
@@ -243,12 +244,12 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
       const uint32_t B_sp_addr = B_sp_addr_start + (k*J + j)*DIM;
 
       const size_t blocks = j + B_blocks <= J ? B_blocks : J-j;
-      gemmini_config_ld(B_row_len * sizeof(elem_t));
       gemmini_block_mvin(B_dram_addr, B_sp_addr, blocks);
     }
   }
 
   // Move-in A
+  gemmini_config_ld(A_row_len * sizeof(elem_t));
   for (size_t i = 0; i < I; i++) {
     for (size_t k = 0; k < K; k += A_blocks) {
       const elem_t * const A_dram_addr = A + (i * A_row_len + k)*DIM;
@@ -256,7 +257,6 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
       const uint32_t A_sp_addr = A_sp_addr_start + (i*K + k)*DIM;
 
       const size_t blocks = k + A_blocks <= K ? A_blocks : K-k;
-      gemmini_config_ld(A_row_len * sizeof(elem_t));
       gemmini_block_mvin(A_dram_addr, A_sp_addr, blocks);
     }
   }
@@ -392,6 +392,8 @@ static void matmul_cpu(size_t dim_I, size_t dim_J, size_t dim_K,
 // General matmul which can be run with different dataflows, or on the CPU
 enum tiled_matmul_type_t {OS, WS, CPU};
 
+// This function runs a tiled matrix multiplication, with hardcoded tiling
+// factors
 void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
         const acc_t * D, elem_t C[dim_I][dim_J],
@@ -442,6 +444,27 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
               A, B, D, C,
               act, shift, repeating_bias);
   }
+}
+
+// This function runs a tiled matrix multiplication, with automatically
+// calculated tiling factors
+void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
+        const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
+        const acc_t * D, elem_t C[dim_I][dim_J],
+        int act, int shift, bool repeating_bias,
+        enum tiled_matmul_type_t tiled_matmul_type) {
+    /*
+     * REPLACE THE THREE LINES BELOW IF YOU WANT TO USE THE
+     * "tiled_matmul_nn_auto" BELOW
+     */
+    const size_t tile_I = 1;
+    const size_t tile_J = 1;
+    const size_t tile_K = 1;
+
+    tiled_matmul(dim_I, dim_J, dim_K,
+        A, B, D, C, act, shift, repeating_bias,
+        tile_I, tile_J, tile_K,
+        tiled_matmul_type);
 }
 
 #endif // SRC_MAIN_C_GEMMINI_H

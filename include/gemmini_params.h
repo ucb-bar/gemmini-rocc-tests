@@ -23,4 +23,3 @@ typedef int64_t full_t;
 #define row_align_acc(blocks) __attribute__((aligned(blocks*DIM*sizeof(acc_t))))
 
 #endif // GEMMINI_PARAMS_H
-
