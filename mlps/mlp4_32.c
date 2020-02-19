@@ -49,8 +49,8 @@ int main (int argc, char * argv[]) {
         exit(1);
     }
 
-    uint32_t cycles[2]={0};
-    uint32_t start,end;
+    uint64_t cycles[2]={0};
+    uint64_t start,end;
     start = read_cycles();
 
     /* matmul number: 0 */
@@ -75,12 +75,12 @@ int main (int argc, char * argv[]) {
     end = read_cycles();
     cycles[1] = end-start;
 
-    uint32_t overall_cycles = 0;
+    uint64_t overall_cycles = 0;
     for(int cyc = 0; cyc < 2 ; cyc++){
         overall_cycles += cycles[cyc];
-        printf("Cycles taken in layer %d: %lu\n", cyc,cycles[cyc]);
+        printf("Cycles taken in layer %d: %llu\n", cyc,cycles[cyc]);
     }
-    printf("Overall cycles taken: %lu\n",overall_cycles);
+    printf("Overall cycles taken: %llu\n",overall_cycles);
 
     return 0;
 }

@@ -100,15 +100,15 @@ int main() {
 
 #if CHECK_RESULT == 1
   printf("Starting slow CPU matmul\n");
-  unsigned long cpu_start = read_cycles();
+  uint64_t cpu_start = read_cycles();
   full_matmul(full_A, full_B, gold_full);
-  unsigned long cpu_end = read_cycles();
-  printf("Cycles taken by CPU: %u\n", cpu_end-cpu_start);
+  uint64_t cpu_end = read_cycles();
+  printf("Cycles taken by CPU: %llu\n", cpu_end-cpu_start);
   full_matshift(gold_full, gold, 0);
 #endif
 
   printf("Starting gemmini matmul\n");
-  unsigned long start = read_cycles();
+  uint64_t start = read_cycles();
 
   tiled_matmul_auto(DIM_I, DIM_J, DIM_K,
                     full_A, full_B, NULL, full_C,
@@ -129,8 +129,8 @@ int main() {
 
   */
 
-  unsigned long end = read_cycles();
-  printf("Cycles taken by Gemmini: %u\n", end-start);
+  uint64_t end = read_cycles();
+  printf("Cycles taken by Gemmini: %llu\n", end-start);
 
 #if CHECK_RESULT == 1
   if (!full_is_equal(full_C, gold)) {
