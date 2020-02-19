@@ -141,6 +141,7 @@ uint64_t read_cycles() {
 #define k_COMPUTE_ACCUMULATE 5
 #define k_PRELOAD 6
 #define k_FLUSH 7
+#define k_LOOP_WS 8
 
 #define CONFIG_EX 0
 #define CONFIG_LD 1
@@ -182,6 +183,10 @@ uint64_t read_cycles() {
 
 #define matmul_preload_zeros(C) \
   gemmini_preload(GARBAGE_ADDR, C)
+
+// weight-stationary matmul loop
+#define gemmini_loop_ws(A, B, I, J, K, bias) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(B) << 32) | (A), ((uint64_t)(bias) << 48) | ((uint64_t)(K) << 32) | ((J) << 16) | (I), k_LOOP_WS)
 
 // config
 #define gemmini_config_ex(mode, act, sys_shift, acc_shift, relu6_shift) \
@@ -262,6 +267,11 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   }
 
   // Compute
+  gemmini_loop_ws(A_sp_addr_start, B_sp_addr_start, I, J, K, !no_bias || D == NULL);
+
+  // The above "gemmini_loop_ws" command will be unrolled in hardware into the
+  // following loop
+  /*
   for (size_t j = 0; j < J; j++) {
     for (size_t k = 0; k < K; k++) {
       const uint32_t B_sp_addr = B_sp_addr_start + (k*J + j)*DIM;
@@ -290,6 +300,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
       }
     }
   }
+  */
 
   // Move-out C
   if (C != NULL) {
@@ -430,6 +441,11 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
     exit(1);
   }
 
+  if (tile_I > 65535 || tile_J > 65535 || tile_K > 65535) {
+    printf("I, J, and K tiling factors must be less than 65535, to fit within the bounds of the LOOP_WS function");
+    exit(1);
+  }
+
   // Run a tiled matrix multiplication on either Gemmini or the CPU
   if (tiled_matmul_type == OS) {
       printf("Output-stationary dataflow unsupported for EE290 class\n");
@@ -455,7 +471,7 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         enum tiled_matmul_type_t tiled_matmul_type) {
     /*
      * REPLACE THE THREE LINES BELOW IF YOU WANT TO USE THE
-     * "tiled_matmul_nn_auto" BELOW
+     * "tiled_matmul_auto" BELOW
      */
     const size_t tile_I = 1;
     const size_t tile_J = 1;
