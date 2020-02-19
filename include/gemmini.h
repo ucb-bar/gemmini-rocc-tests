@@ -121,8 +121,8 @@ int rand() {
   return x >> 24;
 }
 
-uint32_t read_cycles() {
-    unsigned long cycles;
+uint64_t read_cycles() {
+    uint64_t cycles;
     asm volatile ("rdcycle %0" : "=r" (cycles));
     return cycles;
 
