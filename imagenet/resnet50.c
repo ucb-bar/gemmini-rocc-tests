@@ -1131,7 +1131,7 @@ int main (int argc, char * argv[]) {
     printf("Depthwise convolution cycles: %llu\n", conv_dw_cycles);
     printf("Other cycles: %llu\n", other_cycles);
 
-    int correct[] = {533, 233, 43, 617};
+    int correct[] = {553, 233, 43, 617};
     for (int i = 0; i < fc_54_params.batch_size; i++) {
         if (preds[i] != correct[i]) {
             printf("Prediction %d is incorrect!\nFAIL\n", i+1);

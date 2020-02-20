@@ -93,9 +93,6 @@ int main (int argc, char * argv[]) {
     end = read_cycles();
     matmul_cycles += end - start;
 
-    printf("conv_3_out:\n");
-    HIST_MATRIX(conv_3_out);
-
     // conv_4
     start = read_cycles();
 
@@ -106,9 +103,6 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     matmul_cycles += end - start;
-
-    printf("conv_4_out:\n");
-    HIST_MATRIX(conv_4_out);
 
     // conv_dw_5
     start = read_cycles();
