@@ -1071,7 +1071,7 @@ int main (int argc, char * argv[]) {
     res_add_cycles += end - start;
     
     // Global averaging
-    static elem_t average[2048][8] row_align(1);
+    static elem_t average[2048][64] row_align(1);
 
     start = read_cycles();
 
@@ -1117,7 +1117,7 @@ int main (int argc, char * argv[]) {
                 max_idx = i;
             }
         }
-
+        
         printf("Prediction: %u (score: %d)\n", max_idx, max_prob);
         preds[batch] = max_idx;
     }
@@ -1131,7 +1131,7 @@ int main (int argc, char * argv[]) {
     printf("Depthwise convolution cycles: %llu\n", conv_dw_cycles);
     printf("Other cycles: %llu\n", other_cycles);
 
-    int correct[] = {330, 977, 392, 176};
+    int correct[] = {533, 233, 43, 617};
     for (int i = 0; i < fc_54_params.batch_size; i++) {
         if (preds[i] != correct[i]) {
             printf("Prediction %d is incorrect!\nFAIL\n", i+1);
@@ -1140,6 +1140,7 @@ int main (int argc, char * argv[]) {
     }
 
     printf("PASS\n");
+
     exit(0);
 }
 

@@ -93,6 +93,9 @@ int main (int argc, char * argv[]) {
     end = read_cycles();
     matmul_cycles += end - start;
 
+    printf("conv_3_out:\n");
+    HIST_MATRIX(conv_3_out);
+
     // conv_4
     start = read_cycles();
 
@@ -103,6 +106,9 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     matmul_cycles += end - start;
+
+    printf("conv_4_out:\n");
+    HIST_MATRIX(conv_4_out);
 
     // conv_dw_5
     start = read_cycles();
@@ -757,7 +763,7 @@ int main (int argc, char * argv[]) {
     matmul_cycles += end - start;
 
     // Global averaging
-    static elem_t average[1280][8] row_align(1);
+    static elem_t average[1280][64] row_align(1);
 
     start = read_cycles();
 
@@ -798,7 +804,7 @@ int main (int argc, char * argv[]) {
         size_t max_idx = 0;
 
         for (int i = 1; i < fc_53_params.out_features; i++) {
-            if (fc_53_out[i][batch] > max_prob) {
+            if (fc_53_out[i][batch] >= max_prob) {
                 max_prob = fc_53_out[i][batch];
                 max_idx = i;
             }
@@ -817,7 +823,8 @@ int main (int argc, char * argv[]) {
     printf("Depthwise convolution cycles: %llu\n", conv_dw_cycles);
     printf("Other cycles: %llu\n", other_cycles);
 
-    int correct[] = {330, 977, 973, 176};
+
+    int correct[] = {553, 233, 43, 523};
     for (int i = 0; i < fc_53_params.batch_size; i++) {
         if (preds[i] != correct[i]) {
             printf("Prediction %d is incorrect!\nFAIL\n", i+1);
@@ -826,6 +833,7 @@ int main (int argc, char * argv[]) {
     }
 
     printf("PASS\n");
+
     exit(0);
 }
 

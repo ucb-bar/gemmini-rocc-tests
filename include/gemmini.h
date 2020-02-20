@@ -270,7 +270,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   gemmini_loop_ws(A_sp_addr_start, B_sp_addr_start, I, J, K, !no_bias || D == NULL);
 
   // The above "gemmini_loop_ws" command will be unrolled in hardware into the
-  // following loop
+  // following loop:
   /*
   for (size_t j = 0; j < J; j++) {
     for (size_t k = 0; k < K; k++) {
@@ -473,9 +473,9 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
      * REPLACE THE THREE LINES BELOW IF YOU WANT TO USE THE
      * "tiled_matmul_auto" BELOW
      */
-    const size_t tile_I = 1;
-    const size_t tile_J = 1;
-    const size_t tile_K = 1;
+    size_t tile_I = 1;
+    size_t tile_J = 1;
+    size_t tile_K = 1;
 
     tiled_matmul(dim_I, dim_J, dim_K,
         A, B, D, C, act, shift, repeating_bias,

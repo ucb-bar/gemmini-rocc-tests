@@ -29,7 +29,7 @@ int main() {
 
   for (size_t i = 0; i < DIM; i++)
     for (size_t j = 0; j < DIM; j++) {
-      In[i][j] = 10 + i * DIM + j;
+      In[i][j] = 10 + (i * DIM + j) % 64;
       Identity[i][j] = -(i == j);
       Correct[i][j] = -In[i][j];
     }
