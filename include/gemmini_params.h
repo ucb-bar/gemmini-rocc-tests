@@ -4,11 +4,11 @@
 #include <stdint.h>
 #include <limits.h>
 
-#define DIM 64
+#define DIM 32
 #define ADDR_LEN 32
 #define BANK_NUM 4
-#define BANK_ROWS 1024
-#define ACC_ROWS 256
+#define BANK_ROWS 2048
+#define ACC_ROWS 512
 #define MAX_BYTES 64
 #define MAX_BLOCK_LEN (MAX_BYTES/(DIM*1))
 #define MAX_BLOCK_LEN_ACC 1
