@@ -10,6 +10,10 @@ tests = \
 	matmul \
 	raw_hazard \
 	aligned \
+	tiled_matmul_os \
+	tiled_matmul_ws \
+	tiled_matmul_cpu \
+	tiled_matmul_option \
 	template
 
 tests_baremetal = $(tests:=-baremetal)

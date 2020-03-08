@@ -4,8 +4,8 @@ XLEN            := @XLEN@
 RISCVTOOLS      := @RISCVTOOLS@
 ROCC = examples
 
-.PHONY: all bareMetalC clean imagenet mlps ee290
-all: bareMetalC mobilenet imagenet mlps resnet ee290
+.PHONY: all bareMetalC clean imagenet mlps
+all: bareMetalC mobilenet imagenet mlps resnet
 
 vars = \
 	abs_top_srcdir=$(abs_top_srcdir) \
@@ -26,10 +26,6 @@ imagenet:
 	mkdir -p $@
 	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
 
-ee290:
-	mkdir -p $@
-	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
-
 mlps:
 	mkdir -p $@
 	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
@@ -41,6 +37,5 @@ resnet:
 clean:
 	$(MAKE) -C bareMetalC -f $(abs_top_srcdir)/bareMetalC/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-bareMetalC clean
 	$(MAKE) -C imagenet -f $(abs_top_srcdir)/imagenet/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-imagenet clean
-	$(MAKE) -C ee290 -f $(abs_top_srcdir)/ee290/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-ee290 clean
 	$(MAKE) -C mlps -f $(abs_top_srcdir)/mlps/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-mlps clean
 

@@ -362,8 +362,8 @@ int main() {
 
   gemmini_flush(0);
 
-  for (size_t i = 0; i < 8; i++) {
-    if (rand() % 2)
+  for (size_t i = 0; i < 4; i++) {
+    if (i % 2)
       test_os();
     else
       test_ws();
