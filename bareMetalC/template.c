@@ -44,7 +44,7 @@ int main() {
 
   printf("Multiply \"In\" matrix with \"Identity\" matrix with a bias of 0\n");
   gemmini_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0);
-  matmul_preload_zeros(Out_sp_addr);
+  gemmini_preload_zeros(Out_sp_addr);
   gemmini_compute_preloaded(In_sp_addr, Identity_sp_addr);
 
   printf("Move \"Out\" matrix from Gemmini's scratchpad into main memory\n");

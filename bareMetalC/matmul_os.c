@@ -141,10 +141,10 @@ int main() {
           out_addr = GARBAGE_ADDR;
 
         if (!preload[c]) {
-          matmul_preload_zeros(out_addr);
+          gemmini_preload_zeros(out_addr);
           gemmini_compute_accumulated(A_addr + a*DIM, B_addr + b*DIM);
         } else if (preload_zeros[c]) {
-          matmul_preload_zeros(out_addr);
+          gemmini_preload_zeros(out_addr);
           gemmini_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
         } else {
           gemmini_preload(D_addr + d*DIM, out_addr);

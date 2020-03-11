@@ -15,8 +15,8 @@
 #define MAT_DIM_K 256
 #define MAT_DIM_J 256
 #else
-#define MAT_DIM_I 32
-#define MAT_DIM_K 32
+#define MAT_DIM_I 33
+#define MAT_DIM_K 28
 #define MAT_DIM_J 32
 #endif
 

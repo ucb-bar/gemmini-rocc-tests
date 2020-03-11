@@ -10,6 +10,7 @@ tests = \
 	matmul \
 	raw_hazard \
 	aligned \
+	padded \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_cpu \

@@ -32,7 +32,6 @@ typedef elem_t ACC_T;
 #define MAT_DIM_J 64
 #endif
 
-
 void print_tile(elem_t* in, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++) {
     printf("row starts at: %p\n", in +r*MAT_DIM_J);

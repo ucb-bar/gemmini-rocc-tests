@@ -126,13 +126,13 @@ int main() {
           matrelu6(gold[g], gold[g], 1 << relu6_shift);
       }
 
-      int A_addr = 0;
-      int B_addr = N*DIM;
-      int D_addr = 2*N*DIM;
+      uint32_t A_addr = 0;
+      uint32_t B_addr = N*DIM;
+      uint32_t D_addr = 2*N*DIM;
       uint32_t C_addr_acc = 1 << (ADDR_LEN-1);
 
       // Calculate the proper destination addresses of everything
-      int C_addrs[N*N*N];
+      uint32_t C_addrs[N*N*N];
       for (size_t c = 0; c < N*N*N; ++c)
         C_addrs[c] = C_addr_acc + c*DIM;
       for (size_t c = 0; c < N*N*N; ++c) {
@@ -166,12 +166,12 @@ int main() {
         int a, b, d;
         operands(c, &a, &b, &d);
 
-        uint64_t d_addr = D_addr + d*DIM;
+        uint32_t d_addr = D_addr + d*DIM;
         if (add_to_zeros[c])
           d_addr = GARBAGE_ADDR;
 
         if (!preload[c]) {
-          matmul_preload_zeros(C_addrs[c]);
+          gemmini_preload_zeros(C_addrs[c]);
           gemmini_compute_accumulated(A_addr + a*DIM, d_addr);
         } else {
           gemmini_preload(B_addr + b*DIM, C_addrs[c]);
