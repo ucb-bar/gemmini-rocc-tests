@@ -98,6 +98,14 @@ void printMatrix(elem_t m[DIM][DIM]) {
   }
 }
 
+void printMatrixAcc(acc_t m[DIM][DIM]) {
+  for (size_t i = 0; i < DIM; ++i) {
+    for (size_t j = 0; j < DIM; ++j)
+      printf("%d ", m[i][j]);
+    printf("\n");
+  }
+}
+
 int is_equal(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
   for (size_t i = 0; i < DIM; ++i)
     for (size_t j = 0; j < DIM; ++j)
@@ -209,8 +217,8 @@ uint64_t read_cycles() {
 #define gemmini_config_ex(mode, act, sys_shift, acc_shift, relu6_shift) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(acc_shift) << 32) | ((act) << 3) | ((mode) << 2) | CONFIG_EX, ((uint64_t)(relu6_shift) << 32) | (sys_shift), k_CONFIG)
 
-#define gemmini_config_ld(stride) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_LD, stride, k_CONFIG)
+#define gemmini_config_ld(stride, scale) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale) << 32) | CONFIG_LD, stride, k_CONFIG)
 
 #define gemmini_config_st(stride) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_ST, stride, k_CONFIG)
@@ -240,7 +248,7 @@ static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const acc_t *
   // Move-in D
   if (D != NULL && !no_bias) {
     const size_t D_stride = repeating_bias ? 0 : D_row_len * sizeof(acc_t);
-    gemmini_config_ld(D_stride);
+    gemmini_config_ld(D_stride, 1);
 
     for (size_t i = 0; i < I; i++) {
       for (size_t j = 0; j < J; j += D_blocks) {
@@ -260,7 +268,7 @@ static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const acc_t *
   }
 
   // Move-in B
-  gemmini_config_ld(B_row_len * sizeof(elem_t));
+  gemmini_config_ld(B_row_len * sizeof(elem_t), 1);
   for (size_t j = 0; j < J; j += B_blocks) {
     for (size_t k = 0; k < K; k++) {
       const elem_t * const B_dram_addr = B + (k*B_row_len + j)*DIM;
@@ -273,7 +281,7 @@ static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const acc_t *
   }
 
   // Move-in A
-  gemmini_config_ld(A_row_len * sizeof(elem_t));
+  gemmini_config_ld(A_row_len * sizeof(elem_t), 1);
   for (size_t i = 0; i < I; i++) {
     for (size_t k = 0; k < K; k += A_blocks) {
       const elem_t * const A_dram_addr = A + (i*A_row_len + k)*DIM;
@@ -355,7 +363,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   // Move-in D
   if (D != NULL && !no_bias) {
     const size_t D_stride = repeating_bias ? 0 : D_row_len * sizeof(acc_t);
-    gemmini_config_ld(D_stride);
+    gemmini_config_ld(D_stride, 1);
 
     for (size_t i = 0; i < I; i++) {
       for (size_t j = 0; j < J; j += D_blocks) {
@@ -374,7 +382,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   }
 
   // Move-in B
-  gemmini_config_ld(B_row_len * sizeof(elem_t));
+  gemmini_config_ld(B_row_len * sizeof(elem_t), 1);
   for (size_t j = 0; j < J; j += B_blocks) {
     for (size_t k = 0; k < K; k++) {
       const elem_t * const B_dram_addr = B + (k*B_row_len + j)*DIM;
@@ -387,7 +395,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   }
 
   // Move-in A
-  gemmini_config_ld(A_row_len * sizeof(elem_t));
+  gemmini_config_ld(A_row_len * sizeof(elem_t), 1);
   for (size_t k = 0; k < K; k += A_blocks) {
     for (size_t i = 0; i < I; i++) {
       const elem_t * const A_dram_addr = A + (i * A_row_len + k)*DIM;

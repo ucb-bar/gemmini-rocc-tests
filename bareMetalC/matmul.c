@@ -361,6 +361,7 @@ int main() {
 #endif
 
   gemmini_flush(0);
+  gemmini_config_ld(DIM * sizeof(elem_t), 1);
 
   for (size_t i = 0; i < 4; i++) {
     if (i % 2)
