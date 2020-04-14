@@ -14,7 +14,7 @@
 // #define GEMMINI_ASSERTIONS
 
 // Matmul utility functions
-void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], int64_t C_full[DIM][DIM]) {
+void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       C_full[r][c] = D[r][c];
@@ -32,7 +32,7 @@ void matmul_short(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], el
     }
 }
 
-void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], int64_t D[DIM][DIM], int64_t C_full[DIM][DIM]) {
+void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
   // Identical to the other matmul function, but with a 64-bit bias
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
@@ -42,28 +42,37 @@ void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], int64_t D[DIM][DIM], in
     }
 }
 
-void matadd(int64_t sum[DIM][DIM], int64_t m1[DIM][DIM], int64_t m2[DIM][DIM]) {
+void matadd(full_t sum[DIM][DIM], full_t m1[DIM][DIM], full_t m2[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++)
       sum[r][c] = m1[r][c] + m2[r][c];
 }
 
 // Rounding right shift equation: https://riscv.github.io/documents/riscv-v-spec/#_vector_fixed_point_rounding_mode_register_vxrm
+#ifndef ELEM_T_IS_FLOAT
 #define ROUNDING_RIGHT_SHIFT(x, shift) \
     ({(shift) > 0 ? (((x) >> (shift)) + \
         (((shift) == 0 ? 0 : (((x) >> ((shift)-1)) & 1)) & \
              ((((shift) <= 1 ? 0 : ((x) & ((1 << ((shift)-1)) - 1))) != 0) | (((x) >> (shift)) & 1)))) : ((x) << (-(shift)));})
+#else
+#define ROUNDING_RIGHT_SHIFT(x, shift) \
+    ((x) / (1 << (shift)))
+#endif
 
 // THIS IS A ROUNDING SHIFT! It also performs a saturating cast
-void matshift(int64_t full[DIM][DIM], elem_t out[DIM][DIM], int shift) {
+void matshift(full_t full[DIM][DIM], elem_t out[DIM][DIM], int shift) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       // Bitshift and round element
-      int64_t shifted = ROUNDING_RIGHT_SHIFT(full[r][c], shift);
+      full_t shifted = ROUNDING_RIGHT_SHIFT(full[r][c], shift);
 
       // Saturate and cast element
-      int64_t elem = shifted > elem_t_max ? elem_t_max : (shifted < elem_t_min ? elem_t_min : shifted);
+#ifndef ELEM_T_IS_FLOAT
+      full_t elem = shifted > elem_t_max ? elem_t_max : (shifted < elem_t_min ? elem_t_min : shifted);
       out[r][c] = elem;
+#else
+      out[r][c] = shifted; // TODO should we also saturate when using floats?
+#endif
     }
 }
 
@@ -74,7 +83,6 @@ void matrelu(elem_t in[DIM][DIM], elem_t out[DIM][DIM]) {
 }
 
 void matrelu6(elem_t in[DIM][DIM], elem_t out[DIM][DIM], int scale) {
-  // int max = 6;
   int max = 6 * scale;
 
   for (size_t r = 0; r < DIM; r++)
@@ -90,19 +98,103 @@ void transpose(elem_t in[DIM][DIM], elem_t out[DIM][DIM]) {
       out[c][r] = in[r][c];
 }
 
+int rand() {
+  static uint32_t x = 777;
+  x = x * 1664525 + 1013904223;
+  return x >> 24;
+}
+
+#ifdef ELEM_T_IS_FLOAT
+double rand_double() {
+    double a = (double)(rand() % 128) / (double)(1 + (rand() % 64));
+    double b = (double)(rand() % 128) / (double)(1 + (rand() % 64));
+    return a - b;
+}
+
+elem_t elem_t_bits_to_elem_t(elem_t_bits x) {
+    union {
+        elem_t_bits b;
+        elem_t f;
+    } un;
+
+    un.b = x;
+    return un.f;
+}
+
+elem_t_bits elem_t_to_elem_t_bits(elem_t x) {
+    union {
+        elem_t_bits b;
+        elem_t f;
+    } un;
+
+    un.f = x;
+    return un.b;
+}
+
+acc_t acc_t_bits_to_acc_t(acc_t_bits x) {
+    union {
+        acc_t_bits b;
+        acc_t f;
+    } un;
+
+    un.b = x;
+    return un.f;
+}
+
+acc_t_bits acc_t_to_acc_t_bits(acc_t x) {
+    union {
+        acc_t_bits b;
+        acc_t f;
+    } un;
+
+    un.f = x;
+    return un.b;
+}
+
+bool elem_t_isnan(elem_t x) {
+    elem_t_bits bits = elem_t_to_elem_t_bits(x);
+    uint64_t exp = (bits >> (ELEM_T_SIG_BITS-1)) & (((uint64_t)1 << ELEM_T_EXP_BITS) - 1);
+    uint64_t sig = bits & (((uint64_t)1 << ELEM_T_SIG_BITS) - 1);
+    bool is_nan_or_inf = exp == (((uint64_t)1 << ELEM_T_EXP_BITS) - 1);
+    bool is_not_inf = sig != 0;
+    return is_nan_or_inf && is_not_inf;
+}
+
+bool acc_t_isnan(acc_t x) {
+    acc_t_bits bits = acc_t_to_acc_t_bits(x);
+    uint64_t exp = (bits >> (ACC_T_SIG_BITS-1)) & (((uint64_t)1 << ACC_T_EXP_BITS) - 1);
+    uint64_t sig = bits & (((uint64_t)1 << ACC_T_SIG_BITS) - 1);
+    bool is_nan_or_inf = exp == (((uint64_t)1 << ACC_T_EXP_BITS) - 1);
+    bool is_not_inf = sig != 0;
+    return is_nan_or_inf && is_not_inf;
+}
+#endif
+
 void printMatrix(elem_t m[DIM][DIM]) {
   for (size_t i = 0; i < DIM; ++i) {
     for (size_t j = 0; j < DIM; ++j)
+#ifndef ELEM_T_IS_FLOAT
       printf("%d ", m[i][j]);
+#else
+      printf("%x ", elem_t_to_elem_t_bits(m[i][j]));
+#endif
     printf("\n");
   }
 }
 
 int is_equal(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
   for (size_t i = 0; i < DIM; ++i)
-    for (size_t j = 0; j < DIM; ++j)
+    for (size_t j = 0; j < DIM; ++j) {
+#ifndef ELEM_T_IS_FLOAT
       if (x[i][j] != y[i][j])
+#else
+      bool isnanx = elem_t_isnan(x[i][j]);
+      bool isnany = elem_t_isnan(y[i][j]);
+
+      if (x[i][j] != y[i][j] && !(isnanx && isnany))
+#endif
           return 0;
+    }
   return 1;
 }
 
@@ -110,18 +202,13 @@ int is_equal(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
 #define MAT_IS_EQUAL(dim_i, dim_j, x, y) \
     ({int result = 1; \
       for (size_t i = 0; i < dim_i; i++) \
-        for (size_t j = 0; j < dim_j; ++j) \
+        for (size_t j = 0; j < dim_j; ++j) { \
           if (x[i][j] != y[i][j]) { \
             result = 0; \
             break; \
           } \
+        } \
       result;})
-
-int rand() {
-  static uint32_t x = 777;
-  x = x * 1664525 + 1013904223;
-  return x >> 24;
-}
 
 uint64_t read_cycles() {
     uint64_t cycles;
