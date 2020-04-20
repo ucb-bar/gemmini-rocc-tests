@@ -37,7 +37,7 @@ int main() {
         In[n][i][j] = i*DIM + j + n;
 
   for (int n = 0; n < N; ++n) {
-    gemmini_config_ld(DIM * sizeof(elem_t), n);
+    gemmini_extended_config_ld(DIM * sizeof(elem_t), n);
     gemmini_mvin(In[n], n*DIM);
     gemmini_mvout(Out[n], n*DIM);
   }
@@ -81,7 +81,7 @@ int main() {
   gemmini_config_ex(0, NO_ACTIVATION, 0, 0, 0); // Set shift to 0
 
   for (int n = 0; n < N; ++n) {
-    gemmini_config_ld(DIM * sizeof(acc_t), (n+1));
+    gemmini_extended_config_ld(DIM * sizeof(acc_t), (n+1));
     gemmini_mvin(In_acc[n], acc_addr | (n*DIM));
     gemmini_mvout(Out_acc[n], acc_addr | (n*DIM));
   }

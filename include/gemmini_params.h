@@ -22,4 +22,6 @@ typedef int64_t full_t;
 #define row_align(blocks) __attribute__((aligned(blocks*DIM*sizeof(elem_t))))
 #define row_align_acc(blocks) __attribute__((aligned(blocks*DIM*sizeof(acc_t))))
 
+#define MVIN_SCALE_ONE 1
+
 #endif // GEMMINI_PARAMS_H

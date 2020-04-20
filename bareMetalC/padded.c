@@ -39,7 +39,7 @@ int main() {
 
         const size_t sp_addr = 0;
 
-        gemmini_config_ld(cols * sizeof(elem_t), 1);
+        gemmini_config_ld(cols * sizeof(elem_t));
         gemmini_config_st(DIM * sizeof(elem_t));
 
         gemmini_extended_mvin(input, sp_addr, cols, rows);
@@ -74,7 +74,7 @@ int main() {
 
         const size_t sp_addr = 0;
 
-        gemmini_config_ld(cols * sizeof(elem_t), 1);
+        gemmini_config_ld(cols * sizeof(elem_t));
         gemmini_config_st(cols * sizeof(elem_t));
 
         gemmini_extended_mvin(input, sp_addr, cols, rows);
@@ -136,13 +136,13 @@ int main() {
         gemmini_config_ex(dataflow, NO_ACTIVATION, 0, 0, 0);
         gemmini_config_st(J * sizeof(elem_t));
 
-        gemmini_config_ld(K * sizeof(elem_t), 1);
+        gemmini_config_ld(K * sizeof(elem_t));
         gemmini_extended_mvin(A, A_sp_addr, K, I);
 
-        gemmini_config_ld(J * sizeof(elem_t), 1);
+        gemmini_config_ld(J * sizeof(elem_t));
         gemmini_extended_mvin(B, B_sp_addr, J, K);
 
-        gemmini_config_ld(J * sizeof(elem_t), 1);
+        gemmini_config_ld(J * sizeof(elem_t));
         gemmini_extended_mvin(D, D_sp_addr, J, I);
 
         if (dataflow == OUTPUT_STATIONARY) {

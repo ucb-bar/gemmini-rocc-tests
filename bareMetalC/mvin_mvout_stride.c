@@ -58,7 +58,7 @@ int main() {
         Out[i][j] = 0;
       }
 
-    gemmini_config_ld(BIG_DIM*sizeof(elem_t), 1);
+    gemmini_config_ld(BIG_DIM*sizeof(elem_t));
     gemmini_config_st(BIG_DIM*sizeof(elem_t));
 
     for (size_t i = 0; i < BIG_DIM; i += DIM) {

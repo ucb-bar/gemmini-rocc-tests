@@ -32,7 +32,7 @@ int main() {
 #endif
 
   gemmini_flush(0);
-  gemmini_config_ld(DIM * sizeof(elem_t), 1);
+  gemmini_config_ld(DIM * sizeof(elem_t));
 
   static elem_t ZERO[DIM][DIM];
 

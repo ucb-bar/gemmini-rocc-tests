@@ -23,7 +23,7 @@ int main() {
 #endif
 
   gemmini_flush(0);
-  gemmini_config_ld(DIM * sizeof(elem_t), 1);
+  gemmini_config_ld(DIM * sizeof(elem_t));
 
   const int a_additions = 10;
   const int b_additions = 10;
