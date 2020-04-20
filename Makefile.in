@@ -5,7 +5,7 @@ RISCVTOOLS      := @RISCVTOOLS@
 ROCC = examples
 
 .PHONY: all bareMetalC clean imagenet mlps
-all: bareMetalC mobilenet imagenet mlps resnet
+all: bareMetalC imagenet mlps
 
 vars = \
 	abs_top_srcdir=$(abs_top_srcdir) \
@@ -18,19 +18,11 @@ bareMetalC:
 	mkdir -p $@
 	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
 
-mobilenet:
-	mkdir -p $@
-	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
-
 imagenet:
 	mkdir -p $@
 	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
 
 mlps:
-	mkdir -p $@
-	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
-
-resnet:
 	mkdir -p $@
 	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
 

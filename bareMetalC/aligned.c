@@ -19,7 +19,7 @@
 } __attribute__((__packed__));*/
 
 struct offset_buffer {
-  char garbage[OFFSET];
+  elem_t garbage[OFFSET];
   elem_t data[DIM][DIM];
 } __attribute__((__packed__));
 

@@ -21,7 +21,7 @@
 #endif
 
 void full_matmul(elem_t A[MAT_DIM_I][MAT_DIM_K], elem_t B[MAT_DIM_K][MAT_DIM_J], acc_t D[MAT_DIM_I][MAT_DIM_J],
-  int64_t C_full[MAT_DIM_I][MAT_DIM_J], bool repeating_bias)
+  full_t C_full[MAT_DIM_I][MAT_DIM_J], bool repeating_bias)
 {
   for (size_t r = 0; r < MAT_DIM_I; r++)
     for (size_t c = 0; c < MAT_DIM_J; c++) {
@@ -39,7 +39,7 @@ void full_printMatrix(elem_t m[MAT_DIM_I][MAT_DIM_J]) {
   }
 }
 
-void full_printMatrix64Bit(int64_t m[MAT_DIM_I][MAT_DIM_J]) {
+void full_printMatrix64Bit(full_t m[MAT_DIM_I][MAT_DIM_J]) {
   for (size_t i = 0; i < MAT_DIM_I; ++i) {
     for (size_t j = 0; j < MAT_DIM_J; ++j)
       printf("%lld ", m[i][j]);
@@ -47,15 +47,19 @@ void full_printMatrix64Bit(int64_t m[MAT_DIM_I][MAT_DIM_J]) {
   }
 }
 
-void full_matshift(int64_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_DIM_J], int shift) {
+void full_matshift(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_DIM_J], int shift) {
   for (size_t r = 0; r < MAT_DIM_I; r++)                             
     for (size_t c = 0; c < MAT_DIM_J; c++) {
       // Bitshift and round element
-      int64_t shifted = ROUNDING_RIGHT_SHIFT(full[r][c], shift);
+      full_t shifted = ROUNDING_RIGHT_SHIFT(full[r][c], shift);
 
       // Saturate and cast element
-      int64_t elem = shifted > elem_t_max ? elem_t_max : (shifted < elem_t_min ? elem_t_min : shifted);
+#ifndef ELEM_T_IS_FLOAT
+      full_t elem = shifted > elem_t_max ? elem_t_max : (shifted < elem_t_min ? elem_t_min : shifted);
       out[r][c] = elem;
+#else
+      out[r][c] = shifted; // TODO should we also saturate when using floats?
+#endif
     }
 }
 
@@ -112,7 +116,7 @@ int main() {
             static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
             static acc_t full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
 
-            static int64_t gold_full[MAT_DIM_I][MAT_DIM_J];
+            static full_t gold_full[MAT_DIM_I][MAT_DIM_J];
             static elem_t gold[MAT_DIM_I][MAT_DIM_J];
 
             // printf("Init A\n");
