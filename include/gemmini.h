@@ -170,6 +170,50 @@ bool acc_t_isnan(acc_t x) {
 }
 #endif
 
+#ifdef HAS_MVIN_SCALE
+scale_t scale_t_bits_to_scale_t(scale_t_bits x) {
+    union {
+        scale_t_bits b;
+        scale_t f;
+    } un;
+
+    un.b = x;
+    return un.f;
+}
+
+scale_t_bits scale_t_to_scale_t_bits(scale_t x) {
+    union {
+        scale_t_bits b;
+        scale_t f;
+    } un;
+
+    un.f = x;
+    return un.b;
+}
+#endif
+
+#ifdef HAS_MVIN_ACC_SCALE
+scale_acc_t scale_acc_t_bits_to_scale_acc_t(scale_acc_t_bits x) {
+    union {
+        scale_acc_t_bits b;
+        scale_acc_t f;
+    } un;
+
+    un.b = x;
+    return un.f;
+}
+
+scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
+    union {
+        scale_acc_t_bits b;
+        scale_acc_t f;
+    } un;
+
+    un.f = x;
+    return un.b;
+}
+#endif
+
 void printMatrix(elem_t m[DIM][DIM]) {
   for (size_t i = 0; i < DIM; ++i) {
     for (size_t j = 0; j < DIM; ++j)
@@ -306,7 +350,7 @@ uint64_t read_cycles() {
 
 #if defined(HAS_MVIN_SCALE) || defined(HAS_MVIN_ACC_SCALE)
 #define gemmini_extended_config_ld(stride, scale) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale) << 32) | CONFIG_LD, stride, k_CONFIG)
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale_t_to_scale_t_bits(scale)) << 32) | CONFIG_LD, stride, k_CONFIG)
 #else
 #define gemmini_extended_config_ld(stride, scale) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_LD, stride, k_CONFIG)
