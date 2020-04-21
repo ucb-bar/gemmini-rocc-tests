@@ -119,7 +119,7 @@ int main() {
     // printf("Init D\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_D[i][j] = 0; // NO_BIAS ? 0 : rand() % 2;
+        full_D[i][j] = NO_BIAS ? 0 : rand() % 2;
       }
     }
 
