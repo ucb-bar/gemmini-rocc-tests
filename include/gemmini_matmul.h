@@ -4,7 +4,6 @@
 #define SRC_MAIN_C_GEMMINI_MATMUL_H
 
 #include <stdint.h>
-#include <memory>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -12,7 +11,7 @@
 #include <limits.h>
 #include <stdbool.h>
 
-#include "gemmini_params.h"
+#include "include/gemmini_params.h"
 
 // Rounding right shift equation: https://riscv.github.io/documents/riscv-v-spec/#_vector_fixed_point_rounding_mode_register_vxrm
 #ifndef ELEM_T_IS_FLOAT
@@ -590,7 +589,7 @@ enum tiled_matmul_type_t { OS,
 
 // This function runs a tiled matrix multiplication, with hardcoded tiling
 // factors
-void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
+void tiled_matmul_ptr(size_t dim_I, size_t dim_J, size_t dim_K,
                   size_t strideA,
                   size_t strideB,
                   size_t strideD,
@@ -675,7 +674,7 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
 
 // This function runs a tiled matrix multiplication, with automatically
 // calculated tiling factors
-void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
+void tiled_matmul_auto_strided_ptr(size_t dim_I, size_t dim_J, size_t dim_K,
                        size_t strideA,
                        size_t strideB,
                        size_t strideD,
@@ -698,7 +697,7 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
   const size_t tile_J = dim_J_padded / DIM < max_tile_i_j ? dim_J_padded / DIM : max_tile_i_j;
   const size_t tile_K = dim_K_padded / DIM < max_tile_k ? dim_K_padded / DIM : max_tile_k;
 
-  tiled_matmul(dim_I, dim_J, dim_K,
+  tiled_matmul_ptr(dim_I, dim_J, dim_K,
                strideA,
                strideB,
                strideD,
@@ -714,12 +713,12 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #undef max_tile_k
 }
 
-void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
+void tiled_matmul_auto_ptr(size_t dim_I, size_t dim_J, size_t dim_K,
                        const elem_t* A, const elem_t* B,
                        const acc_t* D, elem_t* C,
                        int act, size_t shift, size_t relu6_shift, bool repeating_bias,
                        enum tiled_matmul_type_t tiled_matmul_type) {
-  tiled_matmul_auto(dim_I, dim_J, dim_K, dim_K, dim_J, dim_J, dim_J, A, B, D, C, act, shift, relu6_shift, repeating_bias, tiled_matmul_type);
+  tiled_matmul_auto_strided_ptr(dim_I, dim_J, dim_K, dim_K, dim_J, dim_J, dim_J, A, B, D, C, act, shift, relu6_shift, repeating_bias, tiled_matmul_type);
 }
 
 #endif  // SRC_MAIN_C_SYSTOLIC_H

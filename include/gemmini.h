@@ -9,7 +9,7 @@
 #include <limits.h>
 #include <stdbool.h>
 
-#include "gemmini_matmul.h"
+#include "include/gemmini_matmul.h"
 
 // Matmul utility functions
 void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
@@ -148,6 +148,30 @@ uint64_t read_cycles() {
   // const uint32_t * mtime = (uint32_t *)(33554432 + 0xbff8);
   // const uint32_t * mtime = (uint32_t *)(33554432 + 0xbffc);
   // return *mtime;
+}
+
+void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
+        const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
+        const acc_t * D, elem_t C[dim_I][dim_J],
+        int act, size_t shift, size_t relu6_shift, bool repeating_bias,
+        size_t tile_I, size_t tile_J, size_t tile_K,
+        enum tiled_matmul_type_t tiled_matmul_type) {
+    tiled_matmul_ptr(dim_I, dim_J, dim_K,
+                 dim_K, dim_J, dim_J, dim_J,
+                 &A[0][0], &B[0][0], D, &C[0][0],
+                 act, shift, relu6_shift, repeating_bias,
+                 tile_I, tile_J, tile_K, tiled_matmul_type);
+}
+
+void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
+        const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
+        const acc_t * D, elem_t C[dim_I][dim_J],
+        int act, size_t shift, size_t relu6_shift, bool repeating_bias,
+        enum tiled_matmul_type_t tiled_matmul_type) {
+        
+    tiled_matmul_auto_ptr(dim_I, dim_J, dim_K,
+                      &A[0][0], &B[0][0], D, &C[0][0],
+                      act, shift, relu6_shift, repeating_bias, tiled_matmul_type);
 }
 
 #endif  // SRC_MAIN_C_GEMMINI_H
