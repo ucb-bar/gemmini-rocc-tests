@@ -3,6 +3,8 @@
 #ifndef SRC_MAIN_C_GEMMINI_H
 #define SRC_MAIN_C_GEMMINI_H
 
+#undef abs
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
@@ -974,6 +976,8 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #undef max_tile_i_j
 #undef max_tile_k
 }
+
+#undef abs
 
 #endif // SRC_MAIN_C_GEMMINI_H
 
