@@ -136,6 +136,7 @@ int main() {
 
     tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
             full_A, full_B, NO_BIAS ? NULL : &full_D[0][0], full_C,
+            MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
             NO_ACTIVATION, 0, 0, false,
             CPU);
 

@@ -153,6 +153,7 @@ int main() {
             printf("Starting gemmini matmul\n");
             tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
                     full_A, full_B, no_bias ? NULL : &full_D[0][0], full_C,
+                    MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
                     activation, shift, relu6_shift, repeating_bias,
                     option);
 

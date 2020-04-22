@@ -373,6 +373,7 @@ uint64_t read_cycles() {
 
 // Tiling functions
 static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const acc_t * D, elem_t * C,
+        scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
         size_t I, size_t J, size_t K, size_t pad_I, size_t pad_J, size_t pad_K,
         size_t A_row_len, size_t B_row_len, size_t D_row_len, size_t C_row_len,
         bool no_bias, bool repeating_bias) {
@@ -389,7 +390,7 @@ static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const acc_t *
   // Move-in D
   if (D != NULL && !no_bias) {
     const size_t D_stride = repeating_bias ? 0 : D_row_len * sizeof(acc_t);
-    gemmini_extended_config_ld(D_stride, MVIN_SCALE_ONE);
+    gemmini_extended_config_ld(D_stride, D_scale_factor);
 
     for (size_t i = 0; i < I; i++) {
       for (size_t j = 0; j < J; j += D_blocks) {
@@ -409,7 +410,7 @@ static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const acc_t *
   }
 
   // Move-in B
-  gemmini_extended_config_ld(B_row_len * sizeof(elem_t), MVIN_SCALE_ONE);
+  gemmini_extended_config_ld(B_row_len * sizeof(elem_t), B_scale_factor);
   for (size_t j = 0; j < J; j += B_blocks) {
     for (size_t k = 0; k < K; k++) {
       const elem_t * const B_dram_addr = B + (k*B_row_len + j)*DIM;
@@ -422,7 +423,7 @@ static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const acc_t *
   }
 
   // Move-in A
-  gemmini_extended_config_ld(A_row_len * sizeof(elem_t), MVIN_SCALE_ONE);
+  gemmini_extended_config_ld(A_row_len * sizeof(elem_t), A_scale_factor);
   for (size_t i = 0; i < I; i++) {
     for (size_t k = 0; k < K; k += A_blocks) {
       const elem_t * const A_dram_addr = A + (i*A_row_len + k)*DIM;
@@ -488,6 +489,7 @@ static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const acc_t *
 
 static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         const acc_t * D, elem_t * C,
+        scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
         size_t I, size_t J, size_t K, size_t pad_I, size_t pad_J, size_t pad_K,
         size_t A_row_len, size_t B_row_len, size_t D_row_len, size_t C_row_len,
         bool no_bias, bool repeating_bias) {
@@ -504,7 +506,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   // Move-in D
   if (D != NULL && !no_bias) {
     const size_t D_stride = repeating_bias ? 0 : D_row_len * sizeof(acc_t);
-    gemmini_extended_config_ld(D_stride, MVIN_SCALE_ONE);
+    gemmini_extended_config_ld(D_stride, D_scale_factor);
 
     for (size_t i = 0; i < I; i++) {
       for (size_t j = 0; j < J; j += D_blocks) {
@@ -523,7 +525,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   }
 
   // Move-in B
-  gemmini_extended_config_ld(B_row_len * sizeof(elem_t), MVIN_SCALE_ONE);
+  gemmini_extended_config_ld(B_row_len * sizeof(elem_t), B_scale_factor);
   for (size_t j = 0; j < J; j += B_blocks) {
     for (size_t k = 0; k < K; k++) {
       const elem_t * const B_dram_addr = B + (k*B_row_len + j)*DIM;
@@ -536,7 +538,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   }
 
   // Move-in A
-  gemmini_extended_config_ld(A_row_len * sizeof(elem_t), MVIN_SCALE_ONE);
+  gemmini_extended_config_ld(A_row_len * sizeof(elem_t), A_scale_factor);
   for (size_t k = 0; k < K; k += A_blocks) {
     for (size_t i = 0; i < I; i++) {
       const elem_t * const A_dram_addr = A + (i * A_row_len + k)*DIM;
@@ -608,6 +610,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
 static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
         const acc_t * D, elem_t C[dim_I][dim_J],
+        scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
         size_t tile_I, size_t tile_J, size_t tile_K,
         int act, int shift, size_t relu6_shift, bool repeating_bias,
         int dataflow) {
@@ -666,6 +669,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
           sp_tiled_matmul_os(&A[i0*tile_I*DIM][k0*tile_K*DIM],
               &B[k0*tile_K*DIM][j0*tile_J*DIM],
               pre, out,
+              A_scale_factor, B_scale_factor, D_scale_factor,
               I, J, K,
               pad_I, pad_J, pad_K,
               dim_K, dim_J, dim_J, dim_J,
@@ -674,6 +678,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
           sp_tiled_matmul_ws(&A[i0*tile_I*DIM][k0*tile_K*DIM],
               &B[k0*tile_K*DIM][j0*tile_J*DIM],
               pre, out,
+              A_scale_factor, B_scale_factor, D_scale_factor,
               I, J, K,
               pad_I, pad_J, pad_K,
               dim_K, dim_J, dim_J, dim_J,
@@ -742,6 +747,7 @@ static void tiled_matmul_ws(size_t dim_I, size_t dim_J, size_t dim_K,
 static void matmul_cpu(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J], const acc_t * D,
         elem_t C[dim_I][dim_J],
+        scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
         int act, size_t shift, size_t relu6_shift, bool repeating_bias) {
 
   const bool no_bias = D == NULL;
@@ -749,10 +755,10 @@ static void matmul_cpu(size_t dim_I, size_t dim_J, size_t dim_K,
   for (size_t i = 0; i < dim_I; i++) {
     for (size_t j = 0; j < dim_J; j++) {
       size_t bias_row = repeating_bias ? 0 : i;
-      acc_t result = no_bias ? 0 : ((acc_t (*)[dim_J])D)[bias_row][j];
+      acc_t result = no_bias ? 0 : D_scale_factor*((acc_t (*)[dim_J])D)[bias_row][j];
 
       for (size_t k = 0; k < dim_K; k++) {
-        result += A[i][k] * B[k][j];
+        result += A_scale_factor*A[i][k] * B_scale_factor*B[k][j];
       }
 
       // Shift while rounding to nearest integer (ties round to negative infinity)
@@ -875,6 +881,7 @@ enum tiled_matmul_type_t {OS, WS, CPU};
 void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
         const acc_t * D, elem_t C[dim_I][dim_J],
+        scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
         int act, size_t shift, size_t relu6_shift, bool repeating_bias,
         size_t tile_I, size_t tile_J, size_t tile_K,
         enum tiled_matmul_type_t tiled_matmul_type) {
@@ -934,12 +941,14 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
   if (tiled_matmul_type == OS || tiled_matmul_type == WS) {
       tiled_matmul_outer(dim_I, dim_J, dim_K,
               A, B, D, C,
+              A_scale_factor, B_scale_factor, D_scale_factor,
               tile_I, tile_J, tile_K,
               act, shift, relu6_shift, repeating_bias,
               (int)tiled_matmul_type);
   } else /*if (tiled_matmul_type == CPU)*/ {
       matmul_cpu(dim_I, dim_J, dim_K,
               A, B, D, C,
+              A_scale_factor, B_scale_factor, D_scale_factor,
               act, shift, relu6_shift, repeating_bias);
   }
 }
@@ -949,6 +958,7 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
 void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
         const acc_t * D, elem_t C[dim_I][dim_J],
+        scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
         int act, size_t shift, size_t relu6_shift, bool repeating_bias,
         enum tiled_matmul_type_t tiled_matmul_type) {
 #define partition_rows (BANK_NUM * BANK_ROWS / 2)
@@ -966,7 +976,9 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
     const size_t tile_K = dim_K_padded/DIM < max_tile_k ? dim_K_padded/DIM : max_tile_k;
 
     tiled_matmul(dim_I, dim_J, dim_K,
-        A, B, D, C, act, shift, relu6_shift, repeating_bias,
+        A, B, D, C, 
+        A_scale_factor, B_scale_factor, D_scale_factor,
+        act, shift, relu6_shift, repeating_bias,
         tile_I, tile_J, tile_K,
         tiled_matmul_type);
 
