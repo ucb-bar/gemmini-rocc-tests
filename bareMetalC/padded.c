@@ -8,7 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 void print_matrix(size_t rows, size_t cols, elem_t mat[rows][cols]) {
     for (size_t r = 0; r < rows; r++) {

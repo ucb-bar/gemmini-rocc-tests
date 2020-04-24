@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 #endif
 #include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 struct ConvParams {
     int batch_size;

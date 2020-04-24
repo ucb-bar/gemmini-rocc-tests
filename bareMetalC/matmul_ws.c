@@ -9,7 +9,7 @@
 #include <sys/mman.h>
 #endif
 #include <time.h>
-#include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 #define N (2)
 
