@@ -84,7 +84,8 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
         printf("%s: gemmini\n", layer_name);
 
     tiled_matmul(dim_I, dim_J, dim_K,
-        A, B, D, C, 
+        (elem_t*)A, (elem_t*)B, D, (elem_t*)C, 
+        dim_K, dim_J, dim_J, dim_J,
         MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
         act, shift, relu6_shift, repeating_bias,
         tile_I, tile_J, tile_K,
@@ -94,7 +95,8 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
         printf("%s: CPU\n", layer_name);
         elem_t gold[dim_I][dim_J];
         tiled_matmul_auto(dim_I, dim_J, dim_K,
-            A, B, D, gold, 
+            (elem_t*)A, (elem_t*)B, D, (elem_t*)gold, 
+            dim_K, dim_J, dim_J, dim_J,
             MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
             act, shift, relu6_shift, repeating_bias,
             CPU);
@@ -119,7 +121,8 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         printf("%s: gemmini\n", layer_name);
 
     tiled_matmul_auto(dim_I, dim_J, dim_K,
-        A, B, D, C, 
+        (elem_t*)A, (elem_t*)B, D, (elem_t*)C, 
+        dim_K, dim_J, dim_J, dim_J,
         MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
         act, shift, relu6_shift, repeating_bias,
         tiled_matmul_type);
@@ -128,7 +131,8 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         printf("%s: CPU\n", layer_name);
         elem_t gold[dim_I][dim_J];
         tiled_matmul_auto(dim_I, dim_J, dim_K,
-            A, B, D, gold, 
+            (elem_t*)A, (elem_t*)B, D, (elem_t*)gold, 
+            dim_K, dim_J, dim_J, dim_J,
             MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
             act, shift, relu6_shift, repeating_bias,
             CPU);
