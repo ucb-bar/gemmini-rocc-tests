@@ -302,7 +302,7 @@ uint64_t read_cycles() {
 #define RELU6 2
 
 #define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct) \
-  ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, funct, 10, 11)
+  ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, funct)
 
 // mvin and mvout
 #define gemmini_extended_mvin(dram_addr, spad_addr, cols, rows) \
@@ -640,11 +640,11 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
   const bool no_bias = D == NULL;
 
   if (no_bias) {
-    D = (void*) 1; // Dummy address which isn't NULL
+    D = (acc_t*) 1; // Dummy address which isn't NULL
   }
 
   gemmini_config_ex(dataflow, act, 0, shift, relu6_shift);
-  gemmini_config_st(dim_J * sizeof(elem_t));
+  gemmini_config_st(stride_C * sizeof(elem_t));
 
   for (size_t i0 = 0; i0 < I0; i0++)
     for (size_t j0 = 0; j0 < J0; j0++)
@@ -655,7 +655,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
           pre = NULL;
         } else {
           size_t bias_row = repeating_bias ? 0 : i0*tile_I*DIM;
-          pre = &((acc_t (*)[dim_J])D)[bias_row][j0*tile_J*DIM];
+          pre = &(((acc_t*)D)[bias_row * stride_D + j0 * tile_J * DIM]);
         }
         elem_t * out = k0 == K0-1 ? C + i0*tile_I*DIM*stride_C + j0*tile_J*DIM : NULL;
 
@@ -971,7 +971,7 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #define partition_rows (BANK_NUM * BANK_ROWS / 2)
 #define mats_in_partition (partition_rows / DIM)
 #define mats_in_acc (ACC_ROWS / DIM)
-#define max_tile_i_j ((int)sqrt(mats_in_acc))
+#define max_tile_i_j ((size_t)sqrt(mats_in_acc))
 #define max_tile_k (mats_in_partition / max_tile_i_j)
 
     const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
