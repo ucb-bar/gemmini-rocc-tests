@@ -8,7 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 #if BANK_NUM*BANK_ROWS < 5*DIM
 #error need more memory capacity

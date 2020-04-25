@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 #endif
 #include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 struct ConvParams {
     int batch_size;
@@ -84,7 +85,10 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
         printf("%s: gemmini\n", layer_name);
 
     tiled_matmul(dim_I, dim_J, dim_K,
-        A, B, D, C, act, shift, relu6_shift, repeating_bias,
+        (elem_t*)A, (elem_t*)B, D, (elem_t*)C, 
+        dim_K, dim_J, dim_J, dim_J,
+        MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
+        act, shift, relu6_shift, repeating_bias,
         tile_I, tile_J, tile_K,
         tiled_matmul_type);
 
@@ -92,7 +96,10 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
         printf("%s: CPU\n", layer_name);
         elem_t gold[dim_I][dim_J];
         tiled_matmul_auto(dim_I, dim_J, dim_K,
-            A, B, D, gold, act, shift, relu6_shift, repeating_bias,
+            (elem_t*)A, (elem_t*)B, D, (elem_t*)gold, 
+            dim_K, dim_J, dim_J, dim_J,
+            MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
+            act, shift, relu6_shift, repeating_bias,
             CPU);
 
         if (!MAT_IS_EQUAL(dim_I, dim_J, C, gold)) {
@@ -115,14 +122,20 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         printf("%s: gemmini\n", layer_name);
 
     tiled_matmul_auto(dim_I, dim_J, dim_K,
-        A, B, D, C, act, shift, relu6_shift, repeating_bias,
+        (elem_t*)A, (elem_t*)B, D, (elem_t*)C, 
+        dim_K, dim_J, dim_J, dim_J,
+        MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
+        act, shift, relu6_shift, repeating_bias,
         tiled_matmul_type);
 
     if (check) {
         printf("%s: CPU\n", layer_name);
         elem_t gold[dim_I][dim_J];
         tiled_matmul_auto(dim_I, dim_J, dim_K,
-            A, B, D, gold, act, shift, relu6_shift, repeating_bias,
+            (elem_t*)A, (elem_t*)B, D, (elem_t*)gold, 
+            dim_K, dim_J, dim_J, dim_J,
+            MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
+            act, shift, relu6_shift, repeating_bias,
             CPU);
 
         if (!MAT_IS_EQUAL(dim_I, dim_J, C, gold)) {

@@ -8,7 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 #define CHECK_RESULT 1
 
@@ -135,7 +135,9 @@ int main() {
     unsigned long start = read_cycles();
 
     tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-            full_A, full_B, NO_BIAS ? NULL : &full_D[0][0], full_C,
+            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
+            MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
+            MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
             NO_ACTIVATION, 0, 0, false,
             CPU);
 

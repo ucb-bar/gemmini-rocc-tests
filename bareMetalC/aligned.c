@@ -8,7 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 #define PG_SIZE (4*1024)
 #define OFFSET 1

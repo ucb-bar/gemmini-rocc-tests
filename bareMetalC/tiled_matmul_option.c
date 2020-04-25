@@ -8,7 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 #ifndef BAREMETAL
 #define MAT_DIM_I 256
@@ -152,7 +152,9 @@ int main() {
 
             printf("Starting gemmini matmul\n");
             tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-                    full_A, full_B, no_bias ? NULL : &full_D[0][0], full_C,
+                    (elem_t*)full_A, (elem_t*)full_B, no_bias ? NULL : &full_D[0][0], (elem_t*)full_C,
+                    MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
+                    MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
                     activation, shift, relu6_shift, repeating_bias,
                     option);
 
