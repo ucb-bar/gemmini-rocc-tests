@@ -97,6 +97,15 @@ int rand() {
   return x >> 24;
 }
 
+
+#ifdef ELEM_T_IS_FLOAT
+double rand_double() {
+    double a = (double)(rand() % 128) / (double)(1 + (rand() % 64));
+    double b = (double)(rand() % 128) / (double)(1 + (rand() % 64));
+    return a - b;
+}
+#endif
+
 void printMatrix(elem_t m[DIM][DIM]) {
   for (size_t i = 0; i < DIM; ++i) {
     for (size_t j = 0; j < DIM; ++j)

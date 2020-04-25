@@ -56,12 +56,6 @@
 
 
 #ifdef ELEM_T_IS_FLOAT
-double rand_double() {
-    double a = (double)(rand() % 128) / (double)(1 + (rand() % 64));
-    double b = (double)(rand() % 128) / (double)(1 + (rand() % 64));
-    return a - b;
-}
-
 elem_t elem_t_bits_to_elem_t(elem_t_bits x) {
     union {
         elem_t_bits b;
