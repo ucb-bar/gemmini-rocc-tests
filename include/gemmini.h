@@ -625,7 +625,7 @@ static void matmul_cpu(size_t dim_I, size_t dim_J, size_t dim_K,
       acc_t result = no_bias ? 0 : D_scale_factor* *(D + bias_row*stride_D + j);
 
       for (size_t k = 0; k < dim_K; k++) {
-        result += A_scale_factor * *((elem_t*)A + i*stride_A + k) * B_scale_factor * *((elem_t*)B + k*stride_B + j);
+        result += A_scale_factor * *(A + i*stride_A + k) * B_scale_factor * *((elem_t*)B + k*stride_B + j);
       }
 
       // Shift while rounding to nearest integer (ties round to negative infinity)
@@ -642,7 +642,7 @@ static void matmul_cpu(size_t dim_I, size_t dim_J, size_t dim_K,
         result = result < 0 ? 0 : (result > max ? max : result);
       }
 
-      *((elem_t*)C + i*stride_C + j) = (elem_t)result;
+      *(C + i*stride_C + j) = (elem_t)result;
     }
   }
 }
