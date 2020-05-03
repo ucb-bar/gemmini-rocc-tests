@@ -12,6 +12,7 @@ tests = \
 	aligned \
 	padded \
 	mvin_scale \
+	im2col \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_cpu \
