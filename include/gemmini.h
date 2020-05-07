@@ -221,8 +221,11 @@ scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
 #define gemmini_config_ld(stride) \
   gemmini_extended_config_ld(stride, MVIN_SCALE_ONE)
 
+#define gemmini_extended_config_st(stride, pool_stride, pool_size, pool_padding, pool_out_dim, pool_in_dim) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(pool_in_dim) << 56) | ((uint64_t)(pool_out_dim) << 48) | ((uint64_t)(pool_padding) << 40) | ((uint64_t)(pool_size) << 36) | ((uint64_t)(pool_stride) << 32) | CONFIG_ST, stride, k_CONFIG)
+
 #define gemmini_config_st(stride) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_ST, stride, k_CONFIG)
+    gemmini_extended_config_st(stride, 0, 0, 0, 0, 0)
 
 // flush
 #define gemmini_flush(skip) \
@@ -804,7 +807,10 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 void sp_tiled_conv(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
+
         int stride, int padding, int kernel_dim,
+
+        int pool_size, int pool_stride, int pool_padding,
 
         int batches,
         int orows, int ocols, int ochs,
@@ -973,21 +979,41 @@ void sp_tiled_conv(
 
     // mvout output
     if (output != NULL) {
-        for (int b = 0; b < batches; b++)
-            for (int orow = 0; orow < orows; orow++)
-                for (int ocol = 0; ocol < ocols; ocol += DIM) {
-                    const int I = ocols - ocol > DIM ? DIM : ocols - ocol;
+        if (pool_stride == 0) {
+            for (int b = 0; b < batches; b++)
+                for (int orow = 0; orow < orows; orow++)
+                    for (int ocol = 0; ocol < ocols; ocol += DIM) {
+                        const int I = ocols - ocol > DIM ? DIM : ocols - ocol;
 
-                    for (int och = 0; och < ochs; och += DIM) {
-                        const int J = ochs - och > DIM ? DIM : ochs - och;
+                        for (int och = 0; och < ochs; och += DIM) {
+                            const int J = ochs - och > DIM ? DIM : ochs - och;
 
-                        const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * orows * ocols + b * orows * ocols + orow * ocols + ocol;
+                            const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * orows * ocols + b * orows * ocols + orow * ocols + ocol;
 
-                        gemmini_extended_mvout(output + (b*out_dim*out_dim + orow*out_dim + ocol) * out_channels + och,
-                                C_sp_addr,
-                                J, I);
+                            gemmini_extended_mvout(output + (b*out_dim*out_dim + orow*out_dim + ocol) * out_channels + och,
+                                    C_sp_addr,
+                                    J, I);
+                        }
                     }
+        } else {
+            // gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_padding, pool_out_dim, out_dim);
+            // We need to pass in pool_stride, pool_size, pool_lpad, pool_rpad, pool_upad, pool_dpad, pool_out_cols, pool_out_rows, pool_in_cols, pool_in_rows
+            // gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_padding, pool_out_dim, out_dim);
+            /*
+            gemmini_fence(); // TODO remove this when the ROB can accurately handle these
+            for (int b = 0; b < batches; b++) {
+                for (int och = 0; och < ochs; och += DIM) {
+                    const int J = ochs - och > DIM ? DIM : ochs - och;
+
+                    const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * orows * ocols + b * orows * ocols;
+
+                    gemmini_extended_mvout(output + (b*out_dim*out_dim) * out_channels + och,
+                            C_sp_addr,
+                            J, 0);
                 }
+            }
+        */
+        }
     }
 }
 
@@ -1028,7 +1054,8 @@ void tiled_conv(
         acc_t * bias,
         elem_t * output,
 
-        int act, size_t shift, size_t relu6_shift) {
+        int act, size_t shift, size_t relu6_shift,
+        int pool_size, int pool_stride, int pool_padding) {
 
     bool no_bias = false;
     if (bias == NULL) {
@@ -1057,8 +1084,12 @@ void tiled_conv(
     }
 #endif
 
+    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+
     gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, shift, relu6_shift, stride);
-    gemmini_config_st(out_channels * sizeof(elem_t));
+    if (pool_stride == 0) {
+        gemmini_config_st(out_channels * sizeof(elem_t));
+    }
 
     for (int b = 0; b < batch_size; b += batches) {
         for (int orow = 0; orow < out_dim; orow += orows) {
@@ -1104,7 +1135,10 @@ void tiled_conv(
                                 sp_tiled_conv(
                                     batch_size, in_dim, in_channels,
                                     out_channels, out_dim,
+
                                     stride, padding, kernel_dim,
+
+                                    pool_size, pool_stride, pool_padding,
 
                                     batches_,
                                     orows_, ocols_, ochs_,
@@ -1137,7 +1171,8 @@ void tiled_conv_auto(
         acc_t * bias,
         elem_t * output,
 
-        int act, size_t shift, size_t relu6_shift) {
+        int act, size_t shift, size_t relu6_shift,
+        int pool_size, int pool_stride, int pool_padding) {
 
     // int args[] = {batch_size, orows, ocols, ochs, krows, kcols, kchs};
     int args[] = {batch_size, out_dim, out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
@@ -1196,7 +1231,8 @@ void tiled_conv_auto(
         bias,
         output,
 
-        act, shift, relu6_shift);
+        act, shift, relu6_shift,
+        pool_size, pool_stride, pool_padding);
 }
 
 #undef abs

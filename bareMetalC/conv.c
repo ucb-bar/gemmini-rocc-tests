@@ -26,11 +26,11 @@
 #define STRIDE 2
 #endif
 
+#define NO_BIAS false
+
 #define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
 #define N_PATCHES (BATCH_SIZE * OUT_DIM * OUT_DIM)
-
-#define NO_BIAS false
 
 // TODO add bias
 void conv(int batch_size, int in_channels, int in_dim,
@@ -130,7 +130,7 @@ void init_zeros_acc(acc_t * buf, int len) {
 int main() {
     // assert((in_dim + 2*padding - kernel_dim) % stride == 0);
 
-    printf("Output dimension: %u\n", OUT_DIM);
+    printf("Output dimension: %u\n\n", OUT_DIM);
 
     static elem_t input[BATCH_SIZE][IN_DIM][IN_DIM][IN_CHANNELS];
     static elem_t weights[OUT_CHANNELS][KERNEL_DIM][KERNEL_DIM][IN_CHANNELS];
@@ -183,7 +183,7 @@ int main() {
         NO_BIAS ? NULL : (acc_t*)bias,
         (elem_t*)output_mat,
 
-        NO_ACTIVATION, 0, 0);
+        NO_ACTIVATION, 0, 0, 0, 0, 0);
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 
