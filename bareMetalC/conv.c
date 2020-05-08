@@ -32,7 +32,6 @@
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
 #define N_PATCHES (BATCH_SIZE * OUT_DIM * OUT_DIM)
 
-// TODO add bias
 void conv(int batch_size, int in_channels, int in_dim,
         int out_channels, int kernel_dim,
         int out_dim,
@@ -53,7 +52,7 @@ void conv(int batch_size, int in_channels, int in_dim,
         for (int orow = 0; orow < out_dim; orow++) {
             for (int ocol = 0; ocol < out_dim; ocol++) {
                 for (int och = 0; och < out_channels; och++) {
-                    output[b][orow][ocol][och] = bias[och];
+                    acc_t result = bias[och];
 
                     for (int krow = 0; krow < kernel_dim; krow++) {
                         for (int kcol = 0; kcol < kernel_dim; kcol++) {
@@ -65,12 +64,20 @@ void conv(int batch_size, int in_channels, int in_dim,
                                     icol < 0 || icol >= in_dim ?
                                     0 : input[b][irow][icol][kch];
 
-                                output[b][orow][ocol][och] +=
+                                result +=
                                     weights[och][krow][kcol][kch] *
                                     pixel;
                             }
                         }
                     }
+
+                    // Shift while rounding to nearest integer (ties round to negative infinity)
+                    result = ROUNDING_RIGHT_SHIFT(result, 0);
+
+                    // Clip result
+                    result = result > elem_t_max ? elem_t_max : (result < elem_t_min ? elem_t_min : result);
+
+                    output[b][orow][ocol][och] = result;
                 }
             }
         }

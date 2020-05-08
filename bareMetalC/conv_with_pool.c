@@ -36,29 +36,13 @@
 // #define PADDING 2
 // #define STRIDE 1
 
-// #define BATCH_SIZE 4
-// #define IN_DIM 224
-// #define IN_CHANNELS 3
-// #define OUT_CHANNELS 64
-// #define KERNEL_DIM 7
-// #define PADDING 3
-// #define STRIDE 2
-
-// #define BATCH_SIZE 3
-// #define IN_DIM 53
-// #define IN_CHANNELS 17
-// #define OUT_CHANNELS 4
-// #define KERNEL_DIM 3
-// #define PADDING 2
-// #define STRIDE 1
-
-#define BATCH_SIZE 3
-#define IN_DIM 53
-#define IN_CHANNELS 17
-#define OUT_CHANNELS 4
-#define KERNEL_DIM 3
-#define PADDING 0
-#define STRIDE 1
+#define BATCH_SIZE 4
+#define IN_DIM 224
+#define IN_CHANNELS 3
+#define OUT_CHANNELS 64
+#define KERNEL_DIM 7
+#define PADDING 3
+#define STRIDE 2
 
 #define NO_BIAS false
 
@@ -66,21 +50,25 @@
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
 #define N_PATCHES (BATCH_SIZE * OUT_DIM * OUT_DIM)
 
-#define POOL_SIZE 1 // 3
-#define POOL_STRIDE 1 // 2
-#define POOL_PADDING 0
-
-// #define POOL_SIZE 3
-// #define POOL_STRIDE 2
-// #define POOL_PADDING 1
+#define POOL_SIZE 3
+#define POOL_STRIDE 2
+#define POOL_PADDING 1
 
 // #define POOL_SIZE 3
 // #define POOL_STRIDE 1
 // #define POOL_PADDING 1
 
+// #define POOL_SIZE 1
+// #define POOL_STRIDE 1
+// #define POOL_PADDING 0
+
 #define POOL_OUT_DIM ((OUT_DIM + 2*POOL_PADDING - POOL_SIZE) / POOL_STRIDE + 1)
 
-#define NO_POOL true 
+#define NO_POOL false 
+
+#if NO_POOL == true && !(POOL_SIZE == 1 && POOL_STRIDE == 1 && POOL_PADDING == 0)
+#error NO_POOL is not set correctly
+#endif
 
 void conv(int batch_size, int in_channels, int in_dim,
         int out_channels, int kernel_dim,
@@ -102,7 +90,7 @@ void conv(int batch_size, int in_channels, int in_dim,
         for (int orow = 0; orow < out_dim; orow++) {
             for (int ocol = 0; ocol < out_dim; ocol++) {
                 for (int och = 0; och < out_channels; och++) {
-                    output[b][orow][ocol][och] = bias[och];
+                    acc_t result = bias[och];
 
                     for (int krow = 0; krow < kernel_dim; krow++) {
                         for (int kcol = 0; kcol < kernel_dim; kcol++) {
@@ -114,12 +102,20 @@ void conv(int batch_size, int in_channels, int in_dim,
                                     icol < 0 || icol >= in_dim ?
                                     0 : input[b][irow][icol][kch];
 
-                                output[b][orow][ocol][och] +=
+                                result +=
                                     weights[och][krow][kcol][kch] *
                                     pixel;
                             }
                         }
                     }
+
+                    // Shift while rounding to nearest integer (ties round to negative infinity)
+                    result = ROUNDING_RIGHT_SHIFT(result, 0);
+
+                    // Clip result
+                    result = result > elem_t_max ? elem_t_max : (result < elem_t_min ? elem_t_min : result);
+
+                    output[b][orow][ocol][och] = result;
                 }
             }
         }
@@ -469,8 +465,8 @@ void init_zeros_acc(acc_t * buf, int len) {
 }
 
 int main() {
-    assert((IN_DIM + 2*PADDING - KERNEL_DIM) % STRIDE == 0);
-    assert((OUT_DIM + 2*PADDING - POOL_SIZE) % POOL_STRIDE == 0);
+    // assert((IN_DIM + 2*PADDING - KERNEL_DIM) % STRIDE == 0);
+    // assert((OUT_DIM + 2*PADDING - POOL_SIZE) % POOL_STRIDE == 0);
 
     printf("Output dimension: %u\n", OUT_DIM);
     printf("Pooling output dimension: %u\n\n", POOL_OUT_DIM);
