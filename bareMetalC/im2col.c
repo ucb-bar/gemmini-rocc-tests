@@ -17,12 +17,12 @@
 #define PADDING 1
 #define STRIDE 2
 #else
-#define BATCH_SIZE 3
+#define BATCH_SIZE 1
 #define IN_DIM 23
-#define IN_CHANNELS 17
-#define OUT_CHANNELS 31
+#define IN_CHANNELS 16
+#define OUT_CHANNELS 16
 #define KERNEL_DIM 3
-#define PADDING 1
+#define PADDING 0
 #define STRIDE 2
 #endif
 
@@ -149,6 +149,7 @@ int main() {
     else
         init_random_acc(&bias[0], sizeof(bias) / sizeof(acc_t));
 
+/*
     printf("CPU conv...\n");
     uint64_t start_cpu = read_cycles();
     conv(BATCH_SIZE, IN_CHANNELS, IN_DIM,
@@ -161,7 +162,7 @@ int main() {
             output);
     uint64_t end_cpu = read_cycles();
     printf("CPU conv took %llu cycles\n", end_cpu - start_cpu);
-
+*/
     static elem_t weights_mat[PATCH_SIZE][OUT_CHANNELS];
     static elem_t output_mat[N_PATCHES][OUT_CHANNELS];
 
@@ -183,7 +184,8 @@ int main() {
         NO_BIAS ? NULL : (acc_t*)bias,
         (elem_t*)output_mat,
 
-        NO_ACTIVATION, 0, 0);
+        NO_ACTIVATION, 0, 0, 
+	0, 0, 0);
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 
@@ -193,14 +195,14 @@ int main() {
 
     if (!success) {
         // return 1;
-
+/*
         printf("bias:\n");
         for (int och = 0; och < OUT_CHANNELS; och++) {
             printf("%d,", bias[och]);
         }
         printf("\b\n\n");
-
-        printf("weights:\n");
+*/
+/*        printf("weights:\n");
         for (int och = 0; och < OUT_CHANNELS; och++) {
             printf("[");
             for (int wrow = 0; wrow < KERNEL_DIM; wrow++) {
@@ -263,7 +265,7 @@ int main() {
             printf("\b],");
         }
         printf("\b\n\n");
-
+*/
         printf("output_mat:\n");
         for (int orow = 0; orow < BATCH_SIZE * OUT_DIM * OUT_DIM; orow++) {
             printf("[");

@@ -8,6 +8,8 @@
 #include <sys/mman.h>
 #endif
 #include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
+
 struct ConvParams {
     int batch_size;
     int in_dim, out_dim;
@@ -77,8 +79,7 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
         int act, size_t shift, size_t relu6_shift, bool repeating_bias,
         size_t tile_I, size_t tile_J, size_t tile_K,
         enum tiled_matmul_type_t tiled_matmul_type,
-        bool check, char * layer_name,
-	bool im2col_en, const struct ConvParams * params)
+        bool check, char * layer_name)
 {
     if (check)
         printf("%s: gemmini\n", layer_name);
@@ -89,8 +90,23 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
         MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
         act, shift, relu6_shift, repeating_bias,
         tile_I, tile_J, tile_K,
-        tiled_matmul_type, params -> out_dim, params -> kernel_size, params -> in_channels, im2col_en, params -> stride);
+        tiled_matmul_type);
 
+    if (check) {
+        printf("%s: CPU\n", layer_name);
+        elem_t gold[dim_I][dim_J];
+        tiled_matmul_auto(dim_I, dim_J, dim_K,
+            (elem_t*)A, (elem_t*)B, D, (elem_t*)gold, 
+            dim_K, dim_J, dim_J, dim_J,
+            MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
+            act, shift, relu6_shift, repeating_bias,
+            CPU);
+
+        if (!MAT_IS_EQUAL(dim_I, dim_J, C, gold)) {
+            printf("Layer calculated incorrectly: %s\n", layer_name);
+            exit(1);
+        }
+    }
 }
 
 // This function runs a tiled matrix multiplication, with automatically
@@ -111,49 +127,23 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
         act, shift, relu6_shift, repeating_bias,
         tiled_matmul_type);
-/*
+
     if (check) {
         printf("%s: CPU\n", layer_name);
         elem_t gold[dim_I][dim_J];
         tiled_matmul_auto(dim_I, dim_J, dim_K,
-            A, B, D, gold, act, shift, relu6_shift, repeating_bias,
-            CPU, params -> out_dim, params -> kernel_size, params -> in_channels, im2col_en, params -> stride);
+            (elem_t*)A, (elem_t*)B, D, (elem_t*)gold, 
+            dim_K, dim_J, dim_J, dim_J,
+            MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
+            act, shift, relu6_shift, repeating_bias,
+            CPU);
 
         if (!MAT_IS_EQUAL(dim_I, dim_J, C, gold)) {
             printf("Layer calculated incorrectly: %s\n", layer_name);
             exit(1);
         }
     }
-*/
 }
-
-static void tiled_conv_nn_auto(elem_t * A, elem_t * B,
-        acc_t * D, elem_t* C,
-        int act, size_t shift, size_t relu6_shift, 
-        bool check, char * layer_name,
-        const struct ConvParams * params)
-{
-    if (check)
-        printf("%s: gemmini\n", layer_name);
-
-    tiled_conv_auto(params -> batch_size, params -> in_dim, params -> in_channels,
-		params -> out_channels, params -> out_dim, params -> stride, params -> kernel_size,
-		A, B, D, C, act, shift, relu6_shift);
-/*
-    if (check) {
-        printf("%s: CPU\n", layer_name);
-        elem_t gold[dim_I][dim_J];
-        tiled_matmul_auto(dim_I, dim_J, dim_K,
-        if (!MAT_IS_EQUAL(dim_I, dim_J, C, gold)) {
-            printf("Layer calculated incorrectly: %s\n", layer_name);
-            exit(1);
-        }
-    }
-*/
-}
-
-
-
 
 static void conv_dw(size_t I, size_t J,
     const size_t batch_size, const size_t channels, const size_t in_dim, const size_t out_dim, const size_t kernel_size,

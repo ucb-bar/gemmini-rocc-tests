@@ -1,11 +1,13 @@
+//for pooling testing
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
-#include "include/gemmini_nn.h"
+//#include "include/gemmini.h"
+//#include "include/gemmini_nn.h"
+#include "include/gemmini_testutils.h"
 
 #include "cifar_quant_params.h"
 #include "cifar_quant_images.h"
@@ -53,6 +55,7 @@ int main (int argc, char * argv[]) {
     uint32_t im2col_cycles = 0, matmul_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, res_add_cycles = 0, other_cycles = 0;
 
     // conv_1
+/*
     start = read_cycles();
     
     im2col(conv_1_params.batch_size, conv_1_params.in_channels, conv_1_params.in_dim,
@@ -61,13 +64,17 @@ int main (int argc, char * argv[]) {
     
     end = read_cycles();
     im2col_cycles += end - start;
-
+*/
     start = read_cycles();
-
+/*
     tiled_matmul_nn_auto(conv_1_params.I, conv_1_params.J, conv_1_params.K,
         conv_1_in, conv_1_w, NULL, conv_1_out,
-        RELU, conv_1_params.output_scale, true,
+        RELU, conv_1_params.output_scale, 0, true,
         tiled_matmul_type, check, "conv_1");
+*/
+
+    tiled_conv_nn_auto((elem_t*)images, (elem_t*)conv_1_w, NULL, (elem_t*)conv_1_out,
+		RELU, conv_1_params.output_scale, 0, true, "conv_1", &conv_1_params, true);		
 
     end = read_cycles();
     matmul_cycles += end - start;
@@ -82,6 +89,7 @@ int main (int argc, char * argv[]) {
     pool_cycles += end - start;
 
     // conv_2
+/*
     start = read_cycles();
     
     im2col(conv_2_params.batch_size, conv_2_params.in_channels, conv_2_params.in_dim,
@@ -90,16 +98,22 @@ int main (int argc, char * argv[]) {
     
     end = read_cycles();
     im2col_cycles += end - start;
-
+*/
     start = read_cycles();
-
+/*
     tiled_matmul_nn_auto(conv_2_params.I, conv_2_params.J, conv_2_params.K,
         conv_2_in, conv_2_w, NULL, conv_2_out,
-        RELU, conv_2_params.output_scale, true,
+        RELU, conv_2_params.output_scale, 0, true,
         tiled_matmul_type, check, "conv_2");
+*/
+    tiled_conv_nn_auto((elem_t*)conv_1_out, (elem_t*)conv_2_w, NULL, (elem_t*)conv_2_out,
+		RELU, conv_2_params.output_scale, 0, true, "conv_2", &conv_2_params, false);
 
     end = read_cycles();
+
     matmul_cycles += end - start;
+
+    printf("Matmul cycles until conv: %u\n", matmul_cycles); 
 
     start = read_cycles();
 
@@ -109,6 +123,11 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     pool_cycles += end - start;
+
+    printf("Matmul cycles: %u\n", matmul_cycles);
+    printf("Im2col cycles: %u\n", im2col_cycles);
+    printf("Pooling cycles: %u\n", pool_cycles);
+ 
 
     // Convert conv output to fc input
     static elem_t fc_3_in[400][8] row_align(1);
@@ -132,11 +151,16 @@ int main (int argc, char * argv[]) {
 
     // fc_3
     start = read_cycles();
-
+/*
     tiled_matmul_nn_auto(fc_3_params.I, fc_3_params.J, fc_3_params.K,
         fc_3_w, fc_3_in, NULL, fc_3_out,
-        RELU, fc_3_params.output_scale, false,
+        RELU, fc_3_params.output_scale, 0, false,
         tiled_matmul_type, check, "fc_3");
+*/
+    tiled_matmul_nn_auto(fc_3_params.I, fc_3_params.J, fc_3_params.K,
+        fc_3_w, conv_2_out, NULL, fc_3_out,
+        RELU, fc_3_params.output_scale, 0, false,
+        tiled_matmul_type, true, "fc_3");
 
     end = read_cycles();
     matmul_cycles += end - start;
@@ -146,8 +170,8 @@ int main (int argc, char * argv[]) {
 
     tiled_matmul_nn_auto(fc_4_params.I, fc_4_params.J, fc_4_params.K,
         fc_4_w, fc_3_out, NULL, fc_4_out,
-        RELU, fc_4_params.output_scale, false,
-        tiled_matmul_type, check, "fc_4");
+        RELU, fc_4_params.output_scale, 0, false,
+        tiled_matmul_type, true, "fc_4");
 
     end = read_cycles();
     matmul_cycles += end - start;
@@ -157,8 +181,8 @@ int main (int argc, char * argv[]) {
 
     tiled_matmul_nn_auto(fc_5_params.I, fc_5_params.J, fc_5_params.K,
         fc_5_w, fc_4_out, NULL, fc_5_out,
-        NO_ACTIVATION, fc_5_params.output_scale, false,
-        tiled_matmul_type, check, "fc_5");
+        NO_ACTIVATION, fc_5_params.output_scale, 0, false,
+        tiled_matmul_type, true, "fc_5");
 
     end = read_cycles();
     matmul_cycles += end - start;

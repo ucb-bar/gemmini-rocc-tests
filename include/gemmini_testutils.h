@@ -15,6 +15,15 @@
 #include "include/gemmini_params.h"
 #include "include/gemmini.h"
 
+#ifdef BAREMETAL
+#undef assert
+#define assert(expr) \
+    if (!(expr)) { \
+      printf("Failed assertion: " #expr "\n  " __FILE__ ":%u\n", __LINE__); \
+      exit(1); \
+    }
+#endif
+
 // #define GEMMINI_ASSERTIONS
 
 // Matmul utility functions
