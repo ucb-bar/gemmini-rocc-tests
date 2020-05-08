@@ -8,7 +8,7 @@
     ./build.sh
     ```
 
-The tests' binaries will be installed in `build/`. The tests whose source code can be found in `bareMetalC/` will be installed in `build/bareMetalC/`, the tests in `mobilenet/` will be installed in `build/mobilenet/`, and so forth.
+The tests' binaries will be installed in `build/`. The tests whose source code can be found in `bareMetalC/` will be installed in `build/bareMetalC/`, the tests in `imagenet/` will be installed in `build/imagenet/`, and so forth.
 
 To run the tests yourself on a Gemmini ISA simulator, follow these steps:
 1. Install [esp-isa-sim](https://github.com/ucb-bar/esp-isa-sim). If you are using [Chipyard](https://github.com/ucb-bar/chipyard), then running `./scripts/build-toolchains.sh esp-tools` from Chipyard's root directory will install it for you. The ISA simulator is called `spike`.

@@ -9,7 +9,7 @@
 #include <sys/mman.h>
 #endif
 #include <time.h>
-#include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 #define N (2)
 
@@ -34,6 +34,7 @@ int main() {
   static elem_t ZERO[DIM][DIM];
 
   gemmini_flush(0);
+  gemmini_config_ld(DIM * sizeof(elem_t));
 
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 12; shift += 4) {
@@ -43,7 +44,7 @@ int main() {
 
       // We will try out every combination of A, B, D possible
       static elem_t C[N*N*N][DIM][DIM] row_align(1);
-      static int64_t gold_full[N*N*N][DIM][DIM];
+      static full_t gold_full[N*N*N][DIM][DIM];
       static elem_t gold[N*N*N][DIM][DIM];
 
       int relu6_shift = shift+1;

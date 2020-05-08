@@ -8,7 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 #define N 8
 
@@ -26,6 +26,7 @@ int main() {
 
   // printf("Flush\n");
   gemmini_flush(0);
+  gemmini_config_ld(DIM * sizeof(elem_t));
 
   static elem_t In[N][DIM][DIM] row_align(1);
   static elem_t Out[N][DIM][DIM] row_align(1);

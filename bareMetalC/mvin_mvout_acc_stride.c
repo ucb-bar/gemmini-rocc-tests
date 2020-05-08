@@ -8,7 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 #define BIG_DIM 64
 
@@ -22,21 +22,38 @@
 
 int is_equal_big(elem_t x[BIG_DIM][BIG_DIM], elem_t y[BIG_DIM][BIG_DIM]) {
   for (size_t i = 0; i < BIG_DIM; ++i)
-    for (size_t j = 0; j < BIG_DIM; ++j)
-      if (x[i][j] != y[i][j])
-          return 0;
+    for (size_t j = 0; j < BIG_DIM; ++j) {
+#ifndef ELEM_T_IS_FLOAT
+      if (x[i][j] != y[i][j]) {
+#else
+      bool isnanx = elem_t_isnan(x[i][j]);
+      bool isnany = elem_t_isnan(y[i][j]);
+
+      if (x[i][j] != y[i][j] && !(isnanx && isnany)) {
+          printf("x[i][j] == %x\n", elem_t_to_elem_t_bits(x[i][j]));
+          printf("y[i][j] == %x\n", elem_t_to_elem_t_bits(y[i][j]));
+
+#endif
+        printf("Unequal in row %u and column %u\n", i, j);
+        return 0;
+      }
+    }
   return 1;
 }
 
-void matshift_big(int64_t full[BIG_DIM][BIG_DIM], elem_t out[BIG_DIM][BIG_DIM], int shift) {
+void matshift_big(full_t full[BIG_DIM][BIG_DIM], elem_t out[BIG_DIM][BIG_DIM], int shift) {
   for (size_t r = 0; r < BIG_DIM; r++)
     for (size_t c = 0; c < BIG_DIM; c++) {
       // Bitshift and round element
-      int64_t shifted = ROUNDING_RIGHT_SHIFT(full[r][c], shift);
+      full_t shifted = ROUNDING_RIGHT_SHIFT(full[r][c], shift);
 
       // Saturate and cast element
-      int64_t elem = shifted > elem_t_max ? elem_t_max : (shifted < elem_t_min ? elem_t_min : shifted);
+#ifndef ELEM_T_IS_FLOAT
+      full_t elem = shifted > elem_t_max ? elem_t_max : (shifted < elem_t_min ? elem_t_min : shifted);
       out[r][c] = elem;
+#else
+      out[r][c] = shifted; // TODO should we also saturate when using floats?
+#endif
     }
 }
 
@@ -47,7 +64,6 @@ void matrelu_big(elem_t in[BIG_DIM][BIG_DIM], elem_t out[BIG_DIM][BIG_DIM]) {
 }
 
 void matrelu6_big(elem_t in[BIG_DIM][BIG_DIM], elem_t out[BIG_DIM][BIG_DIM], int scale) {
-  // int max = 6;
   int max = 6 * scale;
 
   for (size_t r = 0; r < BIG_DIM; r++)
@@ -60,7 +76,11 @@ void matrelu6_big(elem_t in[BIG_DIM][BIG_DIM], elem_t out[BIG_DIM][BIG_DIM], int
 void printMatrix_big(elem_t m[BIG_DIM][BIG_DIM]) {
   for (size_t i = 0; i < BIG_DIM; ++i) {
     for (size_t j = 0; j < BIG_DIM; ++j)
+#ifndef ELEM_T_IS_FLOAT
       printf("%d ", m[i][j]);
+#else
+      printf("%x ", elem_t_to_elem_t_bits(m[i][j]));
+#endif
     printf("\n");
   }
 }
@@ -68,7 +88,11 @@ void printMatrix_big(elem_t m[BIG_DIM][BIG_DIM]) {
 void printMatrix_acc_big(acc_t m[BIG_DIM][BIG_DIM]) {
   for (size_t i = 0; i < BIG_DIM; ++i) {
     for (size_t j = 0; j < BIG_DIM; ++j)
+#ifndef ELEM_T_IS_FLOAT
       printf("%d ", m[i][j]);
+#else
+      printf("%llx ", acc_t_to_acc_t_bits(m[i][j]));
+#endif
     printf("\n");
   }
 }
@@ -89,7 +113,7 @@ int main() {
         // printf("block_len: %d, activation: %d, shift: %d\n", block_len, activation, shift);
         
         static acc_t In[BIG_DIM][BIG_DIM] row_align_acc(1);
-        static int64_t In_full[BIG_DIM][BIG_DIM];
+        static full_t In_full[BIG_DIM][BIG_DIM];
         static elem_t Out[BIG_DIM][BIG_DIM] row_align(1);
         static elem_t Out_gold[BIG_DIM][BIG_DIM];
 
@@ -97,12 +121,27 @@ int main() {
 
         for (size_t i = 0; i < BIG_DIM; ++i) {
           for (size_t j = 0; j < BIG_DIM; ++j) {
+#ifndef ELEM_T_IS_FLOAT
             In[i][j] = 0;
 
             int bytes = rand() % 2 ? sizeof(acc_t) : sizeof(elem_t);
             for (size_t b = 0; b < bytes; ++b) {
               In[i][j] |= (rand() % 255) << (b*8);
             }
+#else
+            acc_t_bits data;
+
+            do {
+              data = 0;
+
+              int bytes = rand() % 2 ? sizeof(acc_t) : sizeof(elem_t);
+              for (size_t b = 0; b < bytes; ++b) {
+                data |= (uint64_t)(rand() % 255) << (b*8);
+              }
+
+              In[i][j] = acc_t_bits_to_acc_t(data);
+            } while (acc_t_isnan(In[i][j]));
+#endif
 
             In_full[i][j] = In[i][j];
           }
@@ -148,7 +187,7 @@ int main() {
 
         // printf("Check\n");
         if (!is_equal_big(Out, Out_gold)) {
-          printf("activation: %d, shift: %d\n", activation, shift);
+          printf("block_len: %d, activation: %d, shift: %d\n", block_len, activation, shift);
 
           /*printf("Out:\n");
           for (size_t i = 0; i < BIG_DIM; i++) {

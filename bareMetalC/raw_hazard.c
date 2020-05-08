@@ -8,7 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 #if BANK_NUM*BANK_ROWS < 5*DIM
 #error need more memory capacity
@@ -23,6 +23,7 @@ int main() {
 #endif
 
   gemmini_flush(0);
+  gemmini_config_ld(DIM * sizeof(elem_t));
 
   const int a_additions = 10;
   const int b_additions = 10;

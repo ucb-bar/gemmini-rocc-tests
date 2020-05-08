@@ -8,7 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 #define N 4
 
@@ -31,7 +31,7 @@ int main() {
       // printf("activation: %d, shift: %d\n", activation, shift);
 
       static acc_t In[N][DIM][DIM] row_align_acc(1);
-      static int64_t In_full[N][DIM][DIM];
+      static full_t In_full[N][DIM][DIM];
       static elem_t Out[N][DIM][DIM] row_align(1);
       static elem_t Out_gold[N][DIM][DIM];
 
@@ -41,12 +41,27 @@ int main() {
       for (size_t n = 0; n < N; ++n)
         for (size_t i = 0; i < DIM; ++i)
           for (size_t j = 0; j < DIM; ++j) {
+#ifndef ELEM_T_IS_FLOAT
             In[n][i][j] = 0;
 
             int bytes = rand() % 2 ? sizeof(acc_t) : sizeof(elem_t);
             for (size_t b = 0; b < bytes; ++b) {
               In[n][i][j] |= (rand() % 255) << (b*8);
             }
+#else
+            acc_t_bits data;
+
+            do {
+              data = 0;
+
+              int bytes = rand() % 2 ? sizeof(acc_t) : sizeof(elem_t);
+              for (size_t b = 0; b < bytes; ++b) {
+                data |= (uint64_t)(rand() % 255) << (b*8);
+              }
+
+              In[n][i][j] = acc_t_bits_to_acc_t(data);
+            } while (acc_t_isnan(In[n][i][j]));
+#endif
 
             In_full[n][i][j] = In[n][i][j];
           }
@@ -87,7 +102,11 @@ int main() {
           printf("Matrix %u:\n", n);
           for (size_t i = 0; i < DIM; ++i) {
             for (size_t j = 0; j < DIM; ++j)
+#ifndef ELEM_T_IS_FLOAT
               printf("%d ", In[n][i][j]);
+#else
+              printf("%llx ", acc_t_to_acc_t_bits(In[n][i][j]));
+#endif
             printf("\n");
           }
           printf("Matrix %u output:\n", n);

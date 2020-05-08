@@ -8,7 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 int main() {
 #ifndef BAREMETAL
@@ -37,6 +37,7 @@ int main() {
   size_t Identity_sp_addr = 2*DIM;
 
   printf("Move \"In\" matrix from main memory into Gemmini's scratchpad\n");
+  gemmini_config_ld(DIM * sizeof(elem_t));
   gemmini_mvin(In, In_sp_addr);
 
   printf("Move \"Identity\" matrix from main memory into Gemmini's scratchpad\n");

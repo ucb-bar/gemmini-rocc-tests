@@ -11,6 +11,7 @@ tests = \
 	raw_hazard \
 	aligned \
 	padded \
+	mvin_scale \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_cpu \
@@ -25,7 +26,7 @@ else
 endif
 
 BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
-GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h
+GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_testutils.h
 
 CFLAGS := $(CFLAGS) \
 	-DPREALLOCATE=1 \

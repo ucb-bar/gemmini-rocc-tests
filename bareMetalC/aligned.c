@@ -8,7 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 #define PG_SIZE (4*1024)
 #define OFFSET 1
@@ -19,7 +19,7 @@
 } __attribute__((__packed__));*/
 
 struct offset_buffer {
-  char garbage[OFFSET];
+  elem_t garbage[OFFSET];
   elem_t data[DIM][DIM];
 } __attribute__((__packed__));
 
@@ -47,6 +47,8 @@ int main() {
       In.data[i][j] = i*DIM + j;
       Out.data[i][j] = 1;
     }
+
+  gemmini_config_ld(DIM * sizeof(elem_t));
 
   // printf("Mvin\n");
   gemmini_mvin(In.data, 0);

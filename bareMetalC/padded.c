@@ -8,12 +8,16 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_testutils.h"
 
 void print_matrix(size_t rows, size_t cols, elem_t mat[rows][cols]) {
     for (size_t r = 0; r < rows; r++) {
         for (size_t c = 0; c < cols; c++)
+#ifndef ELEM_T_IS_FLOAT
             printf("%d ", mat[r][c]);
+#else
+            printf("%x ", elem_t_to_elem_t_bits(mat[r][c]));
+#endif
         printf("\n");
     }
 }
@@ -35,7 +39,11 @@ int main() {
 
         for (size_t r = 0; r < rows; r++)
             for (size_t c = 0; c < cols; c++)
+#ifndef ELEM_T_IS_FLOAT
                 input[r][c] = rand() % elem_t_max;
+#else
+                input[r][c] = rand_double();
+#endif
 
         const size_t sp_addr = 0;
 
@@ -70,7 +78,11 @@ int main() {
 
         for (size_t r = 0; r < rows; r++)
             for (size_t c = 0; c < cols; c++)
+#ifndef ELEM_T_IS_FLOAT
                 input[r][c] = rand() % elem_t_max;
+#else
+                input[r][c] = rand_double();
+#endif
 
         const size_t sp_addr = 0;
 
@@ -109,15 +121,27 @@ int main() {
 
         for (size_t i = 0; i < I; i++)
             for (size_t k = 0; k < K; k++)
+#ifndef ELEM_T_IS_FLOAT
                 A[i][k] = rand() % elem_t_max;
+#else
+                A[i][k] = rand_double();
+#endif
 
         for (size_t k = 0; k < K; k++)
             for (size_t j = 0; j < J; j++)
+#ifndef ELEM_T_IS_FLOAT
                 B[k][j] = rand() % elem_t_max;
+#else
+                B[k][j] = rand_double();
+#endif
 
         for (size_t i = 0; i < I; i++)
             for (size_t j = 0; j < J; j++)
+#ifndef ELEM_T_IS_FLOAT
                 D[i][j] = rand() % elem_t_max;
+#else
+                D[i][j] = rand_double();
+#endif
 
         for (size_t i = 0; i < I; i++)
             for (size_t j = 0; j < J; j++) {
