@@ -8,8 +8,8 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-/*
 #ifndef BAREMETAL
+
 #define BATCH_SIZE 4
 #define IN_DIM 224
 #define IN_CHANNELS 3
@@ -17,7 +17,13 @@
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 2
+
+#define POOL_SIZE 3
+#define POOL_STRIDE 2
+#define POOL_PADDING 1
+
 #else
+
 #define BATCH_SIZE 3
 #define IN_DIM 23
 #define IN_CHANNELS 17
@@ -25,42 +31,18 @@
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 2
+
+#define POOL_SIZE 3
+#define POOL_STRIDE 2
+#define POOL_PADDING 1
+
 #endif
-*/
-
-// #define BATCH_SIZE 3
-// #define IN_DIM 53
-// #define IN_CHANNELS 17
-// #define OUT_CHANNELS 31
-// #define KERNEL_DIM 3
-// #define PADDING 2
-// #define STRIDE 1
-
-#define BATCH_SIZE 4
-#define IN_DIM 224
-#define IN_CHANNELS 3
-#define OUT_CHANNELS 64
-#define KERNEL_DIM 7
-#define PADDING 3
-#define STRIDE 2
 
 #define NO_BIAS false
 
 #define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
 #define N_PATCHES (BATCH_SIZE * OUT_DIM * OUT_DIM)
-
-#define POOL_SIZE 3
-#define POOL_STRIDE 2
-#define POOL_PADDING 1
-
-// #define POOL_SIZE 3
-// #define POOL_STRIDE 1
-// #define POOL_PADDING 1
-
-// #define POOL_SIZE 1
-// #define POOL_STRIDE 1
-// #define POOL_PADDING 0
 
 #define POOL_OUT_DIM ((OUT_DIM + 2*POOL_PADDING - POOL_SIZE) / POOL_STRIDE + 1)
 
@@ -151,17 +133,6 @@ void cpu_tiled_conv_inner(
     const int irows = orows * stride + krows - 1 - upad - dpad;
     const int icols = ocols * stride + kcols - 1 - lpad - rpad;
 
-    // printf("orows: %d\n", orows);
-    // printf("ocols: %d\n", ocols);
-    // printf("irows: %d\n", irows);
-    // printf("icols: %d\n", icols);
-    // printf("porows: %d\n", porows);
-    // printf("pocols: %d\n", pocols);
-    // printf("stride: %d\n", stride);
-    // printf("upad: %d\n", upad);
-    // printf("dpad: %d\n", dpad);
-    // exit(1);
-
     elem_t output_buffer[batches*orows*ocols][ochs];
 
     // Perform conv
@@ -169,7 +140,6 @@ void cpu_tiled_conv_inner(
         for (int orow = 0; orow < orows; orow++) {
             for (int ocol = 0; ocol < ocols; ocol++) {
                 for (int och = 0; och < ochs; och++) {
-                    // printf("hey\n");
                     output_buffer[b * orows * ocols + orow * ocols + ocol][och] = bias[och];
 
                     for (int krow = 0; krow < krows; krow++) {
@@ -181,10 +151,6 @@ void cpu_tiled_conv_inner(
                                 elem_t pixel = irow < 0 || irow >= irows ||
                                     icol < 0 || icol >= icols ?
                                     0 : *(input + (b * in_dim * in_dim + irow * in_dim + icol) * in_channels + kch);
-
-                                // printf("\npixel: %d\n", pixel);
-                                // printf("irow: %d, icol: %d\n", irow, icol);
-                                // printf("irows: %d, icols: %d\n", irows, icols);
 
                                 elem_t weight = *(weights + (krow * kernel_dim * in_channels + kcol * in_channels + kch) * out_channels + och);
 
@@ -220,6 +186,7 @@ void cpu_tiled_conv_inner(
 
             elem_t * pout_outer = output + (b * pool_out_dim * pool_out_dim)*out_channels + poch_outer;
 
+            // Everything below this will run in hardware
             for (int porow = 0; porow < porows; porow++) {
                 for (int pocol = 0; pocol < pocols; pocol++) {
                     for (int poch = 0; poch < channels; poch++) {
@@ -235,17 +202,6 @@ void cpu_tiled_conv_inner(
                                 elem_t pixel = orow < 0 || orow >= orows || ocol < 0 || ocol >= ocols ?
                                     0 :
                                     output_buffer[b * orows * ocols + orow * ocols + ocol][poch];
-
-                                // printf("pout: %p\n\n", pout);
-                                // printf("pixel: %d\n", pixel);
-                                // printf("porow: %d, pocol: %d\n", porow, pocol);
-                                // printf("orow: %d, ocol: %d\n", orow, ocol);
-                                // printf("orows: %d, ocols: %d\n", orows, ocols);
-                                // printf("pupad: %d, pdpad: %d\n", pupad, pdpad);
-                                // printf("*pout: %d\n", *pout);
-                                // printf("output: %p\n", output);
-                                // printf("buf out: %d\n", 
-                                //     output_buffer[b * orows * ocols + orow * ocols + ocol][poch]);
 
                                 if (pixel > *pout) {
                                     *pout = pixel;
@@ -295,8 +251,6 @@ void cpu_tiled_conv(
                         const int irow = orow_floored * stride + krow - padding;
 
                         for (int kcol = 0; kcol < kernel_dim; kcol += kcols) {
-                            // const int icol = ocol * stride + kcol - padding;
-                            
                             const int ocol_floored = ocol < 0 ? 0 : ocol;
                             const int icol = ocol_floored * stride + kcol - padding;
 

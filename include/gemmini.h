@@ -1019,6 +1019,7 @@ void sp_tiled_conv(
                             channels, 0);
                 }
             }
+            gemmini_fence();
         }
     }
 }
