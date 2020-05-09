@@ -479,6 +479,7 @@ int main() {
 
     printf("Gemmini conv...\n");
     uint64_t start_gemmini = read_cycles();
+    /*
     cpu_tiled_conv(BATCH_SIZE, IN_DIM, IN_CHANNELS, OUT_CHANNELS, OUT_DIM, STRIDE, PADDING, KERNEL_DIM,
 
             BATCH_SIZE,
@@ -492,6 +493,7 @@ int main() {
             (elem_t*)pool_output_mat,
 
             POOL_SIZE, POOL_STRIDE, POOL_PADDING);
+    */
 
     tiled_conv_auto(
     // tiled_conv(
