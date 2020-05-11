@@ -590,99 +590,6 @@ static void matmul_cpu(size_t dim_I, size_t dim_J, size_t dim_K,
   }
 }
 
-/*
-static void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
-        // elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
-        elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], void * D,
-        elem_t C[DIM_I][DIM_J],
-        int act, int shift, int relu6_shift, int full_bias_width) {
-  // TODO This function is incorrect. The activation functions, scaling down,
-  // and clipping must be done BEFORE acc_t is cast down to elem_t
-
-  const int no_bias = D == NULL;
-  if (DIM_I % 4 == 0 && DIM_J % 4 == 0) {
-    for (size_t i = 0; i < DIM_I; i += 4) {
-      for (size_t j = 0; j < DIM_J; j += 4) {
-        acc_t result[4][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}};
-        for (size_t k = 0; k < DIM_K; k++) {
-          result[0][0] += A[i  ][k] * B[k][j  ];
-          result[0][1] += A[i  ][k] * B[k][j+1];
-          result[0][2] += A[i  ][k] * B[k][j+2];
-          result[0][3] += A[i  ][k] * B[k][j+3];
-          result[1][0] += A[i+1][k] * B[k][j  ];
-          result[1][1] += A[i+1][k] * B[k][j+1];
-          result[1][2] += A[i+1][k] * B[k][j+2];
-          result[1][3] += A[i+1][k] * B[k][j+3];
-          result[2][0] += A[i+2][k] * B[k][j  ];
-          result[2][1] += A[i+2][k] * B[k][j+1];
-          result[2][2] += A[i+2][k] * B[k][j+2];
-          result[2][3] += A[i+2][k] * B[k][j+3];
-          result[3][0] += A[i+3][k] * B[k][j  ];
-          result[3][1] += A[i+3][k] * B[k][j+1];
-          result[3][2] += A[i+3][k] * B[k][j+2];
-          result[3][3] += A[i+3][k] * B[k][j+3];
-        }
-        C[i  ][j  ] = result[0][0];
-        C[i  ][j+1] = result[0][1];
-        C[i  ][j+2] = result[0][2];
-        C[i  ][j+3] = result[0][3];
-        C[i+1][j  ] = result[1][0];
-        C[i+1][j+1] = result[1][1];
-        C[i+1][j+2] = result[1][2];
-        C[i+1][j+3] = result[1][3];
-        C[i+2][j  ] = result[2][0];
-        C[i+2][j+1] = result[2][1];
-        C[i+2][j+2] = result[2][2];
-        C[i+2][j+3] = result[2][3];
-        C[i+3][j  ] = result[3][0];
-        C[i+3][j+1] = result[3][1];
-        C[i+3][j+2] = result[3][2];
-        C[i+3][j+3] = result[3][3];
-      }
-    }
-  } else {
-    for (size_t i = 0; i < DIM_I; i++) {
-      for (size_t j = 0; j < DIM_J; j++) {
-        acc_t result = 0;
-        for (size_t k = 0; k < DIM_K; k++) {
-          result += A[i][k] * B[k][j];
-        }
-        C[i][j] = result;
-      }
-    }
-  }
-  for (size_t i = 0; i < DIM_I; i++) {
-    for (size_t j = 0; j < DIM_J; j++) {
-      // acc_t result = C[i][j] + (no_bias ? 0 : D[i][j]);
-      acc_t result = C[i][j];
-      if (!no_bias && full_bias_width) {
-        result += ((acc_t (*)[DIM_J])D)[i][j];
-      } else if (!no_bias && !full_bias_width) {
-        result += ((elem_t (*)[DIM_J])D)[i][j];
-      }
-      // Scale value down and round it
-      const int divisor = 1 << shift;
-      acc_t abs = result > 0 ? result : -result;
-      acc_t shifted = (abs + (divisor/2)) / divisor;
-      if (result < 0)
-          result = -shifted;
-      else
-          result = shifted;
-      // Clip result
-      result = result > elem_t_max ? elem_t_max : (result < elem_t_min ? elem_t_min : result);
-      // Apply activation function
-      if (act == RELU) {
-        result = result < 0 ? 0 : result;
-      } else if (act == RELU6) {
-        int max = 6 << relu6_shift;
-        result = result < 0 ? 0 : (result > max ? max : result);
-      }
-      C[i][j] = (elem_t)result;
-    }
-  }
-}
-*/
-
 // General matmul which can be run with different dataflows, or on the CPU
 enum tiled_matmul_type_t {OS, WS, CPU};
 
@@ -917,17 +824,21 @@ void sp_tiled_conv(
     }
     gemmini_fence(); // TODO fix ROB to get rid of this requirement
 
+
+    int odims = orows*ocols;
+    int kdims = krows*kcols; 
     // mvin weights
+//    printf("weight move in \n");
     gemmini_config_ld(out_channels * sizeof(elem_t));
     for (int och = 0; och < ochs; och += DIM) {
         const int J = ochs - och > DIM ? DIM : ochs - och;
 
 	for (int kch = 0; kch < kchs; kch += DIM) {
              const int K = kchs - kch > DIM ? DIM : kchs - kch;
-		for(int kkdim = 0; kkdim < K*krows*kcols; kkdim += DIM){
-			const int KK = K*krows*kcols - kkdim > DIM ? DIM : K*krows*kcols - kkdim;
-			const uint32_t B_sp_addr = B_sp_addr_start + (och/DIM)*krows*kcols*kchs + kch*kcols*krows + kkdim;
-			gemmini_extended_mvin(weights+och+out_channels*(kch*krows*kcols + kkdim), B_sp_addr, J, KK);
+		for(int kkdim = 0; kkdim < K*kdims; kkdim += DIM){
+			const int KK = K*kdims - kkdim > DIM ? DIM : K*kdims - kkdim;
+			const uint32_t B_sp_addr = B_sp_addr_start + (och/DIM)*kdims*kchs + kch*kdims + kkdim;
+			gemmini_extended_mvin(weights+och+out_channels*(kch*kdims + kkdim), B_sp_addr, J, KK);
 
 //printf("%d %d \n", J, KK);
 /*
@@ -948,9 +859,7 @@ void sp_tiled_conv(
 	}
     }
 
-    int odims = orows*ocols;
-    int kdims = krows*kcols;
-    // Compute
+   // Compute
     for (int b = 0; b < batches; b++){
         for (int och = 0; och < ochs; och += DIM) {
             const int J = ochs - och > DIM ? DIM : ochs - och;
@@ -965,7 +874,7 @@ void sp_tiled_conv(
 
 			for(int kkdim = 0; kkdim < K*kdims; kkdim += DIM){
 				const int kk = K*kdims - kkdim > DIM ? DIM : K*kdims - kkdim;
-				const uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * krows * kcols * kchs + kkdim;
+				const uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * kdims * kchs + kch*kdims + kkdim;//kkdim;
 				const uint32_t out_sp_addr =
                                     (bias != NULL && no_bias) && kkdim == 0 && kch == 0 ?
                                     C_sp_addr & ~((uint32_t)(1 << (ADDR_LEN - 2))) :
