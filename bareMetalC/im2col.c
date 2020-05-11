@@ -18,19 +18,19 @@
 #define STRIDE 2
 #else
 #define BATCH_SIZE 1
-#define IN_DIM 23
-#define IN_CHANNELS 16
+#define IN_DIM 12
+#define IN_CHANNELS 18
 #define OUT_CHANNELS 16
 #define KERNEL_DIM 3
 #define PADDING 0
-#define STRIDE 2
+#define STRIDE 3
 #endif
 
 #define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
 #define N_PATCHES (BATCH_SIZE * OUT_DIM * OUT_DIM)
 
-#define NO_BIAS false
+#define NO_BIAS true
 
 // TODO add bias
 void conv(int batch_size, int in_channels, int in_dim,
@@ -76,7 +76,30 @@ void conv(int batch_size, int in_channels, int in_dim,
         }
     }
 }
+void flatten_weights(int out_channels, int kernel_dim, int in_channels,
+        int patch_size,
+        elem_t weights[out_channels][kernel_dim][kernel_dim][in_channels],
+        elem_t weights_mat[patch_size][out_channels]) {
 
+    assert(patch_size == kernel_dim * kernel_dim * in_channels);
+
+    for (int outc = 0; outc < out_channels; outc++) {
+	for(int inc = 0; inc < in_channels; inc+=DIM){
+	      const int K = in_channels - inc > DIM ? DIM : in_channels - inc;
+	      for (int krow = 0; krow < kernel_dim; krow++) {
+        	    for (int kcol = 0; kcol < kernel_dim; kcol++) {
+			 for(int ic = 0; ic < K; ic++){
+				int wmatrow = ic + inc * kernel_dim * kernel_dim + K * (krow * kernel_dim + kcol);
+        	           	 weights_mat[wmatrow][outc] =
+                        	weights[outc][krow][kcol][inc+ic];
+		   }
+                }
+            }
+        }
+    }
+}
+
+/*
 void flatten_weights(int out_channels, int kernel_dim, int in_channels,
         int patch_size,
         elem_t weights[out_channels][kernel_dim][kernel_dim][in_channels],
@@ -99,6 +122,7 @@ void flatten_weights(int out_channels, int kernel_dim, int in_channels,
         }
     }
 }
+*/
 
 bool vec_is_equal(elem_t * a, elem_t * b, int len) {
     for (int i = 0; i < len; i++)
@@ -148,7 +172,6 @@ int main() {
         init_zeros_acc(&bias[0], sizeof(bias) / sizeof(acc_t));
     else
         init_random_acc(&bias[0], sizeof(bias) / sizeof(acc_t));
-
 /*
     printf("CPU conv...\n");
     uint64_t start_cpu = read_cycles();
@@ -166,6 +189,22 @@ int main() {
     static elem_t weights_mat[PATCH_SIZE][OUT_CHANNELS];
     static elem_t output_mat[N_PATCHES][OUT_CHANNELS];
 
+    static elem_t w1[OUT_CHANNELS][KERNEL_DIM][KERNEL_DIM][IN_CHANNELS];
+ 	for(int i = 0; i < OUT_CHANNELS; i++)
+		for(int j = 0; j < KERNEL_DIM; j++)
+			for(int k = 0; k<KERNEL_DIM; k++)
+				for (int c = 0; c<IN_CHANNELS; c++)
+					w1[i][j][k][c] = 1;
+
+    static elem_t i1[BATCH_SIZE][IN_DIM][IN_DIM][IN_CHANNELS];
+ 	for(int i = 0; i < BATCH_SIZE; i++)
+		for(int j = 0; j < IN_DIM; j++)
+			for(int k = 0; k< IN_DIM; k++)
+				for (int c = 0; c<IN_CHANNELS; c++)
+					i1[i][j][k][c] = 1;
+
+
+
     printf("Flatten weights...\n");
     flatten_weights(OUT_CHANNELS, KERNEL_DIM, IN_CHANNELS,
             PATCH_SIZE,
@@ -180,6 +219,7 @@ int main() {
         STRIDE, PADDING, KERNEL_DIM,
 
         (elem_t*)input,
+//	(elem_t*)i1,
         (elem_t*)weights_mat,
         NO_BIAS ? NULL : (acc_t*)bias,
         (elem_t*)output_mat,
