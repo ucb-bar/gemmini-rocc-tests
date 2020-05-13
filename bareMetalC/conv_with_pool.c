@@ -29,16 +29,16 @@
 #define IN_CHANNELS 17
 #define OUT_CHANNELS 31
 #define KERNEL_DIM 3
-#define PADDING 1
+#define PADDING 0
 #define STRIDE 2
 
 #define POOL_SIZE 3
 #define POOL_STRIDE 2
-#define POOL_PADDING 1
+#define POOL_PADDING 0
 
 #endif
 
-#define NO_BIAS false
+#define NO_BIAS false 
 
 #define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
@@ -46,12 +46,14 @@
 
 #define POOL_OUT_DIM ((OUT_DIM + 2*POOL_PADDING - POOL_SIZE) / POOL_STRIDE + 1)
 
-#define NO_POOL false 
 
+#define NO_1D false
+#define NO_POOL false
+/*
 #if NO_POOL == true && !(POOL_SIZE == 1 && POOL_STRIDE == 1 && POOL_PADDING == 0)
 #error NO_POOL is not set correctly
 #endif
-
+*/
 void conv(int batch_size, int in_channels, int in_dim,
         int out_channels, int kernel_dim,
         int out_dim,
@@ -294,16 +296,16 @@ void cpu_tiled_conv(
                                 const int upad = irow < 0 ? -irow : 0;
                                 const int dpad = irow + irows_ > in_dim ? irow + irows_ - in_dim : 0;
 
-                                // printf("OUTER upad: %d\n", upad);
-                                // printf("OUTER dpad: %d\n", dpad);
-                                // printf("OUTER irows: %d\n", irows_);
-                                // printf("OUTER irow: %d\n", irow);
-                                // printf("OUTER padding: %d\n", padding);
+                                 printf("OUTER upad: %d\n", upad);
+                                 printf("OUTER dpad: %d\n", dpad);
+                                 printf("OUTER irows: %d\n", irows_);
+                                 printf("OUTER irow: %d\n", irow);
+                                 printf("OUTER padding: %d\n", padding);
 
-                                // printf("OUTER pdpad: %d\n", pdpad);
-                                // printf("OUTER porow: %d, pocol: %d\n", porow, pocol);
-                                // printf("OUTER porows: %d, pocols: %d\n", porows_, pocols_);
-                                // printf("OUTER orow: %d, orows: %d\n", orow, orows_);
+                                 printf("OUTER pdpad: %d\n", pdpad);
+                                 printf("OUTER porow: %d, pocol: %d\n", porow, pocol);
+                                 printf("OUTER porows: %d, pocols: %d\n", porows_, pocols_);
+                                 printf("OUTER orow: %d, orows: %d\n", orow, orows_);
 
                                 // exit(1);
 
@@ -442,7 +444,7 @@ int main() {
         init_zeros_acc(&bias[0], sizeof(bias) / sizeof(acc_t));
     else
         init_random_acc(&bias[0], sizeof(bias) / sizeof(acc_t));
-
+/*
     printf("CPU conv...\n");
     uint64_t start_cpu = read_cycles();
     conv(BATCH_SIZE, IN_CHANNELS, IN_DIM,
@@ -466,7 +468,7 @@ int main() {
     printf("CPU pool took %llu cycles\n", end_cpu_pool - start_cpu_pool);
 
     printf("CPU conv+pool took %llu cycles\n", end_cpu_pool - start_cpu_pool + end_cpu - start_cpu);
-
+*/
     static elem_t weights_mat[PATCH_SIZE][OUT_CHANNELS];
     static elem_t output_mat[N_PATCHES][OUT_CHANNELS];
     static elem_t pool_output_mat[BATCH_SIZE*POOL_OUT_DIM*POOL_OUT_DIM][OUT_CHANNELS];
@@ -511,17 +513,18 @@ int main() {
         (elem_t*)pool_output_mat,
 
         NO_ACTIVATION, 0, 0,
-        POOL_SIZE, NO_POOL ? 0 : POOL_STRIDE, POOL_PADDING);
+        NO_1D ? 0 : POOL_SIZE, NO_POOL ? 0 : POOL_STRIDE, POOL_PADDING);
+
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 
-    assert(sizeof(pool_output_mat) == sizeof(pool_output));
+//    assert(sizeof(pool_output_mat) == sizeof(pool_output));
 
-    bool success = vec_is_equal(&pool_output[0][0][0][0], &pool_output_mat[0][0], sizeof(pool_output) / sizeof(elem_t));
-
+//    bool success = vec_is_equal(&pool_output[0][0][0][0], &pool_output_mat[0][0], sizeof(pool_output) / sizeof(elem_t));
+	bool success = false;
     if (!success) {
         // return 1;
-
+/*
         printf("bias:\n");
         for (int och = 0; och < OUT_CHANNELS; och++) {
             printf("%d,", bias[och]);
@@ -610,7 +613,7 @@ int main() {
         }
         printf("\b\n\n");
 
-
+*/
         printf("pool_output_mat:\n");
         for (int orow = 0; orow < BATCH_SIZE * POOL_OUT_DIM * POOL_OUT_DIM; orow++) {
             printf("[");
