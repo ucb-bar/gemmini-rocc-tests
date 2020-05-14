@@ -3,6 +3,8 @@ include $(abs_top_srcdir)/Makefrag
 tests = \
 	im2col \
 	im2col_spike \
+	conv_with_pool \
+	conv_with_pool_spike \
 
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY

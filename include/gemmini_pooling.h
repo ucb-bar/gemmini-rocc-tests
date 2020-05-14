@@ -904,8 +904,9 @@ void sp_tiled_conv(
             }
 
     // mvout output
-//    printf("no_pool %d, no_1d %d \n", no_pool, no_1d);
-    uint64_t start_mvout = read_cyclesh();
+   // printf("no_pool %d, no_1d %d \n", no_pool, no_1d);
+//    gemmini_fence();
+//    uint64_t start_mvout = read_cyclesh();
     if (output != NULL) {
         if (no_pool) {
 	   if(no_1d){
@@ -935,8 +936,7 @@ void sp_tiled_conv(
 			}	
 		}
 
-	   }
-        } else {
+	   } else {
               gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
              gemmini_fence(); // TODO remove this when the ROB can accurately handle these
             for (int b = 0; b < batches; b++) {
@@ -954,8 +954,9 @@ void sp_tiled_conv(
             }
             gemmini_fence();
         }
-    	uint64_t end_mvout = read_cyclesh();
-	printf("mvout cycles: %d \n", end_mvout - start_mvout);
+//    	uint64_t end_mvout = read_cyclesh();
+//	printf("mvout cycles: %d \n", end_mvout - start_mvout);
+   }
 }
 
 static int tiled_conv_total_spad_rows(bool acc,

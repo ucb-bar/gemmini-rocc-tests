@@ -12,6 +12,30 @@
 #include "cifar_quant_params.h"
 #include "cifar_quant_images.h"
 
+void flatten_weights(int out_channels, int kernel_dim, int in_channels,
+        int patch_size,
+        elem_t weights[out_channels][kernel_dim][kernel_dim][in_channels],
+        elem_t weights_mat[patch_size][out_channels]) {
+
+    assert(patch_size == kernel_dim * kernel_dim * in_channels);
+
+    for (int outc = 0; outc < out_channels; outc++) {
+	for(int inc = 0; inc < in_channels; inc+=DIM){
+	      const int K = in_channels - inc > DIM ? DIM : in_channels - inc;
+	      for (int krow = 0; krow < kernel_dim; krow++) {
+        	    for (int kcol = 0; kcol < kernel_dim; kcol++) {
+			 for(int ic = 0; ic < K; ic++){
+				int wmatrow = ic + inc * kernel_dim * kernel_dim + K * (krow * kernel_dim + kcol);
+        	           	 weights_mat[wmatrow][outc] =
+                        	weights[outc][krow][kcol][inc+ic];
+		   }
+                }
+            }
+        }
+    }
+}
+
+
 int main (int argc, char * argv[]) {
 #ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
@@ -74,7 +98,7 @@ int main (int argc, char * argv[]) {
 */
 
     tiled_conv_nn_auto((elem_t*)images, (elem_t*)conv_1_w, NULL, (elem_t*)conv_1_out,
-		RELU, conv_1_params.output_scale, 0, true, "conv_1", &conv_1_params, true);		
+		RELU, conv_1_params.output_scale, 0, true, &conv_1_params, false, "conv_1");		
 
     end = read_cycles();
     matmul_cycles += end - start;
@@ -106,8 +130,9 @@ int main (int argc, char * argv[]) {
         RELU, conv_2_params.output_scale, 0, true,
         tiled_matmul_type, check, "conv_2");
 */
-    tiled_conv_nn_auto((elem_t*)conv_1_out, (elem_t*)conv_2_w, NULL, (elem_t*)conv_2_out,
-		RELU, conv_2_params.output_scale, 0, true, "conv_2", &conv_2_params, false);
+    tiled_conv_nn_auto((elem_t*)conv_1_out_pooled, (elem_t*)conv_2_w, NULL, (elem_t*)conv_2_out,
+		RELU, conv_2_params.output_scale, 0, true, &conv_2_params, false, "conv_2");		
+
 
     end = read_cycles();
 
@@ -151,16 +176,11 @@ int main (int argc, char * argv[]) {
 
     // fc_3
     start = read_cycles();
-/*
+
     tiled_matmul_nn_auto(fc_3_params.I, fc_3_params.J, fc_3_params.K,
         fc_3_w, fc_3_in, NULL, fc_3_out,
         RELU, fc_3_params.output_scale, 0, false,
-        tiled_matmul_type, check, "fc_3");
-*/
-    tiled_matmul_nn_auto(fc_3_params.I, fc_3_params.J, fc_3_params.K,
-        fc_3_w, conv_2_out, NULL, fc_3_out,
-        RELU, fc_3_params.output_scale, 0, false,
-        tiled_matmul_type, true, "fc_3");
+        tiled_matmul_type, false, "fc_3");
 
     end = read_cycles();
     matmul_cycles += end - start;
@@ -171,7 +191,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_nn_auto(fc_4_params.I, fc_4_params.J, fc_4_params.K,
         fc_4_w, fc_3_out, NULL, fc_4_out,
         RELU, fc_4_params.output_scale, 0, false,
-        tiled_matmul_type, true, "fc_4");
+        tiled_matmul_type, false, "fc_4");
 
     end = read_cycles();
     matmul_cycles += end - start;
@@ -182,7 +202,7 @@ int main (int argc, char * argv[]) {
     tiled_matmul_nn_auto(fc_5_params.I, fc_5_params.J, fc_5_params.K,
         fc_5_w, fc_4_out, NULL, fc_5_out,
         NO_ACTIVATION, fc_5_params.output_scale, 0, false,
-        tiled_matmul_type, true, "fc_5");
+        tiled_matmul_type, false, "fc_5");
 
     end = read_cycles();
     matmul_cycles += end - start;

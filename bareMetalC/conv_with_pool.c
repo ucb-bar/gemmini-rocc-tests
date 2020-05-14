@@ -47,8 +47,8 @@
 #define POOL_OUT_DIM ((OUT_DIM + 2*POOL_PADDING - POOL_SIZE) / POOL_STRIDE + 1)
 
 
-#define NO_1D false
-#define NO_POOL false
+#define NO_1D true
+#define NO_POOL true
 /*
 #if NO_POOL == true && !(POOL_SIZE == 1 && POOL_STRIDE == 1 && POOL_PADDING == 0)
 #error NO_POOL is not set correctly
@@ -614,6 +614,7 @@ int main() {
         printf("\b\n\n");
 
 */
+/*
         printf("pool_output_mat:\n");
         for (int orow = 0; orow < BATCH_SIZE * POOL_OUT_DIM * POOL_OUT_DIM; orow++) {
             printf("[");
@@ -626,7 +627,7 @@ int main() {
 
         printf("Output dimension: %u\n", OUT_DIM);
         printf("Pooling output dimension: %u\n\n", POOL_OUT_DIM);
-
+*/
         return 1;
     }
 

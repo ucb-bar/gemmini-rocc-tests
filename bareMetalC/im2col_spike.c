@@ -16,21 +16,41 @@
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 2
+
+#define POOL_SIZE 3
+#define POOL_STRIDE 2
+#define POOL_PADDING 1
+
 #else
-#define BATCH_SIZE 1
-#define IN_DIM 12
-#define IN_CHANNELS 18
-#define OUT_CHANNELS 16
+#define BATCH_SIZE 3
+#define IN_DIM 23
+#define IN_CHANNELS 17
+#define OUT_CHANNELS 31
 #define KERNEL_DIM 3
-#define PADDING 0
-#define STRIDE 3
+#define PADDING 1
+#define STRIDE 2
+
+#define POOL_SIZE 1
+#define POOL_STRIDE 1
+#define POOL_PADDING 0
+
 #endif
 
 #define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
 #define N_PATCHES (BATCH_SIZE * OUT_DIM * OUT_DIM)
 
+#define POOL_OUT_DIM ((OUT_DIM + 2*POOL_PADDING - POOL_SIZE) / POOL_STRIDE + 1)
+
+#define NO_1D true
+#define NO_POOL true
+/*
+#if NO_POOL == true && !(POOL_SIZE == 1 && POOL_STRIDE == 1 && POOL_PADDING == 0)
+#error NO_POOL is not set correctly
+#endif
+*/
 #define NO_BIAS true
+
 
 // TODO add bias
 void conv(int batch_size, int in_channels, int in_dim,
@@ -237,7 +257,8 @@ int main() {
         (elem_t*)output_mat,
 
         NO_ACTIVATION, 0, 0, 
-	0, 0, 0);
+	NO_1D ? 0 : POOL_SIZE, NO_POOL ? 0 : POOL_STRIDE, POOL_PADDING);
+
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 
