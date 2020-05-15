@@ -852,31 +852,22 @@ void sp_tiled_conv(
     for (int och = 0; och < ochs; och += DIM) {
         const int J = ochs - och > DIM ? DIM : ochs - och;
 
-	for (int kch = 0; kch < kchs; kch += DIM) {
-             const int K = kchs - kch > DIM ? DIM : kchs - kch;
-		for(int kkdim = 0; kkdim < K*kdims; kkdim += DIM){
-			const int KK = K*kdims - kkdim > DIM ? DIM : K*kdims - kkdim;
-			const uint32_t B_sp_addr = B_sp_addr_start + (och/DIM)*kdims*kchs + kch*kdims + kkdim;
-			gemmini_extended_mvin(weights+och+out_channels*(kch*kdims + kkdim), B_sp_addr, J, KK);
+      for (int kch = 0; kch < kchs; kch += DIM) {
+        const int K = kchs - kch > DIM ? DIM : kchs - kch;
+        for (int krow = 0; krow < krows; krow++)
+            for (int kcol = 0; kcol < kcols; kcol++){
+                    const uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * krows * kcols * kchs + kch*kdims + krow*kcols*K + kcol*K;//krow * kcols * kchs + kcol * kchs + kch;
+//		    printf("B scratchpad address: %d, %d \n", B_sp_addr - B_sp_addr_start, B_sp_addr_start);
 
-//printf("%d %d \n", J, KK);
-/*
-        	for (int krow = 0; krow < krows; krow++){
-       		     for (int kcol = 0; kcol < kcols; kcol++){
-//                for (int kch = 0; kch < kchs; kch += DIM) {
-//                    const int K = kchs - kch > DIM ? DIM : kchs - kch;
-
-//                    const uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * krows * kcols * kchs + krow * kcols * kchs + kcol * kchs + kch;
-			const uint32_t B_sp_addr = B_sp_addr_start + (och/DIM)*krows*kcols*kchs + kch*kcols*krows + krow*kcols*K + kcol*K;
-
-//                    gemmini_extended_mvin(weights + (krow*kernel_dim*in_channels + kcol*in_channels + kch) * out_channels + och,
-			gemmini_extended_mvin(weights + och + out_channels*((krow*kcols+kcol)*K + krows*kcols*kch),
+                    gemmini_extended_mvin(weights + (krow*kernel_dim*in_channels + kcol*in_channels + kch) * out_channels + och,
                         B_sp_addr,
                         J, K);
-                }
-*/	   }
-	}
+	    }
+        }
     }
+
+
+
 
     if(!no_1d && no_pool) gemmini_extended_config_st(out_channels * sizeof(elem_t), 0, 1, 0, 0, 0, orows, ocols, 0, 0);
 
@@ -1147,11 +1138,11 @@ void tiled_conv(
                                  printf("dpad: %d\n", dpad);
                                  printf("lpad: %d\n", lpad);
                                  printf("rpad: %d\n", rpad);
-*/                                // printf("pupad: %d\n", pupad);
+                               // printf("pupad: %d\n", pupad);
                                 // printf("pdpad: %d\n", pdpad);
                                 // printf("plpad: %d\n", plpad);
                                 // printf("prpad: %d\n", prpad);
-
+*/
                                sp_tiled_conv(
                                     batch_size, in_dim, in_channels,
                                     out_channels, out_dim, pool_out_dim,
@@ -1168,8 +1159,8 @@ void tiled_conv(
                                     plpad, prpad, pupad, pdpad,
 
                                     input + (b*in_dim*in_dim + (irow+upad)*in_dim + (icol+lpad)) * in_channels + kch,
-				    weights + (kch*kernel_dim*kernel_dim +  krow*kernel_dim + kcol)*out_channels + poch,
-                                    //weights + (krow*kernel_dim*in_channels + kcol*in_channels + kch) * out_channels + poch,
+				    //weights + (kch*kernel_dim*kernel_dim +  krow*kernel_dim + kcol)*out_channels + poch,
+                                    weights + (krow*kernel_dim*in_channels + kcol*in_channels + kch) * out_channels + poch,
                                     out,
                                     bias_,
 
@@ -1222,7 +1213,7 @@ void tiled_conv_auto(
 
     int kch_floor = (args[4]/DIM) + 1;
 //    while (spad_rows > BANK_NUM*BANK_ROWS || acc_rows > ACC_ROWS) {
-    while(spad_rows > 4000 || acc_rows > 4000){
+    while(spad_rows > 2000 || acc_rows > 2000){
         int max_val = -1;
         int max_idx = -1;
 
