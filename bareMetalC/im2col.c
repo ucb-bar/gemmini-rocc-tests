@@ -22,12 +22,13 @@
 #define POOL_PADDING 1
 
 #else
+
 #define BATCH_SIZE 3
 #define IN_DIM 23
 #define IN_CHANNELS 17
 #define OUT_CHANNELS 31
 #define KERNEL_DIM 3
-#define PADDING 1
+#define PADDING 0
 #define STRIDE 2
 
 #define POOL_SIZE 1
@@ -96,30 +97,7 @@ void conv(int batch_size, int in_channels, int in_dim,
         }
     }
 }
-void flatten_weights(int out_channels, int kernel_dim, int in_channels,
-        int patch_size,
-        elem_t weights[out_channels][kernel_dim][kernel_dim][in_channels],
-        elem_t weights_mat[patch_size][out_channels]) {
-
-    assert(patch_size == kernel_dim * kernel_dim * in_channels);
-
-    for (int outc = 0; outc < out_channels; outc++) {
-	for(int inc = 0; inc < in_channels; inc+=DIM){
-	      const int K = in_channels - inc > DIM ? DIM : in_channels - inc;
-	      for (int krow = 0; krow < kernel_dim; krow++) {
-        	    for (int kcol = 0; kcol < kernel_dim; kcol++) {
-			 for(int ic = 0; ic < K; ic++){
-				int wmatrow = ic + inc * kernel_dim * kernel_dim + K * (krow * kernel_dim + kcol);
-        	           	 weights_mat[wmatrow][outc] =
-                        	weights[outc][krow][kcol][inc+ic];
-		   }
-                }
-            }
-        }
-    }
-}
-
-/*
+ 
 void flatten_weights(int out_channels, int kernel_dim, int in_channels,
         int patch_size,
         elem_t weights[out_channels][kernel_dim][kernel_dim][in_channels],
@@ -142,7 +120,6 @@ void flatten_weights(int out_channels, int kernel_dim, int in_channels,
         }
     }
 }
-*/
 
 bool vec_is_equal(elem_t * a, elem_t * b, int len) {
     for (int i = 0; i < len; i++)
