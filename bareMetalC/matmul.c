@@ -22,9 +22,21 @@ void operands(int c, int * a, int * b, int * d) {
   *a = c / (N*N);
 }
 
-void test_os() {
+void test_os (bool a_transposed) {
   // Output stationary
   // printf("Output-stationary\n");
+  
+  void (*matmul_ptr)(elem_t[DIM][DIM], elem_t[DIM][DIM], elem_t[DIM][DIM], full_t[DIM][DIM]);
+  void (*matmul_full_ptr)(elem_t[DIM][DIM], elem_t[DIM][DIM], full_t[DIM][DIM], full_t[DIM][DIM]);
+
+  if (a_transposed) {
+    matmul_ptr = &matmul_A_transposed;
+    matmul_full_ptr = &matmul_full_A_transposed;
+  } else {
+    matmul_ptr = &matmul;
+    matmul_full_ptr = &matmul_full;
+  }
+
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 4; shift += 4) {
       // printf("activation: %d, shift: %d\n", activation, shift);
@@ -85,11 +97,15 @@ void test_os() {
         operands(g, &a, &b, &d);
 
         if (!preload[g])
-          matmul_full(A[a], B[b], gold_full[g-1], gold_full[g]);
-        else if (preload_zeros[g])
-          matmul(A[a], B[b], ZERO, gold_full[g]);
-        else
-          matmul(A[a], B[b], D[d], gold_full[g]);
+          // matmul_full(A[a], B[b], gold_full[g-1], gold_full[g]);
+          (*matmul_full_ptr)(A[a], B[b], gold_full[g-1], gold_full[g]);
+        else if (preload_zeros[g]) {
+          // matmul(A[a], B[b], ZERO, gold_full[g]);
+          (*matmul_ptr)(A[a], B[b], ZERO, gold_full[g]);
+        } else {
+          // matmul(A[a], B[b], D[d], gold_full[g]);
+          (*matmul_ptr)(A[a], B[b], D[d], gold_full[g]);
+        }
       }
 
       for (size_t g = 0; g < N*N*N; ++g) {
@@ -117,7 +133,8 @@ void test_os() {
       }
 
       // printf("Setting mode\n");
-      gemmini_config_ex(OUTPUT_STATIONARY, activation, shift, 0, relu6_shift);
+      // gemmini_config_ex(OUTPUT_STATIONARY, activation, shift, 0, relu6_shift);
+      gemmini_extended_config_ex(OUTPUT_STATIONARY, activation, shift, 0, relu6_shift, 1, a_transposed);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
@@ -183,9 +200,18 @@ void test_os() {
   }
 }
 
-void test_ws() {
+void test_ws(bool a_transposed) {
   // Weight-stationary
   // printf("Weight-stationary\n");
+
+  void (*matmul_ptr)(elem_t[DIM][DIM], elem_t[DIM][DIM], elem_t[DIM][DIM], full_t[DIM][DIM]);
+
+  if (a_transposed) {
+    matmul_ptr = &matmul_A_transposed;
+  } else {
+    matmul_ptr = &matmul;
+  }
+
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 4; shift += 4) {
       static elem_t A[N][DIM][DIM] row_align(1);
@@ -260,10 +286,13 @@ void test_ws() {
             }
         }
 
-        if (add_to_zeros[g])
-          matmul(A[a], B[b], ZERO, gold_full[g]);
-        else
-          matmul(A[a], B[b], D[d], gold_full[g]);
+        if (add_to_zeros[g]) {
+          // matmul(A[a], B[b], ZERO, gold_full[g]);
+          (*matmul_ptr)(A[a], B[b], ZERO, gold_full[g]);
+        } else {
+          // matmul(A[a], B[b], D[d], gold_full[g]);
+          (*matmul_ptr)(A[a], B[b], D[d], gold_full[g]);
+        }
 
         if (accumulate[g])
           matadd(gold_full[g], gold_full[g-1], gold_full[g]);
@@ -364,10 +393,12 @@ int main() {
   gemmini_config_ld(DIM * sizeof(elem_t));
 
   for (size_t i = 0; i < 4; i++) {
+    printf("i: %u\n", i);
+
     if (i % 2)
-      test_os();
+      test_os((i/2) % 2);
     else
-      test_ws();
+      test_ws((i/2) % 2);
   }
 
   exit(0);
