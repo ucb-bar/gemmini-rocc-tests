@@ -135,6 +135,15 @@ void init_zeros_acc(acc_t * buf, int len) {
 }
 
 int main() {
+#ifndef BAREMETAL
+    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
+      perror("mlockall failed");
+      exit(1);
+    }
+#endif
+
+    gemmini_flush(0);
+
     // assert((in_dim + 2*padding - kernel_dim) % stride == 0);
 
     printf("Output dimension: %u\n\n", OUT_DIM);
