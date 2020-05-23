@@ -1456,6 +1456,7 @@ void tiled_conv_auto(
         stride, args[0], args[1], args[2], args[3], kernel_dim, kernel_dim, args[4], pool_size, pool_stride);
 
     int kch_floor = (args[4]/DIM) + 1;
+    int och_floor = (args[3]/DIM) + 1;
     while (spad_rows > BANK_NUM*BANK_ROWS || acc_rows > ACC_ROWS) {
 //    while(spad_rows > 2000 || acc_rows > 2000){
         int max_val = -1;
@@ -1463,11 +1464,14 @@ void tiled_conv_auto(
 
         for (int i = 0; i < (sizeof(args)/sizeof(args[0])); i++) {
             if (args[i] > max_val) {
-		if(i!=4){
+		if(i!=4 && i!=3){
 	                max_val = args[i];
         	        max_idx = i;
-		} else if(kch_floor > 1){
+		} else if(kch_floor > 1 && i==4){
 			max_val = args[4];
+			max_idx = i;
+		} else if(och_floor > 1 && i==3){
+			max_val = args[3];
 			max_idx = i;
 		}
             }
@@ -1477,7 +1481,13 @@ void tiled_conv_auto(
 		kch_floor = kch_floor - 1;
 		args[4] = kch_floor * DIM;
 	}
+        else if(max_idx == 3) {
+		och_floor = och_floor - 1;
+		args[3] = och_floor * DIM;
+	}
         else args[max_idx]--;
+
+
 
         spad_rows = tiled_conv_total_spad_rows(false,
             stride, args[0], args[1], args[2], args[3], kernel_dim, kernel_dim, args[4], pool_size, pool_stride);
@@ -1492,7 +1502,7 @@ void tiled_conv_auto(
 //    int krows = kernel_dim;//args[4];
     int kcols = kernel_dim;//args[5];
     int kchs = args[4];
-/*
+
      printf("batches = %d\n", batches);
      printf("orows = %d\n", orows);
      printf("ocols = %d\n", ocols);
@@ -1500,7 +1510,7 @@ void tiled_conv_auto(
 //     printf("krows = %d\n", krows);
      printf("kcols = %d\n", kcols);
      printf("kchs = %d\n", kchs);
-*/
+
     tiled_conv(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
