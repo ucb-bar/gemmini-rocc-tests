@@ -553,6 +553,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
   gemmini_fence();
 }
 
+/*
 static void matmul_cpu(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t* A, const elem_t* B, const acc_t * D,
         elem_t* C,
@@ -589,13 +590,44 @@ static void matmul_cpu(size_t dim_I, size_t dim_J, size_t dim_K,
     }
   }
 }
+*/
 
-/*
+static elem_t scale_and_sat(acc_t x, int act, size_t shift, size_t relu6_shift) {
+  // Scale value down and round it
+  x = ROUNDING_RIGHT_SHIFT(x, shift);
+  // Clip result
+  x = x > elem_t_max ? elem_t_max : (x < elem_t_min ? elem_t_min : x);
+  // Apply activation function
+  if (act == RELU) {
+    x = x < 0 ? 0 : x;
+  }
+  /* TODO add another define to check if relu6_shift is actually used or not
+  else if (act == RELU6) {
+    int max = 6 << relu6_shift;
+    x = x < 0 ? 0 : (x > max ? max : x);
+  }
+  */
+  return x;
+}
+
+#ifdef HAS_MVIN_SCALE
+#define GEMMINI_SCALE(x, scale) ((x) * (scale))
+#else
+#define GEMMINI_SCALE(x, scale) x
+#endif
+
 static void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
+        const elem_t* A, const elem_t* B, const acc_t * D,
+        elem_t* C,
+        size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
+        scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
+        int act, size_t shift, size_t relu6_shift, bool repeating_bias) {
+    /*
         // elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], acc_t D[DIM_I][DIM_J],
         elem_t A[DIM_I][DIM_K], elem_t B[DIM_K][DIM_J], void * D,
         elem_t C[DIM_I][DIM_J],
         int act, int shift, int relu6_shift, int full_bias_width) {
+  */
   // TODO This function is incorrect. The activation functions, scaling down,
   // and clipping must be done BEFORE acc_t is cast down to elem_t
 
@@ -603,85 +635,116 @@ static void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
   if (DIM_I % 4 == 0 && DIM_J % 4 == 0) {
     for (size_t i = 0; i < DIM_I; i += 4) {
       for (size_t j = 0; j < DIM_J; j += 4) {
-        acc_t result[4][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}};
+
+        acc_t result[4][4]; // = {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}};
+
+        for (size_t ii = 0; ii < 4; ii++)
+          for (size_t jj = 0; jj < 4; jj++) {
+            const size_t bias_row = repeating_bias ? 0 : i + ii;
+            result[ii][jj] = no_bias ? 0 :
+              GEMMINI_SCALE(*(D + bias_row*stride_D + j + jj), D_scale_factor);
+          }
+
         for (size_t k = 0; k < DIM_K; k++) {
-          result[0][0] += A[i  ][k] * B[k][j  ];
-          result[0][1] += A[i  ][k] * B[k][j+1];
-          result[0][2] += A[i  ][k] * B[k][j+2];
-          result[0][3] += A[i  ][k] * B[k][j+3];
-          result[1][0] += A[i+1][k] * B[k][j  ];
-          result[1][1] += A[i+1][k] * B[k][j+1];
-          result[1][2] += A[i+1][k] * B[k][j+2];
-          result[1][3] += A[i+1][k] * B[k][j+3];
-          result[2][0] += A[i+2][k] * B[k][j  ];
-          result[2][1] += A[i+2][k] * B[k][j+1];
-          result[2][2] += A[i+2][k] * B[k][j+2];
-          result[2][3] += A[i+2][k] * B[k][j+3];
-          result[3][0] += A[i+3][k] * B[k][j  ];
-          result[3][1] += A[i+3][k] * B[k][j+1];
-          result[3][2] += A[i+3][k] * B[k][j+2];
-          result[3][3] += A[i+3][k] * B[k][j+3];
+          result[0][0] +=
+                GEMMINI_SCALE(*(A + i*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j), B_scale_factor);
+          result[0][1] +=
+                GEMMINI_SCALE(*(A + i*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j+1), B_scale_factor);
+          result[0][2] +=
+                GEMMINI_SCALE(*(A + i*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j+2), B_scale_factor);
+          result[0][3] +=
+                GEMMINI_SCALE(*(A + i*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j+3), B_scale_factor);
+          result[1][0] +=
+                GEMMINI_SCALE(*(A + (i+1)*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j), B_scale_factor);
+          result[1][1] +=
+                GEMMINI_SCALE(*(A + (i+1)*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j+1), B_scale_factor);
+          result[1][2] +=
+                GEMMINI_SCALE(*(A + (i+1)*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j+2), B_scale_factor);
+          result[1][3] +=
+                GEMMINI_SCALE(*(A + (i+1)*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j+3), B_scale_factor);
+          result[2][0] +=
+                GEMMINI_SCALE(*(A + (i+2)*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j), B_scale_factor);
+          result[2][1] +=
+                GEMMINI_SCALE(*(A + (i+2)*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j+1), B_scale_factor);
+          result[2][2] +=
+                GEMMINI_SCALE(*(A + (i+2)*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j+2), B_scale_factor);
+          result[2][3] +=
+                GEMMINI_SCALE(*(A + (i+2)*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j+3), B_scale_factor);
+          result[3][0] +=
+                GEMMINI_SCALE(*(A + (i+3)*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j), B_scale_factor);
+          result[3][1] +=
+                GEMMINI_SCALE(*(A + (i+3)*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j+1), B_scale_factor);
+          result[3][2] +=
+                GEMMINI_SCALE(*(A + (i+3)*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j+2), B_scale_factor);
+          result[3][3] +=
+                GEMMINI_SCALE(*(A + (i+3)*stride_A + k), A_scale_factor) *
+                GEMMINI_SCALE(*(B + k*stride_B + j+3), B_scale_factor);
         }
-        C[i  ][j  ] = result[0][0];
-        C[i  ][j+1] = result[0][1];
-        C[i  ][j+2] = result[0][2];
-        C[i  ][j+3] = result[0][3];
-        C[i+1][j  ] = result[1][0];
-        C[i+1][j+1] = result[1][1];
-        C[i+1][j+2] = result[1][2];
-        C[i+1][j+3] = result[1][3];
-        C[i+2][j  ] = result[2][0];
-        C[i+2][j+1] = result[2][1];
-        C[i+2][j+2] = result[2][2];
-        C[i+2][j+3] = result[2][3];
-        C[i+3][j  ] = result[3][0];
-        C[i+3][j+1] = result[3][1];
-        C[i+3][j+2] = result[3][2];
-        C[i+3][j+3] = result[3][3];
+
+        *(C + i*stride_C + j) =
+             scale_and_sat(result[0][0], act, shift, relu6_shift);
+        *(C + i*stride_C + j+1) =
+             scale_and_sat(result[0][1], act, shift, relu6_shift);
+        *(C + i*stride_C + j+2) =
+             scale_and_sat(result[0][2], act, shift, relu6_shift);
+        *(C + i*stride_C + j+3) =
+             scale_and_sat(result[0][3], act, shift, relu6_shift);
+        *(C + (i+1)*stride_C + j) =
+             scale_and_sat(result[1][0], act, shift, relu6_shift);
+        *(C + (i+1)*stride_C + j+1) =
+             scale_and_sat(result[1][1], act, shift, relu6_shift);
+        *(C + (i+1)*stride_C + j+2) =
+             scale_and_sat(result[1][2], act, shift, relu6_shift);
+        *(C + (i+1)*stride_C + j+3) =
+             scale_and_sat(result[1][3], act, shift, relu6_shift);
+        *(C + (i+2)*stride_C + j) =
+             scale_and_sat(result[2][0], act, shift, relu6_shift);
+        *(C + (i+2)*stride_C + j+1) =
+             scale_and_sat(result[2][1], act, shift, relu6_shift);
+        *(C + (i+2)*stride_C + j+2) =
+             scale_and_sat(result[2][2], act, shift, relu6_shift);
+        *(C + (i+2)*stride_C + j+3) =
+             scale_and_sat(result[2][3], act, shift, relu6_shift);
+        *(C + (i+3)*stride_C + j) =
+             scale_and_sat(result[3][0], act, shift, relu6_shift);
+        *(C + (i+3)*stride_C + j+1) =
+             scale_and_sat(result[3][1], act, shift, relu6_shift);
+        *(C + (i+3)*stride_C + j+2) =
+             scale_and_sat(result[3][2], act, shift, relu6_shift);
+        *(C + (i+3)*stride_C + j+3) =
+             scale_and_sat(result[3][3], act, shift, relu6_shift);
       }
     }
   } else {
     for (size_t i = 0; i < DIM_I; i++) {
       for (size_t j = 0; j < DIM_J; j++) {
-        acc_t result = 0;
+        const size_t bias_row = repeating_bias ? 0 : i;
+        acc_t result = no_bias ? 0 : GEMMINI_SCALE(*(D + bias_row * stride_D + j), D_scale_factor);
         for (size_t k = 0; k < DIM_K; k++) {
-          result += A[i][k] * B[k][j];
+          result += GEMMINI_SCALE(*(A + i*stride_A + k), A_scale_factor) * GEMMINI_SCALE(*((elem_t*)B + k*stride_B + j), B_scale_factor);
         }
-        C[i][j] = result;
+        *(C + (i)*stride_C + j) = scale_and_sat(result, act, shift, relu6_shift);
       }
-    }
-  }
-  for (size_t i = 0; i < DIM_I; i++) {
-    for (size_t j = 0; j < DIM_J; j++) {
-      // acc_t result = C[i][j] + (no_bias ? 0 : D[i][j]);
-      acc_t result = C[i][j];
-      if (!no_bias && full_bias_width) {
-        result += ((acc_t (*)[DIM_J])D)[i][j];
-      } else if (!no_bias && !full_bias_width) {
-        result += ((elem_t (*)[DIM_J])D)[i][j];
-      }
-      // Scale value down and round it
-      const int divisor = 1 << shift;
-      acc_t abs = result > 0 ? result : -result;
-      acc_t shifted = (abs + (divisor/2)) / divisor;
-      if (result < 0)
-          result = -shifted;
-      else
-          result = shifted;
-      // Clip result
-      result = result > elem_t_max ? elem_t_max : (result < elem_t_min ? elem_t_min : result);
-      // Apply activation function
-      if (act == RELU) {
-        result = result < 0 ? 0 : result;
-      } else if (act == RELU6) {
-        int max = 6 << relu6_shift;
-        result = result < 0 ? 0 : (result > max ? max : result);
-      }
-      C[i][j] = (elem_t)result;
     }
   }
 }
-*/
+
+#undef GEMMINI_SCALE
 
 // General matmul which can be run with different dataflows, or on the CPU
 enum tiled_matmul_type_t {OS, WS, CPU};
@@ -986,7 +1049,9 @@ void sp_tiled_conv(
 
     // mvout output
     if (output != NULL) {
+        printf("Moving out...\n");
         if (no_pool) {
+            printf("  No pooling...\n");
             for (int b = 0; b < batches; b++)
                 for (int orow = 0; orow < orows; orow++)
                     for (int ocol = 0; ocol < ocols; ocol += DIM) {
@@ -1003,6 +1068,8 @@ void sp_tiled_conv(
                         }
                     }
         } else {
+            printf("  With pooling...\n");
+
             gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
 
             gemmini_fence(); // TODO remove this when the ROB can accurately handle these
@@ -1182,6 +1249,9 @@ void tiled_conv(
                                 // printf("pdpad: %d\n", pdpad);
                                 // printf("plpad: %d\n", plpad);
                                 // printf("prpad: %d\n", prpad);
+
+                                printf("porow=[%d:%d]\n", porow, porow+porows_);
+                                printf("pocol=[%d:%d]\n", pocol, pocol+pocols_);
 
                                 sp_tiled_conv(
                                     batch_size, in_dim, in_channels,
