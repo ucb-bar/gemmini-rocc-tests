@@ -986,11 +986,15 @@ void sp_tiled_conv_ws(
         elem_t * output,
         acc_t * bias,
 
+	int act, int shift, int relu6_shift,
         bool no_bias, bool no_pool, bool no_1d) {
 
     const int orows = porows * pool_stride + pool_size - 1 - pupad - pdpad;
     const int ocols = pocols * pool_stride + pool_size - 1 - plpad - prpad;
+//    const int orows = (porows - 1) * pool_stride + pool_size - pupad - pdpad;
+//    const int ocols = (pocols - 1) * pool_stride + pool_size - plpad - prpad;
     const int ochs = pochs;
+	printf("orows: %d, porows:%d, pupad: %d pdpad: %d \n", orows, porows, pupad, pdpad);
 
     // Calculate image dimensions
     const int irows = (orows - 1) * stride + krows;
@@ -999,6 +1003,15 @@ void sp_tiled_conv_ws(
     const int icols_unpadded = icols - lpad - rpad;
     const int ichs = kchs;
     int kdims = krows*krows; 
+
+	const int im2col_height = ocols*orows;
+	const int im2col_width = kdims*kchs;
+	const int row_left = im2col_height%DIM;
+	const int row_turn = row_left == 0 ? im2col_height/DIM - 1 : im2col_height/DIM;
+	const int turn = im2col_width%DIM == 0 ? im2col_width/DIM : im2col_width/DIM + 1;
+	gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, shift, relu6_shift, ocols, row_turn, krows, stride, kchs, row_left, kdims);
+
+
 
     // Calculate spad address offsets
     const int out_channels_per_bank = ochs / DIM + (ochs % DIM != 0);
@@ -1082,7 +1095,7 @@ void sp_tiled_conv_ws(
     gemmini_fence(); // TODO fix ROB to get rid of this requirement
 
 
-    int odims = orows*ocols;
+    int odims = im2col_height;
     // mvin weights
 //    printf("weight move in \n");
     gemmini_config_ld(out_channels * sizeof(elem_t));
@@ -1176,6 +1189,21 @@ void sp_tiled_conv_ws(
 		}
 
 	   } else {
+/*            for (int b = 0; b < batches; b++)
+                for (int orow = 0; orow < orows; orow++)
+                    for (int ocol = 0; ocol < ocols; ocol += DIM) {
+                        const int I = ocols - ocol > DIM ? DIM : ocols - ocol;
+
+                        for (int och = 0; och < ochs; och += DIM) {
+                            const int J = ochs - och > DIM ? DIM : ochs - och;
+
+                            const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * odims + b * odims + orow * ocols + ocol;
+
+                            gemmini_extended_mvout(output + (b*out_dim*out_dim + orow*out_dim + ocol) * out_channels + och,
+                                    C_sp_addr,
+                                    J, I);
+ */
+
               gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
              gemmini_fence(); // TODO remove this when the ROB can accurately handle these
             for (int b = 0; b < batches; b++) {
@@ -1257,8 +1285,8 @@ void tiled_conv(
         pool_padding = 0;
     }
     //include padding?
-    const int orows = porows * pool_stride + pool_size - 1;
-    const int ocols = pocols * pool_stride + pool_size - 1;
+    //const int orows = porows * pool_stride + pool_size - 1;
+    //const int ocols = pocols * pool_stride + pool_size - 1;
 
 
 //    printf("no_1d: %d, no_pool: %d, pool_size: %d, pool_stride: %d \n", no_1d, no_pool, pool_size, pool_stride);
@@ -1346,12 +1374,6 @@ void tiled_conv(
                                 const int ocols_ = pocols_ * pool_stride + pool_size - 1;
                                 const int orows_ = porows_ * pool_stride + pool_size - 1;
 
-				const int im2col_height = ocols_*orows_;
-				const int im2col_width = kcols*kcols*kchs_;
-				const int row_left = im2col_height%DIM;
-				const int row_turn = row_left == 0 ? im2col_height/DIM - 1 : im2col_height/DIM;
-				const int turn = im2col_width%DIM == 0 ? im2col_width/DIM : im2col_width/DIM + 1;
-
                                 const int plpad = ocol < 0 ? -ocol : 0;
                                 const int prpad = ocol + ocols_ > out_dim ? ocol + ocols_ - out_dim : 0;
                                 const int pupad = orow < 0 ? -orow : 0;
@@ -1366,13 +1388,9 @@ void tiled_conv(
                                 const int rpad = icol + icols_ > in_dim ? icol + icols_ - in_dim : 0;
                                 const int upad = irow < 0 ? -irow : 0;
                                 const int dpad = irow + irows_ > in_dim ? irow + irows_ - in_dim : 0;
-				gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, shift, relu6_shift, ocols_, row_turn, kcols, stride, kchs_, row_left, kcols*kcols);
-/*
 				printf("ocols_: %d \n", ocols_);
 				printf("orows_: %d \n", orows_);
-				printf("kcols_: %d \n", kcols_);
-				printf("krows_: %d \n", krows_);
-				printf("icols_: %d \n", icols_);
+      				printf("icols_: %d \n", icols_);
 				printf("irows_: %d \n", irows_);
 				printf("kchs_: %d \n", kchs_);
 				printf("kch: %d \n", kch);
@@ -1381,11 +1399,11 @@ void tiled_conv(
                                  printf("dpad: %d\n", dpad);
                                  printf("lpad: %d\n", lpad);
                                  printf("rpad: %d\n", rpad);
-                               // printf("pupad: %d\n", pupad);
-                                // printf("pdpad: %d\n", pdpad);
-                                // printf("plpad: %d\n", plpad);
-                                // printf("prpad: %d\n", prpad);
-*/
+                                 printf("pupad: %d\n", pupad);
+                                 printf("pdpad: %d\n", pdpad);
+                                 printf("plpad: %d\n", plpad);
+                                 printf("prpad: %d\n", prpad);
+
                                sp_tiled_conv_ws(
                                     batch_size, in_dim, in_channels,
                                     out_channels, out_dim, pool_out_dim,
@@ -1408,6 +1426,7 @@ void tiled_conv(
                                     out,
                                     bias_,
 
+				    act, shift, relu6_shift,
                                     no_bias, no_pool, no_1d);
                             }
                         }
