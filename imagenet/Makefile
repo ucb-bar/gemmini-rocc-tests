@@ -44,7 +44,6 @@ all: $(tests_baremetal) $(tests_linux)
 
 vpath %.c $(src_dir)
 vpath %_params.h $(src_dir)
-vpath %_images.h $(src_dir)
 
 %-baremetal: %.c %_params.h $(src_dir)/images.h $(GEMMINI_HEADERS)
 	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \

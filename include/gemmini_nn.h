@@ -272,9 +272,9 @@ static void im2col(size_t batch_size, size_t channels, size_t im_dim,
             for (int im_col = -params->padding; im_col < params->in_dim - params->kernel_size + params->padding + 1; im_col += params->stride) {
                 int patch_col = 0;
 
-                for (int im_channel = 0; im_channel < params->in_channels; im_channel++) {
-                    for (int filter_row = 0; filter_row < params->kernel_size; filter_row++) {
-                        for (int filter_col = 0; filter_col < params->kernel_size; filter_col++) {
+                for (int filter_row = 0; filter_row < params->kernel_size; filter_row++) {
+                    for (int filter_col = 0; filter_col < params->kernel_size; filter_col++) {
+                        for (int im_channel = 0; im_channel < params->in_channels; im_channel++) {
                             int pixel_row = im_row + filter_row;
                             int pixel_col = im_col + filter_col;
                             
@@ -284,7 +284,7 @@ static void im2col(size_t batch_size, size_t channels, size_t im_dim,
                             } else {
                                 output[patch_row][patch_col] = input[n_batch][pixel_row][pixel_col][im_channel];
                             }
-                            
+
                             patch_col++;
                         }
                     }
@@ -309,9 +309,9 @@ static void im2col_with_col2im(size_t prev_I, size_t prev_J,
             for (int im_col = -params->padding; im_col < params->in_dim - params->kernel_size + params->padding + 1; im_col += params->stride) {
                 int out_col = 0;
 
-                for (int im_channel = 0; im_channel < params->in_channels; im_channel++) {
-                    for (int filter_row = 0; filter_row < params->kernel_size; filter_row++) {
-                        for (int filter_col = 0; filter_col < params->kernel_size; filter_col++) {
+                for (int filter_row = 0; filter_row < params->kernel_size; filter_row++) {
+                    for (int filter_col = 0; filter_col < params->kernel_size; filter_col++) {
+                        for (int im_channel = 0; im_channel < params->in_channels; im_channel++) {
                             int pixel_row = im_row + filter_row;
                             int pixel_col = im_col + filter_col;
 
