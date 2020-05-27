@@ -101,12 +101,12 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
             MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
             act, shift, relu6_shift, repeating_bias,
             CPU);
-/*
+
         if (!MAT_IS_EQUAL(dim_I, dim_J, C, gold)) {
             printf("Layer calculated incorrectly: %s\n", layer_name);
             exit(1);
         }
-*/    }
+    }
 }
 
 // This function runs a tiled matrix multiplication, with automatically
@@ -137,47 +137,12 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
             MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
             act, shift, relu6_shift, repeating_bias,
             CPU);
-/*
+
         if (!MAT_IS_EQUAL(dim_I, dim_J, C, gold)) {
             printf("Layer calculated incorrectly: %s\n", layer_name);
             exit(1);
         }
-*/    }
-}
-
-//convolution
-static void tiled_conv_nn_auto(
-	elem_t * input, elem_t *  weights, const void * bias, elem_t * output,
-        int act, size_t shift, size_t relu6_shift, bool repeating_bias,
-        const struct ConvParams * params,
-        bool check, char * layer_name)
-{
-    if (check)
-        printf("%s: gemmini\n", layer_name);
-/*
-    tiled_conv_auto(
-		params -> batch_size, params -> in_dim, params -> in_channels, 
-		params -> out_channels, params -> out_dim,
-		params -> stride, params -> padding, params -> kernel_size,
-		(elem_t*) input,
-		(elem_t*) weights,
-		(acc_t*) bias,
-		(elem_t*) output,
-		act, shift, relu6_shift,
-		params -> pool_size, params -> pool_stride, params -> pool_padding);
-*/
-	tiled_conv_auto(
-		params -> batch_size, params -> in_dim, params -> in_channels, 
-		params -> out_channels, params -> out_dim,
-		params -> stride, params -> padding, params -> kernel_size,
-		(elem_t*) input,
-		(elem_t*) weights,
-		(acc_t*) bias,
-		(elem_t*) output,
-		act, shift, relu6_shift,
-		params -> pool_size, 0, params -> pool_padding);
-//disable pooling for now
-
+    }
 }
 
 static void conv_dw(size_t I, size_t J,
@@ -307,9 +272,9 @@ static void im2col(size_t batch_size, size_t channels, size_t im_dim,
             for (int im_col = -params->padding; im_col < params->in_dim - params->kernel_size + params->padding + 1; im_col += params->stride) {
                 int patch_col = 0;
 
-                for (int im_channel = 0; im_channel < params->in_channels; im_channel++) {
-                    for (int filter_row = 0; filter_row < params->kernel_size; filter_row++) {
-                        for (int filter_col = 0; filter_col < params->kernel_size; filter_col++) {
+                for (int filter_row = 0; filter_row < params->kernel_size; filter_row++) {
+                    for (int filter_col = 0; filter_col < params->kernel_size; filter_col++) {
+                        for (int im_channel = 0; im_channel < params->in_channels; im_channel++) {
                             int pixel_row = im_row + filter_row;
                             int pixel_col = im_col + filter_col;
                             
@@ -319,7 +284,7 @@ static void im2col(size_t batch_size, size_t channels, size_t im_dim,
                             } else {
                                 output[patch_row][patch_col] = input[n_batch][pixel_row][pixel_col][im_channel];
                             }
-                            
+
                             patch_col++;
                         }
                     }
@@ -344,9 +309,9 @@ static void im2col_with_col2im(size_t prev_I, size_t prev_J,
             for (int im_col = -params->padding; im_col < params->in_dim - params->kernel_size + params->padding + 1; im_col += params->stride) {
                 int out_col = 0;
 
-                for (int im_channel = 0; im_channel < params->in_channels; im_channel++) {
-                    for (int filter_row = 0; filter_row < params->kernel_size; filter_row++) {
-                        for (int filter_col = 0; filter_col < params->kernel_size; filter_col++) {
+                for (int filter_row = 0; filter_row < params->kernel_size; filter_row++) {
+                    for (int filter_col = 0; filter_col < params->kernel_size; filter_col++) {
+                        for (int im_channel = 0; im_channel < params->in_channels; im_channel++) {
                             int pixel_row = im_row + filter_row;
                             int pixel_col = im_col + filter_col;
 
@@ -474,7 +439,7 @@ void resadd3(const size_t I, const size_t J,
         }
     }
 }
-/*
+
 // Pooling
 void pool(size_t batch_size, size_t channels, size_t in_dim, size_t out_dim,
     elem_t input[batch_size][in_dim][in_dim][channels],
@@ -518,7 +483,7 @@ void pool(size_t batch_size, size_t channels, size_t in_dim, size_t out_dim,
         }
     }
 }
-*/
+
 void pool_with_col2im(size_t I, size_t J,
     size_t batch_size, size_t channels, size_t out_dim,
     elem_t input[I][J],

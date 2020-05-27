@@ -1119,7 +1119,7 @@ void sp_tiled_conv_ws(
 
 
 
-    if(!no_1d && no_pool) gemmini_extended_config_st(out_channels * sizeof(elem_t), 0, 1, 0, 0, 0, orows, ocols, 0, 0);
+    if(!no_1d && no_pool) gemmini_extended_config_st(out_channels * sizeof(elem_t), 0, 1, out_dim, 0, 0, orows, ocols, 0, 0);
 
 
    // Compute
@@ -1159,6 +1159,7 @@ void sp_tiled_conv_ws(
    // printf("no_pool %d, no_1d %d \n", no_pool, no_1d);
 //    gemmini_fence();
 //    uint64_t start_mvout = read_cyclesh();
+      printf("orows: %d, ocols %d \n", orows, ocols);
     if (output != NULL) {
         if (no_pool) {
 	   if(no_1d){
@@ -1388,7 +1389,7 @@ void tiled_conv(
                                 const int rpad = icol + icols_ > in_dim ? icol + icols_ - in_dim : 0;
                                 const int upad = irow < 0 ? -irow : 0;
                                 const int dpad = irow + irows_ > in_dim ? irow + irows_ - in_dim : 0;
-				printf("ocols_: %d \n", ocols_);
+/*				printf("ocols_: %d \n", ocols_);
 				printf("orows_: %d \n", orows_);
       				printf("icols_: %d \n", icols_);
 				printf("irows_: %d \n", irows_);
@@ -1403,7 +1404,7 @@ void tiled_conv(
                                  printf("pdpad: %d\n", pdpad);
                                  printf("plpad: %d\n", plpad);
                                  printf("prpad: %d\n", prpad);
-
+*/
                                sp_tiled_conv_ws(
                                     batch_size, in_dim, in_channels,
                                     out_channels, out_dim, pool_out_dim,
