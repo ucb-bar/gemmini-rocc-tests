@@ -1663,8 +1663,7 @@ void tiled_resadd_auto(const size_t I, const size_t J,
         enum tiled_matmul_type_t matadd_type) {
 
     // TODO figure out how to run on Gemmini when A_shift < 0
-    if (matadd_type == CPU || A_shift < 0 || true) {
-    // if (matadd_type == CPU || A_shift < 0) {
+    if (matadd_type == CPU || A_shift < 0) {
         resadd_cpu(I, J,
             A_shift, A, B, C,
             relu, matadd_type);

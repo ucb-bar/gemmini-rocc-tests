@@ -199,7 +199,9 @@ int main() {
         NO_BIAS ? NULL : (acc_t*)bias,
         (elem_t*)output_mat,
 
-        NO_ACTIVATION, 0, 0, 0, 0, 0);
+        NO_ACTIVATION, 0, 0, 0, 0, 0,
+
+        WS);
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 

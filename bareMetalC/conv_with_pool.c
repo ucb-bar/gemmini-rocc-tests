@@ -520,7 +520,9 @@ int main() {
         (elem_t*)pool_output_mat,
 
         NO_ACTIVATION, 0, 0,
-        POOL_SIZE, NO_POOL ? 0 : POOL_STRIDE, POOL_PADDING);
+        POOL_SIZE, NO_POOL ? 0 : POOL_STRIDE, POOL_PADDING,
+
+        WS);
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 

@@ -38,27 +38,27 @@ int main (int argc, char * argv[]) {
         exit(1);
     }
 
-    bool check;
-    if (argc < 3) {
-        check = false;
-    } else if (strcmp(argv[2], "check") == 0) {
-        check = true;
-    } else {
-        printf("Unknown command-line argument\n");
-        printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
-        exit(1);
-    }
-
     bool conv;
-    if (argc < 4) {
+    if (argc < 3) {
         conv = false;
-    } else if (strcmp(argv[3], "conv") == 0) {
+    } else if (strcmp(argv[2], "conv") == 0) {
         conv = true;
-    } else if (strcmp(argv[3], "matmul") == 0) {
+    } else if (strcmp(argv[2], "matmul") == 0) {
         conv = false;
     } else {
         printf("Unknown command-line argument\n");
         printf("usage: %s [-h] matmul_option [check] [conv]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
+        exit(1);
+    }
+
+    bool check;
+    if (argc < 4) {
+        check = false;
+    } else if (strcmp(argv[3], "check") == 0) {
+        check = true;
+    } else {
+        printf("Unknown command-line argument\n");
+        printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
         exit(1);
     }
 
@@ -254,7 +254,7 @@ int main (int argc, char * argv[]) {
         conv_4_out,
         conv_4_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -356,7 +356,7 @@ int main (int argc, char * argv[]) {
         conv_8_out,
         conv_8_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -458,7 +458,7 @@ int main (int argc, char * argv[]) {
         conv_11_out,
         conv_11_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -601,7 +601,7 @@ int main (int argc, char * argv[]) {
         conv_14_out,
         conv_14_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -703,7 +703,7 @@ int main (int argc, char * argv[]) {
         conv_18_out,
         conv_18_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -805,7 +805,7 @@ int main (int argc, char * argv[]) {
         conv_21_out,
         conv_21_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -907,7 +907,7 @@ int main (int argc, char * argv[]) {
         conv_24_out,
         conv_24_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1050,7 +1050,7 @@ int main (int argc, char * argv[]) {
         conv_27_out,
         conv_27_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1152,7 +1152,7 @@ int main (int argc, char * argv[]) {
         conv_31_out,
         conv_31_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1254,7 +1254,7 @@ int main (int argc, char * argv[]) {
         conv_34_out,
         conv_34_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1356,7 +1356,7 @@ int main (int argc, char * argv[]) {
         conv_37_out,
         conv_37_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1458,7 +1458,7 @@ int main (int argc, char * argv[]) {
         conv_40_out,
         conv_40_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1560,7 +1560,7 @@ int main (int argc, char * argv[]) {
         conv_43_out,
         conv_43_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1703,7 +1703,7 @@ int main (int argc, char * argv[]) {
         conv_46_out,
         conv_46_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1805,7 +1805,7 @@ int main (int argc, char * argv[]) {
         conv_50_out,
         conv_50_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1907,7 +1907,7 @@ int main (int argc, char * argv[]) {
         conv_53_out,
         conv_53_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1964,7 +1964,7 @@ int main (int argc, char * argv[]) {
         printf("Prediction: %u (score: %d)\n", max_idx, max_prob);
     }
 
-    uint64_t total_cycles = im2col_cycles + matmul_cycles + pool_cycles + conv_dw_cycles + res_add_cycles + other_cycles;
+    uint64_t total_cycles = im2col_cycles + matmul_cycles + pool_cycles + conv_cycles + conv_dw_cycles + res_add_cycles + other_cycles;
 
     printf("\nTotal cycles: %llu (100%%)\n", total_cycles);
     printf("Matmul cycles: %llu (%d%%)\n", matmul_cycles, (matmul_cycles * 100) / total_cycles);
