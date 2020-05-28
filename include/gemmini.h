@@ -1267,7 +1267,28 @@ void tiled_conv(
         elem_t * output,
 
         int act, size_t shift, size_t relu6_shift,
-        int pool_size, int pool_stride, int pool_padding) {
+        int pool_size, int pool_stride, int pool_padding,
+
+	enum tiled_matmul_type_t tiled_conv_type) {
+
+
+    if (tiled_conv_type == CPU) {
+      if (pool_size == 1 && pool_stride == 1 && pool_padding == 0) {
+        pool_stride = 0;
+      }
+
+      conv_cpu(
+        batch_size, in_dim, in_channels,
+        out_channels, out_dim,
+        stride, padding, kernel_dim,
+        input, weights, bias, output,
+        act, shift, relu6_shift,
+        pool_size, pool_stride, pool_padding);
+      return;
+    } else if (tiled_conv_type == OS) {
+      printf("Gemmini convs do not currently support OS\n");
+      exit(1);
+    }
 
     bool no_bias = false;
     if (bias == NULL) {
@@ -1443,7 +1464,9 @@ void tiled_conv_auto(
         elem_t * output,
 
         int act, size_t shift, size_t relu6_shift,
-        int pool_size, int pool_stride, int pool_padding) {
+        int pool_size, int pool_stride, int pool_padding,
+	
+	enum tiled_matmul_type_t tiled_conv_type) {
 
    const bool no_pool = pool_stride == 0 || (pool_stride == 1 && pool_size == 1 && pool_padding == 0);
 //    const bool no_1d = pool_stride == 0 && pool_size == 0;
@@ -1543,7 +1566,9 @@ void tiled_conv_auto(
         output,
 
         act, shift, relu6_shift,
-        no_1d ? 0 : pool_size, no_pool ? 0 : pool_stride, pool_padding);
+        no_1d ? 0 : pool_size, no_pool ? 0 : pool_stride, pool_padding,
+
+	tiled_conv_type);
 }
 
 void resadd_cpu(const size_t I, const size_t J,
