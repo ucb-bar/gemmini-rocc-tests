@@ -204,11 +204,11 @@ scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
     // ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(B) << 32) | (A), ((uint64_t)(bias) << 48) | ((uint64_t)(K) << 32) | ((J) << 16) | (I), k_LOOP_WS)
 
 // config
-#define gemmini_extended_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, ocol, row_turn, kdim, stride, channel, row_left, kdim2) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(row_left) << 54) | ((uint64_t)(row_turn) << 42) | ((uint64_t)(acc_shift) << 32) |  ((act) << 3) | ((mode) << 2) | CONFIG_EX, ((uint64_t)ocol << 56) | ((uint64_t)kdim2 << 50) | ((uint64_t)kdim << 47) | ((uint64_t)(relu6_shift) << 32) | ((uint64_t)channel << 25) | ((uint64_t)stride << 22) | (sys_shift), k_CONFIG)
+#define gemmini_extended_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, ocol, row_turn, kdim, stride, channel, row_left, kdim2, weight_double_bank) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(weight_double_bank) << 58) | ((uint64_t)(row_left) << 54) | ((uint64_t)(row_turn) << 42) | ((uint64_t)(acc_shift) << 32) |  ((act) << 3) | ((mode) << 2) | CONFIG_EX, ((uint64_t)ocol << 56) | ((uint64_t)kdim2 << 50) | ((uint64_t)kdim << 47) | ((uint64_t)(relu6_shift) << 32) | ((uint64_t)channel << 25) | ((uint64_t)stride << 22) | (sys_shift), k_CONFIG)
 
 #define gemmini_config_ex(mode, act, sys_shift, acc_shift, relu6_shift) \
-    gemmini_extended_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, 0,0,0,0,1,0,0)
+    gemmini_extended_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, 0,0,0,0,1,0,0,0)
 
 #if defined(HAS_MVIN_SCALE) || defined(HAS_MVIN_ACC_SCALE)
 #define gemmini_extended_config_ld(stride, scale) \
@@ -876,7 +876,7 @@ void sp_tiled_conv_ws(
 	const int row_left = im2col_height%DIM;
 	const int row_turn = row_left == 0 ? im2col_height/DIM - 1 : im2col_height/DIM;
 	const int turn = im2col_width%DIM == 0 ? im2col_width/DIM : im2col_width/DIM + 1;
-	gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, shift, relu6_shift, ocols, row_turn, krows, stride, kchs, row_left, kdims);
+	gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, shift, relu6_shift, ocols, row_turn, krows, stride, kchs, row_left, kdims, 0); //if want 2 banks for weight, last is 1
 
 
 
@@ -1496,7 +1496,7 @@ void tiled_conv_auto(
 
     int kch_floor = (args[4]/DIM) + 1;
     int och_floor = (args[3]/DIM) + 1;
-    while (spad_rows > BANK_NUM*BANK_ROWS || acc_rows > ACC_ROWS) {
+    while (spad_rows > (BANK_NUM-0.4)*BANK_ROWS || acc_rows > ACC_ROWS) {
 //    while(spad_rows > 2000 || acc_rows > 2000){
         int max_val = -1;
         int max_idx = -1;
@@ -1722,8 +1722,7 @@ void tiled_resadd_auto(const size_t I, const size_t J,
         enum tiled_matmul_type_t matadd_type) {
 
     // TODO figure out how to run on Gemmini when A_shift < 0
-    if (matadd_type == CPU || A_shift < 0 || true) {
-    // if (matadd_type == CPU || A_shift < 0) {
+    if (matadd_type == CPU || A_shift < 0) {
         resadd_cpu(I, J,
             A_shift, A, B, C,
             relu, matadd_type);
