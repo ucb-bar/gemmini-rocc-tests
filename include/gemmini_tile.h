@@ -1460,7 +1460,7 @@ void tiled_conv_auto(
         int act, size_t shift, size_t relu6_shift,
         int pool_size, int pool_stride, int pool_padding,
 	
-	enum tiled_matmul_type_t tiled_conv_type, int out_tile, bool weight_tile, int in_tile) {
+	enum tiled_matmul_type_t tiled_conv_type, int out_tile, int weight_tile, int in_tile) {
 
    const bool no_pool = pool_stride == 0 || (pool_stride == 1 && pool_size == 1 && pool_padding == 0);
 //    const bool no_1d = pool_stride == 0 && pool_size == 0;
@@ -1510,7 +1510,7 @@ void tiled_conv_auto(
 			}
 			else args[0]--;
 		}
-	}else{ //tile output channel
+	}else if(out_tile == 2){ //tile output channel
 		if(args[3] > 16){
 			och_floor = och_floor - 1;
 			args[3] = och_floor * DIM;
@@ -1521,6 +1521,25 @@ void tiled_conv_auto(
 			}
 			else args[0]--;
 		}
+	}else{
+		int max_val = -1;
+		int max_idx = -1;
+		for(int i = 0; i < 4; i++){
+			if(args[i] > max_val){
+				if(i!=3){
+					max_val = args[i];
+					max_idx = i;
+				}else if(och_floor > 1){
+					max_val = args[3];
+					max_idx = 3;
+				}
+			}
+		}
+		if(max_idx == 3){
+			och_floor = och_floor -1;
+			args[3] = och_floor * DIM;
+		}
+		else args[max_idx]--;
 	}
 	acc_rows = tiled_conv_total_spad_rows(true, false, stride, args[0], args[1], args[2], args[3], kernel_dim, kernel_dim, args[4], pool_size, pool_stride);	
     }
@@ -1530,13 +1549,23 @@ void tiled_conv_auto(
         stride, args[0], args[1], args[2], args[3], kernel_dim, kernel_dim, args[4], pool_size, pool_stride);
     while(spad_rows_weight > BANK_ROWS){ //tile weight first (allocate bank3 to weight)
 	//input channel, output channel
- 		if(weight_tile || och_floor == 1){ //tile input channel	
+	if(weight_tile == 2){
+		if(kch_floor > och_floor){
+			kch_floor--;
+			args[4] = kch_floor * DIM;
+		}else{
+			och_floor--;
+			args[3] = och_floor * DIM;
+		}
+	}else{
+ 		if(weight_tile == 0 || och_floor == 1){ //tile input channel	
 			kch_floor = kch_floor - 1;
 			args[4] = kch_floor * DIM;
 		}else{
 			och_floor = och_floor -	1;
 			args[3] = och_floor * DIM;
 		}
+	}
 		spad_rows_weight = tiled_conv_total_spad_rows(false, true,
         	stride, args[0], args[1], args[2], args[3], kernel_dim, kernel_dim, args[4], pool_size, pool_stride);
 	}
@@ -1571,7 +1600,7 @@ void tiled_conv_auto(
 			}
 			else args[0]--;
 		}
-	}else{ //input channel
+	}else if(in_tile == 2){ //input channel
 		if(args[4] > 16){
 			kch_floor = kch_floor - 1;
 			args[4] = kch_floor * DIM;
@@ -1579,6 +1608,26 @@ void tiled_conv_auto(
 			if(args[1]>=args[0]) args[1]--;
 			else args[0]--;
 		}
+	}else{ //greedy
+		
+		int max_val = -1;
+		int max_idx = -1;
+		for(int i = 0; i < 5; i++){
+			if(args[i] > max_val && i != 3){
+				if(i!=4){
+					max_val = args[i];
+					max_idx = i;
+				}else if(kch_floor > 1){
+					max_val = args[4];
+					max_idx = 4;
+				}
+			}
+		}
+		if(max_idx == 4){
+			kch_floor = kch_floor -1;
+			args[4] = kch_floor * DIM;
+		}
+		else args[max_idx]--;
 	}
 	spad_rows_input = tiled_conv_total_spad_rows(false, false, stride, args[0], args[1], args[2], args[3], kernel_dim, kernel_dim, args[4], pool_size, pool_stride);	
     }
