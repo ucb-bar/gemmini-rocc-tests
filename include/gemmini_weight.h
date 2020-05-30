@@ -1369,7 +1369,7 @@ void tiled_conv(
 	   for(int ochi = 0; ochi < JJ; ochi += DIM){
 		const int J = JJ - ochi > DIM ? DIM : JJ - ochi;
 		for(int kchi = 0; kchi < KK; kchi += DIM){
-		printf("ocho: %d, kcho: %d, ochi: %d, kchi: %d, \n", ocho, kcho, ochi, kchi);
+		printf("JJ: %d, KK: %d, ocho: %d, kcho: %d, ochi: %d, kchi: %d, \n", JJ, KK, ocho, kcho, ochi, kchi);
 		    const int K = KK - kchi > DIM ? DIM : KK - kchi;
 	            for (int krow = 0; krow < kcols; krow++)
         	        for (int kcol = 0; kcol < kcols; kcol++){
@@ -1377,6 +1377,8 @@ void tiled_conv(
 			    gemmini_extended_mvin(weights + kcho * out_channels + ocho + 
 				(krow*kcols*in_channels + kcol*in_channels + kchi) * out_channels + ochi,
                       	  	B_sp_addr, J, K);
+			    printf("weight mvin spad addr: %d, dram addr: %d \n", B_sp_addr - B_sp_addr_start, kcho * out_channels + ocho + 
+				(krow*kcols*in_channels + kcol*in_channels + kchi) * out_channels + ochi);
 			}
 		}
 	    }
