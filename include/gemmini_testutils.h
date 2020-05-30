@@ -82,6 +82,60 @@ void matmul_full_A_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[D
     }
 }
 
+void matmul_B_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C_full[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C_full[r][c] += A[r][k]*B[c][k];
+    }
+}
+
+void matmul_short_B_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C[r][c] += A[r][k]*B[c][k];
+    }
+}
+
+void matmul_full_B_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C_full[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C_full[r][c] += A[r][k]*B[c][k];
+    }
+}
+
+void matmul_AB_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C_full[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C_full[r][c] += A[k][r]*B[c][k];
+    }
+}
+
+void matmul_short_AB_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C[r][c] += A[k][r]*B[c][k];
+    }
+}
+
+void matmul_full_AB_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C_full[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C_full[r][c] += A[k][r]*B[c][k];
+    }
+}
+
 void matadd(full_t sum[DIM][DIM], full_t m1[DIM][DIM], full_t m2[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++)
