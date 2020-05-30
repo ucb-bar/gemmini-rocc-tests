@@ -5,6 +5,10 @@
 
 #undef abs
 
+#ifndef asm
+#define asm __asm__
+#endif
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
