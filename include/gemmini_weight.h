@@ -1338,8 +1338,6 @@ void tiled_conv(
     if (no_pool && no_1d) {
         gemmini_config_st(out_channels * sizeof(elem_t));
     }
-    gemmini_config_ld(out_channels * sizeof(elem_t));
-
        for (int poch = 0; poch < out_channels; poch += pochs) {
            const int pochs_ = out_channels - poch > pochs ? pochs : out_channels - poch;
 	
@@ -1349,6 +1347,7 @@ void tiled_conv(
                       bias_ = NULL;
                   }
                   const int kchs_ = in_channels - kch > kchs ? kchs : in_channels - kch;
+	    	  gemmini_config_ld(out_channels * sizeof(elem_t));
 
 		  //mvin weight
 		  for (int och = 0; och < pochs_; och += DIM) {
@@ -1359,8 +1358,6 @@ void tiled_conv(
         		    for (int krow = 0; krow < kcols; krow++)
             			for (int kcol = 0; kcol < kcols; kcol++){
                     		const uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * kdims * kchs_ + ich*kdims + krow*kcols*K + kcol*K;//krow * kcols * kchs + kcol * kchs + kch;
-		    printf("B scratchpad address: %d, %d \n", B_sp_addr - B_sp_addr_start, B_sp_addr_start);
-
                     		gemmini_extended_mvin(weights + kch * out_channels + poch + (krow*kcols*in_channels + kcol*in_channels + ich) * out_channels + och,
                         				B_sp_addr,
                         				J, K);
@@ -1654,14 +1651,14 @@ void tiled_conv_auto(
 //    int kcols = kernel_dim;//args[5];
     int kchs = args[4];
 
-
+/*
      printf("batches = %d\n", batches);
      printf("orows = %d\n", orows);
      printf("ocols = %d\n", ocols);
      printf("ochs = %d\n", ochs);
      printf("kcols = %d\n", kernel_dim);
      printf("kchs = %d\n", kchs);
-
+*/
     tiled_conv(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
