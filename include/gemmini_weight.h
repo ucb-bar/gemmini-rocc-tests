@@ -1332,7 +1332,7 @@ void tiled_conv(
     }
 #endif
     int kdims = kcols*kcols;
-    const uint32_t B_sp_addr_start = weight_bank * BANK_ROWS;
+    const uint32_t B_sp_addr_start = (BANK_NUM - weight_bank) * BANK_ROWS;
  
     const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
     if (no_pool && no_1d) {
@@ -1354,14 +1354,14 @@ void tiled_conv(
 		  for (int och = 0; och < pochs_; och += DIM) {
         		const int J = pochs_ - och > DIM ? DIM : pochs_ - och;
 
-      			for (int kch = 0; kch < kchs_; kch += DIM) {
-        		    const int K = kchs_ - kch > DIM ? DIM : kchs_ - kch;
+      			for (int ich = 0; ich < kchs_; ich += DIM) {
+        		    const int K = kchs_ - ich > DIM ? DIM : kchs_ - ich;
         		    for (int krow = 0; krow < kcols; krow++)
             			for (int kcol = 0; kcol < kcols; kcol++){
-                    		const uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * kdims * kchs + kch*kdims + krow*kcols*K + kcol*K;//krow * kcols * kchs + kcol * kchs + kch;
-//		    printf("B scratchpad address: %d, %d \n", B_sp_addr - B_sp_addr_start, B_sp_addr_start);
+                    		const uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * kdims * kchs_ + ich*kdims + krow*kcols*K + kcol*K;//krow * kcols * kchs + kcol * kchs + kch;
+		    printf("B scratchpad address: %d, %d \n", B_sp_addr - B_sp_addr_start, B_sp_addr_start);
 
-                    		gemmini_extended_mvin(weights + (krow*kcols*in_channels + kcol*in_channels + kch) * out_channels + och,
+                    		gemmini_extended_mvin(weights + kch * out_channels + poch + (krow*kcols*in_channels + kcol*in_channels + ich) * out_channels + och,
                         				B_sp_addr,
                         				J, K);
 	    			}
