@@ -1350,8 +1350,8 @@ void tiled_conv(
 	    	  gemmini_config_ld(out_channels * sizeof(elem_t));
 
 		  //mvin weight
-		  for (int och = 0; och < pochs_; och += DIM) {
-        		const int J = pochs_ - och > DIM ? DIM : pochs_ - och;
+		  for (int och = 0; och < pochs_; och += 4*DIM) {
+        		const int J = pochs_ - och > 4*DIM ? 4*DIM : pochs_ - och;
 
       			for (int ich = 0; ich < kchs_; ich += DIM) {
         		    const int K = kchs_ - ich > DIM ? DIM : kchs_ - ich;
