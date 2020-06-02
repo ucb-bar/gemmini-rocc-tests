@@ -14,7 +14,6 @@
 
 #include "include/gemmini_params.h"
 #include "include/gemmini.h"
-#include "include/gemmini_nn.h"
 
 #ifdef BAREMETAL
 #undef assert
