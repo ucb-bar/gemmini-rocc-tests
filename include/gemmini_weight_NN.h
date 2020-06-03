@@ -2494,6 +2494,124 @@ void sp_tiled_resadd(const size_t I, const size_t J,
     }
 }
 
+void sp_tiled_resadd_neg(const size_t I, const size_t J,
+        //const size_t A_shift,
+        const elem_t * A, const elem_t * B, elem_t * C,
+        size_t A_row_stride, size_t B_row_stride, size_t C_row_stride,
+        bool relu) {
+
+    const size_t blocks = J/DIM < MAX_BLOCK_LEN ? J/DIM : MAX_BLOCK_LEN;
+
+    const uint32_t A_sp_addr_start = 0;
+    const uint32_t B_sp_addr_start = (BANK_NUM * BANK_ROWS) / 2;
+    const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
+    const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2);
+
+    const size_t rounded_up_J = (J / DIM + (J % DIM != 0)) * DIM;
+    const size_t A_shift = 31; //multiply by 2
+    printf("resadd_neg, negative shift \n");
+
+    // Mvin A and B
+    // printf("Mving A and B\n");
+    for (size_t i = 0; i < I; i += DIM) {
+        for (size_t j = 0; j < J; j += blocks * DIM) {
+            const size_t cols = j + blocks*DIM <= J ? blocks*DIM : J-j;
+            const size_t rows = i + DIM <= I ? DIM : I-i;
+
+            const elem_t * const A_dram_addr = A + i * A_row_stride + j;
+            const elem_t * const B_dram_addr = B + i * B_row_stride + j;
+
+            const uint32_t A_sp_addr = A_sp_addr_start + i * (rounded_up_J/DIM) + j;
+            const uint32_t B_sp_addr = B_sp_addr_start + i * (rounded_up_J/DIM) + j;
+
+            gemmini_extended_mvin(A_dram_addr, A_sp_addr, cols, rows);
+            gemmini_extended_mvin(B_dram_addr, B_sp_addr, cols, rows);
+        }
+    }
+
+    // Store A values in accumulator
+    // printf("Store A values in accumulator\n");
+    gemmini_config_ex(WS, NO_ACTIVATION, A_shift, 0, 0);
+
+    for (size_t i = 0; i < I; i += DIM) {
+        for (size_t j = 0; j < J; j += DIM) {
+            const size_t cols = j + DIM <= J ? DIM : J-j;
+            const size_t rows = i + DIM <= I ? DIM : I-i;
+
+            const uint32_t A_sp_addr = A_sp_addr_start + i * (rounded_up_J/DIM) + j;
+            const uint32_t C_sp_addr = D_sp_addr_start + i * (rounded_up_J/DIM) + j;
+
+            // printf("C_sp_addr: %x\n", C_sp_addr);
+            gemmini_extended_preload(GARBAGE_ADDR, C_sp_addr, DIM, DIM, DIM, DIM);
+            gemmini_extended_compute_preloaded(A_sp_addr, GARBAGE_ADDR, cols, rows, cols, rows);
+        }
+    }
+
+    // Accumulate B values in accumulator
+    // printf("Accumulate B values in accumulator\n");
+    gemmini_config_ex(WS, relu ? RELU : NO_ACTIVATION, 0, 0, 0);
+
+    for (size_t i = 0; i < I; i += DIM) {
+        for (size_t j = 0; j < J; j += DIM) {
+            const size_t cols = j + DIM <= J ? DIM : J-j;
+            const size_t rows = i + DIM <= I ? DIM : I-i;
+
+            const uint32_t B_sp_addr = B_sp_addr_start + i * (rounded_up_J/DIM) + j;
+            const uint32_t C_sp_addr = C_sp_addr_start + i * (rounded_up_J/DIM) + j;
+
+            gemmini_extended_preload(GARBAGE_ADDR, C_sp_addr, cols, rows, cols, rows);
+            gemmini_extended_compute_preloaded(GARBAGE_ADDR, B_sp_addr, cols, rows, cols, rows);
+        }
+    }
+
+    // Mvout C from accumulator
+    // printf("Mvout C from accumulator\n");
+    for (size_t i = 0; i < I; i += DIM) {
+        for (size_t j = 0; j < J; j += DIM) {
+            const size_t cols = j + DIM <= J ? DIM : J-j;
+            const size_t rows = i + DIM <= I ? DIM : I-i;
+
+            const elem_t * const C_dram_addr = C + i * C_row_stride + j;
+
+            const uint32_t C_sp_addr = C_sp_addr_start + i * (rounded_up_J/DIM) + j;
+
+            gemmini_extended_mvout(C_dram_addr, C_sp_addr, cols, rows);
+        }
+    }
+}
+
+
+void tiled_resadd_neg(const size_t I, const size_t J,
+        const size_t tile_I, const size_t tile_J,
+        const size_t A_shift,
+        const elem_t * A,
+        const elem_t * B,
+        elem_t * C,
+        bool relu,
+        enum tiled_matmul_type_t matadd_type) {
+
+    gemmini_config_st(J * sizeof(elem_t));
+    gemmini_config_ld(J * sizeof(elem_t));
+
+    for (int i = 0; i < I; i += tile_I) {
+        for (int j = 0; j < J; j += tile_J) {
+            const size_t I_tile = i + tile_I <= I ? tile_I : I - i;
+            const size_t J_tile = j + tile_J <= J ? tile_J : J - j;
+
+            const elem_t * a = A + i * J + j;
+            const elem_t * b = B + i * J + j;
+            elem_t * c = C + i * J + j;
+
+            sp_tiled_resadd_neg(I_tile, J_tile,
+                    a, b, c,
+                    J, J, J,
+                    relu);
+        }
+    }
+
+    gemmini_fence();
+}
+
 // Compute (A >> A_shift) + B = C
 void tiled_resadd(const size_t I, const size_t J,
         const size_t tile_I, const size_t tile_J,
@@ -2536,7 +2654,7 @@ void tiled_resadd_auto(const size_t I, const size_t J,
         enum tiled_matmul_type_t matadd_type) {
 
     // TODO figure out how to run on Gemmini when A_shift < 0
-    if (matadd_type == CPU || A_shift < 0) {
+    if (matadd_type == CPU) {
         resadd_cpu(I, J,
             A_shift, A, B, C,
             relu, matadd_type);
@@ -2565,9 +2683,15 @@ void tiled_resadd_auto(const size_t I, const size_t J,
     // printf("total_acc_rows: %d\n", total_acc_rows);
 
     if (matadd_type == WS) {
-        tiled_resadd(I, J, tile_I, tile_J,
-            A_shift, A, B, C,
-            relu, matadd_type);
+	if(A_shift >= 0){
+	        tiled_resadd(I, J, tile_I, tile_J,
+	            A_shift, A, B, C,
+        	    relu, matadd_type);
+	}else{
+	        tiled_resadd_neg(I, J, tile_I, tile_J,
+	            A_shift, A, B, C,
+        	    relu, matadd_type);	
+	}
     } else {
         printf("Unsupported type\n");
         exit(1);
