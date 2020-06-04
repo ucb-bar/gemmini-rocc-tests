@@ -998,7 +998,7 @@ void sp_tiled_conv_ws_original(
     if(!no_1d && no_pool) gemmini_extended_config_st(out_channels * sizeof(elem_t), 0, 1, out_dim, 0, 0, orows, ocols, 0, 0);
    // Compute
 int idims = irows*icols;
-if(krows != 1 || odims > DIM){
+if(krows != 1){
     for (int b = 0; b < batches; b++){
         for (int och = 0; och < ochs; och += DIM) {
             const int J = ochs - och > DIM ? DIM : ochs - och;
@@ -1024,8 +1024,31 @@ if(krows != 1 || odims > DIM){
                 }
             }
        }
-}
-else{//ds layer
+}else if(krows == 1 || odims > DIM){
+    for (int b = 0; b < batches; b++){
+        for (int och = 0; och < ochs; och += DIM) {
+//            const int J = ochs - och > DIM ? DIM : ochs - och;
+ 	    for (int kch = 0; kch < kchs; kch += DIM) {
+//	        const int K = kchs - kch > DIM ? DIM : kchs - kch;
+		const uint32_t A_sp_addr = A_sp_addr_start + (kch / DIM)*batches*idims + b*idims;           
+		const uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * kchs + kch;	
+            	for(int odim = 0; odim < odims; odim += DIM){ //both dimension at the same time
+			const int I = odims - odim > DIM ? DIM : odims - odim;
+     	       	    	const int C_sp_addr = C_sp_addr_start + (och / DIM) * batches * odims + b * odims + odim;
+			const uint32_t out_sp_addr =
+                                    (bias != NULL && no_bias) &&  kch == 0 ?
+                                    C_sp_addr & ~((uint32_t)(1 << (ADDR_LEN - 2))) :
+                                    C_sp_addr;
+//				printf("\n, batch: %d A_sp_addr: %lu, out_sp_addr: %lu \n", b, A_sp_addr, out_sp_addr);
+                                gemmini_extended_preload(B_sp_addr, out_sp_addr,
+                                        DIM, DIM, DIM, I);
+                                gemmini_extended_compute_preloaded(A_sp_addr, GARBAGE_ADDR, DIM, I, DIM, I);
+			}
+                    }
+                }
+            }
+       }
+}else{//ds layer
     int bidims = batches*idims;
     for (int b = 0; b < batches; b++){
         for (int och = 0; och < ochs; och += DIM) {
