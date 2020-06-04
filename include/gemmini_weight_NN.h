@@ -1047,7 +1047,7 @@ if(krows != 1){
                     }
                 }
             }
-       }
+      
 }else{//ds layer
     int bidims = batches*idims;
     for (int b = 0; b < batches; b++){
