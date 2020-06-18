@@ -2090,6 +2090,7 @@ int bidims = batches*irows*icols;
     // mvin input
     // printf("mvin inputs\n");
     gemmini_config_ld(in_channels * sizeof(elem_t));
+    static elem_t zeros[MAX_BYTES / sizeof(elem_t)] = {0}; 
 //    gemmini_fence(); // TODO fix ROB to get rid of this requirement
     for (int b = 0; b < batches; b++) {
         for (int irow = -upad; irow < irows_unpadded + dpad; irow++) {
@@ -2111,7 +2112,6 @@ int bidims = batches*irows*icols;
                   	   gemmini_config_ld(0); 
 			for (int ich = 0; ich < ichs; ich += DIM) {
                     	   const int K = ichs - ich > DIM ? DIM : ichs - ich;
-                           static elem_t zeros[MAX_BYTES / sizeof(elem_t)] = {0};
                            in = &zeros[0];
                            gemmini_extended_mvin(in+ich,
                             A_sp_addr + (ich/DIM)*bidims,
@@ -2177,8 +2177,18 @@ int bidims = batches*irows*icols;
                 }
             }
        }
-
-
+	if(output!= NULL){
+		gemmini_extended_config_st(out_channels * sizeof(elem_t), 0, 1, out_dim, 0, 0, orows, ocols, 0, 0);
+//		gemmini_fence();
+		for(int b = 0; b < batches; b++){
+			for(int och = 0; och < ochs; och += DIM){
+				const int J = ochs - och > DIM ? DIM : ochs - och;
+				const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * odims + b * odims;
+				gemmini_extended_mvout(output + (b * out_dim * out_dim)*out_channels + och, C_sp_addr, J, 0);
+			}	
+		}
+	}
+/*
     // mvout output
    if (output != NULL) {
         if (no_pool) {
@@ -2229,7 +2239,8 @@ int bidims = batches*irows*icols;
         }
 //    	uint64_t end_mvout = read_cyclesh();
 //	printf("mvout cycles: %d \n", end_mvout - start_mvout);
-   }
+
+   }*/
 }
 
 void sp_tiled_conv_ws(
@@ -2313,6 +2324,7 @@ int bidims = batches*idims;
     // mvin input
     // printf("mvin inputs\n");
     gemmini_config_ld(in_channels * sizeof(elem_t));
+    static elem_t zeros[MAX_BYTES / sizeof(elem_t)] = {0};
 //    gemmini_fence(); // TODO fix ROB to get rid of this requirement
     for (int b = 0; b < batches; b++) {
         for (int irow = -upad; irow < irows_unpadded + dpad; irow++) {
@@ -2334,7 +2346,6 @@ int bidims = batches*idims;
 	           	   gemmini_config_ld(0);
 			for (int ich = 0; ich < ichs; ich += DIM) {
                     	   const int K = ichs - ich > DIM ? DIM : ichs - ich;
-                           static elem_t zeros[MAX_BYTES / sizeof(elem_t)] = {0};
                            in = &zeros[0];
                            gemmini_extended_mvin(in+ich,
                             A_sp_addr + (ich/DIM)*bidims,
@@ -2438,7 +2449,7 @@ int bidims = batches*idims;
     // mvout output
    if (output != NULL) {
         if (no_pool) {
-	   if(no_1d){
+/*	   if(no_1d){
             for (int b = 0; b < batches; b++)
                 for (int orow = 0; orow < orows; orow++)
                     for (int ocol = 0; ocol < ocols; ocol += DIM) {
@@ -2455,7 +2466,7 @@ int bidims = batches*idims;
                         }
                     }
 	   } else{
-		gemmini_extended_config_st(out_channels * sizeof(elem_t), 0, 1, 0, 0, 0, orows, ocols, 0, 0);
+*/		gemmini_extended_config_st(out_channels * sizeof(elem_t), 0, 1, out_dim, 0, 0, orows, ocols, 0, 0);
 //		gemmini_fence();
 		for(int b = 0; b < batches; b++)
 			for(int och = 0; och < ochs; och += DIM){
@@ -2463,7 +2474,7 @@ int bidims = batches*idims;
 				const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * odims + b * odims;
 				gemmini_extended_mvout(output + (b * out_dim * out_dim)*out_channels + och, C_sp_addr, J, 0);
 			}	
-		}
+		//}
 
 	   } else {
               gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
@@ -3443,7 +3454,7 @@ void tiled_conv_auto(
 
    const bool no_pool = pool_stride == 0 || (pool_stride == 1 && pool_size == 1 && pool_padding == 0);
 //    const bool no_1d = pool_stride == 0 && pool_size == 0;
-    const bool no_1d = no_pool; //Todo: change to 1d
+    const bool no_1d =false;// no_pool; //Todo: change to 1d
  
     if (no_pool) {
         pool_size = 1;
