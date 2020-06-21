@@ -372,9 +372,7 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
   const int D_blocks = J <= MAX_BLOCK_LEN_ACC ? J : MAX_BLOCK_LEN_ACC;
 
   int A_mvin[I+1]; //Todo: consider padding 
-  int B_mvin[J+1];
-  A_mvin[0] = 0;
-  B_mvin[0] = 0; //indirection for matmuls
+  A_mvin[0] = 0; //indirection for matmuls
 
   // Move-in D
   if (D != NULL && !no_bias) {
@@ -432,7 +430,7 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
 	      A_mvin[i+1] = A_mvin[i] + DIM;   //mvin DIM rows
 	      break; //if detect nonzero data, mvin & break loop
 	   }
-	   else{//no need to mvin locally
+	   if(j == end - 1){//no need to mvin locally
 	     A_mvin[i+1] = A_mvin[i];
 	   }
 	}
@@ -472,18 +470,17 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
 //	  printf("b_col0: %d, b_col1: %d, b_col2: %d, b_col3: %d \n", B_col[0], B_col[1], B_col[2], B_col[3]);
 	  dim_index = dim_index - tile_J_start/DIM;
 	  int i_row = (A_mvin[A_mvin_index]);
-	  //size_t i_tile = i - tile_I_start; //adjust i and j for this tile
+          const uint32_t C_sp_addr = C_sp_addr_start + i_row*J + i%DIM + dim_index*DIM; 
+          const uint32_t A_sp_addr = A_sp_addr_start + i_row*K + i%DIM;
+          const uint32_t B_sp_addr = B_sp_addr_start + (dim_index)*DIM;//instead of j 
 	  for(size_t k = 0; k < K; k++){
-             const uint32_t A_sp_addr = A_sp_addr_start + i_row*K + i%DIM + k*DIM;
-             const uint32_t C_sp_addr = C_sp_addr_start + i_row*J + i%DIM + dim_index*DIM;
-             const uint32_t B_sp_addr = B_sp_addr_start + (k*J + dim_index)*DIM;//instead of j
              const size_t A_cols = DIM - (k == K - 1 ? pad_K : 0);
 //        const size_t A_rows = 1;//DIM - (i == I - 1 ? pad_I : 0);
   	     const size_t B_rows = A_cols;//DIM - (k == K - 1 ? pad_K : 0);
 //           const size_t C_cols = DIM - (dim_index == J - 1 ? pad_J : 0); //Todo: how about C_cols?
 //        const size_t C_rows = A_rows;
-	     gemmini_sddmm_preload(B_sp_addr, C_sp_addr, B_col[0], B_col[1], B_col[2], B_col[3], B_rows, B_col[0], B_col[1], B_col[2], B_col[3], 1);
-     	     gemmini_extended_compute_preloaded(A_sp_addr, GARBAGE_ADDR, A_cols, 1, DIM, DIM);
+	     gemmini_sddmm_preload(B_sp_addr+k*J*DIM, C_sp_addr, B_col[0], B_col[1], B_col[2], B_col[3], B_rows, B_col[0], B_col[1], B_col[2], B_col[3], 1);
+     	     gemmini_extended_compute_preloaded(A_sp_addr+k*DIM, GARBAGE_ADDR, A_cols, 1, DIM, DIM);
 	  }
 	}
 	else ii++;
