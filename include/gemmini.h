@@ -397,11 +397,14 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
     }
   }
 
+  int B_mvin_col[I];
+  int B_mvin_num = 0;//track how many rows have moved in
   // Move-in B (skip if 4 cols are all 0)
   gemmini_extended_config_ld(B_row_stride * sizeof(elem_t), B_scale_factor);
 //  printf("J:%d, tile_J_start: %d \n", J, tile_J_start);
-//  printf("B mvin : ");
-  for (size_t j = 0; j < J; j += 1) {
+  printf("B mvin : ");
+     const size_t rows0 = DIM - (0 == K-1 ? pad_K : 0);
+    for (size_t j = 0; j < J; j += 1) {
      int position = j*DIM + tile_J_start;
      const size_t cols = DIM - (j == J - 1 ? pad_J : 0);	
      int start = *(S_indptr_j + position);
@@ -413,22 +416,31 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
 	   if(index  >= tile_I_start && index < tile_I_start + I*DIM){
 	      const elem_t * const B_dram_addr = B + j*DIM;
 	      const uint32_t B_sp_addr = B_sp_addr_start + B_mvin[j];
-	      for (size_t k = 0; k < K; k++) {
-	         const size_t rows = DIM - (k == K-1 ? pad_K : 0);
-	         gemmini_extended_mvin(B_dram_addr+k*B_row_stride*DIM, B_sp_addr+k*J*DIM, cols, rows);
-	      }
+              gemmini_extended_mvin(B_dram_addr, B_sp_addr, cols, rows0);
 	      B_mvin[j+1] = B_mvin[j] + DIM;
+	      B_mvin_col[B_mvin_num] = j*DIM;
+	      B_mvin_num++;
 	      break;
 	    }
 	    if(i == end - 1)
 		B_mvin[j+1] = B_mvin[j];
 	}
      }
-     else
-	B_mvin[j+1] = B_mvin[j];
-//	printf("%d, ", B_mvin[j]);
+     else B_mvin[j+1] = B_mvin[j];
+	printf("%d, ", B_mvin[j]);
   }
-//printf("%d,\n ", B_mvin[J]);
+
+   for (size_t k = 1; k < K; k++) {
+     const size_t rows = DIM - (k == K-1 ? pad_K : 0);
+     const elem_t * const B_dram_addr = B + k*B_row_stride*DIM;//j*DIM;
+     const uint32_t B_sp_addr = B_sp_addr_start + k*J*DIM;//B_mvin[j];
+     for (size_t j = 0; j < B_mvin_num; j += 1) {
+//	if(B_mvin[j] < B_mvin[j+1]){
+          const size_t cols = DIM - (j == B_mvin_num - 1 ? pad_J : 0);	
+          gemmini_extended_mvin(B_dram_addr+B_mvin_col[j], B_sp_addr+j*DIM, cols, rows);
+//	}
+     }
+   }
 
   // Move-in A (skip if 4 rows are all 0)
 //  printf("A_mvin: ");
