@@ -23,9 +23,9 @@ typedef elem_t ACC_T;
 #endif
 
 #define UNIT 32 //equal to stride
-#define MAT_DIM_I 45
-#define MAT_DIM_K 67
-#define MAT_DIM_J 39
+#define MAT_DIM_I 56
+#define MAT_DIM_K 76
+#define MAT_DIM_J 68
 #define tile_I UNIT/DIM
 #define tile_J UNIT/DIM
 #define tile_K UNIT/DIM
@@ -112,7 +112,7 @@ int main() {
  
 	for(int j = 0; j < MAT_DIM_I; j++){
 		for(int i = 0; i < MAT_DIM_K; i++){
-			A[j][i] = 1;//rand() % 3 - 1;
+			A[j][i] = rand() % 3 - 1;
 		}
 	}
 
@@ -125,8 +125,9 @@ int main() {
 	//sparse matrix
 	for(int j = 0; j < MAT_DIM_I; j++){
 		for(int i = 0; i < MAT_DIM_J; i++){
-			if(rand()%4 == 1)
+			if(rand()%15 == 1){
 				S[j][i] = 1;
+			}
 			else S[j][i] = 0;
 		}
 	}
@@ -141,7 +142,11 @@ int main() {
 
 	int S_indptr[MAT_DIM_I+1];
 	int S_index[MAT_DIM_J*MAT_DIM_I/4];//length?
+	int S_indptr_j[MAT_DIM_J+1];
+	int S_index_j[MAT_DIM_J*MAT_DIM_I/4];//length?
 	S_indptr[0] = 0;
+	S_indptr_j[0] = 0;
+
 	for(int j = 0; j < MAT_DIM_I; j++){
 		for(int i = 0; i < MAT_DIM_J; i++){
 			if(S[j][i] != 0) S_indptr[j+1]++;
@@ -149,10 +154,23 @@ int main() {
 		if(j < MAT_DIM_I-1) S_indptr[j+2] = S_indptr[j+1];
 	}
  	
-	printf("indtpr: \n");
+	printf("csr indtpr: \n");
 	for(int i = 0; i < MAT_DIM_I+1; i++)
 		printf("%d, ", S_indptr[i]);
 	printf("\n");
+
+	for(int j = 0; j < MAT_DIM_J; j++){
+		for(int i = 0; i < MAT_DIM_I; i++){
+			if(S[i][j] != 0) S_indptr_j[j+1]++;
+		}
+		if(j < MAT_DIM_J-1) S_indptr_j[j+2] = S_indptr_j[j+1];
+	}
+ 	
+	printf("csc indtpr: \n");
+	for(int i = 0; i < MAT_DIM_J+1; i++)
+		printf("%d, ", S_indptr_j[i]);
+	printf("\n");
+
 
 	int row = 0;
 	int num = 0;
@@ -165,6 +183,21 @@ int main() {
 			}
 		}
 	}
+
+	row = 0;
+	num = 0;
+        for(int j = 0; j < MAT_DIM_J; j++){
+		for(int i = 0; i < MAT_DIM_I; i++){
+ 
+			if(S[i][j] != 0){
+				S_index_j[num] = i; //row index
+				//Out[row+DIM/2][num] = In[j][i]; //store data value
+				printf("%d, ", S_index_j[num]);
+				num ++;
+			}
+		}
+	}
+	printf("\n");
 
 //normal dense matmul
 /*
@@ -179,24 +212,24 @@ int main() {
   full_matshift(gold_raw, gold_dense, 0);
   full_matdot(gold_dense, S, gold);
 
-
+/*
     //automatic tiling
     tiled_matmul_auto_sddmm(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-            (elem_t*)A, (elem_t*)B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)C, (int*) S_indptr, (int*) S_index, 
+            (elem_t*)A, (elem_t*)B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)C, (int*) S_indptr, (int*) S_index, (int*) S_indptr_j, (int*) S_index_j,
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
             NO_ACTIVATION, 0, 0, false,
             WS);
 
-/*
+*/
     tiled_matmul_sddmm(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-            (elem_t*)A, (elem_t*)B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)C, (int*) S_indptr, (int*) S_index, 
+            (elem_t*)A, (elem_t*)B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)C, (int*) S_indptr, (int*) S_index, (int*) S_indptr_j, (int*) S_index_j, 
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
             NO_ACTIVATION, 0, 0, false,
 	    tile_I, tile_J, tile_K,
             WS);
-*/
+
 
 
   if (!full_is_equal(gold, C)) {
