@@ -897,6 +897,12 @@ void sp_tiled_conv(
     const int icols_unpadded = icols - lpad - rpad;
     const int ichs = kchs;
 
+    int icols_per_systolic_row = ichs > DIM ? 1 : DIM / ichs;
+    if (kcols < icols_per_systolic_row) {
+        icols_per_systolic_row = kcols;
+    }
+    printf("icols_per_systolic_row %d\n", icols_per_systolic_row);
+
     // Calculate spad address offsets
     const int out_channels_per_bank = ochs / DIM + (ochs % DIM != 0);
     const int B_rows = out_channels_per_bank * kcols * krows * kchs;
@@ -937,6 +943,10 @@ void sp_tiled_conv(
             const int irow_padded = irow + upad;
 
             for (int icol = -lpad; icol < icols_unpadded + rpad;) {
+                // TODO There might be some unnecessary mvins here at the edge of the image
+
+                const int icols_moved_in_per_row = icol + icols_per_systolic_row < icols_unpadded ? icols_per_systolic_row : icols_unpadded - icol;
+
                 int I = icols_unpadded - icol > DIM ? DIM : icols_unpadded - icol;
 
                 if (icol < 0) {
@@ -948,7 +958,7 @@ void sp_tiled_conv(
                 const int icol_padded = icol + lpad;
 
                 for (int ich = 0; ich < ichs; ich += DIM) {
-                    const int K = ichs - ich > DIM ? DIM : ichs - ich;
+                    const int K = (ichs - ich > DIM ? DIM : ichs - ich) * icols_moved_in_per_row;
 
                     elem_t * in = input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels + ich;
 
@@ -1009,7 +1019,8 @@ void sp_tiled_conv(
                     for (int krow = 0; krow < krows; krow++) {
                         int irow = orow * stride + krow;
 
-                        for (int kcol = 0; kcol < kcols; kcol++) {
+                        // for (int kcol = 0; kcol < kcols; kcol++) {
+                        for (int kcol = 0; kcol < kcols; kcol += icols_per_systolic_row) {
                             int icol = ocol * stride + kcol;
 
                             for (int kch = 0; kch < kchs; kch += DIM) {
@@ -1024,7 +1035,12 @@ void sp_tiled_conv(
                                 //     - J = och
                                 //     - K = kch
 
-                                const int K = kchs - kch > DIM ? DIM : kchs - kch;
+                                // printf("Innermost\n");
+
+                                const int icols_in_systolic_row = kcol + icols_per_systolic_row < kcols ? icols_per_systolic_row : kcols - kcol;
+
+                                // const int K = kchs - kch > DIM ? DIM : kchs - kch;
+                                const int K = (kchs - kch > DIM ? DIM : kchs - kch) * icols_in_systolic_row;
 
                                 const uint32_t A_sp_addr = A_sp_addr_start + (kch / DIM) * batches * irows * icols + b * irows * icols + irow * icols + icol;
                                 const uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * krows * kcols * kchs + krow * kcols * kchs + kcol * kchs + kch;
