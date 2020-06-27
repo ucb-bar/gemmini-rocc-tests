@@ -101,7 +101,7 @@ int main() {
   elem_t B[MAT_DIM_K][MAT_DIM_J];
   elem_t C[MAT_DIM_I][MAT_DIM_J];
 //  full_t gold_raw[MAT_DIM_I][MAT_DIM_J];
-//  elem_t gold_dense[MAT_DIM_I][MAT_DIM_J];
+  elem_t gold_dense[MAT_DIM_I][MAT_DIM_J];
 //  elem_t S[MAT_DIM_I][MAT_DIM_J];
 //  elem_t gold[MAT_DIM_I][MAT_DIM_J];
 
@@ -131,7 +131,7 @@ int main() {
     printf("Starting dense matmul \n");
     unsigned long dense_start = read_cycles();
     tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
+            (elem_t*)A, (elem_t*)B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)gold_dense,
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
             NO_ACTIVATION, 0, 0, false,

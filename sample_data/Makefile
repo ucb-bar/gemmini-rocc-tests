@@ -2,6 +2,8 @@ include $(abs_top_srcdir)/Makefrag
 
 tests = \
 	musae_DE_edges \
+	musae_ES_edges \
+	kos \
 	enron
 
 tests_baremetal = $(tests:=-baremetal)
@@ -45,11 +47,11 @@ all: $(tests_baremetal) $(tests_linux)
 vpath %.c $(src_dir)
 vpath %.h $(src_dir)
 
-%-baremetal: %.c %.h $(src_dir)/images.h $(GEMMINI_HEADERS)
+%-baremetal: %.c %.h $(GEMMINI_HEADERS)
 	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \
 		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
 
-%-linux: %.c %.h $(src_dir)/images.h $(GEMMINI_HEADERS)
+%-linux: %.c %.h $(GEMMINI_HEADERS)
 	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@
 
 junk += $(tests_baremetal) $(tests_linux)
