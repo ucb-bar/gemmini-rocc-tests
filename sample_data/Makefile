@@ -55,8 +55,7 @@ vpath %.h $(src_dir)
 	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \
 		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
 
-%-linux: %.c %.h
-$(GEMMINI_HEADERS)
+%-linux: %.c %.h $(GEMMINI_HEADERS)
 	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@
 
 junk += $(tests_baremetal) $(tests_linux)
