@@ -1,19 +1,14 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	bio-CE \
-	ca-Erdos \
-	email-Eu-core \
-	ia-escorts \
-	scc_rt_gmanews \
-	scc_rt_lolgop \
-	soc-sign-bitcoin-otc \
-	socfb-American75 \
-	socfb-Amherst41 \
-	socfb-Brown11 \
-	socfb-Cal65 \
-	tech-pgp \
-	web-EPA \
+	CL-trial3 \
+	G17 \
+	G2 \
+	G23 \
+	GL6 \
+	GL6_D_6 \
+	collegemsg \
+	mooc_actions \
 
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY
@@ -56,11 +51,12 @@ all: $(tests_baremetal) $(tests_linux)
 vpath %.c $(src_dir)
 vpath %.h $(src_dir)
 
-%-baremetal: %.c %.h $(src_dir)/images.h $(GEMMINI_HEADERS)
+%-baremetal: %.c %.h $(GEMMINI_HEADERS)
 	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \
 		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
 
-%-linux: %.c %.h $(src_dir)/images.h $(GEMMINI_HEADERS)
+%-linux: %.c %.h
+$(GEMMINI_HEADERS)
 	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@
 
 junk += $(tests_baremetal) $(tests_linux)
