@@ -1,8 +1,19 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	musae_DE_edges \
-	enron
+	bio-CE \
+	ca-Erdos \
+	email-Eu-core \
+	ia-escorts \
+	scc_rt_gmanews \
+	scc_rt_lolgop \
+	soc-sign-bitcoin-otc \
+	socfb-American75 \
+	socfb-Amherst41 \
+	socfb-Brown11 \
+	socfb-Cal65 \
+	tech-pgp \
+	web-EPA \
 
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY
