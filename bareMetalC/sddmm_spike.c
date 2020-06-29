@@ -22,10 +22,10 @@ typedef elem_t ACC_T;
 #error variable-bitwidth bias not currently supported
 #endif
 
-#define UNIT 32 //equal to stride
-#define MAT_DIM_I 56
-#define MAT_DIM_K 76
-#define MAT_DIM_J 68
+#define UNIT 16 //equal to stride
+#define MAT_DIM_I 69
+#define MAT_DIM_K 64
+#define MAT_DIM_J 37
 #define tile_I UNIT/DIM
 #define tile_J UNIT/DIM
 #define tile_K UNIT/DIM
@@ -108,8 +108,7 @@ int main() {
   elem_t S[MAT_DIM_I][MAT_DIM_J];
   elem_t gold[MAT_DIM_I][MAT_DIM_J];
 
-  elem_t Identity[MAT_DIM_I][MAT_DIM_K];
- 
+
 	for(int j = 0; j < MAT_DIM_I; j++){
 		for(int i = 0; i < MAT_DIM_K; i++){
 			A[j][i] = rand() % 3 - 1;
@@ -125,7 +124,7 @@ int main() {
 	//sparse matrix
 	for(int j = 0; j < MAT_DIM_I; j++){
 		for(int i = 0; i < MAT_DIM_J; i++){
-			if(rand()%15 == 1){
+			if(rand()%10 == 1){
 				S[j][i] = 1;
 			}
 			else S[j][i] = 0;
@@ -137,7 +136,6 @@ int main() {
   for (size_t i = 0; i < MAT_DIM_K; i++)
     for (size_t j = 0; j < MAT_DIM_J; j++){
       full_D[i][j] = 0;
-      Identity[i][j] = i == j;
     }
 
 	int S_indptr[MAT_DIM_I+1];
@@ -174,18 +172,21 @@ int main() {
 
 	int row = 0;
 	int num = 0;
+	printf("index i: \n");
 	for(int j = 0; j < MAT_DIM_I; j++){
 		for(int i = 0; i < MAT_DIM_J; i++){
 			if(S[j][i] != 0){
 				S_index[num] = i; //column index
 				//Out[row+DIM/2][num] = In[j][i]; //store data value
+				printf("%d, ", S_index[num]);
 				num ++;
 			}
 		}
 	}
-
+	printf("\n");
 	row = 0;
 	num = 0;
+	printf("index j: \n");
         for(int j = 0; j < MAT_DIM_J; j++){
 		for(int i = 0; i < MAT_DIM_I; i++){
  
@@ -202,15 +203,27 @@ int main() {
 //normal dense matmul
 /*
     tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
+            (elem_t*)A, (elem_t*)B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)gold_raw,
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
             NO_ACTIVATION, 0, 0, false,
-            WS);
+            CPU);
 */
   full_matmul(A, B, full_D, gold_raw); //for result check
   full_matshift(gold_raw, gold_dense, 0);
   full_matdot(gold_dense, S, gold);
+
+	for(int i = 0; i < MAT_DIM_I; i++){
+		int start = *(S_indptr + i);
+		int end = *(S_indptr + i + 1);
+		for (int j = start; j < end; j++){
+			int index = *(S_index + j);
+			gold[i][index] = gold_raw[i][index];
+		}
+	}
+
+
+
 
 /*
     //automatic tiling
@@ -230,8 +243,6 @@ int main() {
 	    tile_I, tile_J, tile_K,
             WS);
 
-
-
   if (!full_is_equal(gold, C)) {
     printf("expected and real matrices are different!\n");
     printf("\"dense\" matrix:\n");
@@ -245,16 +256,7 @@ int main() {
     printf("\n");
     exit(1);
   }
-    printf("\"dense\" matrix:\n");
-    full_printMatrix(gold_dense);
-    printf("\"Sampling\" matrix:\n"); 
-    full_printMatrix(S); 
-    printf("\"Out\" matrix:\n");
-    full_printMatrix(C);
-    printf("\"gold\" matrix:\n");
-    full_printMatrix(gold);
-    printf("\n");
- 
+
 
 /*
 
