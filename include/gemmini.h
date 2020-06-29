@@ -505,7 +505,10 @@ if(A_mvin[I]!= 0){
 	       if((*(S_index+ii+2))/DIM == dim_index && ii + 2 < end){
 		  B_col[(*(S_index+ii+2))%DIM] = 1;		
 //		  printf("extra: %d, index: %d \n", (*(S_index+ii+2))/DIM, (*(S_index+ii+2))%DIM);
-		  ii += 3;
+		  if((*(S_index+ii+3))/DIM == dim_index && ii + 3 < end){
+			B_col[(*(S_index+ii+3))%DIM] = 1;
+			ii += 4;
+		  } else {ii += 3;}
 	       }else {ii+=2;}
 	    }else {ii++;} //padding?
 //	    printf("b_col0: %d, b_col1: %d, b_col2: %d, b_col3: %d \n", B_col[0], B_col[1], B_col[2], B_col[3]);
