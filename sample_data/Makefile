@@ -1,14 +1,15 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	CL-trial3 \
-	G17 \
-	G2 \
-	G23 \
-	GL6 \
-	GL6_D_6 \
-	collegemsg \
-	mooc_actions \
+	SmaGri \
+	email \
+	N_pid \
+	GD96_a \
+	nn1374 \
+	web-edu \
+	web-edu1 \
+	scofb-nips \
+	socfb-nips1 \
 
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY
