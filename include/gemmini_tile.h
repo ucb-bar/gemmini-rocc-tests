@@ -428,7 +428,7 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
 	      B_mvin_col[B_mvin_num] = j*DIM;
 	      B_mvin_num++;
 	      i_save = i + 1;
-	      int dim_index = (int)(index/DIM);
+	      int dim_index = (int)((index-tile_I_start)/DIM);
 	      matmul_table[dim_index][j] = 1;
 //	 printf("matmul_table[%d][%d] = 1 \n", dim_index, j);
 	      if(j == J - 1) B_pad_en = true;
@@ -516,22 +516,30 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
 	   const size_t C_cols = DIM - (j == J - 1 ? pad_J : 0);
 	   const elem_t * const A_dram_addr = A + i*A_row_stride*DIM;
 	   const uint32_t A_sp_addr = A_sp_addr_start + A_mvin[i]*K;//sp address based on mvin rows
-	   const uint32_t B_sp_addr = B_sp_addr_start + B_mvin[j];
-	   const uint32_t C_sp_addr = C_sp_addr_start + B_mvin[j] + A_mvin[i]*J;	
+	   const uint32_t C_sp_addr = C_sp_addr_start + A_mvin[i]*J;	
+	   j_save = j + 1;
 	   for (size_t k = 0; k < K; k++) {	
 //	 printf("\n k: %d \n", k);
 	     const size_t cols = DIM - (k == K-1 ? pad_K : 0);
-	     gemmini_extended_mvin(A_dram_addr+k*DIM, A_sp_addr+k*DIM, cols, rows);   
-	     gemmini_extended_preload(B_sp_addr+k*J*DIM, C_sp_addr, C_cols, cols, C_cols, rows); //Todo: B_cols, C_cols
-     	     gemmini_extended_compute_preloaded(A_sp_addr+k*DIM, GARBAGE_ADDR, cols, rows, DIM, DIM);		
+	     const uint32_t A_sp_mvin = A_sp_addr + k*DIM;
+	     gemmini_extended_mvin(A_dram_addr+k*DIM, A_sp_mvin, cols, rows);   
+	     const uint32_t B_sp_addr = B_sp_addr_start + k*J*DIM;
+  	     gemmini_extended_preload(B_sp_addr+B_mvin[j], C_sp_addr + B_mvin[j], C_cols, cols, C_cols, rows); //Todo: B_cols, C_cols
+     	     gemmini_extended_compute_preloaded(A_sp_mvin, GARBAGE_ADDR, cols, rows, DIM, DIM);		
+	     for(size_t jj = j_save; jj < J; jj++){
+		if(matmul_table[i][jj] == 1){
+		   gemmini_extended_preload(B_sp_addr+B_mvin[jj], C_sp_addr + B_mvin[jj], C_cols, cols, C_cols, rows); //Todo: B_cols, C_cols
+     	     	   gemmini_extended_compute_preloaded(A_sp_mvin, GARBAGE_ADDR, cols, rows, DIM, DIM);		
+		}
+	     }
 	   } 
-	   j_save = j + 1;
 	   A_mvin[i+1] = A_mvin[i] + DIM; 
 	   break;
 	}
       }
     if(j_save == 0)//nothing
 	A_mvin[i+1] = A_mvin[i];
+/*
     else //continue
       for(size_t j = j_save; j < J; j++){
 	if(matmul_table[i][j] == 1){
@@ -547,6 +555,7 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
 	   }
 	}
       }
+*/
     }
 /*
 for (size_t i = 0; i < I+1; i++)
