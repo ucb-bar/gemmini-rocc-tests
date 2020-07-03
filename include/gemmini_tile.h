@@ -385,18 +385,18 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
     gemmini_extended_config_ld(D_stride, D_scale_factor);
 
     for (size_t i = 0; i < I; i++) {
-      for (size_t j = 0; j < J; j += D_blocks) {
+         const size_t rows = DIM - (i == I-1 ? pad_I : 0);
         const size_t bias_row = repeating_bias ? 0 : i;
-        const acc_t * const D_dram_addr = (acc_t *)D + (bias_row * D_row_stride + j)*DIM;
+         const uint32_t D_sp_addr_acc = D_sp_addr_start + (i*J)*DIM;
 
-        const uint32_t D_sp_addr_acc = D_sp_addr_start + (i*J + j)*DIM;
+     for (size_t j = 0; j < J; j += D_blocks) {
+        const acc_t * const D_dram_addr = (acc_t *)D + (bias_row * D_row_stride + j)*DIM;
 
         size_t blocks = j + D_blocks <= J ? D_blocks : J-j;
         const size_t cols = blocks * DIM - (j + blocks >= J ? pad_J : 0);
-        const size_t rows = DIM - (i == I-1 ? pad_I : 0);
-
-        gemmini_extended_mvin(D_dram_addr, D_sp_addr_acc, cols, rows);
-	matmul_table[i][j] = 0; //initialize array
+        gemmini_extended_mvin(D_dram_addr, D_sp_addr_acc + j*DIM, cols, rows);
+	for(size_t jj = 0; jj < D_blocks; jj++)
+	    matmul_table[i][j + jj] = 0; //initialize array
       }
     }
   }
@@ -415,8 +415,10 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
      int start = *(S_indptr_j + position);
      int end = *(S_indptr_j + position + cols);
      if(start != end){
+	int i_save = 0;
 	for(size_t i = start; i < end; i++){
 	   int index = *(S_index_j + i);
+	   i_save = i + 1;
 //	 printf("start: %d, end: %d, index: %d, tile_I_start: %d, I: %d \n", start, end, index, tile_I_start, I);
 	   if(index  >= tile_I_start && index < tile_I_start + I*DIM){
 	      const elem_t * const B_dram_addr = B + j*DIM;
@@ -425,31 +427,18 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
 	      B_mvin[j+1] = B_mvin[j] + DIM;
 	      B_mvin_col[B_mvin_num] = j*DIM;
 	      B_mvin_num++;
+	      i_save = i + 1;
+	      int dim_index = (int)(index/DIM);
+	      matmul_table[dim_index][j] = 1;
+//	 printf("matmul_table[%d][%d] = 1 \n", dim_index, j);
 	      if(j == J - 1) B_pad_en = true;
 	      break;
 	    }
 	    if(i == end - 1)
 		B_mvin[j+1] = B_mvin[j];
 	}
-     }
-     else B_mvin[j+1] = B_mvin[j];
-//	printf("%d, ", B_mvin[j]);
-  }
-//  printf("%d \n", B_mvin[J]);
-
-   for (size_t k = 1; k < 2; k++) {//Todo: fix
-     const size_t rows = DIM - (k == K-1 ? pad_K : 0);
-     const elem_t * const B_dram_addr = B + B_row_stride*DIM;//j*DIM;
-     const uint32_t B_sp_addr = B_sp_addr_start + J*DIM;//B_mvin[j];
-     for (size_t j = 0; j < B_mvin_num; j += 1) {
-//	if(B_mvin[j] < B_mvin[j+1]){
-	const size_t cols = DIM - (((j == B_mvin_num - 1) && B_pad_en) ? pad_J : 0);	
-	int position = B_mvin_col[j] + tile_J_start;
-	int start = *(S_indptr_j+position);
-	int end = *(S_indptr_j+position + cols);
-         gemmini_extended_mvin(B_dram_addr+B_mvin_col[j], B_sp_addr+j*DIM, cols, rows);
-	for(size_t i = 0; i < I; i++){
-	   for(int ii = start; ii < end; ii++){
+	   for(size_t i = 0; i < I; i++){
+	      for(int ii = i_save; ii < end; ii++){
 	   	int index = *(S_index_j + ii);
 		if(index >= tile_I_start + i*DIM && index < tile_I_start + (i+1)*DIM){
 		    int dim_index = (int)((index-tile_I_start)/DIM);
@@ -458,11 +447,16 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
 		   break;
 		}
 //		if(index >= tile_I_start + (i+1)*DIM) break;
+	      }
 	   }
-	}
      }
-   }
-   for (size_t k = 2; k < K; k++) {
+     else B_mvin[j+1] = B_mvin[j];
+//	printf("%d, ", B_mvin[j]);
+  }
+//  printf("%d \n", B_mvin[J]);
+
+
+   for (size_t k = 1; k < K; k++) {
      const size_t rows = DIM - (k == K-1 ? pad_K : 0);
      const elem_t * const B_dram_addr = B + k*B_row_stride*DIM;//j*DIM;
      const uint32_t B_sp_addr = B_sp_addr_start + k*J*DIM;//B_mvin[j];
@@ -518,24 +512,30 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
       int j_save = 0;
       for(size_t j = 0; j < J; j++){
 	if(matmul_table[i][j] == 1){
+//	printf("\n matmul_table[%d][%d] \n", i, j);
 	   const size_t C_cols = DIM - (j == J - 1 ? pad_J : 0);
 	   const elem_t * const A_dram_addr = A + i*A_row_stride*DIM;
 	   const uint32_t A_sp_addr = A_sp_addr_start + A_mvin[i]*K;//sp address based on mvin rows
 	   const uint32_t B_sp_addr = B_sp_addr_start + B_mvin[j];
 	   const uint32_t C_sp_addr = C_sp_addr_start + B_mvin[j] + A_mvin[i]*J;	
 	   for (size_t k = 0; k < K; k++) {	
+//	 printf("\n k: %d \n", k);
 	     const size_t cols = DIM - (k == K-1 ? pad_K : 0);
 	     gemmini_extended_mvin(A_dram_addr+k*DIM, A_sp_addr+k*DIM, cols, rows);   
 	     gemmini_extended_preload(B_sp_addr+k*J*DIM, C_sp_addr, C_cols, cols, C_cols, rows); //Todo: B_cols, C_cols
      	     gemmini_extended_compute_preloaded(A_sp_addr+k*DIM, GARBAGE_ADDR, cols, rows, DIM, DIM);		
-	   }
+	   } 
 	   j_save = j + 1;
 	   A_mvin[i+1] = A_mvin[i] + DIM; 
 	   break;
 	}
       }
+    if(j_save == 0)//nothing
+	A_mvin[i+1] = A_mvin[i];
+    else //continue
       for(size_t j = j_save; j < J; j++){
 	if(matmul_table[i][j] == 1){
+//	printf("matmul_table[%d][%d] \n", i, j);
 	   const size_t C_cols = DIM - (j == J - 1 ? pad_J : 0);
 	   const uint32_t A_sp_addr = A_sp_addr_start + A_mvin[i]*K;//sp address based on mvin rows
 	   const uint32_t B_sp_addr = B_sp_addr_start + B_mvin[j];
@@ -548,6 +548,14 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
 	}
       }
     }
+/*
+for (size_t i = 0; i < I+1; i++)
+	printf("%d, ", A_mvin[i]);
+printf("\n");
+for (size_t j = 0; j < J+1; j++)
+	printf("%d, ", B_mvin[j]);
+printf("\n");
+*/
 /*
   // Compute
   size_t dim_I = I*DIM - pad_I;
@@ -623,18 +631,23 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
 		int position = tile_I_start + i*DIM + ii;
 		int start = *(S_indptr+position);
 		int end = *(S_indptr+position+1);
-		for(int jj=start; jj<end; jj++){
+		int start_point = tile_J_start + j*DIM;
+		int end_point = start_point + C_cols;
+		if(*(S_index+start) < end_point && *(S_index + end - 1) >= start_point)
+		   for(int jj=start; jj<end; jj++){
 			int jj_index = *(S_index+jj);
-			if(jj_index>=tile_J_start+j*DIM && jj_index<tile_J_start+j*DIM+C_cols){
+			//if(jj_index >= end_point) break;
+			if(jj_index>=start_point && jj_index< end_point){
 			   size_t dim_index = jj_index%DIM;
 			   size_t pow_index = 1;
 			   b_row[ii] += 1 << dim_index;
 			}
-			if(jj_index >= tile_J_start+j*DIM+C_cols) break;
-		}
+		//Todo: simplify
+		   }
 	   }
-//	   printf("brow: %d, %d, %d, %d \n", b_row[0], b_row[1], b_row[2], b_row[3]);
+	   //printf("brow: %d, %d, %d, %d \n", b_row[0], b_row[1], b_row[2], b_row[3]);
            gemmini_sddmm_mvout(C_dram_addr+j*DIM, C_sp_addr+B_mvin[j], b_row[0], b_row[1], b_row[2], b_row[3], C_cols, C_rows);
+//           gemmini_sddmm_mvout(C_dram_addr+j*DIM, C_sp_addr+B_mvin[j], 15, 15, 15, 15, C_cols, C_rows);
  
 	 }
        }
