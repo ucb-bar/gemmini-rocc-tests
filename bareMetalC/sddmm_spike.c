@@ -23,9 +23,9 @@ typedef elem_t ACC_T;
 #endif
 
 #define UNIT 16 //equal to stride
-#define MAT_DIM_I 69
-#define MAT_DIM_K 64
-#define MAT_DIM_J 37
+#define MAT_DIM_I 16
+#define MAT_DIM_K 16
+#define MAT_DIM_J 16
 #define tile_I UNIT/DIM
 #define tile_J UNIT/DIM
 #define tile_K UNIT/DIM
@@ -103,7 +103,7 @@ int main() {
   elem_t A[MAT_DIM_I][MAT_DIM_K];
   elem_t B[MAT_DIM_K][MAT_DIM_J];
   elem_t C[MAT_DIM_I][MAT_DIM_J];
-  full_t gold_raw[MAT_DIM_I][MAT_DIM_J];
+  elem_t gold_raw[MAT_DIM_I][MAT_DIM_J];
   elem_t gold_dense[MAT_DIM_I][MAT_DIM_J];
   elem_t S[MAT_DIM_I][MAT_DIM_J];
   elem_t gold[MAT_DIM_I][MAT_DIM_J];
@@ -139,9 +139,9 @@ int main() {
     }
 
 	int S_indptr[MAT_DIM_I+1];
-	int S_index[MAT_DIM_J*MAT_DIM_I/4];//length?
+	int S_index[MAT_DIM_J*MAT_DIM_I];//length?
 	int S_indptr_j[MAT_DIM_J+1];
-	int S_index_j[MAT_DIM_J*MAT_DIM_I/4];//length?
+	int S_index_j[MAT_DIM_J*MAT_DIM_I];//length?
 	S_indptr[0] = 0;
 	S_indptr_j[0] = 0;
 
@@ -154,7 +154,7 @@ int main() {
  	
 	printf("csr indtpr: \n");
 	for(int i = 0; i < MAT_DIM_I+1; i++)
-		printf("%d, ", S_indptr[i]);
+		printf("(%d,%d), ", i, S_indptr[i]);
 	printf("\n");
 
 	for(int j = 0; j < MAT_DIM_J; j++){
@@ -166,7 +166,7 @@ int main() {
  	
 	printf("csc indtpr: \n");
 	for(int i = 0; i < MAT_DIM_J+1; i++)
-		printf("%d, ", S_indptr_j[i]);
+		printf("(%d,%d), ", i, S_indptr_j[i]);
 	printf("\n");
 
 
@@ -201,17 +201,17 @@ int main() {
 	printf("\n");
 
 //normal dense matmul
-/*
+
     tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
             (elem_t*)A, (elem_t*)B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)gold_raw,
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
             NO_ACTIVATION, 0, 0, false,
-            CPU);
-*/
-  full_matmul(A, B, full_D, gold_raw); //for result check
-  full_matshift(gold_raw, gold_dense, 0);
-  full_matdot(gold_dense, S, gold);
+            WS);
+
+//  full_matmul(A, B, full_D, gold_raw); //for result check
+//  full_matshift(gold_raw, gold_dense, 0);
+//  full_matdot(gold_dense, S, gold);
 
 	for(int i = 0; i < MAT_DIM_I; i++){
 		int start = *(S_indptr + i);
@@ -245,8 +245,8 @@ int main() {
 
   if (!full_is_equal(gold, C)) {
     printf("expected and real matrices are different!\n");
-    printf("\"dense\" matrix:\n");
-    full_printMatrix(gold_dense);
+//    printf("\"dense\" matrix:\n");
+//    full_printMatrix(gold_dense);
     printf("\"Sampling\" matrix:\n"); 
     full_printMatrix(S); 
     printf("\"Out\" matrix:\n");
@@ -257,6 +257,8 @@ int main() {
     exit(1);
   }
 
+    printf("\"Out\" matrix:\n");
+    full_printMatrix(C);
 
 /*
 
