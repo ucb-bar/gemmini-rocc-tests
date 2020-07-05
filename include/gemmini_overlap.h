@@ -371,7 +371,7 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
   const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
   const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2);
 
-  const int A_blocks = 4;//K <= MAX_BLOCK_LEN ? K : MAX_BLOCK_LEN;
+  const int A_blocks = 8;//K <= MAX_BLOCK_LEN ? K : MAX_BLOCK_LEN;
   const int B_blocks = J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN;
   const int D_blocks = J <= MAX_BLOCK_LEN_ACC ? J : MAX_BLOCK_LEN_ACC;
 
@@ -425,7 +425,7 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
 	   if(index  >= tile_I_start && index < tile_I_start + I*DIM){
 	      const elem_t * const B_dram_addr = B + j*DIM;
 	      const uint32_t B_sp_addr = B_sp_addr_start + B_mvin[j];
-	      for(size_t k = 0; k < A_blocks; k++){
+	      for(size_t k = 0; k < 4; k++){
 	         gemmini_extended_mvin(B_dram_addr + k*B_row_stride*DIM, B_sp_addr + k*J*DIM, cols, rows0);
 	      }
 	      B_mvin[j+1] += DIM;
@@ -463,14 +463,14 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
 //  printf("%d \n", B_mvin[J]);
 
 
-   for (size_t k = A_blocks; k < K; k+=A_blocks) {
+   for (size_t k = 4; k < K; k+=4) {
      const size_t rows = DIM - (k == K-1 ? pad_K : 0);
      const elem_t * const B_dram_addr = B + k*B_row_stride*DIM;//j*DIM;
      const uint32_t B_sp_addr = B_sp_addr_start + k*J*DIM;//B_mvin[j];
      for (size_t j = 0; j < B_mvin_num; j += 1) {
 //	if(B_mvin[j] < B_mvin[j+1]){
           const size_t cols = DIM - (((j == B_mvin_num - 1) && B_pad_en) ? pad_J : 0);	
-	for(size_t kk = 0; kk < A_blocks; kk++)
+	for(size_t kk = 0; kk < 4; kk++)
 	  gemmini_extended_mvin(B_dram_addr+B_mvin_col[j]+kk*B_row_stride*DIM, B_sp_addr+(kk*J+j)*DIM, cols, rows);
 //	}
      }
@@ -511,7 +511,7 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
 //printf("%d \n", A_mvin[I]);
 */
 
-  // Move-in A (skip if 4 rows are all 0)
+   // Move-in A (skip if 4 rows are all 0)
 //  printf("A_mvin: ");
   gemmini_extended_config_ld(A_row_stride * sizeof(elem_t), A_scale_factor);
    for (size_t i = 0; i < I; i++) {
@@ -528,7 +528,7 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
 	   const uint32_t C_sp_addr = C_sp_addr_start + A_mvin[i]*J;	
 	   j_save = j + 1;
 	   //overlap mvin A and matmul
-	   for (size_t k = 0; k < K; k+=A_blocks) {	//assume A_blocks = 4
+	   for (size_t k = 0; k < K; k+=A_blocks) {	//assume A_blocks = 8
 	     const size_t blocks = k + A_blocks <= K ? A_blocks : K-k;
 //	 printf("\n k: %d, K: %d, A_blocks: %d \n", k, K, A_blocks);
 	     const uint32_t A_sp_mvin = A_sp_addr + k*DIM;
@@ -536,7 +536,7 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
 	     if(k%(2*A_blocks)==0){
 	        const size_t cols1 = DIM * blocks - (k + 2*blocks >= K ? pad_K : 0);
 	        gemmini_extended_mvin(A_dram_addr+k*DIM, A_sp_mvin, cols, rows);   
-		gemmini_extended_mvin(A_dram_addr+(k+A_blocks)*DIM, A_sp_mvin+(k+A_blocks)*DIM, cols1, rows);
+		gemmini_extended_mvin(A_dram_addr+(k+A_blocks)*DIM, A_sp_mvin+(A_blocks)*DIM, cols1, rows);
 	     }
 	     const uint32_t B_sp_addr = B_sp_addr_start + k*J*DIM;
 
@@ -546,24 +546,44 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * B,
      	     gemmini_extended_compute_preloaded(A_sp_mvin+DIM, GARBAGE_ADDR, DIM, rows, DIM, DIM);		
   	     gemmini_extended_preload(B_sp_addr+B_mvin[j]+2*J*DIM, C_sp_addr + B_mvin[j], C_cols, DIM, C_cols, rows); //Todo: B_cols, C_cols
      	     gemmini_extended_compute_preloaded(A_sp_mvin+2*DIM, GARBAGE_ADDR, DIM, rows, DIM, DIM);		
-  	     gemmini_extended_preload(B_sp_addr+B_mvin[j]+3*J*DIM, C_sp_addr + B_mvin[j], C_cols, cols-3*DIM, C_cols, rows); //Todo: B_cols, C_cols
-     	     gemmini_extended_compute_preloaded(A_sp_mvin+3*DIM, GARBAGE_ADDR, cols-3*DIM, rows, DIM, DIM);		
+  	     gemmini_extended_preload(B_sp_addr+B_mvin[j]+3*J*DIM, C_sp_addr + B_mvin[j], C_cols, DIM, C_cols, rows); //Todo: B_cols, C_cols
+     	     gemmini_extended_compute_preloaded(A_sp_mvin+3*DIM, GARBAGE_ADDR, DIM, rows, DIM, DIM);		
+
+	     gemmini_extended_preload(B_sp_addr+B_mvin[j]+4*J*DIM, C_sp_addr + B_mvin[j], C_cols, DIM, C_cols, rows); //Todo: B_cols, C_cols
+     	     gemmini_extended_compute_preloaded(A_sp_mvin+4*DIM, GARBAGE_ADDR, DIM, rows, DIM, DIM);		
+  	     gemmini_extended_preload(B_sp_addr+B_mvin[j]+5*J*DIM, C_sp_addr + B_mvin[j], C_cols, DIM, C_cols, rows); //Todo: B_cols, C_cols
+     	     gemmini_extended_compute_preloaded(A_sp_mvin+5*DIM, GARBAGE_ADDR, DIM, rows, DIM, DIM);		
+  	     gemmini_extended_preload(B_sp_addr+B_mvin[j]+6*J*DIM, C_sp_addr + B_mvin[j], C_cols, DIM, C_cols, rows); //Todo: B_cols, C_cols
+     	     gemmini_extended_compute_preloaded(A_sp_mvin+6*DIM, GARBAGE_ADDR, DIM, rows, DIM, DIM);		
+  	     gemmini_extended_preload(B_sp_addr+B_mvin[j]+7*J*DIM, C_sp_addr + B_mvin[j], C_cols, cols-7*DIM, C_cols, rows); //Todo: B_cols, C_cols
+     	     gemmini_extended_compute_preloaded(A_sp_mvin+7*DIM, GARBAGE_ADDR, cols-7*DIM, rows, DIM, DIM);		
 	
 	     for(size_t jj = j_save; jj < J; jj++){
 		if(matmul_table[i][jj] == 1){
-		   gemmini_extended_preload(B_sp_addr+B_mvin[jj], C_sp_addr + B_mvin[jj], C_cols, DIM, C_cols, rows); //Todo: B_cols, C_cols
+		   const uint32_t B_sp_addr_inner = B_mvin[jj] + B_sp_addr;
+		   const uint32_t C_sp_addr_inner = C_sp_addr + B_mvin[jj];
+		   gemmini_extended_preload(B_sp_addr_inner, C_sp_addr_inner, C_cols, DIM, C_cols, rows); //Todo: B_cols, C_cols
      	     	   gemmini_extended_compute_preloaded(A_sp_mvin, GARBAGE_ADDR, DIM, rows, DIM, DIM);		
-	  	     gemmini_extended_preload(B_sp_addr+B_mvin[jj]+J*DIM, C_sp_addr + B_mvin[jj], C_cols, DIM, C_cols, rows); //Todo: B_cols, C_cols
-     		     gemmini_extended_compute_preloaded(A_sp_mvin+DIM, GARBAGE_ADDR, DIM, rows, DIM, DIM);		
-  	     	   gemmini_extended_preload(B_sp_addr+B_mvin[jj]+2*J*DIM, C_sp_addr + B_mvin[jj], C_cols, DIM, C_cols, rows); //Todo: B_cols, C_cols
+	  	   gemmini_extended_preload(B_sp_addr_inner+J*DIM, C_sp_addr_inner, C_cols, DIM, C_cols, rows); //Todo: B_cols, C_cols
+     		   gemmini_extended_compute_preloaded(A_sp_mvin+DIM, GARBAGE_ADDR, DIM, rows, DIM, DIM);		
+  	     	   gemmini_extended_preload(B_sp_addr_inner+2*J*DIM, C_sp_addr_inner, C_cols, DIM, C_cols, rows); //Todo: B_cols, C_cols
      	    	   gemmini_extended_compute_preloaded(A_sp_mvin+2*DIM, GARBAGE_ADDR, DIM, rows, DIM, DIM);		
-  	    	    gemmini_extended_preload(B_sp_addr+B_mvin[jj]+3*J*DIM, C_sp_addr + B_mvin[jj], C_cols, cols-3*DIM, C_cols, rows); //Todo: B_cols, C_cols
-     	     	    gemmini_extended_compute_preloaded(A_sp_mvin+3*DIM, GARBAGE_ADDR, cols-3*DIM, rows, DIM, DIM);		
+  	    	   gemmini_extended_preload(B_sp_addr_inner+3*J*DIM, C_sp_addr_inner, C_cols, DIM, C_cols, rows); //Todo: B_cols, C_cols
+     	     	   gemmini_extended_compute_preloaded(A_sp_mvin+3*DIM, GARBAGE_ADDR, DIM, rows, DIM, DIM);		
+
+		   gemmini_extended_preload(B_sp_addr_inner+4*J*DIM, C_sp_addr_inner, C_cols, DIM, C_cols, rows); //Todo: B_cols, C_cols
+     	     	   gemmini_extended_compute_preloaded(A_sp_mvin+4*DIM, GARBAGE_ADDR, DIM, rows, DIM, DIM);		
+	  	   gemmini_extended_preload(B_sp_addr_inner+5*J*DIM, C_sp_addr_inner, C_cols, DIM, C_cols, rows); //Todo: B_cols, C_cols
+     		   gemmini_extended_compute_preloaded(A_sp_mvin+5*DIM, GARBAGE_ADDR, DIM, rows, DIM, DIM);		
+  	     	   gemmini_extended_preload(B_sp_addr_inner+6*J*DIM, C_sp_addr_inner, C_cols, DIM, C_cols, rows); //Todo: B_cols, C_cols
+     	    	   gemmini_extended_compute_preloaded(A_sp_mvin+6*DIM, GARBAGE_ADDR, DIM, rows, DIM, DIM);		
+  	    	   gemmini_extended_preload(B_sp_addr_inner+7*J*DIM, C_sp_addr_inner, C_cols, cols-7*DIM, C_cols, rows); //Todo: B_cols, C_cols
+     	     	   gemmini_extended_compute_preloaded(A_sp_mvin+7*DIM, GARBAGE_ADDR, cols-7*DIM, rows, DIM, DIM);		
 
 
 		}
 	     }
-	   } 
+	   }
 	   A_mvin[i+1] += DIM; 
 	   break;
 	}
