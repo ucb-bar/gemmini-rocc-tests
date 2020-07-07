@@ -19,6 +19,8 @@ tests = \
 	tiled_matmul_cpu \
 	tiled_matmul_option \
 	transpose \
+	matrix_add \
+	resadd \
 	template
 
 tests_baremetal = $(tests:=-baremetal)
