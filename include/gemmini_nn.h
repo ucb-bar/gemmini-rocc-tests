@@ -4,9 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#ifndef BAREMETAL
-#include <sys/mman.h>
-#endif
+
 #include "include/gemmini.h"
 #include "include/gemmini_testutils.h"
 
@@ -144,6 +142,40 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         }
     }
 }
+
+// This function runs a tiled matrix multiplication, with automatically
+// calculated tiling factors
+static void tiled_matmul_nn_auto_cisc(
+        size_t dim_I, size_t dim_J, size_t dim_K,
+        const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
+        const void * D, elem_t C[dim_I][dim_J],
+        int act, size_t shift, size_t relu6_shift, bool repeating_bias,
+        bool check, char * layer_name)
+{
+    if (check)
+        printf("%s: gemmini\n", layer_name);
+
+    tiled_matmul_auto_cisc(dim_I, dim_J, dim_K,
+        (elem_t*)A, (elem_t*)B, D, (elem_t*)C, 
+        act, shift, relu6_shift, repeating_bias);
+
+    if (check) {
+        printf("%s: CPU\n", layer_name);
+        elem_t gold[dim_I][dim_J];
+        tiled_matmul_auto(dim_I, dim_J, dim_K,
+            (elem_t*)A, (elem_t*)B, D, (elem_t*)gold, 
+            dim_K, dim_J, dim_J, dim_J,
+            MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
+            act, shift, relu6_shift, repeating_bias,
+            CPU);
+
+        if (!MAT_IS_EQUAL(dim_I, dim_J, C, gold)) {
+            printf("Layer calculated by cisc incorrectly: %s\n", layer_name);
+            exit(1);
+        }
+    }
+}
+
 
 static void conv_dw(size_t I, size_t J,
     const size_t batch_size, const size_t channels, const size_t in_dim, const size_t out_dim, const size_t kernel_size,

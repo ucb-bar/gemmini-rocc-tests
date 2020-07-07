@@ -3,12 +3,10 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-#ifndef BAREMETAL
-#include <sys/mman.h>
-#endif
+
 #include "include/gemmini_testutils.h"
 
-#ifndef BAREMETAL
+#ifndef GEMMINI_BAREMETAL
 #define BATCH_SIZE 4
 #define IN_DIM 224
 #define IN_CHANNELS 3
@@ -89,7 +87,7 @@ void flatten_weights(int out_channels, int kernel_dim, int in_channels,
         elem_t weights[out_channels][kernel_dim][kernel_dim][in_channels],
         elem_t weights_mat[patch_size][out_channels]) {
 
-    assert(patch_size == kernel_dim * kernel_dim * in_channels);
+    ASSERT(patch_size == kernel_dim * kernel_dim * in_channels, "patch_size");
 
     for (int outc = 0; outc < out_channels; outc++) {
         for (int krow = 0; krow < kernel_dim; krow++) {
@@ -135,13 +133,7 @@ void init_zeros_acc(acc_t * buf, int len) {
 }
 
 int main() {
-#ifndef BAREMETAL
-    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
-      perror("mlockall failed");
-      exit(1);
-    }
-#endif
-
+    pin_all();
     gemmini_flush(0);
 
     // assert((in_dim + 2*padding - kernel_dim) % stride == 0);
@@ -205,7 +197,7 @@ int main() {
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 
-    assert(sizeof(output_mat) == sizeof(output));
+    ASSERT(sizeof(output_mat) == sizeof(output), "output_mat size");
 
     bool success = vec_is_equal(&output[0][0][0][0], &output_mat[0][0], sizeof(output) / sizeof(elem_t));
 

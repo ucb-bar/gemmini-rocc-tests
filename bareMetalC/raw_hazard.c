@@ -5,9 +5,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-#ifndef BAREMETAL
-#include <sys/mman.h>
-#endif
+
 #include "include/gemmini_testutils.h"
 
 #if BANK_NUM*BANK_ROWS < 5*DIM
@@ -15,13 +13,7 @@
 #endif
 
 int main() {
-#ifndef BAREMETAL
-    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
-      perror("mlockall failed");
-      exit(1);
-    }
-#endif
-
+  pin_all();
   gemmini_flush(0);
   gemmini_config_ld(DIM * sizeof(elem_t));
 

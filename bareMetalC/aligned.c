@@ -5,9 +5,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-#ifndef BAREMETAL
-#include <sys/mman.h>
-#endif
+
 #include "include/gemmini_testutils.h"
 
 #define PG_SIZE (4*1024)
@@ -24,13 +22,7 @@ struct offset_buffer {
 } __attribute__((__packed__));
 
 int main() {
-#ifndef BAREMETAL
-    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
-      perror("mlockall failed");
-      exit(1);
-    }
-#endif
-
+  pin_all();
   gemmini_flush(0);
 
   // static struct aligned_buffer In __attribute__((aligned(PG_SIZE)));

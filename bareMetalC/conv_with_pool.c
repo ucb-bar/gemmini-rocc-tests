@@ -3,12 +3,10 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-#ifndef BAREMETAL
-#include <sys/mman.h>
-#endif
+
 #include "include/gemmini_testutils.h"
 
-#ifndef BAREMETAL
+#ifndef GEMMINI_BAREMETAL
 
 #define BATCH_SIZE 4
 #define IN_DIM 224
@@ -163,8 +161,10 @@ void cpu_tiled_conv_inner(
         }
     }
 
-    assert(orows+pupad+pdpad >= pool_size && ocols+plpad+prpad >= pool_size);
-    assert(krows == kernel_dim && kcols == kernel_dim && kchs == in_channels);
+    ASSERT(orows+pupad+pdpad >= pool_size && ocols+plpad+prpad >= pool_size, 
+        "pool_size");
+    ASSERT(krows == kernel_dim && kcols == kernel_dim && kchs == in_channels,
+        "kernel_dim");
 
     // Pool output_buffer into output
     // Arguments necessary:
@@ -373,7 +373,7 @@ void flatten_weights(int out_channels, int kernel_dim, int in_channels,
         elem_t weights[out_channels][kernel_dim][kernel_dim][in_channels],
         elem_t weights_mat[patch_size][out_channels]) {
 
-    assert(patch_size == kernel_dim * kernel_dim * in_channels);
+    ASSERT(patch_size == kernel_dim * kernel_dim * in_channels, "patch_size");
 
     for (int outc = 0; outc < out_channels; outc++) {
         for (int krow = 0; krow < kernel_dim; krow++) {
@@ -419,13 +419,7 @@ void init_zeros_acc(acc_t * buf, int len) {
 }
 
 int main() {
-#ifndef BAREMETAL
-    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
-      perror("mlockall failed");
-      exit(1);
-    }
-#endif
-
+    pin_all();
     gemmini_flush(0);
 
     // assert((IN_DIM + 2*PADDING - KERNEL_DIM) % STRIDE == 0);
@@ -526,7 +520,7 @@ int main() {
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 
-    assert(sizeof(pool_output_mat) == sizeof(pool_output));
+    ASSERT(sizeof(pool_output_mat) == sizeof(pool_output), "pool_output_mat");
 
     bool success = vec_is_equal(&pool_output[0][0][0][0], &pool_output_mat[0][0], sizeof(pool_output) / sizeof(elem_t));
 

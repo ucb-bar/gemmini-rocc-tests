@@ -5,9 +5,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-#ifndef BAREMETAL
-#include <sys/mman.h>
-#endif
+
 #include "include/gemmini_testutils.h"
 
 #define N 4
@@ -17,13 +15,7 @@
 #endif
 
 int main() {
-#ifndef BAREMETAL
-    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
-      perror("mlockall failed");
-      exit(1);
-    }
-#endif
-
+  pin_all();
   gemmini_flush(0);
 
   for (int activation = 0; activation <= 2; ++activation) {

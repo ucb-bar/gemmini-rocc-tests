@@ -1,30 +1,29 @@
-prefix		:= @prefix@
-abs_top_srcdir	:= @abs_top_srcdir@
-XLEN            := @XLEN@
-RISCVTOOLS      := @RISCVTOOLS@
-ROCC = examples
+#=============================================================================
+# variables
+#=============================================================================
+prefix		     := @prefix@
+abs_top_srcdir := @abs_top_srcdir@
+XLEN           := @XLEN@
+RISCVTOOLS     := @RISCVTOOLS@
+ROCC           := examples
+CATEGORIES     := bareMetalC mlps imagenet
 
-.PHONY: all bareMetalC clean imagenet mlps
-all: bareMetalC imagenet mlps
+#=============================================================================
+# targets
+#=============================================================================
+.PHONY: all $(CATEGORIES)
+all: $(CATEGORIES)
 
-vars = \
-	abs_top_srcdir=$(abs_top_srcdir) \
-	XLEN=$(XLEN) \
-	PREFIX=$(ROCC)-$@ \
-	src_dir=$(abs_top_srcdir)/$@ \
-	RISCVTOOLS=$(RISCVTOOLS)
-
-bareMetalC:
+$(CATEGORIES):
 	mkdir -p $@
-	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
-
-imagenet:
-	mkdir -p $@
-	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
-
-mlps:
-	mkdir -p $@
-	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
+	make -C $@	\
+		-f $(abs_top_srcdir)/header.mk \
+		TARGET_MAKEFILE=$(abs_top_srcdir)/$@/Makefile \
+		abs_top_srcdir=$(abs_top_srcdir) \
+	 	src_dir=$(abs_top_srcdir)/$@ \
+	 	XLEN=$(XLEN) \
+	 	PREFIX=$(ROCC)-$@ \
+		RISCVTOOLS=$(RISCVTOOLS)
 
 clean:
 	$(MAKE) -C bareMetalC -f $(abs_top_srcdir)/bareMetalC/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-bareMetalC clean

@@ -5,9 +5,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-#ifndef BAREMETAL
-#include <sys/mman.h>
-#endif
+
 #include "include/gemmini_testutils.h"
 
 #define CHECK_RESULT 1
@@ -22,7 +20,7 @@ typedef elem_t ACC_T;
 #error variable-bitwidth bias not currently supported
 #endif
 
-#ifndef BAREMETAL
+#ifndef GEMMINI_BAREMETAL
 #define MAT_DIM_I 512
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
@@ -84,13 +82,7 @@ void full_matshift(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_
 } 
 
 int main() {
-#ifndef BAREMETAL
-    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
-      perror("mlockall failed");
-      exit(1);
-    }
-#endif
-
+    pin_all();
     gemmini_flush(0);
 
     static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);

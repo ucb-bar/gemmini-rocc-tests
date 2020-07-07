@@ -5,12 +5,10 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-#ifndef BAREMETAL
-#include <sys/mman.h>
-#endif
+
 #include "include/gemmini_testutils.h"
 
-#ifndef BAREMETAL
+#ifndef GEMMINI_BAREMETAL
 #define MAT_DIM_I 256
 #define MAT_DIM_K 256
 #define MAT_DIM_J 256
@@ -88,16 +86,10 @@ int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]
 }
 
 int main() {
-#ifndef BAREMETAL
-  if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
-    perror("mlockall failed");
-    exit(1);
-  }
-#endif
-
+  pin_all();
   gemmini_flush(0);
 
-#ifdef BAREMETAL
+#ifdef GEMMINI_BAREMETAL
   for (enum tiled_matmul_type_t option = OS; option <= WS; option++) {
     for (int activation = 0; activation <= 1; activation++) {
       for (int shift = 0; shift <= 1; shift += 1) {

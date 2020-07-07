@@ -5,9 +5,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-#ifndef BAREMETAL
-#include <sys/mman.h>
-#endif
+
 #include "include/gemmini_testutils.h"
 
 void print_matrix(size_t rows, size_t cols, elem_t mat[rows][cols]) {
@@ -23,12 +21,8 @@ void print_matrix(size_t rows, size_t cols, elem_t mat[rows][cols]) {
 }
 
 int main() {
-#ifndef BAREMETAL
-    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
-      perror("mlockall failed");
-      exit(1);
-    }
-#endif
+  pin_all();
+  gemmini_flush(0);
 
     // Test padded mvins
     {

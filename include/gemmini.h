@@ -39,6 +39,18 @@
 #define k_FLUSH 7
 #define k_LOOP_WS 8
 
+//============================================================================
+// gemmini-cisc opcodes
+//============================================================================
+#define k_ADDR_AB      10
+#define k_ADDR_CD      11
+#define k_SIZE0        12
+#define k_SIZE1        13
+#define k_RPT_BIAS     14
+#define k_RESET        15
+#define k_COMPUTE_CISC 16
+//============================================================================
+
 #define CONFIG_EX 0
 #define CONFIG_LD 1
 #define CONFIG_ST 2
@@ -233,6 +245,32 @@ scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
 
 // fence
 #define gemmini_fence() asm volatile("fence")
+
+//============================================================================
+// gemmini-cisc opcodes
+//============================================================================
+#define gemmini_config_addr_ab(A, B) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_ADDR_AB)
+
+#define gemmini_config_addr_cd(C, D) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, C, D, k_ADDR_CD)
+
+#define gemmini_config_size0(M, N) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, M, N, k_SIZE0)
+
+#define gemmini_config_size1(K) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, K, 0, k_SIZE1)
+
+#define gemmini_config_repeating_bias(repeating_bias) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, repeating_bias, 0, k_RPT_BIAS)
+
+#define gemmini_compute_cisc() \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, 0, 0, k_COMPUTE_CISC)
+
+#define gemmini_config_reset() \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, 0, 0, k_RESET)
+
+//============================================================================
 
 // Tiling functions
 static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const acc_t * D, elem_t * C,
@@ -862,6 +900,22 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #undef mats_in_acc
 #undef max_tile_i_j
 #undef max_tile_k
+}
+
+static void tiled_matmul_auto_cisc(
+  size_t M, size_t N, size_t K,
+  const elem_t* A, const elem_t* B, const acc_t * D, elem_t* C,
+  int act, size_t shift, size_t relu6_shift, bool repeating_bias)
+{
+  gemmini_config_reset();
+  gemmini_config_addr_ab((uintptr_t)A, (uintptr_t)B);
+  gemmini_config_addr_cd((uintptr_t)C, (uintptr_t)D);
+  gemmini_config_size0(M, N);
+  gemmini_config_size1(K);
+  gemmini_config_repeating_bias(repeating_bias);
+  gemmini_config_ex(WEIGHT_STATIONARY, act, 0, shift, relu6_shift);
+  gemmini_compute_cisc();
+  gemmini_fence();
 }
 
 void sp_tiled_conv(
@@ -1694,6 +1748,89 @@ void tiled_resadd_auto(const size_t I, const size_t J,
 }
 
 #undef abs
+
+
+//============================================================================
+// pk/linux page-fault prevention mechanisms
+// - YOU MUST PIN ALL MEMORY IN PK/LINUX BEFORE MVIN OR MVOUT!
+// - gemmini cannot raise a page-fault, since there is currently no mechanism
+//   to pass the requested vaddr to the rocket-chip from a rocc-accelerator
+// - in the future, it might be worth implementing support in rocket-core and
+//   gemmini for accelerator-initiated page-fault handling, but this seems
+//   like a lot of work.
+//============================================================================
+static bool all_pinned = false;
+
+#ifdef GEMMINI_LINUX
+#include <sys/mman.h>
+static inline void pin_all() {
+  if(all_pinned) return;
+  all_pinned = true;
+  if (mlockall(MCL_CURRENT) != 0) {
+    perror("mlockall failed");
+    exit(1);
+  }
+}
+static inline void unpin_all() {
+  if(!all_pinned) return;
+  all_pinned = false;
+  if (munlockall()) {
+    perror("munlockall failed");
+    exit(1);
+  }
+}
+#define pin_matrices(M,N,K,A,B,D,C,r) do {} while(0)
+#define unpin_matrices() do {} while(0)
+#else
+#ifdef GEMMINI_PK
+#define PAGESIZE 0x1000
+#define pin_all() do {} while(0)
+#define unpin_all() do {} while(0)
+static inline void __pin_vector(const char*vec, size_t len) {
+  volatile char item[4];
+  size_t i;
+  for(i=3*PAGESIZE; i<len; i+=4*PAGESIZE) {
+    item[0] = vec[i-3*PAGESIZE];
+    item[1] = vec[i-2*PAGESIZE];
+    item[2] = vec[i-1*PAGESIZE];
+    item[3] = vec[i-0*PAGESIZE];
+  }
+  if(i-3*PAGESIZE < len) item[0] = vec[i-3*PAGESIZE];
+  if(i-2*PAGESIZE < len) item[1] = vec[i-2*PAGESIZE];
+  if(i-1*PAGESIZE < len) item[2] = vec[i-1*PAGESIZE];
+                         item[3] = vec[len-1];
+}
+static inline void pin_matrices(
+  size_t M, size_t N, size_t K,
+  const elem_t *A, const elem_t *B, const acc_t * D, elem_t *C,
+  bool repeating_bias)
+{
+  // this is really inefficient, but we don't have mlockall() in newlib, so the
+  // best we can do is just touch every page before the accelerator uses it
+  const char* A_vec = (const char*)A;
+  const char* B_vec = (const char*)B;
+  const char* C_vec = (const char*)C;
+  size_t A_len = sizeof(elem_t)*M*K;
+  size_t B_len = sizeof(elem_t)*K*N;
+  size_t C_len = sizeof(elem_t)*M*N;
+  __pin_vector(A_vec, A_len);
+  __pin_vector(B_vec, B_len);
+  __pin_vector(C_vec, C_len);
+
+  const char* D_vec = (const char*)D;
+  size_t D_len = sizeof(acc_t)*(repeating_bias ? N : M*N);
+  if(D != NULL)
+    __pin_vector(D_vec, D_len);
+}
+#define unpin_matrices() do {} while(0)
+#else
+// GEMMINI_BAREMETAL
+#define pin_all() do {} while(0)
+#define unpin_all() do {} while(0)
+#define pin_matrices(M,N,K,A,B,D,C,r) do {} while(0)
+#define unpin_matrices() do {} while(0)
+#endif // GEMMINI_PK
+#endif // GEMMINI_LINUX
 
 #endif // SRC_MAIN_C_GEMMINI_H
 
