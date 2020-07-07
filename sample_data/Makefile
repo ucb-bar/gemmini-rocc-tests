@@ -1,15 +1,33 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	SmaGri \
-	email \
-	N_pid \
-	GD96_a \
-	nn1374 \
-	web-edu \
-	web-edu1 \
-	scofb-nips \
-	socfb-nips1 \
+	nips \
+	email-Eu-core \
+	kos \
+	socfb-Amherst41\
+	GL6 \
+	G17 \
+	G23 \
+	collegemsg \
+	socfb-American75 \
+	socfb-Brown11 \
+	CL-trial3 \
+	socfb-cal65 \
+	mooc_actions \
+	musae_DE_edges \
+	musae_ES_edges \
+	musae_RU_edges \
+	soc-sign-bitcoin-otc \
+	musae_ENGB_edges \
+	bio-CE \
+	web-EPA \
+	ia-escorts \
+	tech-pgp \
+	ca-Erdos \
+	poli3 \
+	scc_rt_lolgop \
+	scc_rt_gmanews \
+
 
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY
