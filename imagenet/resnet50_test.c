@@ -38,27 +38,27 @@ int main (int argc, char * argv[]) {
         exit(1);
     }
 
-    bool check;
-    if (argc < 3) {
-        check = false;
-    } else if (strcmp(argv[2], "check") == 0) {
-        check = true;
-    } else {
-        printf("Unknown command-line argument\n");
-        printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
-        exit(1);
-    }
-
     bool conv;
-    if (argc < 4) {
+    if (argc < 3) {
         conv = false;
-    } else if (strcmp(argv[3], "conv") == 0) {
+    } else if (strcmp(argv[2], "conv") == 0) {
         conv = true;
-    } else if (strcmp(argv[3], "matmul") == 0) {
+    } else if (strcmp(argv[2], "matmul") == 0) {
         conv = false;
     } else {
         printf("Unknown command-line argument\n");
         printf("usage: %s [-h] matmul_option [check] [conv]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
+        exit(1);
+    }
+
+    bool check;
+    if (argc < 4) {
+        check = false;
+    } else if (strcmp(argv[3], "check") == 0) {
+        check = true;
+    } else {
+        printf("Unknown command-line argument\n");
+        printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
         exit(1);
     }
 
@@ -112,6 +112,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+	printf("conv 1 cycles: %llu \n", end - start);
+
     }
 
     // conv_2
@@ -145,6 +147,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("matmul 2 cycles: %llu \n", end - start);
+
     }
 
     // conv_3
@@ -185,7 +189,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 3 cycles: %llu \n", end - start);
+
+   }
 
     // conv_4
     if (!conv) {
@@ -209,6 +215,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("matmul 4 cycles: %llu \n", end - start);
+
     }
 
     // Downsampling conv_1_out_pooled
@@ -243,7 +251,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 5 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -254,7 +264,7 @@ int main (int argc, char * argv[]) {
         conv_4_out,
         conv_4_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -281,7 +291,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 6 cycles: %llu \n", end - start);
+
+   }
 
     // conv_7
     if (!conv) {
@@ -321,7 +333,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 7 cycles: %llu \n", end - start);
+
+   }
 
     // conv_8
     if (!conv) {
@@ -345,7 +359,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 8 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -356,7 +372,7 @@ int main (int argc, char * argv[]) {
         conv_8_out,
         conv_8_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -383,7 +399,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 9 cycles: %llu \n", end - start);
+
+   }
 
     // conv_10
     if (!conv) {
@@ -423,7 +441,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 10 cycles: %llu \n", end - start);
+
+   }
 
     // conv_11
     if (!conv) {
@@ -447,7 +467,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 11 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -458,7 +480,7 @@ int main (int argc, char * argv[]) {
         conv_11_out,
         conv_11_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -485,7 +507,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 12 cycles: %llu \n", end - start);
+
+   }
 
     // conv_13
     if (!conv) {
@@ -525,7 +549,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 13 cycles: %llu \n", end - start);
+
+   }
 
     // conv_14
     if (!conv) {
@@ -549,7 +575,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 14 cycles: %llu \n", end - start);
+
+   }
 
     // Downsampling conv_11_out
     // conv_15
@@ -590,7 +618,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 15 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -601,7 +631,7 @@ int main (int argc, char * argv[]) {
         conv_14_out,
         conv_14_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -628,7 +658,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 16 cycles: %llu \n", end - start);
+
+   }
 
     // conv_17
     if (!conv) {
@@ -668,7 +700,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 17 cycles: %llu \n", end - start);
+
+   }
 
     // conv_18
     if (!conv) {
@@ -692,7 +726,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 18 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -703,7 +739,7 @@ int main (int argc, char * argv[]) {
         conv_18_out,
         conv_18_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -730,7 +766,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 19 cycles: %llu \n", end - start);
+
+   }
 
     // conv_20
     if (!conv) {
@@ -770,7 +808,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 20 cycles: %llu \n", end - start);
+
+   }
 
     // conv_21
     if (!conv) {
@@ -794,7 +834,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 21 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -805,7 +847,7 @@ int main (int argc, char * argv[]) {
         conv_21_out,
         conv_21_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -832,7 +874,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 22 cycles: %llu \n", end - start);
+
+   }
 
     // conv_23
     if (!conv) {
@@ -872,7 +916,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 23 cycles: %llu \n", end - start);
+
+   }
 
     // conv_24
     if (!conv) {
@@ -896,7 +942,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 24 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -907,7 +955,7 @@ int main (int argc, char * argv[]) {
         conv_24_out,
         conv_24_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -934,7 +982,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 25 cycles: %llu \n", end - start);
+
+   }
 
     // conv_26
     if (!conv) {
@@ -974,7 +1024,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 26 cycles: %llu \n", end - start);
+
+   }
 
     // conv_27
     if (!conv) {
@@ -998,7 +1050,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 27 cycles: %llu \n", end - start);
+
+   }
 
     // Downsampling conv_24_out
     // conv_28
@@ -1039,7 +1093,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 28 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -1050,7 +1106,7 @@ int main (int argc, char * argv[]) {
         conv_27_out,
         conv_27_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1077,7 +1133,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 29 cycles: %llu \n", end - start);
+
+   }
 
     // conv_30
     if (!conv) {
@@ -1117,7 +1175,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 30 cycles: %llu \n", end - start);
+
+   }
 
     // conv_31
     if (!conv) {
@@ -1141,7 +1201,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 31 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -1152,7 +1214,7 @@ int main (int argc, char * argv[]) {
         conv_31_out,
         conv_31_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1179,7 +1241,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 32 cycles: %llu \n", end - start);
+
+   }
 
     // conv_33
     if (!conv) {
@@ -1219,6 +1283,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+	printf("conv 33 cycles: %llu \n", end - start);
+
     }
 
     // conv_34
@@ -1243,7 +1309,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 34 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -1254,7 +1322,7 @@ int main (int argc, char * argv[]) {
         conv_34_out,
         conv_34_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1281,7 +1349,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 35 cycles: %llu \n", end - start);
+
+   }
 
     // conv_36
     if (!conv) {
@@ -1321,7 +1391,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 36 cycles: %llu \n", end - start);
+
+   }
 
     // conv_37
     if (!conv) {
@@ -1345,7 +1417,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 37 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -1356,7 +1430,7 @@ int main (int argc, char * argv[]) {
         conv_37_out,
         conv_37_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1383,7 +1457,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+	printf("matmul 39 cycles: %llu \n", end - start);
+
+   }
 
     // conv_39
     if (!conv) {
@@ -1423,7 +1499,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 39 cycles: %llu \n", end - start);
+
+   }
 
     // conv_40
     if (!conv) {
@@ -1447,7 +1525,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 40 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -1458,7 +1538,7 @@ int main (int argc, char * argv[]) {
         conv_40_out,
         conv_40_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1485,7 +1565,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 41 cycles: %llu \n", end - start);
+
+   }
 
     // conv_42
     if (!conv) {
@@ -1525,7 +1607,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 42 cycles: %llu \n", end - start);
+
+   }
 
     // conv_43
     if (!conv) {
@@ -1549,7 +1633,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 43 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -1560,7 +1646,7 @@ int main (int argc, char * argv[]) {
         conv_43_out,
         conv_43_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1587,7 +1673,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 44 cycles: %llu \n", end - start);
+
+   }
 
     // conv_45
     if (!conv) {
@@ -1627,7 +1715,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 45 cycles: %llu \n", end - start);
+
+   }
 
     // conv_46
     if (!conv) {
@@ -1651,7 +1741,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 46 cycles: %llu \n", end - start);
+
+   }
 
     // Downsampling conv_43_out
     // conv_47
@@ -1692,7 +1784,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 47 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -1703,7 +1797,7 @@ int main (int argc, char * argv[]) {
         conv_46_out,
         conv_46_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1730,7 +1824,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 48 cycles: %llu \n", end - start);
+
+   }
 
     // conv_49
     if (!conv) {
@@ -1770,7 +1866,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 49 cycles: %llu \n", end - start);
+
+   }
 
     // conv_50
     if (!conv) {
@@ -1794,7 +1892,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 50 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -1805,7 +1905,7 @@ int main (int argc, char * argv[]) {
         conv_50_out,
         conv_50_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1832,7 +1932,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 51 cycles: %llu \n", end - start);
+
+   }
 
     // conv_52
     if (!conv) {
@@ -1872,7 +1974,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-    }
+ 	printf("conv 52 cycles: %llu \n", end - start);
+
+   }
 
     // conv_53
     if (!conv) {
@@ -1896,7 +2000,9 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-    }
+ 	printf("matmul 53 cycles: %llu \n", end - start);
+
+   }
 
     // Add residuals
     start = read_cycles();
@@ -1907,7 +2013,7 @@ int main (int argc, char * argv[]) {
         conv_53_out,
         conv_53_out,
         true,
-        WS);
+        tiled_matmul_type == CPU ? CPU : WS);
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -1946,6 +2052,8 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     matmul_cycles += end - start;
+    printf("matmul 54 cycles: %llu \n", end - start);
+
 
     // Find highest probs
     int preds[fc_54_params.batch_size];
@@ -1964,7 +2072,7 @@ int main (int argc, char * argv[]) {
         printf("Prediction: %u (score: %d)\n", max_idx, max_prob);
     }
 
-    uint64_t total_cycles = im2col_cycles + matmul_cycles + pool_cycles + conv_dw_cycles + res_add_cycles + other_cycles;
+    uint64_t total_cycles = im2col_cycles + matmul_cycles + pool_cycles + conv_cycles + conv_dw_cycles + res_add_cycles + other_cycles;
 
     printf("\nTotal cycles: %llu (100%%)\n", total_cycles);
     printf("Matmul cycles: %llu (%d%%)\n", matmul_cycles, (matmul_cycles * 100) / total_cycles);
