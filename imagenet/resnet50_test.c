@@ -4,11 +4,45 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_first.h"
 #include "include/gemmini_nn.h"
 
 #include "resnet50_params.h"
 #include "images.h"
+
+#define out_tile1 0
+#define in_tile1 1
+#define bank1 1
+#define out_tile2 1
+#define in_tile2 0
+#define bank2 1
+#define out_tile3 0
+#define in_tile3 1
+#define bank3 2
+#define out_tile4 0
+#define in_tile4 1
+#define bank4 2
+#define out_tile5 1
+#define in_tile5 0
+#define bank5 2
+#define out_tile6 1
+#define in_tile6 0
+#define bank6 2
+
+#define out_tile7 1
+#define in_tile7 0
+#define bank7 2
+#define bank8 2
+
+#define out_tile_ds1 1
+#define in_tile_ds1 0
+#define bank_ds1 3
+#define out_tile_ds2 1
+#define in_tile_ds2 0
+#define bank_ds2 3
+#define out_tile_ds3 1
+#define in_tile_ds3 0
+#define bank_ds3 3
 
 int main (int argc, char * argv[]) {
 #ifndef BAREMETAL
@@ -20,7 +54,8 @@ int main (int argc, char * argv[]) {
 
     gemmini_flush(0);
 
-    enum tiled_matmul_type_t tiled_matmul_type;
+    enum tiled_matmul_type_t tiled_matmul_type = WS;
+/*
     if (argc < 2) {
         tiled_matmul_type = WS;
     } else if (strcmp(argv[1], "cpu") == 0) {
@@ -37,8 +72,9 @@ int main (int argc, char * argv[]) {
         printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
         exit(1);
     }
-
-    bool conv;
+*/
+    bool conv = true;
+/*    
     if (argc < 3) {
         conv = false;
     } else if (strcmp(argv[2], "conv") == 0) {
@@ -50,8 +86,9 @@ int main (int argc, char * argv[]) {
         printf("usage: %s [-h] matmul_option [check] [conv]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
         exit(1);
     }
-
-    bool check;
+*/
+    bool check = false;
+/*
     if (argc < 4) {
         check = false;
     } else if (strcmp(argv[3], "check") == 0) {
@@ -61,7 +98,7 @@ int main (int argc, char * argv[]) {
         printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
         exit(1);
     }
-
+*/
     uint64_t start, end;
     uint64_t im2col_cycles = 0, matmul_cycles = 0, conv_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, res_add_cycles = 0, other_cycles = 0;
 
@@ -1089,7 +1126,7 @@ int main (int argc, char * argv[]) {
             NO_ACTIVATION, conv_28_params.output_scale, 0,
             conv_28_params.pool_size, 0, conv_28_params.pool_padding,
 
-            tiled_matmul_type, out_tile_ds2, in_tile_ds2, bank_ds2);
+            tiled_matmul_type, bank_ds2);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1711,7 +1748,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_45_params.output_scale, 0,
             conv_45_params.pool_size, 0, conv_45_params.pool_padding,
 
-            tiled_matmul_type, out_tile7, in_tile7, bank7);
+            tiled_matmul_type, bank7);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1780,7 +1817,7 @@ int main (int argc, char * argv[]) {
             NO_ACTIVATION, conv_47_params.output_scale, 0,
             conv_47_params.pool_size, 0, conv_47_params.pool_padding,
 
-            tiled_matmul_type, out_tile_ds3, in_tile_ds3, bank_ds3);
+            tiled_matmul_type, bank_ds3);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1862,7 +1899,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_49_params.output_scale, 0,
             conv_49_params.pool_size, 0, conv_49_params.pool_padding,
 
-            tiled_matmul_type, out_tile8, in_tile8, bank8);
+            tiled_matmul_type, bank8);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1970,7 +2007,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_52_params.output_scale, 0,
             conv_52_params.pool_size, 0, conv_52_params.pool_padding,
 
-            tiled_matmul_type, out_tile8, in_tile8, bank8);
+            tiled_matmul_type, bank8);
 
         end = read_cycles();
         conv_cycles += end - start;
