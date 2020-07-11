@@ -4093,10 +4093,9 @@ void resadd_cpu(const size_t I, const size_t J,
         const elem_t * A,
         const elem_t * B,
         elem_t * C,
-        bool relu,
-        enum tiled_matmul_type_t matadd_type) {
+        bool relu) {
 
-    const int minimum = relu ? 0 : elem_t_min;
+    	const int minimum = relu ? 0 : elem_t_min;
 
     for (int i = 0; i < I; i++) {
         for (int j = 0; j < J; j++) {
