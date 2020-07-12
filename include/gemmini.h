@@ -1576,7 +1576,7 @@ void sp_tiled_resadd(const size_t I, const size_t J,
 
     // Mvin A
     // printf("Mving A\n");
-    gemmini_extended2_config_ld(J * sizeof(elem_t), A_shift, true);
+    gemmini_extended2_config_ld(A_row_stride * sizeof(elem_t), A_shift, true);
     for (size_t i = 0; i < I; i += DIM) {
         for (size_t j = 0; j < J; j += blocks * DIM) {
             const size_t cols = j + blocks*DIM <= J ? blocks*DIM : J-j;
@@ -1584,13 +1584,14 @@ void sp_tiled_resadd(const size_t I, const size_t J,
 
             const elem_t * const A_dram_addr = A + i * A_row_stride + j;
             const uint32_t A_sp_addr = D_sp_addr_start + i * (rounded_up_J/DIM) + j;
+
             gemmini_extended_mvin(A_dram_addr, A_sp_addr, cols, rows);
         }
     }
 
     // Mvin B
     // printf("Mving B\n");
-    gemmini_extended2_config_ld(J * sizeof(elem_t), 0, true);
+    gemmini_extended2_config_ld(B_row_stride * sizeof(elem_t), 0, true);
     for (size_t i = 0; i < I; i += DIM) {
         for (size_t j = 0; j < J; j += blocks * DIM) {
             const size_t cols = j + blocks*DIM <= J ? blocks*DIM : J-j;
