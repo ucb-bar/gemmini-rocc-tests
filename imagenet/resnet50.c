@@ -20,7 +20,8 @@ int main (int argc, char * argv[]) {
 
     gemmini_flush(0);
 
-    enum tiled_matmul_type_t tiled_matmul_type;
+    enum tiled_matmul_type_t tiled_matmul_type = WS;
+/*
     if (argc < 2) {
         tiled_matmul_type = WS;
     } else if (strcmp(argv[1], "cpu") == 0) {
@@ -37,8 +38,9 @@ int main (int argc, char * argv[]) {
         printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
         exit(1);
     }
-
-    bool conv;
+*/
+    bool conv = true;
+    /*
     if (argc < 3) {
         conv = false;
     } else if (strcmp(argv[2], "conv") == 0) {
@@ -50,8 +52,9 @@ int main (int argc, char * argv[]) {
         printf("usage: %s [-h] matmul_option [check] [conv]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
         exit(1);
     }
-
-    bool check;
+*/
+    bool check = false;
+    /*
     if (argc < 4) {
         check = false;
     } else if (strcmp(argv[3], "check") == 0) {
@@ -61,7 +64,7 @@ int main (int argc, char * argv[]) {
         printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
         exit(1);
     }
-
+*/
     uint64_t start, end;
     uint64_t im2col_cycles = 0, matmul_cycles = 0, conv_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, res_add_cycles = 0, other_cycles = 0;
 
@@ -1025,7 +1028,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_auto_largeC(
             conv_28_params.batch_size, conv_28_params.in_dim, conv_28_params.in_channels,
             conv_28_params.out_channels, conv_28_params.out_dim,
             conv_28_params.stride, conv_28_params.padding, conv_28_params.kernel_size,
@@ -1613,7 +1616,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_auto_largeC(
             conv_45_params.batch_size, conv_45_params.in_dim, conv_45_params.in_channels,
             conv_45_params.out_channels, conv_45_params.out_dim,
             conv_45_params.stride, conv_45_params.padding, conv_45_params.kernel_size,
@@ -1678,7 +1681,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_auto_largeC(
             conv_47_params.batch_size, conv_47_params.in_dim, conv_47_params.in_channels,
             conv_47_params.out_channels, conv_47_params.out_dim,
             conv_47_params.stride, conv_47_params.padding, conv_47_params.kernel_size,
@@ -1756,7 +1759,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_auto_largeC(
             conv_49_params.batch_size, conv_49_params.in_dim, conv_49_params.in_channels,
             conv_49_params.out_channels, conv_49_params.out_dim,
             conv_49_params.stride, conv_49_params.padding, conv_49_params.kernel_size,
@@ -1858,7 +1861,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_auto_largeC(
             conv_52_params.batch_size, conv_52_params.in_dim, conv_52_params.in_channels,
             conv_52_params.out_channels, conv_52_params.out_dim,
             conv_52_params.stride, conv_52_params.padding, conv_52_params.kernel_size,
