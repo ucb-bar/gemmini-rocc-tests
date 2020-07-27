@@ -1372,14 +1372,15 @@ int bidims = batches*irows*icols;
                     }
             }
 	
-            }
-       }
+        }
+    }
 
 
 
     // mvout output
    if (output != NULL) {
         if (no_pool) {
+		printf("no pool \n");
 		gemmini_extended_config_st(out_channels * sizeof(elem_t), 0, 1, 0, 0, 0, orows, ocols, 0, 0);
 //		gemmini_fence();
 		for(int b = 0; b < batches; b++)
@@ -1389,6 +1390,7 @@ int bidims = batches*irows*icols;
 				gemmini_extended_mvout(output + (b * out_dim * out_dim)*out_channels + och, C_sp_addr, J, 0);
 			}	
 	   } else {
+		   printf("pool \n");
               gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
 //             gemmini_fence(); // TODO remove this when the ROB can accurately handle these
             for (int b = 0; b < batches; b++) {
@@ -1480,7 +1482,7 @@ int bidims = batches*idims;
         }
       }
     }
-*/
+
     if (!no_bias && bias != NULL) {
         // TODO we probably don't need quite this many nested loops for this part
         gemmini_config_ld(0);
@@ -1501,7 +1503,7 @@ int bidims = batches*idims;
                  //   }
                 }
     }
-
+*/
 
   if(mvin_weight){
     // mvin weights
@@ -1518,7 +1520,7 @@ int bidims = batches*idims;
    }
  }
 
-  /*
+  
     // mvin input
     // printf("mvin inputs\n");
     gemmini_config_ld(in_channels * sizeof(elem_t));
@@ -1566,8 +1568,9 @@ int bidims = batches*idims;
         }
     }
 //    gemmini_fence();
-*/
-    // mvin input
+
+/*
+  // mvin input
 //     printf("mvin inputs\n");
     gemmini_config_ld(in_channels * sizeof(elem_t));
     for (int b = 0; b < batches; b++) {
@@ -1613,11 +1616,11 @@ int bidims = batches*idims;
         }
     }
     gemmini_fence(); // TODO fix ROB to get rid of this requirement
+*/
 
-
-//    gemmini_extended_config_st(out_channels * sizeof(elem_t), 0, 1, out_dim, 0, 0, orows, ocols, 0, 0);
+    gemmini_extended_config_st(out_channels * sizeof(elem_t), 0, 1, out_dim, 0, 0, orows, ocols, 0, 0);
 	
-//   gemmini_config_ld(0);
+   gemmini_config_ld(0);
    for (int b = 0; b < batches; b++){
 //        for (int och = 0; och < ochs; och += DIM) {
 //            const int J = ochs - och > DIM ? DIM : ochs - och;
@@ -1639,9 +1642,9 @@ int bidims = batches*idims;
 
             	for(int odim = 0; odim < odims; odim += DIM){ //both dimension at the same time
 			const int I = odims - odim > DIM ? DIM : odims - odim;
-//                        	gemmini_extended_mvin(bias,// + och,
-//                                	D_sp_addr+odim,
-//                                	J, I);
+                        	gemmini_extended_mvin(bias,// + och,
+                                	D_sp_addr+odim,
+                                	J, I);
 			const uint32_t C_sp_addr = C_sp_addr_outer + odim;
 
 			for(int kkdim = 0; kkdim < kkdims; kkdim += K){	
@@ -1654,10 +1657,11 @@ int bidims = batches*idims;
 //	   }
          }
      }
-    // mvout output
+/*
+   // mvout output
 //    printf("mvout \n");
     if (output != NULL) {
-        if (no_pool) {
+//        if (no_pool) {
             for (int b = 0; b < batches; b++)
                 for (int orow = 0; orow < orows; orow++)
                     for (int ocol = 0; ocol < ocols; ocol += DIM) {
@@ -1673,26 +1677,10 @@ int bidims = batches*idims;
                                     J, I);
                         }
                     
-        } else {
-            gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
-
-            gemmini_fence(); // TODO remove this when the ROB can accurately handle these
-            for (int b = 0; b < batches; b++) {
-                for (int poch = 0; poch < pochs; poch += DIM) {
-                    const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
-
-                    elem_t * pout = output + (b * pool_out_dim * pool_out_dim)*out_channels + poch;
-
-                    const uint32_t C_sp_addr = C_sp_addr_start + (poch / DIM) * batches * orows * ocols + b * orows * ocols;
-
-                    gemmini_extended_mvout(pout,
-                            C_sp_addr,
-                            channels, 0);
-                }
-            }
-            gemmini_fence();
-        }
-    }
+                    }
+     //       gemmini_fence();
+*/        
+    
 
 }
 /*
@@ -2036,7 +2024,7 @@ if(mvin_weight){
             }
         }
     }
-               gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
+//               gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
 
 //   printf("matmul computation \n");
    for (int b = 0; b < batches; b++){
@@ -2060,13 +2048,48 @@ if(mvin_weight){
 			}
                     }
 //                }
-              elem_t * pout = output + (b * pool_out_dim * pool_out_dim)*out_channels + och;
-  	      gemmini_extended_mvout(pout,
-                   C_sp_addr,
-                   J, 0);
-
             }
        }
+//    printf("mvout \n");
+    if (output != NULL) {
+        if (no_pool) {
+            for (int b = 0; b < batches; b++)
+                for (int orow = 0; orow < orows; orow++)
+                    for (int ocol = 0; ocol < ocols; ocol += DIM) {
+                        const int I = ocols - ocol > DIM ? DIM : ocols - ocol;
+
+//                        for (int och = 0; och < ochs; och += DIM) {
+//                            const int J = ochs - och > DIM ? DIM : ochs - och;
+			int J = 1; int och = 0;
+                            const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * orows * ocols + b * orows * ocols + orow * ocols + ocol;
+
+                            gemmini_extended_mvout(output + (b*out_dim*out_dim + orow*out_dim + ocol) * out_channels + och,
+                                    C_sp_addr,
+                                    J, I);
+                        }
+                    
+        } else {
+            gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
+
+//            gemmini_fence(); // TODO remove this when the ROB can accurately handle these
+            for (int b = 0; b < batches; b++) {
+                for (int poch = 0; poch < pochs; poch += DIM) {
+                    const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
+
+                    elem_t * pout = output + (b * pool_out_dim * pool_out_dim)*out_channels + poch;
+
+                    const uint32_t C_sp_addr = C_sp_addr_start + (poch / DIM) * batches * orows * ocols + b * orows * ocols;
+
+                    gemmini_extended_mvout(pout,
+                            C_sp_addr,
+                            channels, 0);
+                }
+            }
+//            gemmini_fence();
+        }
+    }
+
+
 }
 
 void sp_tiled_conv_ws_original_first(
@@ -2244,15 +2267,47 @@ if(mvin_weight){
 			}
                     }
                // }
-                elem_t * pout = output + (b * pool_out_dim * pool_out_dim)*out_channels + och;
-                //    const uint32_t C_sp_addr = C_sp_addr_start + (poch / DIM) * batches * orows * ocols + b * orows * ocols;
+
+            }
+       }
+//    printf("mvout \n");
+    if (output != NULL) {
+        if (no_pool) {
+            for (int b = 0; b < batches; b++)
+                for (int orow = 0; orow < orows; orow++)
+                    for (int ocol = 0; ocol < ocols; ocol += DIM) {
+                        const int I = ocols - ocol > DIM ? DIM : ocols - ocol;
+
+//                        for (int och = 0; och < ochs; och += DIM) {
+//                            const int J = ochs - och > DIM ? DIM : ochs - och;
+			int J = 1; int och = 0;
+                            const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * orows * ocols + b * orows * ocols + orow * ocols + ocol;
+
+                            gemmini_extended_mvout(output + (b*out_dim*out_dim + orow*out_dim + ocol) * out_channels + och,
+                                    C_sp_addr,
+                                    J, I);
+                        }
+                    
+        } else {
+            gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
+
+//            gemmini_fence(); // TODO remove this when the ROB can accurately handle these
+            for (int b = 0; b < batches; b++) {
+                for (int poch = 0; poch < pochs; poch += DIM) {
+                    const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
+
+                    elem_t * pout = output + (b * pool_out_dim * pool_out_dim)*out_channels + poch;
+
+                    const uint32_t C_sp_addr = C_sp_addr_start + (poch / DIM) * batches * orows * ocols + b * orows * ocols;
 
                     gemmini_extended_mvout(pout,
                             C_sp_addr,
-                            J, 0);
- 
+                            channels, 0);
+                }
             }
-       }
+//            gemmini_fence();
+        }
+    }
 
 }
 
@@ -2670,7 +2725,9 @@ void tiled_conv_first(
 
     }
 #endif
-
+    if (no_pool) {
+        gemmini_config_st(out_channels * sizeof(elem_t));
+    }
     const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
     int p_max = 0;
     for(int porow = 0; porow < pool_out_dim; porow += porows)
