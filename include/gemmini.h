@@ -211,12 +211,15 @@ scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
     gemmini_extended_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, 1)
 
 #if defined(HAS_MVIN_SCALE) || defined(HAS_MVIN_ACC_SCALE)
-#define gemmini_extended_config_ld(stride, scale) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale_t_to_scale_t_bits(scale)) << 32) | CONFIG_LD, stride, k_CONFIG)
+#define gemmini_extended2_config_ld(stride, scale, shrunk) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale_t_to_scale_t_bits(scale)) << 32) | ((shrunk) << 2) | CONFIG_LD, stride, k_CONFIG)
 #else
-#define gemmini_extended_config_ld(stride, scale) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_LD, stride, k_CONFIG)
+#define gemmini_extended2_config_ld(stride, scale, shrunk) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_LD, stride, ((shrunk) << 2) | k_CONFIG)
 #endif
+
+#define gemmini_extended_config_ld(stride, scale) \
+  gemmini_extended2_config_ld(stride, scale, false)
 
 #define gemmini_config_ld(stride) \
   gemmini_extended_config_ld(stride, MVIN_SCALE_ONE)
@@ -2541,87 +2544,61 @@ void resadd_cpu(const size_t I, const size_t J,
 }
 
 void sp_tiled_resadd(const size_t I, const size_t J,
-        const size_t A_shift,
+        const int A_shift,
         const elem_t * A, const elem_t * B, elem_t * C,
         size_t A_row_stride, size_t B_row_stride, size_t C_row_stride,
         bool relu) {
 
-    const size_t blocks = J/DIM < MAX_BLOCK_LEN ? J/DIM : MAX_BLOCK_LEN;
+    size_t blocks = J/DIM < MAX_BLOCK_LEN ? J/DIM : MAX_BLOCK_LEN;
+    if (blocks == 0) blocks = 1;
+// printf("blocks: %d \n", blocks);
 
-    const uint32_t A_sp_addr_start = 0;
-    const uint32_t B_sp_addr_start = (BANK_NUM * BANK_ROWS) / 2;
     const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
     const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2);
 
     const size_t rounded_up_J = (J / DIM + (J % DIM != 0)) * DIM;
 
-    // Mvin A and B
-    // printf("Mving A and B\n");
+    // Mvin A
+//     printf("Mving A\n");
+    gemmini_extended2_config_ld(A_row_stride * sizeof(elem_t), A_shift, true);
     for (size_t i = 0; i < I; i += DIM) {
         for (size_t j = 0; j < J; j += blocks * DIM) {
             const size_t cols = j + blocks*DIM <= J ? blocks*DIM : J-j;
             const size_t rows = i + DIM <= I ? DIM : I-i;
 
             const elem_t * const A_dram_addr = A + i * A_row_stride + j;
-            const elem_t * const B_dram_addr = B + i * B_row_stride + j;
-
-            const uint32_t A_sp_addr = A_sp_addr_start + i * (rounded_up_J/DIM) + j;
-            const uint32_t B_sp_addr = B_sp_addr_start + i * (rounded_up_J/DIM) + j;
-
+            const uint32_t A_sp_addr = D_sp_addr_start + i * (rounded_up_J/DIM) + j;
             gemmini_extended_mvin(A_dram_addr, A_sp_addr, cols, rows);
+        }
+    }
+
+    // Mvin B
+    // printf("Mving B\n");
+    gemmini_extended2_config_ld(B_row_stride * sizeof(elem_t), 0, true);
+    for (size_t i = 0; i < I; i += DIM) {
+        for (size_t j = 0; j < J; j += blocks * DIM) {
+            const size_t cols = j + blocks*DIM <= J ? blocks*DIM : J-j;
+            const size_t rows = i + DIM <= I ? DIM : I-i;
+
+            const elem_t * const B_dram_addr = B + i * B_row_stride + j;
+            const uint32_t B_sp_addr = C_sp_addr_start + i * (rounded_up_J/DIM) + j;
             gemmini_extended_mvin(B_dram_addr, B_sp_addr, cols, rows);
-        }
-    }
-
-    // Store A values in accumulator
-    // printf("Store A values in accumulator\n");
-    gemmini_config_ex(OS, NO_ACTIVATION, A_shift, 0, 0);
-
-    for (size_t i = 0; i < I; i += DIM) {
-        for (size_t j = 0; j < J; j += DIM) {
-            const size_t cols = j + DIM <= J ? DIM : J-j;
-            const size_t rows = i + DIM <= I ? DIM : I-i;
-
-            const uint32_t A_sp_addr = A_sp_addr_start + i * (rounded_up_J/DIM) + j;
-            const uint32_t C_sp_addr = D_sp_addr_start + i * (rounded_up_J/DIM) + j;
-
-            // printf("C_sp_addr: %x\n", C_sp_addr);
-            gemmini_extended_preload(A_sp_addr, C_sp_addr, cols, rows, cols, rows);
-            gemmini_extended_compute_preloaded(GARBAGE_ADDR, GARBAGE_ADDR, cols, rows, cols, rows);
-        }
-    }
-
-    // Accumulate B values in accumulator
-    // printf("Accumulate B values in accumulator\n");
-    gemmini_config_ex(WS, relu ? RELU : NO_ACTIVATION, 0, 0, 0);
-
-    for (size_t i = 0; i < I; i += DIM) {
-        for (size_t j = 0; j < J; j += DIM) {
-            const size_t cols = j + DIM <= J ? DIM : J-j;
-            const size_t rows = i + DIM <= I ? DIM : I-i;
-
-            const uint32_t B_sp_addr = B_sp_addr_start + i * (rounded_up_J/DIM) + j;
-            const uint32_t C_sp_addr = C_sp_addr_start + i * (rounded_up_J/DIM) + j;
-
-            gemmini_extended_preload(GARBAGE_ADDR, C_sp_addr, cols, rows, cols, rows);
-            gemmini_extended_compute_preloaded(GARBAGE_ADDR, B_sp_addr, cols, rows, cols, rows);
         }
     }
 
     // Mvout C from accumulator
     // printf("Mvout C from accumulator\n");
     for (size_t i = 0; i < I; i += DIM) {
+            const size_t rows = i + DIM <= I ? DIM : I-i;
+            elem_t * const C_dram_addr = C + i * C_row_stride;
+            const uint32_t C_sp_addr = D_sp_addr_start + i * (rounded_up_J/DIM);
+ 
         for (size_t j = 0; j < J; j += DIM) {
             const size_t cols = j + DIM <= J ? DIM : J-j;
-            const size_t rows = i + DIM <= I ? DIM : I-i;
-
-            const elem_t * const C_dram_addr = C + i * C_row_stride + j;
-
-            const uint32_t C_sp_addr = C_sp_addr_start + i * (rounded_up_J/DIM) + j;
-
-            gemmini_extended_mvout(C_dram_addr, C_sp_addr, cols, rows);
+           gemmini_extended_mvout(C_dram_addr+j, C_sp_addr+j, cols, rows);
         }
     }
+
 }
 
 // Compute (A >> A_shift) + B = C
@@ -2635,7 +2612,8 @@ void tiled_resadd(const size_t I, const size_t J,
         enum tiled_matmul_type_t matadd_type) {
 
     gemmini_config_st(J * sizeof(elem_t));
-    gemmini_config_ld(J * sizeof(elem_t));
+    // gemmini_config_ld(J * sizeof(elem_t));
+    gemmini_config_ex(WS, relu ? RELU : NO_ACTIVATION, 0, 0, 0);
 
     for (int i = 0; i < I; i += tile_I) {
         for (int j = 0; j < J; j += tile_J) {
