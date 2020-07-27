@@ -1489,8 +1489,8 @@ int bidims = batches*idims;
             const uint32_t B_sp_addr = B_sp_addr_start+ krow*kernel_dim;
  
             for (int kcol = 0; kcol < kernel_dim; kcol++){
-                    gemmini_extended_mvin(weights + (krow*kernel_dim*in_channels + kcol*in_channels) * out_channels,
-                        B_sp_addr+kcol*1,
+                    gemmini_extended_mvin(weights + (krow*kernel_dim + kcol) * out_channels,
+                        B_sp_addr+kcol,
                         1, 1);
 	    }
    }
@@ -2460,7 +2460,7 @@ void tiled_conv_dw(
 
                                     input + (b*in_dim*in_dim + (irow+upad)*in_dim + (icol+lpad)) * in_channels + kch,
                                     //weights + (krow*kernel_dim*in_channels + kcol*in_channels + kch) * out_channels + poch,
-			     	    weights + kch * out_channels + poch,
+			     	    weights + poch,
                                     out,
                                     bias_,
 
