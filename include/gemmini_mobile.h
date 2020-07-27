@@ -1380,17 +1380,24 @@ int bidims = batches*irows*icols;
     // mvout output
    if (output != NULL) {
         if (no_pool) {
-		printf("no pool \n");
-		gemmini_extended_config_st(out_channels * sizeof(elem_t), 0, 1, 0, 0, 0, orows, ocols, 0, 0);
-//		gemmini_fence();
-		for(int b = 0; b < batches; b++)
-			for(int och = 0; och < ochs; och += DIM){
-				const int J = ochs - och > DIM ? DIM : ochs - och;
-				const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * odims + b * odims;
-				gemmini_extended_mvout(output + (b * out_dim * out_dim)*out_channels + och, C_sp_addr, J, 0);
-			}	
+            for (int b = 0; b < batches; b++)
+                for (int orow = 0; orow < orows; orow++)
+                    for (int ocol = 0; ocol < ocols; ocol += DIM) {
+                        const int I = ocols - ocol > DIM ? DIM : ocols - ocol;
+
+                        for (int och = 0; och < ochs; och += DIM) {
+                            const int J = ochs - och > DIM ? DIM : ochs - och;
+//			int J = 1; int och = 0;
+                            const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * orows * ocols + b * orows * ocols + orow * ocols + ocol;
+
+                            gemmini_extended_mvout(output + (b*out_dim*out_dim + orow*out_dim + ocol) * out_channels + och,
+                                    C_sp_addr,
+                                    J, I);
+                        }
+                    
+                    }
 	   } else {
-		   printf("pool \n");
+//		   printf("pool \n");
               gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
 //             gemmini_fence(); // TODO remove this when the ROB can accurately handle these
             for (int b = 0; b < batches; b++) {
@@ -1653,14 +1660,14 @@ int bidims = batches*idims;
                                 gemmini_extended_compute_preloaded(A_sp_addr, GARBAGE_ADDR, K, I, J, I);
                  
                 	}
-		gemmini_extended_mvout(output + (b * out_dim * out_dim)*out_channels, C_sp_addr_outer, J, 0);
+//		gemmini_extended_mvout(output + (b * out_dim * out_dim)*out_channels, C_sp_addr_outer, J, 0);
 //	   }
          }
      }
-/*
+
    // mvout output
 //    printf("mvout \n");
-    if (output != NULL) {
+//    if (output != NULL) {
 //        if (no_pool) {
             for (int b = 0; b < batches; b++)
                 for (int orow = 0; orow < orows; orow++)
@@ -1669,17 +1676,17 @@ int bidims = batches*idims;
 
 //                        for (int och = 0; och < ochs; och += DIM) {
 //                            const int J = ochs - och > DIM ? DIM : ochs - och;
-			int J = 1; int och = 0;
-                            const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * orows * ocols + b * orows * ocols + orow * ocols + ocol;
+			int J = 1; 
+                            const uint32_t C_sp_addr = C_sp_addr_start + b * orows * ocols + orow * ocols + ocol;
 
-                            gemmini_extended_mvout(output + (b*out_dim*out_dim + orow*out_dim + ocol) * out_channels + och,
+                            gemmini_extended_mvout(output + (b*out_dim*out_dim + orow*out_dim + ocol) * out_channels,
                                     C_sp_addr,
                                     J, I);
                         }
                     
-                    }
+//                    }
      //       gemmini_fence();
-*/        
+        
     
 
 }
@@ -3007,7 +3014,7 @@ void tiled_conv(
                                 const int rpad = icol + icols_ > in_dim ? icol + icols_ - in_dim : 0;
                                 const int upad = irow < 0 ? -irow : 0;
                                 const int dpad = irow + irows_ > in_dim ? irow + irows_ - in_dim : 0;
-			if(kernel_dim != 1)
+//			if(kernel_dim != 1)
                                sp_tiled_conv(
                                     batch_size, in_dim, in_channels,
                                     out_channels, out_dim, pool_out_dim,
@@ -3138,14 +3145,14 @@ void tiled_conv_auto_first(
 //    int kcols = kernel_dim;//args[5];
     int kchs = args[4];
 
-/*
+
      printf("batches = %d\n", batches);
      printf("orows = %d\n", orows);
      printf("ocols = %d\n", ocols);
      printf("ochs = %d\n", ochs);
 //     printf("kcols = %d\n", kernel_dim);
      printf("kchs = %d\n", kchs);
-*/
+
 
    tiled_conv_first(
         batch_size, in_dim, in_channels,
@@ -3509,14 +3516,14 @@ void tiled_conv_auto(
     int kcols = kernel_dim;//args[5];
     int kchs = args[4];
 
-/*
+
      printf("batches = %d\n", batches);
      printf("orows = %d\n", orows);
      printf("ocols = %d\n", ocols);
      printf("ochs = %d\n", ochs);
      printf("kcols = %d\n", kernel_dim);
      printf("kchs = %d\n", kchs);
-*/
+
     tiled_conv(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
