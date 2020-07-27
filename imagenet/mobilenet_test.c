@@ -4,7 +4,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_mobile.h"
 #include "include/gemmini_nn.h"
 
 #include "mobilenet_params.h"
@@ -92,7 +92,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_auto_first(
             conv_1_params.batch_size, conv_1_params.in_dim, conv_1_params.in_channels,
             conv_1_params.out_channels, conv_1_params.out_dim,
             conv_1_params.stride, conv_1_params.padding, conv_1_params.kernel_size,
