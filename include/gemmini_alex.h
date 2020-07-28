@@ -2924,15 +2924,14 @@ int bidims = batches*idims;
         }
     }
 //    gemmini_fence();
-
-//    if(!no_1d && no_pool) gemmini_extended_config_st(out_channels * sizeof(elem_t), 0, 1, out_dim, 0, 0, orows, ocols, 0, 0);
+/*
    if(no_pool){
 	   gemmini_extended_config_st(out_channels * sizeof(elem_t), 0, 1, out_dim, 0, 0, orows, ocols, 0, 0);
    }
    else{
 	   gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
    }
- 
+*/ 
    gemmini_config_ld(0);
    for (int b = 0; b < batches; b++){
         for (int och = 0; och < ochs; och += DIM) {
@@ -2997,7 +2996,8 @@ int bidims = batches*idims;
 */
                    }
                 }
-	   if(output!=NULL){
+/*
+ 	    if(output!=NULL){
 		//const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * odims + b * odims;
 		if(no_pool){
   		   gemmini_extended_mvout(output + (b * out_dim * out_dim)*out_channels + och, C_sp_addr_outer, J, 0);
@@ -3006,8 +3006,43 @@ int bidims = batches*idims;
 		   gemmini_extended_mvout(output + (b * pool_out_dim * pool_out_dim) * out_channels + och, C_sp_addr_outer, J, 0);
 		}
 	   }
-         }
+*/
+   	}
      }
+
+           if (no_pool) {
+            for (int b = 0; b < batches; b++)
+                for (int orow = 0; orow < orows; orow++)
+                    for (int ocol = 0; ocol < ocols; ocol += DIM) {
+                        const int I = ocols - ocol > DIM ? DIM : ocols - ocol;
+
+                        for (int och = 0; och < ochs; och += DIM) {
+                            const int J = ochs - och > DIM ? DIM : ochs - och;
+//			int J = 1; int och = 0;
+                            const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * orows * ocols + b * orows * ocols + orow * ocols + ocol;
+
+                            gemmini_extended_mvout(output + (b*out_dim*out_dim + orow*out_dim + ocol) * out_channels + och,
+                                    C_sp_addr,
+                                    J, I);
+                        }
+
+                    }
+	   } else {
+//		   printf("pool \n");
+              gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
+//             gemmini_fence(); // TODO remove this when the ROB can accurately handle these
+            for (int b = 0; b < batches; b++) {
+                for (int poch = 0; poch < pochs; poch += DIM) {
+                    const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
+                    elem_t * pout = output + (b * pool_out_dim * pool_out_dim)*out_channels + poch;
+                    const uint32_t C_sp_addr = C_sp_addr_start + (poch / DIM) * batches * orows * ocols + b * orows * ocols;
+                    gemmini_extended_mvout(pout,
+                            C_sp_addr,
+                            channels, 0);
+                }
+            }
+//            gemmini_fence();
+        }
 /*
     // mvout output
    if (output != NULL) {
@@ -3076,6 +3111,7 @@ void tiled_conv(
         pool_size = 1;
         pool_stride = 1;
         pool_padding = 0;
+	printf("no pooling \n");
     }
     if (no_pool) {
         gemmini_config_st(out_channels * sizeof(elem_t));
@@ -3129,12 +3165,12 @@ void tiled_conv(
       			for (int ich = 0; ich < kchs_; ich += DIM) {
         		    const int K = kchs_ - ich > DIM ? DIM : kchs_ - ich;
         		    for (int krow = 0; krow < kcols; krow++){
-				elem_t * weight = weights + poch + (krow*kcols*in_channels + ich) * out_channels + och;
+				//elem_t * weight = weights + poch + (krow*kcols*in_channels + ich) * out_channels + och;
 				const uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * kdims * kchs_ + ich*kdims + krow*kcols*K;// + kcol*K;
  
             			for (int kcol = 0; kcol < kcols; kcol++){
-                              		//gemmini_extended_mvin(weights + poch + (krow*kcols*in_channels + kcol*in_channels + ich) * out_channels + och,
-					gemmini_extended_mvin(weight + kcol*in_channels*out_channels,
+                              		gemmini_extended_mvin(weights + poch + (krow*kcols*in_channels + kcol*in_channels + ich) * out_channels + och,
+					//gemmini_extended_mvin(weight + kcol*in_channels*out_channels,
 						B_sp_addr+kcol*K,
                         			J, K);
 	    			}
