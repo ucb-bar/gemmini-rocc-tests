@@ -27,14 +27,14 @@
 #define bank5 2
 #define out_tile6 1
 #define in_tile6 0
-#define bank6 2
+#define bank6 3
 
 #define out_tile7 1
 #define in_tile7 0
 #define bank7 2
 #define bank8 2
 
-#define out_tile_ds1 1
+#define out_tile_ds1 3
 #define in_tile_ds1 0
 #define bank_ds1 3
 #define out_tile_ds2 1
@@ -135,7 +135,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_auto_first(
             conv_1_params.batch_size, conv_1_params.in_dim, conv_1_params.in_channels,
             conv_1_params.out_channels, conv_1_params.out_dim,
             conv_1_params.stride, conv_1_params.padding, conv_1_params.kernel_size,
