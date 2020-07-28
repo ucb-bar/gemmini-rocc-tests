@@ -4,7 +4,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_alex.h"
 #include "include/gemmini_nn.h"
 
 #include "alexnet_params.h"
@@ -51,7 +51,7 @@ int main (int argc, char * argv[]) {
         exit(1);
     }
 */
-    bool conv=false;
+    bool conv=true;
     /*
     if (argc < 4) {
         conv = false;
@@ -101,7 +101,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_auto_first(
             conv_1_params.batch_size, conv_1_params.in_dim, conv_1_params.in_channels,
             conv_1_params.out_channels, conv_1_params.out_dim,
             conv_1_params.stride, conv_1_params.padding, conv_1_params.kernel_size,
@@ -230,7 +230,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_auto_largeC(
             conv_4_params.batch_size, conv_4_params.in_dim, conv_4_params.in_channels,
             conv_4_params.out_channels, conv_4_params.out_dim,
             conv_4_params.stride, conv_4_params.padding, conv_4_params.kernel_size,
@@ -279,7 +279,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_auto_largeC(
             conv_5_params.batch_size, conv_5_params.in_dim, conv_5_params.in_channels,
             conv_5_params.out_channels, conv_5_params.out_dim,
             conv_5_params.stride, conv_5_params.padding, conv_5_params.kernel_size,
