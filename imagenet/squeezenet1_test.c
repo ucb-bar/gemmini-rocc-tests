@@ -4,7 +4,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini.h"
+#include "include/gemmini_squeeze.h"
 #include "include/gemmini_nn.h"
 
 #include "squeezenet1_params.h"
@@ -50,7 +50,7 @@ int main (int argc, char * argv[]) {
         exit(1);
     }
 
-    bool conv=false;
+    bool conv=true;
     /*
     if (argc < 4) {
         conv = false;
@@ -116,6 +116,8 @@ int main (int argc, char * argv[]) {
         conv_cycles += end - start;
     }
 
+    printf("conv_1 cycles: %llu \n", end - start);
+
     //fire 1
     // conv_2 (squeeze 64 -> 16)
     if (!conv) {
@@ -150,6 +152,9 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
     }
 
+    printf("conv_2 cycles: %llu \n", end - start);
+
+
     // conv_3 (expand 16 -> 64, kernel size = 1)
     if (!conv) {
         start = read_cycles();
@@ -173,6 +178,9 @@ int main (int argc, char * argv[]) {
         end = read_cycles();
         matmul_cycles += end - start;
     }
+
+    printf("conv_3 cycles: %llu \n", end - start);
+
 
     // conv_4 (expand 16 -> 64)
     if (!conv) {
@@ -214,6 +222,9 @@ int main (int argc, char * argv[]) {
         conv_cycles += end - start;
     }
 
+    printf("conv_4 cycles: %llu \n", end - start);
+
+
     //merge conv 3 and 4 (64+64 -> 128)
     elem_t fire1_out[12100][128] row_align(1);
     for(int i = 0; i < conv_5_params.n_patches; i++){
@@ -252,6 +263,9 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
     }
 
+    printf("conv_5 cycles: %llu \n", end - start);
+
+
     // conv_6 (expand 16 -> 64)
     if (!conv) {
         start = read_cycles();
@@ -263,7 +277,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-
+	
+	start = read_cycles();
         pool_with_col2im(conv_6_params.I, conv_6_params.J,
             conv_6_params.batch_size, conv_6_params.out_channels, conv_6_params.out_dim_pooled,
             conv_6_out, conv_6_out_pooled, &conv_6_params);
@@ -296,6 +311,9 @@ int main (int argc, char * argv[]) {
         end = read_cycles();
         conv_cycles += end - start;
     }
+
+    printf("conv_6 cycles: %llu \n", end - start);
+
 
     // conv_7 (expand 16 -> 64)
     if (!conv) {
@@ -347,6 +365,9 @@ int main (int argc, char * argv[]) {
         conv_cycles += end - start;
     }
 
+    printf("conv_7 cycles: %llu \n", end - start);
+
+
     //merge (conv_6_out_pooled, conv_7_out_pooled, 64 + 64 -> 128)
     elem_t fire2_out[4][27][27][128];
     for(int i = 0; i < conv_8_params.batch_size; i++)
@@ -395,6 +416,9 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
     }
 
+    printf("conv_8 cycles: %llu \n", end - start);
+
+
     // conv_9 (expand1 32 -> 128)
     if (!conv) {
         start = read_cycles();
@@ -418,6 +442,9 @@ int main (int argc, char * argv[]) {
         end = read_cycles();
         matmul_cycles += end - start;
     }
+
+    printf("conv_9 cycles: %llu \n", end - start);
+
 
     // conv_10 (expand2 32 -> 128)
     if (!conv) {
@@ -459,6 +486,9 @@ int main (int argc, char * argv[]) {
         conv_cycles += end - start;
     }
 
+    printf("conv_10 cycles: %llu \n", end - start);
+
+
     //merge (conv_9, conv_10, 128+128 -> 256) 
     elem_t fire3_out[2916][256] row_align(1);
 for(int i = 0; i < conv_11_params.n_patches; i++){
@@ -496,6 +526,9 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
         end = read_cycles();
         matmul_cycles += end - start;
     }
+
+    printf("conv_11 cycles: %llu \n", end - start);
+
 
     // conv_12(expand1 32 -> 128) add pooling
     if (!conv) {
@@ -540,6 +573,9 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
         end = read_cycles();
         conv_cycles += end - start;
     }
+
+    printf("conv_12 cycles: %llu \n", end - start);
+
 
     // conv_13 (expand2 32 -> 128)
     if (!conv) {
@@ -590,6 +626,9 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
         conv_cycles += end - start;
     }
 
+    printf("conv_13 cycles: %llu \n", end - start);
+
+
     //merge (conv_12_out_pooled, conv_13_out_pooled)
     elem_t fire4_out[4][13][13][256];
     for(int i = 0; i < conv_14_params.batch_size; i++)
@@ -638,6 +677,9 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
         matmul_cycles += end - start;
     }
 
+    printf("conv_14 cycles: %llu \n", end - start);
+
+
     // conv_15 (expand1 48 -> 192)
     if (!conv) {
         start = read_cycles();
@@ -661,6 +703,9 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
         end = read_cycles();
         matmul_cycles += end - start;
     }
+
+    printf("conv_15 cycles: %llu \n", end - start);
+
 
     // conv_16 (expand2 48 -> 192)
     if (!conv) {
@@ -701,6 +746,9 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
         end = read_cycles();
         conv_cycles += end - start;
     }
+
+    printf("conv_16 cycles: %llu \n", end - start);
+
 
     //merge
     elem_t fire5_out[676][384] row_align(1);
@@ -940,6 +988,9 @@ for(int i = 0; i < conv_20_params.n_patches; i++){
         conv_cycles += end - start;
     }
 
+    printf("conv_22 cycles: %llu \n", end - start);
+
+
     //merge (conv_21, conv_22)
     elem_t fire7_out[676][512] row_align(1);
 for(int i = 0; i < conv_23_params.n_patches; i++){
@@ -978,6 +1029,9 @@ for(int i = 0; i < conv_23_params.n_patches; i++){
         matmul_cycles += end - start;
     }
 
+    printf("conv_23 cycles: %llu \n", end - start);
+
+
     // conv_24 (expand1 64 -> 256)
     if (!conv) {
         start = read_cycles();
@@ -1001,6 +1055,9 @@ for(int i = 0; i < conv_23_params.n_patches; i++){
         end = read_cycles();
         matmul_cycles += end - start;
     }
+
+    printf("conv_24 cycles: %llu \n", end - start);
+
 
     // conv_25 (expand2 64 -> 256)
     if (!conv) {
@@ -1042,6 +1099,9 @@ for(int i = 0; i < conv_23_params.n_patches; i++){
         conv_cycles += end - start;
     }
 
+    printf("conv_25 cycles: %llu \n", end - start);
+
+
     //merge (conv_24, conv_25)
 
     elem_t fire8_out[676][512] row_align(1);
@@ -1078,6 +1138,9 @@ for(int i = 0; i < conv_23_params.n_patches; i++){
         end = read_cycles();
         matmul_cycles += end - start;
     }
+
+    printf("conv_26 cycles: %llu \n", end - start);
+
 
     // Global averaging
     static elem_t average[1000][4] row_align(1);
