@@ -494,22 +494,8 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * Bt,
       }
 //   printf("%d ", A_mvin[i]);
    }
-/*
-   for(size_t i = 0; i < I; i++){
-     int position = tile_I_start + i*DIM;
-     int row = DIM - (i == I - 1 ? pad_I : 0); 
-     int start = *(S_indptr + position);
-     int end = *(S_indptr + position + row);
-     if(A_mvin[i] != A_mvin[i+1]){ // if row has been moved in
-	for(int j = start; j < end; j++){
-	   int index = *(S_index + j);
-	   if(index >= tile_J_start
-	}
-     }
 
-   }
-*/
-
+//matmul computation
    for(size_t i = 0; i < I; i++)
      if(A_mvin[i] != A_mvin[i+1]){
 	const uint32_t A_sp_addr = A_sp_addr_start + A_mvin[i]*K;//sp address based on mvin rows
@@ -531,6 +517,7 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * Bt,
      	     		gemmini_extended_compute_preloaded(A_sp_addr+k*DIM, GARBAGE_ADDR, DIM, rows, DIM, DIM);			
 		   }
 */
+		    //offload <A, B, C addres computation, compuation command fetching> to loop_ws command
 		    gemmini_loop_ws(B_sp_addr_start, A_mvin[i], B_mvin[j], I, J, K, rows, cols, pad_K, 1);
 		    break;
 		 }
@@ -546,7 +533,7 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * Bt,
 //gemmini_fence();
 //start = read_cyclesh();
 
- // Move-out C
+ // Move-out C (apply bitmask)
    if (C != NULL) {
     for (size_t i = 0; i < I; i++) {
       if(A_mvin[i] < A_mvin[i+1]){ 
@@ -579,7 +566,6 @@ static void sp_tiled_matmul_ws_sddmm(const elem_t * A, const elem_t * Bt,
 	   }
 	 //  printf("brow: %d, %d, %d, %d \n", b_row[0], b_row[1], b_row[2], b_row[3]);
            gemmini_sddmm_mvout(C_dram_addr+j*DIM, C_sp_addr+B_mvin[j], b_row[0], b_row[1], b_row[2], b_row[3], C_cols, C_rows);
-//           gemmini_sddmm_mvout(C_dram_addr+j*DIM, C_sp_addr+B_mvin[j], 15, 15, 15, 15, C_cols, C_rows);
 	 }
        }
       }
