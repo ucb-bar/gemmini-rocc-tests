@@ -6,7 +6,8 @@ abs_top_srcdir := @abs_top_srcdir@
 XLEN           := @XLEN@
 RISCVTOOLS     := @RISCVTOOLS@
 ROCC           := examples
-CATEGORIES     := bareMetalC mlps imagenet
+#CATEGORIES     := bareMetalC mlps imagenet
+CATEGORIES     := bareMetalC
 
 #=============================================================================
 # targets

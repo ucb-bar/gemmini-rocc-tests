@@ -42,13 +42,14 @@
 //============================================================================
 // gemmini-cisc opcodes
 //============================================================================
-#define k_ADDR_AB      10
-#define k_ADDR_CD      11
-#define k_SIZE0        12
-#define k_SIZE1        13
-#define k_RPT_BIAS     14
-#define k_RESET        15
-#define k_COMPUTE_CISC 16
+#define k_CONFIG_CISC_EX 10
+#define k_ADDR_AB        11
+#define k_ADDR_CD        12
+#define k_SIZE0          13
+#define k_SIZE1          14
+#define k_RPT_BIAS       15
+#define k_RESET          16
+#define k_COMPUTE_CISC   17
 //============================================================================
 
 #define CONFIG_EX 0
@@ -249,6 +250,15 @@ scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
 //============================================================================
 // gemmini-cisc opcodes
 //============================================================================
+#define gemmini_config_cisc_ex(act, sys_shift, acc_shift, relu6_shift) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, \
+      ((uint64_t)(acc_shift) << 32) | \
+      ((act) << 3) | \
+      CONFIG_EX, \
+    ((uint64_t)(relu6_shift) << 32) | \
+      (sys_shift), \
+    k_CONFIG_CISC_EX)
+
 #define gemmini_config_addr_ab(A, B) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_ADDR_AB)
 
@@ -908,12 +918,12 @@ static void tiled_matmul_auto_cisc(
   int act, size_t shift, size_t relu6_shift, bool repeating_bias)
 {
   gemmini_config_reset();
+  gemmini_config_cisc_ex(act, 0, shift, relu6_shift);
   gemmini_config_addr_ab((uintptr_t)A, (uintptr_t)B);
   gemmini_config_addr_cd((uintptr_t)C, (uintptr_t)D);
   gemmini_config_size0(M, N);
   gemmini_config_size1(K);
   gemmini_config_repeating_bias(repeating_bias);
-  gemmini_config_ex(WEIGHT_STATIONARY, act, 0, shift, relu6_shift);
   gemmini_compute_cisc();
   gemmini_fence();
 }
