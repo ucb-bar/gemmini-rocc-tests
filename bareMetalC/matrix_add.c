@@ -65,6 +65,7 @@ int main() {
         printf("\"B\" matrix:\n");
         printMatrix(B);
         printf("\n");
+        printf("Wrong (ashift: %d, bshift: %d)\n", ashift, bshift);
         exit(1);
       }
     }

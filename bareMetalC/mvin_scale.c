@@ -49,7 +49,8 @@ int main() {
 
     for (size_t i = 0; i < DIM; ++i)
       for (size_t j = 0; j < DIM; ++j) {
-         if (Out[n][i][j] != (elem_t)(n * In[n][i][j])) {
+         // if (Out[n][i][j] != (elem_t)(n * In[n][i][j])) {
+         if (Out[n][i][j] != (elem_t)(ROUNDING_RIGHT_SHIFT(In[n][i][j], n))) {
            is_correct = false;
            break;
          }
@@ -93,7 +94,8 @@ int main() {
 
     for (size_t i = 0; i < DIM; ++i)
       for (size_t j = 0; j < DIM; ++j) {
-         acc_t gold = (n+1) * In_acc[n][i][j];
+         // acc_t gold = (n+1) * In_acc[n][i][j];
+         acc_t gold = ROUNDING_RIGHT_SHIFT(In_acc[n][i][j], n+1);
          if (gold > elem_t_max) {
              gold = elem_t_max;
          } else if (gold < elem_t_min) {
