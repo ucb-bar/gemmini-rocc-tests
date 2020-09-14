@@ -16,16 +16,23 @@
 #define MAT_DIM_I 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM_I 35
-#define MAT_DIM_J 27
+
+// #define MAT_DIM_I 256
+// #define MAT_DIM_J 256
+
+#define MAT_DIM_I 128
+#define MAT_DIM_J 256
+
+// #define MAT_DIM_I 35
+// #define MAT_DIM_J 27
 #endif
 
-#define A_SHIFT 2
-#define USE_RELU true
+#define A_SHIFT 0 // 2
+#define USE_RELU false // true
 
 void full_printMatrix(elem_t m[MAT_DIM_I][MAT_DIM_J]) {
-  for (size_t i = 0; i < MAT_DIM_I; ++i) {
-    for (size_t j = 0; j < MAT_DIM_J; ++j)
+  for (size_t i = 0; i < MAT_DIM_I && i < 2; ++i) {
+    for (size_t j = 0; j < MAT_DIM_J && j < 8; ++j)
       printf("%d ", m[i][j]);
     printf("\n");
   }

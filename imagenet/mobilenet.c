@@ -40,7 +40,8 @@ int main (int argc, char * argv[]) {
 
     bool conv;
     if (argc < 3) {
-        conv = false;
+        // conv = false; // TODO
+        conv = true;
     } else if (strcmp(argv[2], "conv") == 0) {
         conv = true;
     } else if (strcmp(argv[2], "matmul") == 0) {

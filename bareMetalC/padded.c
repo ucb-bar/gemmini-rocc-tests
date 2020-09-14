@@ -110,9 +110,16 @@ int main() {
 
     // Test padded matmuls
     for (int dataflow = 0; dataflow <= 1; dataflow++) {
-        const size_t I = rand() % (DIM-1) + 1;
-        const size_t J = rand() % (DIM-1) + 1;
-        const size_t K = rand() % (DIM-1) + 1;
+        const size_t max_I = dataflow == OUTPUT_STATIONARY ? DIM_ROWS : DIM;
+        const size_t max_K = dataflow == WEIGHT_STATIONARY ? DIM_ROWS : DIM;
+
+        // const size_t I = rand() % (DIM-1) + 1;
+        // const size_t J = rand() % (DIM-1) + 1;
+        // const size_t K = rand() % (DIM-1) + 1;
+        const size_t I = max_I == 1 ? 1 : (rand() % (max_I-1) + 1);
+        const size_t J = DIM == 1 ? 1 : (rand() % (DIM-1) + 1);
+        const size_t K = max_K == 1 ? 1 : (rand() % (max_K-1) + 1);
+
         elem_t A[I][K];
         elem_t B[K][J];
         elem_t D[I][J];

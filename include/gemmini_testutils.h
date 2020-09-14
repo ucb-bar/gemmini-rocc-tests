@@ -55,6 +55,62 @@ void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], ful
     }
 }
 
+void matmul_os(elem_t A[DIM_ROWS][DIM], elem_t B[DIM][DIM], elem_t D[DIM_ROWS][DIM], full_t C_full[DIM_ROWS][DIM]) {
+  for (size_t r = 0; r < DIM_ROWS; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C_full[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C_full[r][c] += A[r][k]*B[k][c];
+    }
+}
+
+void matmul_short_os(elem_t A[DIM_ROWS][DIM], elem_t B[DIM][DIM], elem_t D[DIM_ROWS][DIM], elem_t C[DIM_ROWS][DIM]) {
+  for (size_t r = 0; r < DIM_ROWS; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C[r][c] += A[r][k]*B[k][c];
+    }
+}
+
+void matmul_full_os(elem_t A[DIM_ROWS][DIM], elem_t B[DIM][DIM], full_t D[DIM_ROWS][DIM], full_t C_full[DIM_ROWS][DIM]) {
+  // Identical to the other matmul function, but with a 64-bit bias
+  for (size_t r = 0; r < DIM_ROWS; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C_full[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C_full[r][c] += A[r][k]*B[k][c];
+    }
+}
+
+void matmul_ws(elem_t A[DIM][DIM_ROWS], elem_t B[DIM_ROWS][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C_full[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM_ROWS; k++)
+        C_full[r][c] += A[r][k]*B[k][c];
+    }
+}
+
+void matmul_short_ws(elem_t A[DIM][DIM_ROWS], elem_t B[DIM_ROWS][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM_ROWS; k++)
+        C[r][c] += A[r][k]*B[k][c];
+    }
+}
+
+void matmul_full_ws(elem_t A[DIM][DIM_ROWS], elem_t B[DIM_ROWS][DIM], full_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+  // Identical to the other matmul function, but with a 64-bit bias
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C_full[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM_ROWS; k++)
+        C_full[r][c] += A[r][k]*B[k][c];
+    }
+}
+
 void matmul_A_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
@@ -159,8 +215,31 @@ void matshift(full_t full[DIM][DIM], elem_t out[DIM][DIM], int shift) {
     }
 }
 
+// THIS IS A ROUNDING SHIFT! It also performs a saturating cast
+void matshift_rows(full_t full[DIM_ROWS][DIM], elem_t out[DIM_ROWS][DIM], int shift) {
+  for (size_t r = 0; r < DIM_ROWS; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      // Bitshift and round element
+      full_t shifted = ROUNDING_RIGHT_SHIFT(full[r][c], shift);
+
+      // Saturate and cast element
+#ifndef ELEM_T_IS_FLOAT
+      full_t elem = shifted > elem_t_max ? elem_t_max : (shifted < elem_t_min ? elem_t_min : shifted);
+      out[r][c] = elem;
+#else
+      out[r][c] = shifted; // TODO should we also saturate when using floats?
+#endif
+    }
+}
+
 void matrelu(elem_t in[DIM][DIM], elem_t out[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++)
+      out[r][c] = in[r][c] > 0 ? in[r][c] : 0;
+}
+
+void matrelu_rows(elem_t in[DIM_ROWS][DIM], elem_t out[DIM_ROWS][DIM]) {
+  for (size_t r = 0; r < DIM_ROWS; r++)
     for (size_t c = 0; c < DIM; c++)
       out[r][c] = in[r][c] > 0 ? in[r][c] : 0;
 }
@@ -169,6 +248,16 @@ void matrelu6(elem_t in[DIM][DIM], elem_t out[DIM][DIM], int scale) {
   int max = 6 * scale;
 
   for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      elem_t positive = in[r][c] > 0 ? in[r][c] : 0;
+      out[r][c] = positive > max ? max : positive;
+    }
+}
+
+void matrelu6_rows(elem_t in[DIM_ROWS][DIM], elem_t out[DIM_ROWS][DIM], int scale) {
+  int max = 6 * scale;
+
+  for (size_t r = 0; r < DIM_ROWS; r++)
     for (size_t c = 0; c < DIM; c++) {
       elem_t positive = in[r][c] > 0 ? in[r][c] : 0;
       out[r][c] = positive > max ? max : positive;
@@ -208,6 +297,30 @@ void printMatrix(elem_t m[DIM][DIM]) {
   }
 }
 
+void printMatrixRows(elem_t m[DIM_ROWS][DIM]) {
+  for (size_t i = 0; i < DIM_ROWS; ++i) {
+    for (size_t j = 0; j < DIM; ++j)
+#ifndef ELEM_T_IS_FLOAT
+      printf("%d ", m[i][j]);
+#else
+      printf("%x ", elem_t_to_elem_t_bits(m[i][j]));
+#endif
+    printf("\n");
+  }
+}
+
+void printMatrixRowsT(elem_t m[DIM][DIM_ROWS]) {
+  for (size_t i = 0; i < DIM; ++i) {
+    for (size_t j = 0; j < DIM_ROWS; ++j)
+#ifndef ELEM_T_IS_FLOAT
+      printf("%d ", m[i][j]);
+#else
+      printf("%x ", elem_t_to_elem_t_bits(m[i][j]));
+#endif
+    printf("\n");
+  }
+}
+
 void printMatrixAcc(acc_t m[DIM][DIM]) {
   for (size_t i = 0; i < DIM; ++i) {
     for (size_t j = 0; j < DIM; ++j)
@@ -232,9 +345,41 @@ int is_equal(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
   return 1;
 }
 
+int is_equal_os(elem_t x[DIM_ROWS][DIM], elem_t y[DIM_ROWS][DIM]) {
+  for (size_t i = 0; i < DIM_ROWS; ++i)
+    for (size_t j = 0; j < DIM; ++j) {
+#ifndef ELEM_T_IS_FLOAT
+      if (x[i][j] != y[i][j])
+#else
+      bool isnanx = elem_t_isnan(x[i][j]);
+      bool isnany = elem_t_isnan(y[i][j]);
+
+      if (x[i][j] != y[i][j] && !(isnanx && isnany))
+#endif
+          return 0;
+    }
+  return 1;
+}
+
 int is_equal_transposed(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
   for (size_t i = 0; i < DIM; ++i)
     for (size_t j = 0; j < DIM; ++j) {
+#ifndef ELEM_T_IS_FLOAT
+      if (x[i][j] != y[j][i])
+#else
+      bool isnanx = elem_t_isnan(x[i][j]);
+      bool isnany = elem_t_isnan(y[j][i]);
+
+      if (x[i][j] != y[j][i] && !(isnanx && isnany))
+#endif
+          return 0;
+    }
+  return 1;
+}
+
+int is_equal_transposed_os(elem_t x[DIM][DIM_ROWS], elem_t y[DIM_ROWS][DIM]) {
+  for (size_t i = 0; i < DIM; ++i)
+    for (size_t j = 0; j < DIM_ROWS; ++j) {
 #ifndef ELEM_T_IS_FLOAT
       if (x[i][j] != y[j][i])
 #else

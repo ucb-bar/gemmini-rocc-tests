@@ -20,3 +20,8 @@ else
     make -j BAREMETAL_ONLY=1 $@
 fi
 
+rcode=$?
+if [ $rcode -ne 0 ]; then
+    exit $rcode
+fi
+

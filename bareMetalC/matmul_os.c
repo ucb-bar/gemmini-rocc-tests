@@ -40,16 +40,24 @@ int main() {
     for (int shift = 0; shift <= 12; shift += 4) {
       // printf("activation: %d, shift: %d\n", activation, shift);
 
-      static elem_t A[N][DIM][DIM] row_align(1);
+      // static elem_t A[N][DIM][DIM] row_align(1);
+      // static elem_t B[N][DIM][DIM] row_align(1);
+      // static elem_t D[N][DIM][DIM] row_align(1);
+
+      static elem_t A[N][DIM_ROWS][DIM] row_align(1);
       static elem_t B[N][DIM][DIM] row_align(1);
-      static elem_t D[N][DIM][DIM] row_align(1);
+      static elem_t D[N][DIM_ROWS][DIM] row_align(1);
 
       int relu6_shift = shift+1;
 
       // We will try out every combination of A, B, D possible
-      static elem_t C[N*N*N][DIM][DIM] row_align(1);
-      static full_t gold_full[N*N*N][DIM][DIM];
-      static elem_t gold[N*N*N][DIM][DIM];
+      // static elem_t C[N*N*N][DIM][DIM] row_align(1);
+      // static full_t gold_full[N*N*N][DIM][DIM];
+      // static elem_t gold[N*N*N][DIM][DIM];
+
+      static elem_t C[N*N*N][DIM_ROWS][DIM] row_align(1);
+      static full_t gold_full[N*N*N][DIM_ROWS][DIM];
+      static elem_t gold[N*N*N][DIM_ROWS][DIM];
 
       // ...taking into account the preloads or accumulates
       static int preload[N*N*N] = {1};
@@ -84,8 +92,15 @@ int main() {
       for (size_t n = 0; n < N; ++n) {
         for (size_t i = 0; i < DIM; ++i) {
           for (size_t j = 0; j < DIM; ++j) {
-            A[n][i][j] = (rand() % 64) - 32;
             B[n][i][j] = (rand() % 64) - 32;
+          }
+        }
+      }
+
+      for (size_t n = 0; n < N; ++n) {
+        for (size_t i = 0; i < DIM_ROWS; ++i) {
+          for (size_t j = 0; j < DIM; ++j) {
+            A[n][i][j] = (rand() % 64) - 32;
             D[n][i][j] = (rand() % 64) - 32;
           }
         }
@@ -96,19 +111,19 @@ int main() {
         operands(g, &a, &b, &d);
 
         if (!preload[g])
-          matmul_full(A[a], B[b], gold_full[g-1], gold_full[g]);
+          matmul_full_os(A[a], B[b], gold_full[g-1], gold_full[g]);
         else if (preload_zeros[g])
-          matmul(A[a], B[b], ZERO, gold_full[g]);
+          matmul_os(A[a], B[b], ZERO, gold_full[g]);
         else
-          matmul(A[a], B[b], D[d], gold_full[g]);
+          matmul_os(A[a], B[b], D[d], gold_full[g]);
       }
 
       for (size_t g = 0; g < N*N*N; ++g) {
-          matshift(gold_full[g], gold[g], shift);
+          matshift_rows(gold_full[g], gold[g], shift);
           if (activation == RELU)
-            matrelu(gold[g], gold[g]);
+            matrelu_rows(gold[g], gold[g]);
           else if (activation == RELU6)
-            matrelu6(gold[g], gold[g], 1 << relu6_shift);
+            matrelu6_rows(gold[g], gold[g], 1 << relu6_shift);
       }
 
       int A_addr = 0;
@@ -117,14 +132,17 @@ int main() {
       int C_addr = 3*N*DIM;
 
       // printf("Moving in\n");
-      for (size_t n = 0; n < N; ++n)
-        gemmini_mvin(A[n], A_addr + n*DIM);
+      for (size_t n = 0; n < N; ++n) {
+        // gemmini_mvin(A[n], A_addr + n*DIM);
+        gemmini_extended_mvin(A[n], A_addr + n*DIM, DIM, DIM_ROWS);
+      }
       
       for (size_t n = 0; n < N; ++n)
         gemmini_mvin(B[n], B_addr + n*DIM);
 
       for (size_t n = 0; n < N; ++n) {
-        gemmini_mvin(D[n], D_addr + n*DIM);
+        // gemmini_mvin(D[n], D_addr + n*DIM);
+        gemmini_extended_mvin(D[n], D_addr + n*DIM, DIM, DIM_ROWS);
       }
 
       // printf("Setting mode\n");
@@ -142,14 +160,20 @@ int main() {
           out_addr = GARBAGE_ADDR;
 
         if (!preload[c]) {
-          gemmini_preload_zeros(out_addr);
-          gemmini_compute_accumulated(A_addr + a*DIM, B_addr + b*DIM);
+          // gemmini_preload_zeros(out_addr);
+          // gemmini_compute_accumulated(A_addr + a*DIM, B_addr + b*DIM);
+          gemmini_extended_preload(GARBAGE_ADDR, out_addr, DIM, DIM_ROWS, DIM, DIM_ROWS);
+          gemmini_extended_compute_accumulated(A_addr + a*DIM, B_addr + b*DIM, DIM, DIM_ROWS, DIM, DIM);
         } else if (preload_zeros[c]) {
-          gemmini_preload_zeros(out_addr);
-          gemmini_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
+          // gemmini_preload_zeros(out_addr);
+          // gemmini_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
+          gemmini_extended_preload(GARBAGE_ADDR, out_addr, DIM, DIM_ROWS, DIM, DIM_ROWS);
+          gemmini_extended_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM, DIM, DIM_ROWS, DIM, DIM);
         } else {
-          gemmini_preload(D_addr + d*DIM, out_addr);
-          gemmini_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
+          // gemmini_preload(D_addr + d*DIM, out_addr);
+          // gemmini_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM);
+          gemmini_extended_preload(D_addr + d*DIM, out_addr, DIM, DIM_ROWS, DIM, DIM_ROWS);
+          gemmini_extended_compute_preloaded(A_addr + a*DIM, B_addr + b*DIM, DIM, DIM_ROWS, DIM, DIM);
         }
       }
 
@@ -157,7 +181,8 @@ int main() {
       for (size_t c = 0; c < N*N*N; ++c)
         if (!no_output[c]) {
           // printf("\tc: %u\n", c);
-          gemmini_mvout(&C[c][0][0], C_addr + c*DIM);
+          // gemmini_mvout(&C[c][0][0], C_addr + c*DIM);
+          gemmini_extended_mvout(&C[c][0][0], C_addr + c*DIM, DIM, DIM_ROWS);
         }
 
       // printf("Fencing\n");
@@ -176,15 +201,15 @@ int main() {
 
       // printf("Checking\n");
       for (int n = 0; n < N*N*N; ++n)
-        if (!no_output[n] && !is_equal(C[n], gold[n])) {
+        if (!no_output[n] && !is_equal_os(C[n], gold[n])) {
             printf("activation: %d, shift: %d\n", activation, shift);
 
             printf("C:\n");
-            printMatrix(C[n]);
+            printMatrixRows(C[n]);
             printf("Gold:\n");
-            printMatrix(gold[n]);
+            printMatrixRows(gold[n]);
             printf("Gold_full:\n");
-            for (size_t i = 0; i < DIM; ++i) {
+            for (size_t i = 0; i < DIM_ROWS; ++i) {
                 for (size_t j = 0; j < DIM; ++j) {
                     printf("%lld ", gold_full[n][i][j]);
                 }

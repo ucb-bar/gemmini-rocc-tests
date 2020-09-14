@@ -17,6 +17,7 @@
 #define PADDING 1
 #define STRIDE 2
 #else
+
 #define BATCH_SIZE 3
 #define IN_DIM 23
 #define IN_CHANNELS 17
@@ -24,6 +25,38 @@
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 2
+
+// #define BATCH_SIZE 4
+// #define IN_DIM 224
+// #define IN_CHANNELS 3
+// #define OUT_CHANNELS 32
+// #define KERNEL_DIM 3
+// #define PADDING 1
+// #define STRIDE 2
+
+// #define BATCH_SIZE 4
+// #define IN_DIM 224
+// #define IN_CHANNELS 3
+// #define OUT_CHANNELS 64
+// #define KERNEL_DIM 7
+// #define PADDING 3
+// #define STRIDE 2
+
+// #define BATCH_SIZE 4
+// #define IN_DIM 226
+// #define IN_CHANNELS 3
+// #define OUT_CHANNELS 32
+// #define KERNEL_DIM 3
+// #define PADDING 0
+// #define STRIDE 2
+
+// #define BATCH_SIZE 2
+// #define IN_DIM 1
+// #define IN_CHANNELS 1
+// #define OUT_CHANNELS 1
+// #define KERNEL_DIM 3
+// #define PADDING 1
+// #define STRIDE 1
 #endif
 
 #define NO_BIAS false

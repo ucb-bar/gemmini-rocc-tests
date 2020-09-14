@@ -38,8 +38,8 @@ int main() {
 
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 12; shift += 4) {
-      static elem_t A[N][DIM][DIM] row_align(1);
-      static elem_t B[N][DIM][DIM] row_align(1);
+      static elem_t A[N][DIM][DIM_ROWS] row_align(1);
+      static elem_t B[N][DIM_ROWS][DIM] row_align(1);
       static elem_t D[N][DIM][DIM] row_align(1);
 
       // We will try out every combination of A, B, D possible
@@ -90,9 +90,23 @@ int main() {
       for (size_t n = 0; n < N; ++n) {
         for (size_t i = 0; i < DIM; ++i) {
           for (size_t j = 0; j < DIM; ++j) {
-            A[n][i][j] = (rand() % 64) - 32;
-            B[n][i][j] = (rand() % 64) - 32;
             D[n][i][j] = (rand() % 64) - 32;
+          }
+        }
+      }
+
+      for (size_t n = 0; n < N; ++n) {
+        for (size_t i = 0; i < DIM_ROWS; ++i) {
+          for (size_t j = 0; j < DIM; ++j) {
+            B[n][i][j] = (rand() % 64) - 32;
+          }
+        }
+      }
+
+      for (size_t n = 0; n < N; ++n) {
+        for (size_t i = 0; i < DIM; ++i) {
+          for (size_t j = 0; j < DIM_ROWS; ++j) {
+            A[n][i][j] = (rand() % 64) - 32;
           }
         }
       }

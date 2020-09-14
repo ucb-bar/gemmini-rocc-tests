@@ -10,6 +10,206 @@
 #include "resnet50_params.h"
 #include "images.h"
 
+// This function runs a tiled matrix multiplication, with automatically
+// calculated tiling factors
+static void tiled_conv_nn_auto(
+        int batch_size, int in_dim, int in_channels,
+        int out_channels, int out_dim,
+        int stride, int padding, int kernel_dim,
+
+        elem_t * input,
+        elem_t * weights,
+        acc_t * bias,
+        elem_t * output,
+
+        int act, size_t shift, size_t relu6_shift,
+        int pool_size, int pool_stride, int pool_padding,
+
+        enum tiled_matmul_type_t tiled_conv_type,
+        bool check, char * layer_name)
+{
+    const bool no_pool = pool_stride == 0;
+    if (no_pool) {
+        pool_size = 1;
+        pool_stride = 1;
+        pool_padding = 0;
+    }
+
+    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+
+    if (check)
+        printf("%s: gemmini\n", layer_name);
+
+    tiled_conv_auto(
+        batch_size, in_dim, in_channels,
+        out_channels, out_dim,
+        stride, padding, kernel_dim,
+    
+        input,
+        weights,
+        bias,
+        output,
+    
+        act, shift, relu6_shift,
+        pool_size, pool_stride, pool_padding,
+    
+        tiled_conv_type);
+
+    if (check) {
+        printf("%s: CPU\n", layer_name);
+        elem_t gold[batch_size][pool_out_dim][pool_out_dim][out_channels];
+        tiled_conv_auto(
+                batch_size, in_dim, in_channels,
+                out_channels, out_dim,
+                stride, padding, kernel_dim,
+
+                input,
+                weights,
+                bias,
+                (elem_t*)gold,
+
+                act, shift, relu6_shift,
+                pool_size, pool_stride, pool_padding,
+
+                CPU);
+
+        for (int b = 0; b < batch_size; b++) {
+            for (int row = 0; row < pool_out_dim; row++) {
+                for (int col = 0; col < pool_out_dim; col++) {
+                    for (int ch = 0; ch < out_channels; ch++) {
+                        elem_t actual = *(output + (b*pool_out_dim*pool_out_dim + row*pool_out_dim+ col)*out_channels + ch);
+                        if (actual != gold[b][row][col][ch]) {
+                            printf("%s is incorrect!\n", layer_name);
+                            printf("b = %d, row = %d, col = %d, ch = %d\n", b, row, col, ch);
+                            printf("actual = %d\n", actual);
+                            printf("gold = %d\n", gold[b][row][col][ch]);
+                            exit(1);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// This function runs a tiled matrix multiplication, with automatically
+// calculated tiling factors
+static void tiled_conv_nn_auto_largeC(
+        int batch_size, int in_dim, int in_channels,
+        int out_channels, int out_dim,
+        int stride, int padding, int kernel_dim,
+
+        elem_t * input,
+        elem_t * weights,
+        acc_t * bias,
+        elem_t * output,
+
+        int act, size_t shift, size_t relu6_shift,
+        int pool_size, int pool_stride, int pool_padding,
+
+        enum tiled_matmul_type_t tiled_conv_type,
+        bool check, char * layer_name)
+{
+    const bool no_pool = pool_stride == 0;
+    if (no_pool) {
+        pool_size = 1;
+        pool_stride = 1;
+        pool_padding = 0;
+    }
+
+    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+
+    if (check)
+        printf("%s: gemmini\n", layer_name);
+
+    tiled_conv_auto_largeC(
+        batch_size, in_dim, in_channels,
+        out_channels, out_dim,
+        stride, padding, kernel_dim,
+
+        input,
+        weights,
+        bias,
+        output,
+
+        act, shift, relu6_shift,
+        pool_size, pool_stride, pool_padding,
+
+        tiled_conv_type);
+
+    if (check) {
+        printf("%s: CPU\n", layer_name);
+        elem_t gold[batch_size][pool_out_dim][pool_out_dim][out_channels];
+        tiled_conv_auto(
+                batch_size, in_dim, in_channels,
+                out_channels, out_dim,
+                stride, padding, kernel_dim,
+
+                input,
+                weights,
+                bias,
+                (elem_t*)gold,
+
+                act, shift, relu6_shift,
+                pool_size, pool_stride, pool_padding,
+
+                CPU);
+
+        for (int b = 0; b < batch_size; b++) {
+            for (int row = 0; row < pool_out_dim; row++) {
+                for (int col = 0; col < pool_out_dim; col++) {
+                    for (int ch = 0; ch < out_channels; ch++) {
+                        elem_t actual = *(output + (b*pool_out_dim*pool_out_dim + row*pool_out_dim+ col)*out_channels + ch);
+                        if (actual != gold[b][row][col][ch]) {
+                            printf("%s is incorrect!\n", layer_name);
+                            printf("b = %d, row = %d, col = %d, ch = %d\n", b, row, col, ch);
+                            printf("actual = %d\n", actual);
+                            printf("gold = %d\n", gold[b][row][col][ch]);
+                            exit(1);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+static void tiled_resadd_nn_auto(
+                const size_t I, const size_t J,
+                const int A_shift,
+                const elem_t * A,
+                const elem_t * B,
+                elem_t * C,
+                bool relu,
+                enum tiled_matmul_type_t matadd_type,
+                bool check, char * layer_name)
+{
+    elem_t gold[I][J];
+
+    if (check) {
+        printf("%s: CPU\n", layer_name);
+        tiled_resadd_auto(I, J, A_shift, A, B, (elem_t*)gold, relu, CPU);
+        printf("%s: gemmini\n", layer_name);
+    }
+
+    tiled_resadd_auto(I, J, A_shift, A, B, C, relu, matadd_type);
+
+    if (check) {
+        for (int i = 0; i < I; i++) {
+            for (int j = 0; j < J; j++) {
+                elem_t actual = *(C + i*J + j);
+                if (gold[i][j] != actual) {
+                    printf("%s is incorrect!\n", layer_name);
+                    printf("i = %d, j = %d\n", i, j);
+                    printf("actual = %d\n", actual);
+                    printf("gold = %d\n", gold[i][j]);
+                    exit(1);
+                }
+            }
+        }
+    }
+}
+
 int main (int argc, char * argv[]) {
 #ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
@@ -40,7 +240,8 @@ int main (int argc, char * argv[]) {
 
     bool conv;
     if (argc < 3) {
-        conv = false;
+        // conv = false; // TODO
+        conv = true;
     } else if (strcmp(argv[2], "conv") == 0) {
         conv = true;
     } else if (strcmp(argv[2], "matmul") == 0) {
@@ -53,7 +254,8 @@ int main (int argc, char * argv[]) {
 
     bool check;
     if (argc < 4) {
-        check = false;
+        // check = false; // TODO
+        check = true;
     } else if (strcmp(argv[3], "check") == 0) {
         check = true;
     } else {
@@ -98,7 +300,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto(
             conv_1_params.batch_size, conv_1_params.in_dim, conv_1_params.in_channels,
             conv_1_params.out_channels, conv_1_params.out_dim,
             conv_1_params.stride, conv_1_params.padding, conv_1_params.kernel_size,
@@ -108,7 +310,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_1_params.output_scale, 0,
             conv_1_params.pool_size, conv_1_params.pool_stride, conv_1_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_1");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -171,7 +373,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto(
             conv_3_params.batch_size, conv_3_params.in_dim, conv_3_params.in_channels,
             conv_3_params.out_channels, conv_3_params.out_dim,
             conv_3_params.stride, conv_3_params.padding, conv_3_params.kernel_size,
@@ -181,7 +383,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_3_params.output_scale, 0,
             conv_3_params.pool_size, 0, conv_3_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_3");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -248,13 +450,13 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_4_params.I, conv_4_params.J,
+    tiled_resadd_nn_auto(conv_4_params.I, conv_4_params.J,
         conv_4_params.res_scale,
         conv_5_out,
         conv_4_out,
         conv_4_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "resadd_5");
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -307,7 +509,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto(
             conv_7_params.batch_size, conv_7_params.in_dim, conv_7_params.in_channels,
             conv_7_params.out_channels, conv_7_params.out_dim,
             conv_7_params.stride, conv_7_params.padding, conv_7_params.kernel_size,
@@ -317,7 +519,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_7_params.output_scale, 0,
             conv_7_params.pool_size, 0, conv_7_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_7");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -350,13 +552,13 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_8_params.I, conv_8_params.J,
+    tiled_resadd_nn_auto(conv_8_params.I, conv_8_params.J,
         conv_8_params.res_scale,
         conv_4_out,
         conv_8_out,
         conv_8_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "resadd_8");
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -409,7 +611,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto(
             conv_10_params.batch_size, conv_10_params.in_dim, conv_10_params.in_channels,
             conv_10_params.out_channels, conv_10_params.out_dim,
             conv_10_params.stride, conv_10_params.padding, conv_10_params.kernel_size,
@@ -419,7 +621,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_10_params.output_scale, 0,
             conv_10_params.pool_size, 0, conv_10_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_10");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -452,13 +654,13 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_11_params.I, conv_11_params.J,
+    tiled_resadd_nn_auto(conv_11_params.I, conv_11_params.J,
         conv_11_params.res_scale,
         conv_8_out,
         conv_11_out,
         conv_11_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "resadd_11");
 
     end = read_cycles();
     res_add_cycles += end - start;
@@ -511,7 +713,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto(
             conv_13_params.batch_size, conv_13_params.in_dim, conv_13_params.in_channels,
             conv_13_params.out_channels, conv_13_params.out_dim,
             conv_13_params.stride, conv_13_params.padding, conv_13_params.kernel_size,
@@ -521,7 +723,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_13_params.output_scale, 0,
             conv_13_params.pool_size, 0, conv_13_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_13");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -576,7 +778,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto(
             conv_15_params.batch_size, conv_15_params.in_dim, conv_15_params.in_channels,
             conv_15_params.out_channels, conv_15_params.out_dim,
             conv_15_params.stride, conv_15_params.padding, conv_15_params.kernel_size,
@@ -586,7 +788,7 @@ int main (int argc, char * argv[]) {
             NO_ACTIVATION, conv_15_params.output_scale, 0,
             conv_15_params.pool_size, 0, conv_15_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_15");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -595,17 +797,17 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_14_params.I, conv_14_params.J,
+    tiled_resadd_nn_auto(conv_14_params.I, conv_14_params.J,
         conv_14_params.res_scale,
         conv_15_out,
         conv_14_out,
         conv_14_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "resadd_15");
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_16
     if (!conv) {
         start = read_cycles();
@@ -654,7 +856,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto(
             conv_17_params.batch_size, conv_17_params.in_dim, conv_17_params.in_channels,
             conv_17_params.out_channels, conv_17_params.out_dim,
             conv_17_params.stride, conv_17_params.padding, conv_17_params.kernel_size,
@@ -664,7 +866,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_17_params.output_scale, 0,
             conv_17_params.pool_size, 0, conv_17_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_17");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -697,17 +899,17 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_18_params.I, conv_18_params.J,
+    tiled_resadd_nn_auto(conv_18_params.I, conv_18_params.J,
         conv_18_params.res_scale,
         conv_14_out,
         conv_18_out,
         conv_18_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "resadd_18");
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_19
     if (!conv) {
         start = read_cycles();
@@ -756,7 +958,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto(
             conv_20_params.batch_size, conv_20_params.in_dim, conv_20_params.in_channels,
             conv_20_params.out_channels, conv_20_params.out_dim,
             conv_20_params.stride, conv_20_params.padding, conv_20_params.kernel_size,
@@ -766,7 +968,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_20_params.output_scale, 0,
             conv_20_params.pool_size, 0, conv_20_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_20");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -799,17 +1001,17 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_21_params.I, conv_21_params.J,
+    tiled_resadd_nn_auto(conv_21_params.I, conv_21_params.J,
         conv_21_params.res_scale,
         conv_18_out,
         conv_21_out,
         conv_21_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "resadd_21");
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_22
     if (!conv) {
         start = read_cycles();
@@ -858,7 +1060,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto(
             conv_23_params.batch_size, conv_23_params.in_dim, conv_23_params.in_channels,
             conv_23_params.out_channels, conv_23_params.out_dim,
             conv_23_params.stride, conv_23_params.padding, conv_23_params.kernel_size,
@@ -868,7 +1070,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_23_params.output_scale, 0,
             conv_23_params.pool_size, 0, conv_23_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_23");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -901,17 +1103,17 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_24_params.I, conv_24_params.J,
+    tiled_resadd_nn_auto(conv_24_params.I, conv_24_params.J,
         conv_24_params.res_scale,
         conv_21_out,
         conv_24_out,
         conv_24_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "resadd_24");
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_25
     if (!conv) {
         start = read_cycles();
@@ -960,7 +1162,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto(
             conv_26_params.batch_size, conv_26_params.in_dim, conv_26_params.in_channels,
             conv_26_params.out_channels, conv_26_params.out_dim,
             conv_26_params.stride, conv_26_params.padding, conv_26_params.kernel_size,
@@ -970,7 +1172,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_26_params.output_scale, 0,
             conv_26_params.pool_size, 0, conv_26_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_26");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1025,7 +1227,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto_largeC(
             conv_28_params.batch_size, conv_28_params.in_dim, conv_28_params.in_channels,
             conv_28_params.out_channels, conv_28_params.out_dim,
             conv_28_params.stride, conv_28_params.padding, conv_28_params.kernel_size,
@@ -1035,7 +1237,7 @@ int main (int argc, char * argv[]) {
             NO_ACTIVATION, conv_28_params.output_scale, 0,
             conv_28_params.pool_size, 0, conv_28_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_28");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1044,17 +1246,17 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_27_params.I, conv_27_params.J,
+    tiled_resadd_nn_auto(conv_27_params.I, conv_27_params.J,
         conv_27_params.res_scale,
         conv_28_out,
         conv_27_out,
         conv_27_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "resadd_28");
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_29
     if (!conv) {
         start = read_cycles();
@@ -1103,7 +1305,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto(
             conv_30_params.batch_size, conv_30_params.in_dim, conv_30_params.in_channels,
             conv_30_params.out_channels, conv_30_params.out_dim,
             conv_30_params.stride, conv_30_params.padding, conv_30_params.kernel_size,
@@ -1113,7 +1315,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_30_params.output_scale, 0,
             conv_30_params.pool_size, 0, conv_30_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_30");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1146,17 +1348,17 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_31_params.I, conv_31_params.J,
+    tiled_resadd_nn_auto(conv_31_params.I, conv_31_params.J,
         conv_31_params.res_scale,
         conv_27_out,
         conv_31_out,
         conv_31_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "resadd_31");
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_32
     if (!conv) {
         start = read_cycles();
@@ -1205,7 +1407,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto(
             conv_33_params.batch_size, conv_33_params.in_dim, conv_33_params.in_channels,
             conv_33_params.out_channels, conv_33_params.out_dim,
             conv_33_params.stride, conv_33_params.padding, conv_33_params.kernel_size,
@@ -1215,7 +1417,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_33_params.output_scale, 0,
             conv_33_params.pool_size, 0, conv_33_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_33");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1248,17 +1450,17 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_34_params.I, conv_34_params.J,
+    tiled_resadd_nn_auto(conv_34_params.I, conv_34_params.J,
         conv_34_params.res_scale,
         conv_31_out,
         conv_34_out,
         conv_34_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "resadd_34");
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_35
     if (!conv) {
         start = read_cycles();
@@ -1307,7 +1509,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto(
             conv_36_params.batch_size, conv_36_params.in_dim, conv_36_params.in_channels,
             conv_36_params.out_channels, conv_36_params.out_dim,
             conv_36_params.stride, conv_36_params.padding, conv_36_params.kernel_size,
@@ -1317,7 +1519,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_36_params.output_scale, 0,
             conv_36_params.pool_size, 0, conv_36_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_36");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1350,17 +1552,17 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_37_params.I, conv_37_params.J,
+    tiled_resadd_nn_auto(conv_37_params.I, conv_37_params.J,
         conv_37_params.res_scale,
         conv_34_out,
         conv_37_out,
         conv_37_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "resadd_37");
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_38
     if (!conv) {
         start = read_cycles();
@@ -1409,7 +1611,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto(
             conv_39_params.batch_size, conv_39_params.in_dim, conv_39_params.in_channels,
             conv_39_params.out_channels, conv_39_params.out_dim,
             conv_39_params.stride, conv_39_params.padding, conv_39_params.kernel_size,
@@ -1419,7 +1621,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_39_params.output_scale, 0,
             conv_39_params.pool_size, 0, conv_39_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_39");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1452,17 +1654,17 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_40_params.I, conv_40_params.J,
+    tiled_resadd_nn_auto(conv_40_params.I, conv_40_params.J,
         conv_40_params.res_scale,
         conv_37_out,
         conv_40_out,
         conv_40_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "resadd_40");
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_41
     if (!conv) {
         start = read_cycles();
@@ -1511,7 +1713,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto(
             conv_42_params.batch_size, conv_42_params.in_dim, conv_42_params.in_channels,
             conv_42_params.out_channels, conv_42_params.out_dim,
             conv_42_params.stride, conv_42_params.padding, conv_42_params.kernel_size,
@@ -1521,7 +1723,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_42_params.output_scale, 0,
             conv_42_params.pool_size, 0, conv_42_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_42");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1554,17 +1756,17 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_43_params.I, conv_43_params.J,
+    tiled_resadd_nn_auto(conv_43_params.I, conv_43_params.J,
         conv_43_params.res_scale,
         conv_40_out,
         conv_43_out,
         conv_43_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "resadd_40");
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_44
     if (!conv) {
         start = read_cycles();
@@ -1613,7 +1815,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto_largeC(
             conv_45_params.batch_size, conv_45_params.in_dim, conv_45_params.in_channels,
             conv_45_params.out_channels, conv_45_params.out_dim,
             conv_45_params.stride, conv_45_params.padding, conv_45_params.kernel_size,
@@ -1623,7 +1825,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_45_params.output_scale, 0,
             conv_45_params.pool_size, 0, conv_45_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_45");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1678,7 +1880,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto_largeC(
             conv_47_params.batch_size, conv_47_params.in_dim, conv_47_params.in_channels,
             conv_47_params.out_channels, conv_47_params.out_dim,
             conv_47_params.stride, conv_47_params.padding, conv_47_params.kernel_size,
@@ -1688,7 +1890,7 @@ int main (int argc, char * argv[]) {
             NO_ACTIVATION, conv_47_params.output_scale, 0,
             conv_47_params.pool_size, 0, conv_47_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_47");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1697,17 +1899,17 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_46_params.I, conv_46_params.J,
+    tiled_resadd_nn_auto(conv_46_params.I, conv_46_params.J,
         conv_46_params.res_scale,
         conv_47_out,
         conv_46_out,
         conv_46_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "resadd_47");
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_48
     if (!conv) {
         start = read_cycles();
@@ -1756,7 +1958,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto_largeC(
             conv_49_params.batch_size, conv_49_params.in_dim, conv_49_params.in_channels,
             conv_49_params.out_channels, conv_49_params.out_dim,
             conv_49_params.stride, conv_49_params.padding, conv_49_params.kernel_size,
@@ -1766,7 +1968,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_49_params.output_scale, 0,
             conv_49_params.pool_size, 0, conv_49_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_49");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1799,17 +2001,17 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_50_params.I, conv_50_params.J,
+    tiled_resadd_nn_auto(conv_50_params.I, conv_50_params.J,
         conv_50_params.res_scale,
         conv_46_out,
         conv_50_out,
         conv_50_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "resadd_50");
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_51
     if (!conv) {
         start = read_cycles();
@@ -1858,7 +2060,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_nn_auto_largeC(
             conv_52_params.batch_size, conv_52_params.in_dim, conv_52_params.in_channels,
             conv_52_params.out_channels, conv_52_params.out_dim,
             conv_52_params.stride, conv_52_params.padding, conv_52_params.kernel_size,
@@ -1868,7 +2070,7 @@ int main (int argc, char * argv[]) {
             RELU, conv_52_params.output_scale, 0,
             conv_52_params.pool_size, 0, conv_52_params.pool_padding,
 
-            tiled_matmul_type);
+            tiled_matmul_type, check, "conv_52");
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1901,13 +2103,13 @@ int main (int argc, char * argv[]) {
     // Add residuals
     start = read_cycles();
 
-    tiled_resadd_auto(conv_53_params.I, conv_53_params.J,
+    tiled_resadd_nn_auto(conv_53_params.I, conv_53_params.J,
         conv_53_params.res_scale,
         conv_50_out,
         conv_53_out,
         conv_53_out,
         true,
-        tiled_matmul_type == CPU ? CPU : WS);
+        tiled_matmul_type == CPU ? CPU : WS, check, "conv_53");
 
     end = read_cycles();
     res_add_cycles += end - start;

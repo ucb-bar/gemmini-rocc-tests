@@ -21,6 +21,7 @@ tests = \
 	transpose \
 	matrix_add \
 	resadd \
+	transpose_scale \
 	template
 
 tests_baremetal = $(tests:=-baremetal)

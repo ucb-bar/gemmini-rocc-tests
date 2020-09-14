@@ -5,6 +5,7 @@
 #include <limits.h>
 
 #define DIM 16
+#define DIM_ROWS 1
 #define ADDR_LEN 32
 #define BANK_NUM 4
 #define BANK_ROWS 4096
