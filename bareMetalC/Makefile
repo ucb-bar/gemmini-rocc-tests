@@ -1,16 +1,7 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	conv1 \
-	conv2 \
-	conv3 \
-	conv4 \
-	conv5 \
-	conv6 \
-	conv_ds1 \
-	conv_ds2 \
-	conv_ds3 \
-	conv_with_pool \
+	conv_dw \
 
 
 tests_baremetal = $(tests:=-baremetal)
