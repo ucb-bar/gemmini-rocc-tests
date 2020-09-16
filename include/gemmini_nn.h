@@ -484,6 +484,86 @@ void pool(size_t batch_size, size_t channels, size_t in_dim, size_t out_dim,
     }
 }
 
+void pool_with_col2im_ceil(size_t I, size_t J,
+    size_t batch_size, size_t channels, size_t out_dim,
+    elem_t input[I][J],
+    elem_t output[batch_size][out_dim][out_dim][channels],
+    const struct ConvParams * params)
+{
+    size_t kernel_size = params->pool_size;
+    size_t stride = params->pool_stride;
+    size_t in_dim = params->out_dim;
+    size_t padding = params->pool_padding;
+
+    for (int batch = 0; batch < batch_size; batch++) {
+        for (int channel = 0; channel < channels; channel++) {
+            for (int out_row = 0; out_row < out_dim-1; out_row++) {
+                for (int out_col = 0; out_col < out_dim-1; out_col++) {
+                    int in_row = out_row * stride - padding;
+
+                    elem_t result = elem_t_min;
+
+                    for (int kernel_row = 0; kernel_row < kernel_size; kernel_row++) {
+                        int in_col = out_col * stride - padding;
+
+                        for (int kernel_col = 0; kernel_col < kernel_size; kernel_col++) {
+                            if (in_row >= 0 && in_row < in_dim && in_col >= 0 && in_col < in_dim) {
+                                if (input[batch * in_dim * in_dim + in_row * in_dim + in_col][channel] > result) {
+                                    result = input[batch * in_dim * in_dim + in_row * in_dim + in_col][channel];
+                                }
+                            } else if (0 > result) {
+                                result = 0;
+                            }
+
+                            in_col++;
+                        }
+
+                        in_row++;
+                    }
+
+                    output[batch][out_row][out_col][channel] = result;
+                }
+            }
+        }
+    }
+
+    for (int batch = 0; batch < batch_size; batch++) {
+        for (int channel = 0; channel < channels; channel++) {
+            for (int out_row = 0; out_row < out_dim; out_row++) {
+                for (int out_col = 0; out_col < out_dim; out_col++) {
+		    if(out_col == out_dim - 1 || out_row == out_dim - 1){ //ceil
+    			int in_row = out_row * stride - padding;
+			if(out_row == out_dim-1) in_row = in_row - 1;
+
+                       elem_t result = elem_t_min;
+
+                       for (int kernel_row = 0; kernel_row < kernel_size; kernel_row++) {
+                        int in_col = out_col * stride - padding;
+			if(out_col == out_dim-1) in_col = in_col - 1;
+
+                        for (int kernel_col = 0; kernel_col < kernel_size; kernel_col++) {
+                            if (in_row >= 0 && in_row < in_dim && in_col >= 0 && in_col < in_dim) {
+                                if (input[batch * in_dim * in_dim + in_row * in_dim + in_col][channel] > result) {
+                                    result = input[batch * in_dim * in_dim + in_row * in_dim + in_col][channel];
+                                }
+                            } else if (0 > result) {
+                                result = 0;
+                            }
+
+                            in_col++;
+                        }
+
+                        in_row++;
+                     }
+
+                     output[batch][out_row][out_col][channel] = result;
+		    }
+                }
+            }
+        }
+    }
+
+}
 void pool_with_col2im(size_t I, size_t J,
     size_t batch_size, size_t channels, size_t out_dim,
     elem_t input[I][J],
