@@ -20,8 +20,7 @@ int main (int argc, char * argv[]) {
 
     gemmini_flush(0);
 
-    enum tiled_matmul_type_t tiled_matmul_type=WS;
-    /*
+    enum tiled_matmul_type_t tiled_matmul_type;
     if (argc < 2) {
         tiled_matmul_type = WS;
     } else if (strcmp(argv[1], "cpu") == 0) {
@@ -38,7 +37,7 @@ int main (int argc, char * argv[]) {
         printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
         exit(1);
     }
-*/
+
     bool check;
     if (argc < 3) {
         check = false;
@@ -50,8 +49,7 @@ int main (int argc, char * argv[]) {
         exit(1);
     }
 
-    bool conv=false;
-    /*
+    bool conv;
     if (argc < 4) {
         conv = false;
     } else if (strcmp(argv[3], "conv") == 0) {
@@ -63,7 +61,7 @@ int main (int argc, char * argv[]) {
         printf("usage: %s [-h] matmul_option [check] [conv]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
         exit(1);
     }
-*/
+
     uint64_t start, end;
     uint64_t im2col_cycles = 0, matmul_cycles = 0, conv_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, res_add_cycles = 0, other_cycles = 0;
 
@@ -116,10 +114,7 @@ int main (int argc, char * argv[]) {
         conv_cycles += end - start;
     }
 
-    printf("conv_1 cycles: %llu \n", end - start);
-
-    //fire 1
-    // conv_2 (squeeze 64 -> 16)
+    // conv_2
     if (!conv) {
       start = read_cycles();
 
@@ -152,10 +147,7 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
     }
 
-    printf("conv_2 cycles: %llu \n", end - start);
-
-
-    // conv_3 (expand 16 -> 64, kernel size = 1)
+    // conv_3
     if (!conv) {
         start = read_cycles();
 
@@ -179,16 +171,13 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
     }
 
-    printf("conv_3 cycles: %llu \n", end - start);
-
-
-    // conv_4 (expand 16 -> 64)
+    // conv_4
     if (!conv) {
       start = read_cycles();
 
-        im2col_with_col2im(conv_2_params.I, conv_2_params.J,
+        im2col_with_col2im(conv_3_params.I, conv_3_params.J,
             conv_4_params.I, conv_4_params.K,
-            conv_2_out, conv_4_in, &conv_4_params);
+            conv_3_out, conv_4_in, &conv_4_params);
 
         end = read_cycles();
         im2col_cycles += end - start;
@@ -211,7 +200,7 @@ int main (int argc, char * argv[]) {
             conv_4_params.out_channels, conv_4_params.out_dim,
             conv_4_params.stride, conv_4_params.padding, conv_4_params.kernel_size,
 
-            (elem_t*)conv_2_out, (elem_t*)conv_4_w, (acc_t*)conv_4_b, (elem_t*)conv_4_out,
+            (elem_t*)conv_3_out, (elem_t*)conv_4_w, (acc_t*)conv_4_b, (elem_t*)conv_4_out,
 
             RELU, conv_4_params.output_scale, 0,
             conv_4_params.pool_size, 0, conv_4_params.pool_padding,
@@ -222,29 +211,12 @@ int main (int argc, char * argv[]) {
         conv_cycles += end - start;
     }
 
-    printf("conv_4 cycles: %llu \n", end - start);
-
-
-    //merge conv 3 and 4 (64+64 -> 128)
-    elem_t fire1_out[12100][128] row_align(1);
-    for(int i = 0; i < conv_5_params.n_patches; i++){
-	    for(int j = 0; j < conv_5_params.in_channels; j++){
-		    if(j < conv_4_params.out_channels){
-			    fire1_out[i][j] = conv_3_out[i][j];
-		    }
-		    else{
-			    fire1_out[i][j] = conv_4_out[i][j-64];
-		    }
-	    }
-    }
-
-    //fire 2
-    // conv_5 (squeeze 128 -> 16)
+    // conv_5
     if (!conv) {
         start = read_cycles();
 
         tiled_matmul_nn_auto(conv_5_params.I, conv_5_params.J, conv_5_params.K,
-            fire1_out, conv_5_w, conv_5_b, conv_5_out,
+            conv_4_out, conv_5_w, conv_5_b, conv_5_out,
             RELU, conv_5_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_5");
 
@@ -255,7 +227,7 @@ int main (int argc, char * argv[]) {
         start = read_cycles();
 
         tiled_matmul_nn_auto(conv_5_params.I, conv_5_params.J, conv_5_params.K,
-            fire1_out, conv_5_w, conv_5_b, conv_5_out,
+            conv_4_out, conv_5_w, conv_5_b, conv_5_out,
             RELU, conv_5_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_5");
 
@@ -263,10 +235,7 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
     }
 
-    printf("conv_5 cycles: %llu \n", end - start);
-
-
-    // conv_6 (expand 16 -> 64)
+    // conv_6
     if (!conv) {
         start = read_cycles();
 
@@ -277,55 +246,29 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-	
-	start = read_cycles();
-        pool_with_col2im(conv_6_params.I, conv_6_params.J,
-            conv_6_params.batch_size, conv_6_params.out_channels, conv_6_params.out_dim_pooled,
-            conv_6_out, conv_6_out_pooled, &conv_6_params);
-
-        end = read_cycles();
-        pool_cycles += end - start;
-
 
     } else {
         start = read_cycles();
 
-	tiled_conv_auto(
-            conv_6_params.batch_size, conv_6_params.in_dim, conv_6_params.in_channels,
-            conv_6_params.out_channels, conv_6_params.out_dim,
-            conv_6_params.stride, conv_6_params.padding, conv_6_params.kernel_size,
-
-            (elem_t*)conv_5_out, (elem_t*)conv_6_w, (acc_t*)conv_6_b, (elem_t*)conv_6_out_pooled,
-
-            RELU, conv_6_params.output_scale, 0,
-            conv_6_params.pool_size, conv_6_params.pool_stride, conv_6_params.pool_padding,
-
-            tiled_matmul_type);
-
-/*
         tiled_matmul_nn_auto(conv_6_params.I, conv_6_params.J, conv_6_params.K,
             conv_5_out, conv_6_w, conv_6_b, conv_6_out,
             RELU, conv_6_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_6");
-*/
+
         end = read_cycles();
-        conv_cycles += end - start;
+        matmul_cycles += end - start;
     }
 
-    printf("conv_6 cycles: %llu \n", end - start);
-
-
-    // conv_7 (expand 16 -> 64)
+    // conv_7
     if (!conv) {
       start = read_cycles();
 
-        im2col_with_col2im(conv_5_params.I, conv_5_params.J,
+        im2col_with_col2im(conv_6_params.I, conv_6_params.J,
             conv_7_params.I, conv_7_params.K,
-            conv_5_out, conv_7_in, &conv_7_params);
+            conv_6_out, conv_7_in, &conv_7_params);
 
         end = read_cycles();
         im2col_cycles += end - start;
-
 
         start = read_cycles();
 
@@ -354,7 +297,7 @@ int main (int argc, char * argv[]) {
             conv_7_params.out_channels, conv_7_params.out_dim,
             conv_7_params.stride, conv_7_params.padding, conv_7_params.kernel_size,
 
-            (elem_t*)conv_5_out, (elem_t*)conv_7_w, (acc_t*)conv_7_b, (elem_t*)conv_7_out_pooled,
+            (elem_t*)conv_6_out, (elem_t*)conv_7_w, (acc_t*)conv_7_b, (elem_t*)conv_7_out_pooled,
 
             RELU, conv_7_params.output_scale, 0,
             conv_7_params.pool_size, conv_7_params.pool_stride, conv_7_params.pool_padding,
@@ -365,31 +308,13 @@ int main (int argc, char * argv[]) {
         conv_cycles += end - start;
     }
 
-    printf("conv_7 cycles: %llu \n", end - start);
-
-
-    //merge (conv_6_out_pooled, conv_7_out_pooled, 64 + 64 -> 128)
-    elem_t fire2_out[4][27][27][128];
-    for(int i = 0; i < conv_8_params.batch_size; i++)
-	for(int j = 0; j < conv_8_params.in_dim; j++)
-	   for(int k = 0; k < conv_8_params.in_dim; k++)
-		for(int c = 0; c < conv_8_params.in_channels; c++){
-		   if(c < conv_7_params.out_channels){
-			fire2_out[i][j][k][c] = conv_6_out_pooled[i][j][k][c];
-		   }
-		   else{
-			fire2_out[i][j][k][c] = conv_7_out_pooled[i][j][k][c-64];
-		   }
-		}
-
-    // fire 3
-    // conv_8 (squeeze 128 -> 32)
+    // conv_8
     if (!conv) {
       start = read_cycles();
 
         im2col(conv_8_params.batch_size, conv_8_params.in_channels, conv_8_params.in_dim,
             conv_8_params.I, conv_8_params.K,
-            fire2_out, conv_8_in, &conv_8_params);
+            conv_7_out_pooled, conv_8_in, &conv_8_params);
 
         end = read_cycles();
         im2col_cycles += end - start;
@@ -408,7 +333,7 @@ int main (int argc, char * argv[]) {
         start = read_cycles();
 
         tiled_matmul_nn_auto(conv_8_params.I, conv_8_params.J, conv_8_params.K,
-            fire2_out, conv_8_w, conv_8_b, conv_8_out,
+            conv_7_out_pooled, conv_8_w, conv_8_b, conv_8_out,
             RELU, conv_8_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_8");
 
@@ -416,10 +341,7 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
     }
 
-    printf("conv_8 cycles: %llu \n", end - start);
-
-
-    // conv_9 (expand1 32 -> 128)
+    // conv_9
     if (!conv) {
         start = read_cycles();
 
@@ -443,16 +365,13 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
     }
 
-    printf("conv_9 cycles: %llu \n", end - start);
-
-
-    // conv_10 (expand2 32 -> 128)
+    // conv_10
     if (!conv) {
       start = read_cycles();
 
-        im2col_with_col2im(conv_8_params.I, conv_8_params.J,
+        im2col_with_col2im(conv_9_params.I, conv_9_params.J,
             conv_10_params.I, conv_10_params.K,
-            conv_8_out, conv_10_in, &conv_10_params);
+            conv_9_out, conv_10_in, &conv_10_params);
 
         end = read_cycles();
         im2col_cycles += end - start;
@@ -475,7 +394,7 @@ int main (int argc, char * argv[]) {
             conv_10_params.out_channels, conv_10_params.out_dim,
             conv_10_params.stride, conv_10_params.padding, conv_10_params.kernel_size,
 
-            (elem_t*)conv_8_out, (elem_t*)conv_10_w, (acc_t*)conv_10_b, (elem_t*)conv_10_out,
+            (elem_t*)conv_9_out, (elem_t*)conv_10_w, (acc_t*)conv_10_b, (elem_t*)conv_10_out,
 
             RELU, conv_10_params.output_scale, 0,
             conv_10_params.pool_size, 0, conv_10_params.pool_padding,
@@ -486,47 +405,12 @@ int main (int argc, char * argv[]) {
         conv_cycles += end - start;
     }
 
-    printf("conv_10 cycles: %llu \n", end - start);
-
-
-    //merge (conv_9, conv_10, 128+128 -> 256) 
-    elem_t fire3_out[2916][256] row_align(1);
-for(int i = 0; i < conv_11_params.n_patches; i++){
-	for(int j = 0; j < conv_11_params.in_channels; j++){
-		if(j < conv_10_params.out_channels){
-			fire3_out[i][j] = conv_9_out[i][j];
-		}
-		else{
-			fire3_out[i][j] = conv_10_out[i][j-128];
-		}
-	}
-}
-/*
-    for(int i = 0; i < 10; i++){
-	    for(int j = 110; j < 128; j ++)
-		    printf("%d, ", conv_9_out[i][j]);
-	    printf("\n");
-    }
-    for(int i = 0; i < 10; i++){
-	    for(int j = 0; j < 15; j ++)
-		    printf("%d, ", conv_10_out[i][j]);
-	    printf("\n");
-    }
-    for(int i = 0; i < 10; i++){
-	    for(int j = 118; j < 138; j ++)
-		    printf("%d, ", fire3_out[i][j]);
-	    printf("\n");
-    }
-*/
-
-
-    //fire 4
-    // conv_11 (squeeze 256 -> 32)
+    // conv_11
     if (!conv) {
         start = read_cycles();
 
         tiled_matmul_nn_auto(conv_11_params.I, conv_11_params.J, conv_11_params.K,
-            fire3_out, conv_11_w, conv_11_b, conv_11_out,
+            conv_10_out, conv_11_w, conv_11_b, conv_11_out,
             RELU, conv_11_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_11");
 
@@ -537,7 +421,7 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
         start = read_cycles();
 
         tiled_matmul_nn_auto(conv_11_params.I, conv_11_params.J, conv_11_params.K,
-            fire3_out, conv_11_w, conv_11_b, conv_11_out,
+            conv_10_out, conv_11_w, conv_11_b, conv_11_out,
             RELU, conv_11_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_11");
 
@@ -545,10 +429,7 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
         matmul_cycles += end - start;
     }
 
-    printf("conv_11 cycles: %llu \n", end - start);
-
-
-    // conv_12(expand1 32 -> 128) add pooling
+    // conv_12
     if (!conv) {
         start = read_cycles();
 
@@ -560,48 +441,25 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
         end = read_cycles();
         matmul_cycles += end - start;
 
-      start = read_cycles();
-
-        pool_with_col2im(conv_12_params.I, conv_12_params.J,
-            conv_12_params.batch_size, conv_12_params.out_channels, conv_12_params.out_dim_pooled,
-            conv_12_out, conv_12_out_pooled, &conv_12_params);
-
-        end = read_cycles();
-        pool_cycles += end - start;
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
-            conv_12_params.batch_size, conv_12_params.in_dim, conv_12_params.in_channels,
-            conv_12_params.out_channels, conv_12_params.out_dim,
-            conv_12_params.stride, conv_12_params.padding, conv_12_params.kernel_size,
-
-            (elem_t*)conv_11_out, (elem_t*)conv_12_w, (acc_t*)conv_12_b, (elem_t*)conv_12_out_pooled,
-
-            RELU, conv_12_params.output_scale, 0,
-            conv_12_params.pool_size, conv_12_params.pool_stride, conv_12_params.pool_padding,
-
-            tiled_matmul_type);
-/*
         tiled_matmul_nn_auto(conv_12_params.I, conv_12_params.J, conv_12_params.K,
             conv_11_out, conv_12_w, conv_12_b, conv_12_out,
             RELU, conv_12_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_12");
-*/
+
         end = read_cycles();
-        conv_cycles += end - start;
+        matmul_cycles += end - start;
     }
 
-    printf("conv_12 cycles: %llu \n", end - start);
-
-
-    // conv_13 (expand2 32 -> 128)
+    // conv_13
     if (!conv) {
       start = read_cycles();
 
-        im2col_with_col2im(conv_11_params.I, conv_11_params.J,
+        im2col_with_col2im(conv_12_params.I, conv_12_params.J,
             conv_13_params.I, conv_13_params.K,
-            conv_11_out, conv_13_in, &conv_13_params);
+            conv_12_out, conv_13_in, &conv_13_params);
 
         end = read_cycles();
         im2col_cycles += end - start;
@@ -633,7 +491,7 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
             conv_13_params.out_channels, conv_13_params.out_dim,
             conv_13_params.stride, conv_13_params.padding, conv_13_params.kernel_size,
 
-            (elem_t*)conv_11_out, (elem_t*)conv_13_w, (acc_t*)conv_13_b, (elem_t*)conv_13_out_pooled,
+            (elem_t*)conv_12_out, (elem_t*)conv_13_w, (acc_t*)conv_13_b, (elem_t*)conv_13_out_pooled,
 
             RELU, conv_13_params.output_scale, 0,
             conv_13_params.pool_size, conv_13_params.pool_stride, conv_13_params.pool_padding,
@@ -644,31 +502,13 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
         conv_cycles += end - start;
     }
 
-    printf("conv_13 cycles: %llu \n", end - start);
-
-
-    //merge (conv_12_out_pooled, conv_13_out_pooled)
-    elem_t fire4_out[4][13][13][256];
-    for(int i = 0; i < conv_14_params.batch_size; i++)
-	for(int j = 0; j < conv_14_params.in_dim; j++)
-	   for(int k = 0; k < conv_14_params.in_dim; k++)
-		for(int c = 0; c < conv_14_params.in_channels; c++){
-		   if(c < conv_13_params.out_channels){
-			fire4_out[i][j][k][c] = conv_12_out_pooled[i][j][k][c];
-		   }
-		   else{
-			fire4_out[i][j][k][c] = conv_13_out_pooled[i][j][k][c-128];
-		   }
-		}
-    
-    //fire 5
-    // conv_14 (squeeze 256 -> 48) 
+    // conv_14
     if (!conv) {
       start = read_cycles();
 
         im2col(conv_14_params.batch_size, conv_14_params.in_channels, conv_14_params.in_dim,
             conv_14_params.I, conv_14_params.K,
-            fire4_out, conv_14_in, &conv_14_params);
+            conv_13_out_pooled, conv_14_in, &conv_14_params);
 
         end = read_cycles();
         im2col_cycles += end - start;
@@ -687,7 +527,7 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
         start = read_cycles();
 
         tiled_matmul_nn_auto(conv_14_params.I, conv_14_params.J, conv_14_params.K,
-            fire4_out, conv_14_w, conv_14_b, conv_14_out,
+            conv_13_out_pooled, conv_14_w, conv_14_b, conv_14_out,
             RELU, conv_14_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_14");
 
@@ -695,10 +535,7 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
         matmul_cycles += end - start;
     }
 
-    printf("conv_14 cycles: %llu \n", end - start);
-
-
-    // conv_15 (expand1 48 -> 192)
+    // conv_15
     if (!conv) {
         start = read_cycles();
 
@@ -722,16 +559,13 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
         matmul_cycles += end - start;
     }
 
-    printf("conv_15 cycles: %llu \n", end - start);
-
-
-    // conv_16 (expand2 48 -> 192)
+    // conv_16
     if (!conv) {
       start = read_cycles();
 
-        im2col_with_col2im(conv_14_params.I, conv_14_params.J,
+        im2col_with_col2im(conv_15_params.I, conv_15_params.J,
             conv_16_params.I, conv_16_params.K,
-            conv_14_out, conv_16_in, &conv_16_params);
+            conv_15_out, conv_16_in, &conv_16_params);
 
         end = read_cycles();
         im2col_cycles += end - start;
@@ -754,7 +588,7 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
             conv_16_params.out_channels, conv_16_params.out_dim,
             conv_16_params.stride, conv_16_params.padding, conv_16_params.kernel_size,
 
-            (elem_t*)conv_14_out, (elem_t*)conv_16_w, (acc_t*)conv_16_b, (elem_t*)conv_16_out,
+            (elem_t*)conv_15_out, (elem_t*)conv_16_w, (acc_t*)conv_16_b, (elem_t*)conv_16_out,
 
             RELU, conv_16_params.output_scale, 0,
             conv_16_params.pool_size, 0, conv_16_params.pool_padding,
@@ -765,28 +599,12 @@ for(int i = 0; i < conv_11_params.n_patches; i++){
         conv_cycles += end - start;
     }
 
-    printf("conv_16 cycles: %llu \n", end - start);
-
-
-    //merge
-    elem_t fire5_out[676][384] row_align(1);
-for(int i = 0; i < conv_17_params.n_patches; i++){
-	for(int j = 0; j < conv_17_params.in_channels; j++){
-		if(j < conv_16_params.out_channels){
-			fire5_out[i][j] = conv_15_out[i][j];
-		}
-		else{
-			fire5_out[i][j] = conv_16_out[i][j-192];
-		}
-	}
-}
-    //fire 6
-    // conv_17 (squeeze 384 -> 48)
+    // conv_17
     if (!conv) {
         start = read_cycles();
 
         tiled_matmul_nn_auto(conv_17_params.I, conv_17_params.J, conv_17_params.K,
-            fire5_out, conv_17_w, conv_17_b, conv_17_out,
+            conv_16_out, conv_17_w, conv_17_b, conv_17_out,
             RELU, conv_17_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_17");
 
@@ -797,22 +615,15 @@ for(int i = 0; i < conv_17_params.n_patches; i++){
         start = read_cycles();
 
         tiled_matmul_nn_auto(conv_17_params.I, conv_17_params.J, conv_17_params.K,
-            fire5_out, conv_17_w, conv_17_b, conv_17_out,
+            conv_16_out, conv_17_w, conv_17_b, conv_17_out,
             RELU, conv_17_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_17");
 
         end = read_cycles();
         matmul_cycles += end - start;
     }
-    printf("conv_17 cycles: %llu \n", end - start);
-/*
-    for(int i = 0; i < 100; i++){
-	    for(int j = 0; j < 32; j ++)
-		    printf("%d, ", conv_17_out[i][j]);
-	    printf("\n");
-    }
-*/ 
-    // conv_18 (expand 48 -> 192)
+
+    // conv_18
     if (!conv) {
         start = read_cycles();
 
@@ -835,21 +646,14 @@ for(int i = 0; i < conv_17_params.n_patches; i++){
         end = read_cycles();
         matmul_cycles += end - start;
     }
-    printf("conv_18 cycles: %llu \n", end - start);
-/*
-    for(int i = 0; i < 100; i++){
-	    for(int j = 0; j < 32; j ++)
-		    printf("%d, ", conv_18_out[i][j]);
-	    printf("\n");
-    }
-*/ 
-    // conv_19 (expand2 48 -> 192)
+
+    // conv_19
     if (!conv) {
       start = read_cycles();
 
-        im2col_with_col2im(conv_17_params.I, conv_17_params.J,
+        im2col_with_col2im(conv_18_params.I, conv_18_params.J,
             conv_19_params.I, conv_19_params.K,
-            conv_17_out, conv_19_in, &conv_19_params);
+            conv_18_out, conv_19_in, &conv_19_params);
 
         end = read_cycles();
         im2col_cycles += end - start;
@@ -872,7 +676,7 @@ for(int i = 0; i < conv_17_params.n_patches; i++){
             conv_19_params.out_channels, conv_19_params.out_dim,
             conv_19_params.stride, conv_19_params.padding, conv_19_params.kernel_size,
 
-            (elem_t*)conv_17_out, (elem_t*)conv_19_w, (acc_t*)conv_19_b, (elem_t*)conv_19_out,
+            (elem_t*)conv_18_out, (elem_t*)conv_19_w, (acc_t*)conv_19_b, (elem_t*)conv_19_out,
 
             RELU, conv_19_params.output_scale, 0,
             conv_19_params.pool_size, 0, conv_19_params.pool_padding,
@@ -882,33 +686,13 @@ for(int i = 0; i < conv_17_params.n_patches; i++){
         end = read_cycles();
         conv_cycles += end - start;
     }
-    printf("conv_19 cycles: %llu \n", end - start);
-/*
-    for(int i = 0; i < 100; i++){
-	    for(int j = 0; j < 32; j ++)
-		    printf("%d, ", conv_19_out[i][j]);
-	    printf("\n");
-    }
-*/
-    //merge (conv_18, conv_19)
-    elem_t fire6_out[676][384] row_align(1);
-for(int i = 0; i < conv_20_params.n_patches; i++){
-	for(int j = 0; j < conv_20_params.in_channels; j++){
-		if(j < conv_19_params.out_channels){
-			fire6_out[i][j] = conv_18_out[i][j];
-		}
-		else{
-			fire6_out[i][j] = conv_19_out[i][j-192];
-		}
-	}
-}
-    //fire7
-    // conv_20 (squeeze 384 -> 64)
+
+    // conv_20
     if (!conv) {
         start = read_cycles();
 
         tiled_matmul_nn_auto(conv_20_params.I, conv_20_params.J, conv_20_params.K,
-            fire6_out, conv_20_w, conv_20_b, conv_20_out,
+            conv_19_out, conv_20_w, conv_20_b, conv_20_out,
             RELU, conv_20_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_20");
 
@@ -919,22 +703,15 @@ for(int i = 0; i < conv_20_params.n_patches; i++){
         start = read_cycles();
 
         tiled_matmul_nn_auto(conv_20_params.I, conv_20_params.J, conv_20_params.K,
-            fire6_out, conv_20_w, conv_20_b, conv_20_out,
+            conv_19_out, conv_20_w, conv_20_b, conv_20_out,
             RELU, conv_20_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_20");
 
         end = read_cycles();
         matmul_cycles += end - start;
     }
-    printf("conv_20 cycles: %llu \n", end - start);
-/*
-    for(int i = 0; i < 100; i++){
-	    for(int j = 0; j < 32; j ++)
-		    printf("%d, ", conv_20_out[i][j]);
-	    printf("\n");
-    }
-*/ 
-    // conv_21 (expand1 64 -> 256)
+
+    // conv_21
     if (!conv) {
         start = read_cycles();
 
@@ -958,21 +735,13 @@ for(int i = 0; i < conv_20_params.n_patches; i++){
         matmul_cycles += end - start;
     }
 
-    printf("conv_21 cycles: %llu \n", end - start);
-/*
-    for(int i = 0; i < 100; i++){
-	    for(int j = 0; j < 32; j ++)
-		    printf("%d, ", conv_21_out[i][j]);
-	    printf("\n");
-    }
-*/ 
-    // conv_22 (expand2 64 -> 256)
+    // conv_22
     if (!conv) {
       start = read_cycles();
 
-        im2col_with_col2im(conv_20_params.I, conv_20_params.J,
+        im2col_with_col2im(conv_21_params.I, conv_21_params.J,
             conv_22_params.I, conv_22_params.K,
-            conv_20_out, conv_22_in, &conv_22_params);
+            conv_21_out, conv_22_in, &conv_22_params);
 
         end = read_cycles();
         im2col_cycles += end - start;
@@ -995,7 +764,7 @@ for(int i = 0; i < conv_20_params.n_patches; i++){
             conv_22_params.out_channels, conv_22_params.out_dim,
             conv_22_params.stride, conv_22_params.padding, conv_22_params.kernel_size,
 
-            (elem_t*)conv_20_out, (elem_t*)conv_22_w, (acc_t*)conv_22_b, (elem_t*)conv_22_out,
+            (elem_t*)conv_21_out, (elem_t*)conv_22_w, (acc_t*)conv_22_b, (elem_t*)conv_22_out,
 
             RELU, conv_22_params.output_scale, 0,
             conv_22_params.pool_size, 0, conv_22_params.pool_padding,
@@ -1006,29 +775,12 @@ for(int i = 0; i < conv_20_params.n_patches; i++){
         conv_cycles += end - start;
     }
 
-    printf("conv_22 cycles: %llu \n", end - start);
-
-
-    //merge (conv_21, conv_22)
-    elem_t fire7_out[676][512] row_align(1);
-for(int i = 0; i < conv_23_params.n_patches; i++){
-	for(int j = 0; j < conv_23_params.in_channels; j++){
-		if(j < conv_20_params.out_channels){
-			fire7_out[i][j] = conv_21_out[i][j];
-		}
-		else{
-			fire7_out[i][j] = conv_22_out[i][j-256];
-		}
-	}
-}
-
-    //fire8
-    // conv_23 (squeeze 512 -> 64)
+    // conv_23
     if (!conv) {
         start = read_cycles();
 
         tiled_matmul_nn_auto(conv_23_params.I, conv_23_params.J, conv_23_params.K,
-            fire7_out, conv_23_w, conv_23_b, conv_23_out,
+            conv_22_out, conv_23_w, conv_23_b, conv_23_out,
             RELU, conv_23_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_23");
 
@@ -1039,7 +791,7 @@ for(int i = 0; i < conv_23_params.n_patches; i++){
         start = read_cycles();
 
         tiled_matmul_nn_auto(conv_23_params.I, conv_23_params.J, conv_23_params.K,
-            fire7_out, conv_23_w, conv_23_b, conv_23_out,
+            conv_22_out, conv_23_w, conv_23_b, conv_23_out,
             RELU, conv_23_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_23");
 
@@ -1047,10 +799,7 @@ for(int i = 0; i < conv_23_params.n_patches; i++){
         matmul_cycles += end - start;
     }
 
-    printf("conv_23 cycles: %llu \n", end - start);
-
-
-    // conv_24 (expand1 64 -> 256)
+    // conv_24
     if (!conv) {
         start = read_cycles();
 
@@ -1074,16 +823,13 @@ for(int i = 0; i < conv_23_params.n_patches; i++){
         matmul_cycles += end - start;
     }
 
-    printf("conv_24 cycles: %llu \n", end - start);
-
-
-    // conv_25 (expand2 64 -> 256)
+    // conv_25
     if (!conv) {
       start = read_cycles();
 
-        im2col_with_col2im(conv_23_params.I, conv_23_params.J,
+        im2col_with_col2im(conv_24_params.I, conv_24_params.J,
             conv_25_params.I, conv_25_params.K,
-            conv_23_out, conv_25_in, &conv_25_params);
+            conv_24_out, conv_25_in, &conv_25_params);
 
         end = read_cycles();
         im2col_cycles += end - start;
@@ -1106,7 +852,7 @@ for(int i = 0; i < conv_23_params.n_patches; i++){
             conv_25_params.out_channels, conv_25_params.out_dim,
             conv_25_params.stride, conv_25_params.padding, conv_25_params.kernel_size,
 
-            (elem_t*)conv_23_out, (elem_t*)conv_25_w, (acc_t*)conv_25_b, (elem_t*)conv_25_out,
+            (elem_t*)conv_24_out, (elem_t*)conv_25_w, (acc_t*)conv_25_b, (elem_t*)conv_25_out,
 
             RELU, conv_25_params.output_scale, 0,
             conv_25_params.pool_size, 0, conv_25_params.pool_padding,
@@ -1117,28 +863,12 @@ for(int i = 0; i < conv_23_params.n_patches; i++){
         conv_cycles += end - start;
     }
 
-    printf("conv_25 cycles: %llu \n", end - start);
-
-
-    //merge (conv_24, conv_25)
-
-    elem_t fire8_out[676][512] row_align(1);
- for(int i = 0; i < conv_26_params.n_patches; i++){
-	for(int j = 0; j < conv_26_params.in_channels; j++){
-		if(j < conv_25_params.out_channels){
-			fire8_out[i][j] = conv_24_out[i][j];
-		}
-		else{
-			fire8_out[i][j] = conv_25_out[i][j-256];
-		}
-	}
-}
     // conv_26
     if (!conv) {
         start = read_cycles();
 
         tiled_matmul_nn_auto(conv_26_params.I, conv_26_params.J, conv_26_params.K,
-            fire8_out, conv_26_w, conv_26_b, conv_26_out,
+            conv_25_out, conv_26_w, conv_26_b, conv_26_out,
             RELU, conv_26_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_26");
 
@@ -1149,16 +879,13 @@ for(int i = 0; i < conv_23_params.n_patches; i++){
         start = read_cycles();
 
         tiled_matmul_nn_auto(conv_26_params.I, conv_26_params.J, conv_26_params.K,
-            fire8_out, conv_26_w, conv_26_b, conv_26_out,
+            conv_25_out, conv_26_w, conv_26_b, conv_26_out,
             RELU, conv_26_params.output_scale, 0, true,
             tiled_matmul_type, check, "conv_26");
 
         end = read_cycles();
         matmul_cycles += end - start;
     }
-
-    printf("conv_26 cycles: %llu \n", end - start);
-
 
     // Global averaging
     static elem_t average[1000][4] row_align(1);

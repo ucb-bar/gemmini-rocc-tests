@@ -1,7 +1,7 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	resnet50_test \
+	squeezenet1_test \
 
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY
