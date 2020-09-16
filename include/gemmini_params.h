@@ -30,6 +30,17 @@ typedef uint32_t scale_acc_t_bits;
 #define row_align(blocks) __attribute__((aligned(blocks*DIM*sizeof(elem_t))))
 #define row_align_acc(blocks) __attribute__((aligned(blocks*DIM*sizeof(acc_t))))
 
-#define MVIN_SCALE_ONE 0
+#define MVIN_SCALE_IDENTITY 0
+
+// Rounding right shift equation: https://riscv.github.io/documents/riscv-v-spec/#_vector_fixed_point_rounding_mode_register_vxrm
+#ifndef ELEM_T_IS_FLOAT
+#define ROUNDING_RIGHT_SHIFT(x, shift) \
+    ({(shift) > 0 ? (((x) >> (shift)) + \
+        (((shift) == 0 ? 0 : (((x) >> ((shift)-1)) & 1)) & \
+             ((((shift) <= 1 ? 0 : ((x) & ((1 << ((shift)-1)) - 1))) != 0) | (((x) >> (shift)) & 1)))) : ((x) << (-(shift)));})
+#else
+#define ROUNDING_RIGHT_SHIFT(x, shift) \
+    ((x) / (1 << (shift)))
+#endif
 
 #endif // GEMMINI_PARAMS_H

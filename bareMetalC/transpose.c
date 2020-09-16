@@ -46,7 +46,7 @@ int main() {
   gemmini_mvin(Identity, Identity_sp_addr);
 
   printf("Multiply \"In\" matrix with \"Identity\" matrix with a bias of 0\n");
-  gemmini_extended_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0, 1, true, false)
+  gemmini_extended_config_ex(OUTPUT_STATIONARY, 0, 0, ACC_SCALE_IDENTITY, 0, 1, true, false)
   gemmini_preload_zeros(Out_sp_addr);
   gemmini_compute_preloaded(In_sp_addr, Identity_sp_addr);
 

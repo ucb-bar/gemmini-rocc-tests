@@ -16,17 +16,6 @@
 
 #define GEMMINI_ASSERTIONS
 
-// Rounding right shift equation: https://riscv.github.io/documents/riscv-v-spec/#_vector_fixed_point_rounding_mode_register_vxrm
-#ifndef ELEM_T_IS_FLOAT
-#define ROUNDING_RIGHT_SHIFT(x, shift) \
-    ({(shift) > 0 ? (((x) >> (shift)) + \
-        (((shift) == 0 ? 0 : (((x) >> ((shift)-1)) & 1)) & \
-             ((((shift) <= 1 ? 0 : ((x) & ((1 << ((shift)-1)) - 1))) != 0) | (((x) >> (shift)) & 1)))) : ((x) << (-(shift)));})
-#else
-#define ROUNDING_RIGHT_SHIFT(x, shift) \
-    ((x) / (1 << (shift)))
-#endif
-
 // Accelerator interface
 #include "rocc-software/src/xcustom.h"
 
@@ -157,6 +146,26 @@ scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
 }
 #endif
 
+acc_scale_t acc_scale_t_bits_to_acc_scale_t(acc_scale_t_bits x) {
+    union {
+        acc_scale_t_bits b;
+        acc_scale_t f;
+    } un;
+
+    un.b = x;
+    return un.f;
+}
+
+acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
+    union {
+        acc_scale_t_bits b;
+        acc_scale_t f;
+    } un;
+
+    un.f = x;
+    return un.b;
+}
+
 #define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct) \
   ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, funct)
 
@@ -205,7 +214,7 @@ scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
 
 // config
 #define gemmini_extended_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, A_stride, A_transpose, B_transpose) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(acc_shift) << 32) | ((uint64_t)(A_stride) << 16) | (B_transpose << 9) | (A_transpose << 8) | ((act) << 3) | ((mode) << 2) | CONFIG_EX, ((uint64_t)(relu6_shift) << 32) | (sys_shift), k_CONFIG)
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)acc_scale_t_to_acc_scale_t_bits((acc_scale_t)acc_shift) << 32) | ((uint64_t)(A_stride) << 16) | (B_transpose << 9) | (A_transpose << 8) | ((act) << 3) | ((mode) << 2) | CONFIG_EX, ((uint64_t)(relu6_shift) << 32) | (sys_shift), k_CONFIG)
 
 #define gemmini_config_ex(mode, act, sys_shift, acc_shift, relu6_shift) \
     gemmini_extended_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, 1, 0, 0)
@@ -222,7 +231,7 @@ scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
   gemmini_extended2_config_ld(stride, scale, false)
 
 #define gemmini_config_ld(stride) \
-  gemmini_extended_config_ld(stride, MVIN_SCALE_ONE)
+  gemmini_extended_config_ld(stride, MVIN_SCALE_IDENTITY)
 
 #define gemmini_extended_config_st(stride, pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, upad, lpad) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(ocols) << 56) | ((uint64_t)(orows) << 48) | ((uint64_t)(pocols) << 40) | ((uint64_t)(porows) << 32) | ((uint64_t)(pool_out_dim) << 24) | ((uint64_t)(lpad) << 10) | ((uint64_t)(upad) << 8) | ((uint64_t)(pool_size) << 6) | ((uint64_t)(pool_stride) << 4) | CONFIG_ST, stride, k_CONFIG)
@@ -479,7 +488,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
         size_t tile_I, size_t tile_J, size_t tile_K,
-        int act, int shift, size_t relu6_shift, bool repeating_bias,
+        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         int dataflow) {
 
   const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
@@ -508,7 +517,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
     D = (acc_t*) 1; // Dummy address which isn't NULL
   }
 
-  gemmini_config_ex(dataflow, act, 0, shift, relu6_shift);
+  gemmini_config_ex(dataflow, act, 0, scale, relu6_shift);
   gemmini_config_st(stride_C * sizeof(elem_t));
 
   for (size_t i0 = 0; i0 < I0; i0++)
@@ -595,9 +604,9 @@ static void matmul_cpu(size_t dim_I, size_t dim_J, size_t dim_K,
 }
 */
 
-static elem_t scale_and_sat(acc_t x, int act, size_t shift, size_t relu6_shift) {
+static elem_t scale_and_sat(acc_t x, int act, acc_scale_t scale, size_t relu6_shift) {
   // Scale value down and round it
-  x = ROUNDING_RIGHT_SHIFT(x, shift);
+  x = ACC_SCALE(x, scale);
   // Clip result
   x = x > elem_t_max ? elem_t_max : (x < elem_t_min ? elem_t_min : x);
   // Apply activation function
@@ -614,9 +623,9 @@ static elem_t scale_and_sat(acc_t x, int act, size_t shift, size_t relu6_shift) 
 }
 
 #ifdef HAS_MVIN_SCALE
-#define GEMMINI_SCALE(x, scale) ((scale) > 0 ? (x) << (scale) : (x) >> (scale))
+#define GEMMINI_SCALE(x, scale) MVIN_SCALE((x), (scale))
 #else
-#define GEMMINI_SCALE(x, scale) x
+#define GEMMINI_SCALE(x, scale) (x)
 #endif
 
 static void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
@@ -624,7 +633,7 @@ static void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         elem_t* C,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
-        int act, size_t shift, size_t relu6_shift, bool repeating_bias) {
+        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias) {
 
   const int no_bias = D == NULL;
   if (/* TODO */ false && DIM_I % 4 == 0 && DIM_J % 4 == 0) {
@@ -692,37 +701,37 @@ static void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         }
 
         *(C + i*stride_C + j) =
-             scale_and_sat(result[0][0], act, shift, relu6_shift);
+             scale_and_sat(result[0][0], act, scale, relu6_shift);
         *(C + i*stride_C + j+1) =
-             scale_and_sat(result[0][1], act, shift, relu6_shift);
+             scale_and_sat(result[0][1], act, scale, relu6_shift);
         *(C + i*stride_C + j+2) =
-             scale_and_sat(result[0][2], act, shift, relu6_shift);
+             scale_and_sat(result[0][2], act, scale, relu6_shift);
         *(C + i*stride_C + j+3) =
-             scale_and_sat(result[0][3], act, shift, relu6_shift);
+             scale_and_sat(result[0][3], act, scale, relu6_shift);
         *(C + (i+1)*stride_C + j) =
-             scale_and_sat(result[1][0], act, shift, relu6_shift);
+             scale_and_sat(result[1][0], act, scale, relu6_shift);
         *(C + (i+1)*stride_C + j+1) =
-             scale_and_sat(result[1][1], act, shift, relu6_shift);
+             scale_and_sat(result[1][1], act, scale, relu6_shift);
         *(C + (i+1)*stride_C + j+2) =
-             scale_and_sat(result[1][2], act, shift, relu6_shift);
+             scale_and_sat(result[1][2], act, scale, relu6_shift);
         *(C + (i+1)*stride_C + j+3) =
-             scale_and_sat(result[1][3], act, shift, relu6_shift);
+             scale_and_sat(result[1][3], act, scale, relu6_shift);
         *(C + (i+2)*stride_C + j) =
-             scale_and_sat(result[2][0], act, shift, relu6_shift);
+             scale_and_sat(result[2][0], act, scale, relu6_shift);
         *(C + (i+2)*stride_C + j+1) =
-             scale_and_sat(result[2][1], act, shift, relu6_shift);
+             scale_and_sat(result[2][1], act, scale, relu6_shift);
         *(C + (i+2)*stride_C + j+2) =
-             scale_and_sat(result[2][2], act, shift, relu6_shift);
+             scale_and_sat(result[2][2], act, scale, relu6_shift);
         *(C + (i+2)*stride_C + j+3) =
-             scale_and_sat(result[2][3], act, shift, relu6_shift);
+             scale_and_sat(result[2][3], act, scale, relu6_shift);
         *(C + (i+3)*stride_C + j) =
-             scale_and_sat(result[3][0], act, shift, relu6_shift);
+             scale_and_sat(result[3][0], act, scale, relu6_shift);
         *(C + (i+3)*stride_C + j+1) =
-             scale_and_sat(result[3][1], act, shift, relu6_shift);
+             scale_and_sat(result[3][1], act, scale, relu6_shift);
         *(C + (i+3)*stride_C + j+2) =
-             scale_and_sat(result[3][2], act, shift, relu6_shift);
+             scale_and_sat(result[3][2], act, scale, relu6_shift);
         *(C + (i+3)*stride_C + j+3) =
-             scale_and_sat(result[3][3], act, shift, relu6_shift);
+             scale_and_sat(result[3][3], act, scale, relu6_shift);
       }
     }
   } else {
@@ -738,7 +747,7 @@ static void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
           result += GEMMINI_SCALE(*(A + i*stride_A + k), A_scale_factor) * GEMMINI_SCALE(*((elem_t*)B + k*stride_B + j), B_scale_factor);
         }
 
-        *(C + i*stride_C + j) = scale_and_sat(result, act, shift, relu6_shift);
+        *(C + i*stride_C + j) = scale_and_sat(result, act, scale, relu6_shift);
       }
     }
   }
@@ -756,7 +765,7 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         const acc_t * D, elem_t* C,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
-        int act, size_t shift, size_t relu6_shift, bool repeating_bias,
+        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         size_t tile_I, size_t tile_J, size_t tile_K,
         enum tiled_matmul_type_t tiled_matmul_type) {
 
@@ -818,14 +827,14 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
               stride_A, stride_B, stride_D, stride_C,
               A_scale_factor, B_scale_factor, D_scale_factor,
               tile_I, tile_J, tile_K,
-              act, shift, relu6_shift, repeating_bias,
+              act, scale, relu6_shift, repeating_bias,
               (int)tiled_matmul_type);
   } else /*if (tiled_matmul_type == CPU)*/ {
       matmul_cpu(dim_I, dim_J, dim_K,
               A, B, D, C,
               stride_A, stride_B, stride_D, stride_C,
               A_scale_factor, B_scale_factor, D_scale_factor,
-              act, shift, relu6_shift, repeating_bias);
+              act, scale, relu6_shift, repeating_bias);
   }
 }
 
@@ -836,7 +845,7 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         const acc_t * D, elem_t* C,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
-        int act, size_t shift, size_t relu6_shift, bool repeating_bias,
+        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         enum tiled_matmul_type_t tiled_matmul_type) {
 #define partition_rows (BANK_NUM * BANK_ROWS / 2)
 #define mats_in_partition (partition_rows / DIM)
@@ -856,7 +865,7 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         A, B, D, C,
         stride_A, stride_B, stride_D, stride_C,
         A_scale_factor, B_scale_factor, D_scale_factor,
-        act, shift, relu6_shift, repeating_bias,
+        act, scale, relu6_shift, repeating_bias,
         tile_I, tile_J, tile_K,
         tiled_matmul_type);
 
@@ -1153,7 +1162,7 @@ void conv_cpu_without_pool(
         acc_t * bias,
         elem_t * output,
 
-        int act, size_t shift, size_t relu6_shift) {
+        int act, acc_scale_t scale, size_t relu6_shift) {
 
   bool no_bias = bias == NULL;
 
@@ -1184,7 +1193,7 @@ void conv_cpu_without_pool(
           }
 
           *(output+(b*out_dim*out_dim+orow*out_dim+ocol)*out_channels + och) =
-            scale_and_sat(opixel, act, shift, relu6_shift);
+            scale_and_sat(opixel, act, scale, relu6_shift);
         }
       }
     }
@@ -1201,7 +1210,7 @@ void conv_cpu(
         acc_t * bias,
         elem_t * output,
 
-        int act, size_t shift, size_t relu6_shift,
+        int act, acc_scale_t scale, size_t relu6_shift,
         int pool_size, int pool_stride, int pool_padding) {
 
   const bool no_pool = pool_stride == 0;
@@ -1211,7 +1220,7 @@ void conv_cpu(
         out_channels, out_dim,
         stride, padding, kernel_dim,
         input, weights, bias, output,
-        act, shift, relu6_shift);
+        act, scale, relu6_shift);
     return;
   }
 
@@ -1259,7 +1268,7 @@ void conv_cpu(
                   }
                 }
 
-                opixel = scale_and_sat(opixel, act, shift, relu6_shift);
+                opixel = scale_and_sat(opixel, act, scale, relu6_shift);
                 if (!running_max_initialized || opixel > running_max) {
                   running_max = opixel;
                   running_max_initialized = true;
@@ -1291,7 +1300,7 @@ void tiled_conv(
         acc_t * bias,
         elem_t * output,
 
-        int act, size_t shift, size_t relu6_shift,
+        int act, acc_scale_t scale, size_t relu6_shift,
         int pool_size, int pool_stride, int pool_padding,
 
         enum tiled_matmul_type_t tiled_conv_type) {
@@ -1306,7 +1315,7 @@ void tiled_conv(
         out_channels, out_dim,
         stride, padding, kernel_dim,
         input, weights, bias, output,
-        act, shift, relu6_shift,
+        act, scale, relu6_shift,
         pool_size, pool_stride, pool_padding);
       return;
     } else if (tiled_conv_type == OS) {
@@ -1357,7 +1366,7 @@ void tiled_conv(
 
     const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
-    gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, shift, relu6_shift, stride, false, false);
+    gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, stride, false, false);
     if (no_pool) {
         gemmini_config_st(out_channels * sizeof(elem_t));
     }
@@ -1467,7 +1476,7 @@ void tiled_conv_auto(
         acc_t * bias,
         elem_t * output,
 
-        int act, size_t shift, size_t relu6_shift,
+        int act, acc_scale_t scale, size_t relu6_shift,
         int pool_size, int pool_stride, int pool_padding,
 
         enum tiled_matmul_type_t tiled_conv_type) {
@@ -1530,14 +1539,14 @@ void tiled_conv_auto(
         bias,
         output,
 
-        act, shift, relu6_shift,
+        act, scale, relu6_shift,
         pool_size, no_pool ? 0 : pool_stride, pool_padding,
 
         tiled_conv_type);
 }
 
 void resadd_cpu(const size_t I, const size_t J,
-        const int A_shift,
+        const scale_t A_shift,
         const elem_t * A,
         const elem_t * B,
         elem_t * C,
@@ -1551,7 +1560,7 @@ void resadd_cpu(const size_t I, const size_t J,
             const elem_t * b = B + i * J + j;
             elem_t * c = C + i * J + j;
 
-            acc_t result = ROUNDING_RIGHT_SHIFT(*a, A_shift) + *b;
+            acc_t result = MVIN_SCALE(*a, A_shift) + *b;
             result = result > elem_t_max ? elem_t_max :
                 (result < minimum ? minimum : result);
 
@@ -1629,7 +1638,7 @@ void tiled_resadd(const size_t I, const size_t J,
 
     gemmini_config_st(J * sizeof(elem_t));
     // gemmini_config_ld(J * sizeof(elem_t));
-    gemmini_config_ex(WS, relu ? RELU : NO_ACTIVATION, 0, 0, 0);
+    gemmini_config_ex(WS, relu ? RELU : NO_ACTIVATION, 0, ACC_SCALE_IDENTITY, 0);
 
     for (int i = 0; i < I; i += tile_I) {
         for (int j = 0; j < J; j += tile_J) {

@@ -22,8 +22,8 @@ struct ConvParams {
     bool depthwise;
     int n_patches;
     int patch_size;
-    int output_scale;
-    int res_scale;
+    acc_scale_t output_scale;
+    scale_t res_scale;
     int pool_size, pool_stride, pool_padding, out_dim_pooled;
     
     int I, J, K;
@@ -33,7 +33,7 @@ struct FcParams {
     int batch_size;
     int in_features;
     int out_features;
-    int output_scale;
+    acc_scale_t output_scale;
     bool bias;
 
     int I, J, K;
@@ -76,7 +76,7 @@ struct FcParams {
 static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
         const void * D, elem_t C[dim_I][dim_J],
-        int act, size_t shift, size_t relu6_shift, bool repeating_bias,
+        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         size_t tile_I, size_t tile_J, size_t tile_K,
         enum tiled_matmul_type_t tiled_matmul_type,
         bool check, char * layer_name)
@@ -87,8 +87,8 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
     tiled_matmul(dim_I, dim_J, dim_K,
         (elem_t*)A, (elem_t*)B, D, (elem_t*)C, 
         dim_K, dim_J, dim_J, dim_J,
-        MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
-        act, shift, relu6_shift, repeating_bias,
+        MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+        act, scale, relu6_shift, repeating_bias,
         tile_I, tile_J, tile_K,
         tiled_matmul_type);
 
@@ -98,8 +98,8 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
         tiled_matmul_auto(dim_I, dim_J, dim_K,
             (elem_t*)A, (elem_t*)B, D, (elem_t*)gold, 
             dim_K, dim_J, dim_J, dim_J,
-            MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
-            act, shift, relu6_shift, repeating_bias,
+            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+            act, scale, relu6_shift, repeating_bias,
             CPU);
 
         if (!MAT_IS_EQUAL(dim_I, dim_J, C, gold)) {
@@ -114,7 +114,7 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
 static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
         const void * D, elem_t C[dim_I][dim_J],
-        int act, size_t shift, size_t relu6_shift, bool repeating_bias,
+        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         enum tiled_matmul_type_t tiled_matmul_type,
         bool check, char * layer_name)
 {
@@ -124,8 +124,8 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
     tiled_matmul_auto(dim_I, dim_J, dim_K,
         (elem_t*)A, (elem_t*)B, D, (elem_t*)C, 
         dim_K, dim_J, dim_J, dim_J,
-        MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
-        act, shift, relu6_shift, repeating_bias,
+        MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+        act, scale, relu6_shift, repeating_bias,
         tiled_matmul_type);
 
     if (check) {
@@ -134,8 +134,8 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         tiled_matmul_auto(dim_I, dim_J, dim_K,
             (elem_t*)A, (elem_t*)B, D, (elem_t*)gold, 
             dim_K, dim_J, dim_J, dim_J,
-            MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
-            act, shift, relu6_shift, repeating_bias,
+            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+            act, scale, relu6_shift, repeating_bias,
             CPU);
 
         if (!MAT_IS_EQUAL(dim_I, dim_J, C, gold)) {
@@ -183,17 +183,17 @@ static void conv_dw(size_t I, size_t J,
                         result = 0;
                     }
                     
-                    acc_t shifted = ROUNDING_RIGHT_SHIFT(result, params->output_scale);
+                    acc_t scaled = ACC_SCALE(result, params->output_scale);
 
-                    if (shifted > elem_t_max) {
-                        shifted = elem_t_max;
-                    } else if (shifted < elem_t_min) {
-                        shifted = elem_t_min;
+                    if (scaled > elem_t_max) {
+                        scaled = elem_t_max;
+                    } else if (scaled < elem_t_min) {
+                        scaled = elem_t_min;
                     }
                     
                     size_t r = batch * params->out_dim * params->out_dim + out_row * params->out_dim + out_col;
-                    output[r][channel] = shifted;
-                    // output[batch][out_row][out_col][channel] = shifted;
+                    output[r][channel] = scaled;
+                    // output[batch][out_row][out_col][channel] = scaled;
                 }
             }
         }
@@ -242,17 +242,17 @@ static void conv_dw_with_col2im(size_t prev_I, size_t prev_J, size_t I, size_t J
                         result = 0;
                     }
                     
-                    acc_t shifted = ROUNDING_RIGHT_SHIFT(result, params->output_scale);
+                    acc_t scaled = ACC_SCALE(result, params->output_scale);
 
-                    if (shifted > elem_t_max) {
-                        shifted = elem_t_max;
-                    } else if (shifted < elem_t_min) {
-                        shifted = elem_t_min;
+                    if (scaled > elem_t_max) {
+                        scaled = elem_t_max;
+                    } else if (scaled < elem_t_min) {
+                        scaled = elem_t_min;
                     }
                     
                     size_t r = batch * params->out_dim * params->out_dim + out_row * params->out_dim + out_col;
-                    output[r][channel] = shifted;
-                    // output[batch][out_row][out_col][channel] = shifted;
+                    output[r][channel] = scaled;
+                    // output[batch][out_row][out_col][channel] = scaled;
                 }
             }
         }
@@ -337,9 +337,9 @@ static void im2col_with_col2im(size_t prev_I, size_t prev_J,
 }
 
 // Compute C = A + B with saturating add
-void vecadd(size_t len, const elem_t * A, const elem_t * B, elem_t * C, int A_shift) {
+void vecadd(size_t len, const elem_t * A, const elem_t * B, elem_t * C, scale_t A_shift) {
     for (size_t i = 0; i < len; i++) {
-        acc_t result = ROUNDING_RIGHT_SHIFT(A[i], A_shift) + B[i];
+        acc_t result = MVIN_SCALE(A[i], A_shift) + B[i];
 
         if (result > elem_t_max) {
             result = elem_t_max;
@@ -364,7 +364,7 @@ void resadd1(const size_t batch_size, const size_t channels, const size_t im_dim
         for (size_t row = 0; row < params->out_dim_pooled; row++) {
             for (size_t col = 0; col < params->out_dim_pooled; col++) {
                 for (size_t channel = 0; channel < params->out_channels; channel++) {
-                    acc_t result = ROUNDING_RIGHT_SHIFT(A[batch][row][col][channel], params->res_scale) + B[batch][row][col][channel];
+                    acc_t result = MVIN_SCALE(A[batch][row][col][channel], params->res_scale) + B[batch][row][col][channel];
 
                     if (result > elem_t_max) {
                         result = elem_t_max;
@@ -395,7 +395,7 @@ void resadd2(const size_t I, const size_t J,
                 for (size_t channel = 0; channel < params->out_channels; channel++) {
                     size_t r = batch * params->out_dim_pooled * params->out_dim_pooled + row * params->out_dim_pooled + col;
 
-                    acc_t result = ROUNDING_RIGHT_SHIFT(A[r][channel], params->res_scale) + B[batch][row][col][channel];
+                    acc_t result = MVIN_SCALE(A[r][channel], params->res_scale) + B[batch][row][col][channel];
 
                     if (result > elem_t_max) {
                         result = elem_t_max;
@@ -425,7 +425,7 @@ void resadd3(const size_t I, const size_t J,
                 for (size_t channel = 0; channel < params->out_channels; channel++) {
                     size_t r = batch * params->out_dim_pooled * params->out_dim_pooled + row * params->out_dim_pooled + col;
 
-                    acc_t result = ROUNDING_RIGHT_SHIFT(A[r][channel], params->res_scale) + B[r][channel];
+                    acc_t result = MVIN_SCALE(A[r][channel], params->res_scale) + B[r][channel];
 
                     if (result > elem_t_max) {
                         result = elem_t_max;

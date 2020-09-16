@@ -11,10 +11,6 @@
 #include <time.h>
 #include "include/gemmini_testutils.h"
 
-elem_t rshift(elem_t x, int shift) {
-  return shift >= 0 ? ROUNDING_RIGHT_SHIFT(x, shift) : x << -shift;
-}
-
 int main() {
   elem_t A[DIM][DIM];
   elem_t B[DIM][DIM];
@@ -31,7 +27,7 @@ int main() {
     for (int bshift = -2; bshift < 2; bshift++) {
       for (size_t i = 0; i < DIM; i++)
         for (size_t j = 0; j < DIM; j++) {
-          acc_t sum = rshift(A[i][j], ashift) + rshift(B[i][j], bshift);
+          acc_t sum = MVIN_SCALE(A[i][j], ashift) + MVIN_SCALE(B[i][j], bshift);
           gold[i][j] = sum > elem_t_max ? elem_t_max :
             (sum < elem_t_min ? elem_t_min : sum);
         }
@@ -46,7 +42,7 @@ int main() {
       gemmini_extended2_config_ld(DIM * sizeof(elem_t), bshift, true);
       gemmini_mvin(B, B_acc_addr);
 
-      gemmini_config_ex(0, NO_ACTIVATION, 0, 0, 0);
+      gemmini_config_ex(0, NO_ACTIVATION, 0, ACC_SCALE_IDENTITY, 0);
       gemmini_mvout(C, C_acc_addr);
 
       gemmini_fence();
