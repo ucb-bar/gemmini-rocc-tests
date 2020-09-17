@@ -20,27 +20,36 @@ typedef int32_t acc_t;
 typedef int64_t full_t;
 
 #define HAS_MVIN_SCALE
-typedef int32_t scale_t;
-typedef uint32_t scale_t_bits;
+typedef int8_t scale_t;
+typedef uint8_t scale_t_bits;
 
-#define HAS_MVIN_ACC_SCALE
 typedef int32_t scale_acc_t;
 typedef uint32_t scale_acc_t_bits;
+
+typedef float acc_scale_t;
+typedef uint32_t acc_scale_t_bits;
 
 #define row_align(blocks) __attribute__((aligned(blocks*DIM*sizeof(elem_t))))
 #define row_align_acc(blocks) __attribute__((aligned(blocks*DIM*sizeof(acc_t))))
 
 #define MVIN_SCALE_IDENTITY 0
 
+#define ACC_SCALE_IDENTITY 1.0
+
 // Rounding right shift equation: https://riscv.github.io/documents/riscv-v-spec/#_vector_fixed_point_rounding_mode_register_vxrm
-#ifndef ELEM_T_IS_FLOAT
 #define ROUNDING_RIGHT_SHIFT(x, shift) \
-    ({(shift) > 0 ? (((x) >> (shift)) + \
+    ((shift) > 0 ? (((x) >> (shift)) + \
         (((shift) == 0 ? 0 : (((x) >> ((shift)-1)) & 1)) & \
-             ((((shift) <= 1 ? 0 : ((x) & ((1 << ((shift)-1)) - 1))) != 0) | (((x) >> (shift)) & 1)))) : ((x) << (-(shift)));})
-#else
-#define ROUNDING_RIGHT_SHIFT(x, shift) \
-    ((x) / (1 << (shift)))
-#endif
+             ((((shift) <= 1 ? 0 : ((x) & ((1 << ((shift)-1)) - 1))) != 0) | (((x) >> (shift)) & 1)))) : ((x) << (-(shift))))
+
+#define ACC_SCALE(x, scale) \
+    ({float y = (x) * (scale); y > INT_MAX ? INT_MAX : (y < INT_MIN ? INT_MIN : (acc_t)y);})
+
+#define MVIN_SCALE(x, scale) \
+    ROUNDING_RIGHT_SHIFT(x, scale)
+
+#define ACC_SCALE_T_IS_FLOAT
+#define ACC_SCALE_EXP_BITS 8
+#define ACC_SCALE_SIG_BITS 24
 
 #endif // GEMMINI_PARAMS_H
