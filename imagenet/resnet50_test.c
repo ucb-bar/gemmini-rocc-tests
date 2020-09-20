@@ -153,6 +153,12 @@ int main (int argc, char * argv[]) {
 
     }
 
+    for(int i = 0; i < 10; i++){
+	for(int j = 100; j < 150; j++)
+		printf("%d \n", conv_2_in[i][j]);
+	printf("\n");
+    }
+
     // conv_2
     if (!conv) {
       start = read_cycles();
