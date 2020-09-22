@@ -210,10 +210,17 @@ scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
 #define gemmini_extended_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, ocol, row_turn, kdim, stride, channel, row_left, kdim2, weight_double_bank, weight_triple_bank) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(weight_triple_bank) << 59) | ((uint64_t)(weight_double_bank) << 58) | ((uint64_t)(row_left) << 54) | ((uint64_t)(row_turn) << 42) | ((uint64_t)(acc_shift) << 32) | ((uint64_t)(1)<<16) | (0<<9) | (0<<8) | ((uint64_t)(act) << 3) | ((mode) << 2) | CONFIG_EX, ((uint64_t)ocol << 56) | ((uint64_t)kdim2 << 48) | ((uint64_t)kdim << 44) | ((uint64_t)(relu6_shift) << 32) | ((uint64_t)channel << 23) | ((uint64_t)stride << 20) | ((uint64_t)sys_shift), k_CONFIG)
 
+// has A stride and transposer, without im2col hardware
+#define gemmini_extended2_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, A_stride, A_transpose, B_transpose) \
+   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(0) << 59) | ((uint64_t)(0) << 58) | ((uint64_t)(0) << 54) | ((uint64_t)(0) << 42) | ((uint64_t)(acc_shift) << 32) | ((uint64_t)(A_stride)<<16) | (B_transpose<<9) | (A_transpose<<8) | ((uint64_t)(act) << 3) | ((mode) << 2) | CONFIG_EX, ((uint64_t)(0) << 56) | ((uint64_t)(0) << 48) | ((uint64_t)(0) << 44) | ((uint64_t)(relu6_shift) << 32) | ((uint64_t)(0) << 23) | ((uint64_t)(0) << 20) | ((uint64_t)sys_shift), k_CONFIG)
 
+#if defined(HAS_IM2COL)
 #define gemmini_config_ex(mode, act, sys_shift, acc_shift, relu6_shift) \
     gemmini_extended_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, 0,0,0,0,1,0,0,0,0)
-
+#else
+#define gemmini_config_ex(mode, act, sys_shift, acc_shift, relu6_shift) \
+    gemmini_extended2_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, 1, 0, 0)
+#endif
 
 #if defined(HAS_MVIN_SCALE) || defined(HAS_MVIN_ACC_SCALE)
 #define gemmini_extended2_config_ld(stride, scale, shrunk) \
@@ -930,7 +937,7 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
 
   // Run a tiled matrix multiplication on either Gemmini or the CPU
   if (tiled_matmul_type == OS || tiled_matmul_type == WS) {
-    if(dim_K <= tile_K*DIM){ //no need to tile along channel (K) dimension
+    if(dim_K <= tile_K*DIM && tiled_matmul_type == WS){ //no need to tile along channel (K) dimension
         //printf("fitC \n");
         tiled_matmul_outer_fitC(dim_I, dim_J, dim_K,
               A, B, D, C,
