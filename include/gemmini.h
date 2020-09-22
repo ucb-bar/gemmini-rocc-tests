@@ -213,8 +213,9 @@ scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
   gemmini_preload(GARBAGE_ADDR, C)
 
 // weight-stationary matmul loop
-// #define gemmini_loop_ws(A, B, I, J, K, bias) \
-    // ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(B) << 32) | (A), ((uint64_t)(bias) << 48) | ((uint64_t)(K) << 32) | ((J) << 16) | (I), k_LOOP_WS)
+/* #define gemmini_loop_ws(A, B, I, J, K, bias) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(B) << 32) | (A), ((uint64_t)(bias) << 48) | ((uint64_t)(K) << 32) | ((J) << 16) | (I), k_LOOP_WS)
+*/
 
 // config
 #define gemmini_extended_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, A_stride, A_transpose, B_transpose) \
@@ -640,7 +641,7 @@ static void matmul_cpu(size_t dim_I, size_t dim_J, size_t dim_K,
 }
 */
 
-static elem_t scale_and_sat(acc_t x, int act, size_t shift, size_t relu6_shift) {
+static elem_t scale_and_sat(acc_t x, int act, size_t shift, size_t relu6_shift __attribute__((unused))) {
   // Scale value down and round it
   x = ROUNDING_RIGHT_SHIFT(x, shift);
   // Clip result
@@ -779,7 +780,7 @@ static void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         acc_t result = no_bias ? 0 : GEMMINI_SCALE(*(D + bias_row * stride_D + j), D_scale_factor);
 
         for (size_t k = 0; k < DIM_K; k++) {
-          acc_t past_opixel = result;
+          //acc_t past_opixel = result;
           result += GEMMINI_SCALE(*(A + i*stride_A + k), A_scale_factor) * GEMMINI_SCALE(*((elem_t*)B + k*stride_B + j), B_scale_factor);
         }
 
@@ -929,12 +930,12 @@ static void tiled_matmul_auto_cisc(
 }
 
 void sp_tiled_conv(
-        int batch_size, int in_dim, int in_channels,
+        int batch_size  __attribute__((unused)), int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
-        int stride, int padding, int kernel_dim,
+        int stride, int padding  __attribute__((unused)), int kernel_dim,
 
-        int pool_size, int pool_stride, int pool_padding,
+        int pool_size, int pool_stride, int pool_padding  __attribute__((unused)),
 
         int batches,
         int porows, int pocols, int pochs,
@@ -1209,7 +1210,7 @@ void conv_cpu_without_pool(
 
                 elem_t weight = *(weights + (krow * kernel_dim * in_channels + kcol * in_channels + kch) * out_channels + och);
 
-                acc_t past_opixel = opixel;
+                //acc_t past_opixel = opixel;
                 opixel += weight * ipixel;
               }
             }
@@ -1525,7 +1526,7 @@ void tiled_conv_auto(
         int max_val = -1;
         int max_idx = -1;
 
-        for (int i = 0; i < sizeof(args)/sizeof(args[0]); i++) {
+        for (size_t i = 0; i < sizeof(args)/sizeof(args[0]); i++) {
             if (args[i] > max_val) {
                 max_val = args[i];
                 max_idx = i;
@@ -1574,12 +1575,12 @@ void resadd_cpu(const size_t I, const size_t J,
         const elem_t * B,
         elem_t * C,
         bool relu,
-        enum tiled_matmul_type_t matadd_type) {
+        enum tiled_matmul_type_t matadd_type __attribute__((unused))) {
 
     const int minimum = relu ? 0 : elem_t_min;
 
-    for (int i = 0; i < I; i++) {
-        for (int j = 0; j < J; j++) {
+    for (size_t i = 0; i < I; i++) {
+        for (size_t j = 0; j < J; j++) {
             const elem_t * a = A + i * J + j;
             const elem_t * b = B + i * J + j;
             elem_t * c = C + i * J + j;
@@ -1690,8 +1691,8 @@ void tiled_resadd(const size_t I, const size_t J,
     gemmini_config_st(J * sizeof(elem_t));
     gemmini_config_ld(J * sizeof(elem_t));
 
-    for (int i = 0; i < I; i += tile_I) {
-        for (int j = 0; j < J; j += tile_J) {
+    for (size_t i = 0; i < I; i += tile_I) {
+        for (size_t j = 0; j < J; j += tile_J) {
             const size_t I_tile = i + tile_I <= I ? tile_I : I - i;
             const size_t J_tile = j + tile_J <= J ? tile_J : J - j;
 
