@@ -205,8 +205,10 @@ scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
 */
 
 // config
+// for hw im2col, x use A-stride (hardcode it as 1)
+// x use A and B tranpose (hardcode it as 0)
 #define gemmini_extended_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, ocol, row_turn, kdim, stride, channel, row_left, kdim2, weight_double_bank, weight_triple_bank) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(weight_triple_bank) << 59) | ((uint64_t)(weight_double_bank) << 58) | ((uint64_t)(row_left) << 54) | ((uint64_t)(row_turn) << 42) | ((uint64_t)(acc_shift) << 32) |  ((act) << 3) | ((mode) << 2) | CONFIG_EX, ((uint64_t)ocol << 56) | ((uint64_t)kdim2 << 48) | ((uint64_t)kdim << 44) | ((uint64_t)(relu6_shift) << 32) | ((uint64_t)channel << 23) | ((uint64_t)stride << 20) | (sys_shift), k_CONFIG)
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(weight_triple_bank) << 59) | ((uint64_t)(weight_double_bank) << 58) | ((uint64_t)(row_left) << 54) | ((uint64_t)(row_turn) << 42) | ((uint64_t)(acc_shift) << 32) | ((uint64_t)(1)<<16) | (0<<9) | (0<<8) | ((uint64_t)(act) << 3) | ((mode) << 2) | CONFIG_EX, ((uint64_t)ocol << 56) | ((uint64_t)kdim2 << 48) | ((uint64_t)kdim << 44) | ((uint64_t)(relu6_shift) << 32) | ((uint64_t)channel << 23) | ((uint64_t)stride << 20) | ((uint64_t)sys_shift), k_CONFIG)
 
 
 #define gemmini_config_ex(mode, act, sys_shift, acc_shift, relu6_shift) \
@@ -929,7 +931,8 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
   // Run a tiled matrix multiplication on either Gemmini or the CPU
   if (tiled_matmul_type == OS || tiled_matmul_type == WS) {
     if(dim_K <= tile_K*DIM){ //no need to tile along channel (K) dimension
-      tiled_matmul_outer_fitC(dim_I, dim_J, dim_K,
+        //printf("fitC \n");
+        tiled_matmul_outer_fitC(dim_I, dim_J, dim_K,
               A, B, D, C,
               stride_A, stride_B, stride_D, stride_C,
               A_scale_factor, B_scale_factor, D_scale_factor,
@@ -937,7 +940,8 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
               act, shift, relu6_shift, repeating_bias,
               (int)tiled_matmul_type);
     }else { //need to tile K dimension
-     tiled_matmul_outer(dim_I, dim_J, dim_K,
+        //printf("not fitC \n");
+        tiled_matmul_outer(dim_I, dim_J, dim_K,
               A, B, D, C,
               stride_A, stride_B, stride_D, stride_C,
               A_scale_factor, B_scale_factor, D_scale_factor,
@@ -3596,6 +3600,7 @@ void tiled_conv_auto(
     const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
     const int weight_bank = 1;
     int args[] = {batch_size, pool_out_dim, pool_out_dim, out_channels, in_channels};
+
     int och_floor = (args[3]/DIM) + 1;
  
     int spad_rows_weight = tiled_conv_total_spad_rows(false, true,
@@ -3607,25 +3612,10 @@ void tiled_conv_auto(
 	spad_rows_weight = tiled_conv_total_spad_rows(false, true,
         	stride, args[0], args[1], args[2], args[3], kernel_dim, kernel_dim, args[4], pool_size, pool_stride);
     }
+    
+    int acc_rows = tiled_conv_total_spad_rows(true, false,
+		stride, args[0], args[1], args[2], args[3], kernel_dim, kernel_dim, args[4], pool_size, pool_stride);
 
-    // int args[] = {batch_size, porows, pocols, pochs, krows, kcols, kchs};
-    int args[] = {batch_size, pool_out_dim, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
-
-    int spad_rows = tiled_conv_total_spad_rows(false,
-        stride, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
-    int acc_rows = tiled_conv_total_spad_rows(true,
-        stride, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
-
-    while (spad_rows > BANK_NUM*BANK_ROWS || acc_rows > ACC_ROWS) {
-        int max_val = -1;
-        int max_idx = -1;
-
-        for (size_t i = 0; i < sizeof(args)/sizeof(args[0]); i++) {
-            if (args[i] > max_val) {
-                max_val = args[i];
-                max_idx = i;
-            }
-        }
     while(acc_rows > ACC_ROWS){ //batch output channel, output dimension affects
  //tile output dimension
 	args[1]--;
