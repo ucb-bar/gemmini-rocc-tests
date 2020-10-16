@@ -1546,7 +1546,9 @@ void tiled_conv_auto(
 }
 
 void resadd_cpu(const size_t I, const size_t J,
-        const scale_t A_shift,
+        const scale_t A_scale,
+        const scale_t B_scale,
+        const acc_scale_t C_scale,
         const elem_t * A,
         const elem_t * B,
         elem_t * C,
@@ -1560,7 +1562,8 @@ void resadd_cpu(const size_t I, const size_t J,
             const elem_t * b = B + i * J + j;
             elem_t * c = C + i * J + j;
 
-            acc_t result = MVIN_SCALE(*a, A_shift) + *b;
+            acc_t result = MVIN_SCALE(*a, A_scale) + MVIN_SCALE(*b, B_scale);
+            result = ACC_SCALE(result, C_scale);
             result = result > elem_t_max ? elem_t_max :
                 (result < minimum ? minimum : result);
 
@@ -1570,7 +1573,8 @@ void resadd_cpu(const size_t I, const size_t J,
 }
 
 void sp_tiled_resadd(const size_t I, const size_t J,
-        const int A_shift,
+        const scale_t A_scale,
+        const scale_t B_scale,
         const elem_t * A, const elem_t * B, elem_t * C,
         size_t A_row_stride, size_t B_row_stride, size_t C_row_stride,
         bool relu) {
@@ -1585,7 +1589,7 @@ void sp_tiled_resadd(const size_t I, const size_t J,
 
     // Mvin A
     // printf("Mving A\n");
-    gemmini_extended2_config_ld(A_row_stride * sizeof(elem_t), A_shift, true);
+    gemmini_extended2_config_ld(A_row_stride * sizeof(elem_t), A_scale, true);
     for (size_t i = 0; i < I; i += DIM) {
         for (size_t j = 0; j < J; j += blocks * DIM) {
             const size_t cols = j + blocks*DIM <= J ? blocks*DIM : J-j;
@@ -1600,7 +1604,7 @@ void sp_tiled_resadd(const size_t I, const size_t J,
 
     // Mvin B
     // printf("Mving B\n");
-    gemmini_extended2_config_ld(B_row_stride * sizeof(elem_t), 0, true);
+    gemmini_extended2_config_ld(B_row_stride * sizeof(elem_t), B_scale, true);
     for (size_t i = 0; i < I; i += DIM) {
         for (size_t j = 0; j < J; j += blocks * DIM) {
             const size_t cols = j + blocks*DIM <= J ? blocks*DIM : J-j;
@@ -1626,10 +1630,12 @@ void sp_tiled_resadd(const size_t I, const size_t J,
     }
 }
 
-// Compute (A >> A_shift) + B = C
+// Compute MVIN_SCALE(A, A_scale) + MVIN_SCALE(B, B_scale) = C
 void tiled_resadd(const size_t I, const size_t J,
         const size_t tile_I, const size_t tile_J,
-        const int A_shift,
+        const scale_t A_scale,
+        const scale_t B_scale,
+        const acc_scale_t C_scale,
         const elem_t * A,
         const elem_t * B,
         elem_t * C,
@@ -1637,8 +1643,7 @@ void tiled_resadd(const size_t I, const size_t J,
         enum tiled_matmul_type_t matadd_type) {
 
     gemmini_config_st(J * sizeof(elem_t));
-    // gemmini_config_ld(J * sizeof(elem_t));
-    gemmini_config_ex(WS, relu ? RELU : NO_ACTIVATION, 0, ACC_SCALE_IDENTITY, 0);
+    gemmini_config_ex(WS, relu ? RELU : NO_ACTIVATION, 0, C_scale, 0);
 
     for (int i = 0; i < I; i += tile_I) {
         for (int j = 0; j < J; j += tile_J) {
@@ -1650,7 +1655,7 @@ void tiled_resadd(const size_t I, const size_t J,
             elem_t * c = C + i * J + j;
 
             sp_tiled_resadd(I_tile, J_tile,
-                    A_shift, a, b, c,
+                    A_scale, B_scale, a, b, c,
                     J, J, J,
                     relu);
         }
@@ -1661,18 +1666,18 @@ void tiled_resadd(const size_t I, const size_t J,
 
 // Compute (A >> A_shift) + B = C
 void tiled_resadd_auto(const size_t I, const size_t J,
-        const int A_shift,
+        const scale_t A_scale,
+        const scale_t B_scale,
+        const acc_scale_t C_scale,
         const elem_t * A,
         const elem_t * B,
         elem_t * C,
         bool relu,
         enum tiled_matmul_type_t matadd_type) {
 
-    // TODO figure out how to run on Gemmini when A_shift < 0
-    // if (matadd_type == CPU || A_shift < 0) {
     if (matadd_type == CPU) {
         resadd_cpu(I, J,
-            A_shift, A, B, C,
+            A_scale, B_scale, C_scale, A, B, C,
             relu);
         return;
     }
@@ -1700,7 +1705,7 @@ void tiled_resadd_auto(const size_t I, const size_t J,
 
     if (matadd_type == WS) {
         tiled_resadd(I, J, tile_I, tile_J,
-            A_shift, A, B, C,
+            A_scale, B_scale, C_scale, A, B, C,
             relu, matadd_type);
     } else {
         printf("Unsupported type\n");

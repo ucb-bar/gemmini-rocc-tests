@@ -260,6 +260,8 @@ int main (int argc, char * argv[]) {
 
     tiled_resadd_auto(conv_9_params.I, conv_9_params.J,
         conv_9_params.res_scale,
+        MVIN_SCALE_IDENTITY,
+        ACC_SCALE_IDENTITY,
         conv_6_out,
         conv_9_out,
         conv_9_out,
@@ -390,6 +392,8 @@ int main (int argc, char * argv[]) {
 
     tiled_resadd_auto(conv_15_params.I, conv_15_params.J,
         conv_15_params.res_scale,
+        MVIN_SCALE_IDENTITY,
+        ACC_SCALE_IDENTITY,
         conv_12_out,
         conv_15_out,
         conv_15_out,
@@ -462,6 +466,8 @@ int main (int argc, char * argv[]) {
 
     tiled_resadd_auto(conv_18_params.I, conv_18_params.J,
         conv_18_params.res_scale,
+        MVIN_SCALE_IDENTITY,
+        ACC_SCALE_IDENTITY,
         conv_15_out,
         conv_18_out,
         conv_18_out,
@@ -592,6 +598,8 @@ int main (int argc, char * argv[]) {
 
     tiled_resadd_auto(conv_24_params.I, conv_24_params.J,
         conv_24_params.res_scale,
+        MVIN_SCALE_IDENTITY,
+        ACC_SCALE_IDENTITY,
         conv_21_out,
         conv_24_out,
         conv_24_out,
@@ -664,6 +672,8 @@ int main (int argc, char * argv[]) {
 
     tiled_resadd_auto(conv_27_params.I, conv_27_params.J,
         conv_27_params.res_scale,
+        MVIN_SCALE_IDENTITY,
+        ACC_SCALE_IDENTITY,
         conv_24_out,
         conv_27_out,
         conv_27_out,
@@ -736,6 +746,8 @@ int main (int argc, char * argv[]) {
 
     tiled_resadd_auto(conv_30_params.I, conv_30_params.J,
         conv_30_params.res_scale,
+        MVIN_SCALE_IDENTITY,
+        ACC_SCALE_IDENTITY,
         conv_27_out,
         conv_30_out,
         conv_30_out,
@@ -866,6 +878,8 @@ int main (int argc, char * argv[]) {
 
     tiled_resadd_auto(conv_36_params.I, conv_36_params.J,
         conv_36_params.res_scale,
+        MVIN_SCALE_IDENTITY,
+        ACC_SCALE_IDENTITY,
         conv_33_out,
         conv_36_out,
         conv_36_out,
@@ -938,6 +952,8 @@ int main (int argc, char * argv[]) {
 
     tiled_resadd_auto(conv_39_params.I, conv_39_params.J,
         conv_39_params.res_scale,
+        MVIN_SCALE_IDENTITY,
+        ACC_SCALE_IDENTITY,
         conv_36_out,
         conv_39_out,
         conv_39_out,
@@ -1068,6 +1084,8 @@ int main (int argc, char * argv[]) {
 
     tiled_resadd_auto(conv_45_params.I, conv_45_params.J,
         conv_45_params.res_scale,
+        MVIN_SCALE_IDENTITY,
+        ACC_SCALE_IDENTITY,
         conv_42_out,
         conv_45_out,
         conv_45_out,
@@ -1140,6 +1158,8 @@ int main (int argc, char * argv[]) {
 
     tiled_resadd_auto(conv_48_params.I, conv_48_params.J,
         conv_48_params.res_scale,
+        MVIN_SCALE_IDENTITY,
+        ACC_SCALE_IDENTITY,
         conv_45_out,
         conv_48_out,
         conv_48_out,

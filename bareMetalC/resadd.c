@@ -20,7 +20,9 @@
 #define MAT_DIM_J 27
 #endif
 
-#define A_SHIFT 2
+#define A_SCALE 2
+#define B_SCALE MVIN_SCALE_IDENTITY
+#define C_SCALE ACC_SCALE_IDENTITY
 #define USE_RELU true
 
 void full_printMatrix(elem_t m[MAT_DIM_I][MAT_DIM_J]) {
@@ -65,7 +67,7 @@ int main() {
 
     printf("Starting slow CPU resadd\n");
     unsigned long cpu_start = read_cycles();
-    resadd_cpu(MAT_DIM_I, MAT_DIM_J, A_SHIFT, (elem_t*)A, (elem_t*)B,
+    resadd_cpu(MAT_DIM_I, MAT_DIM_J, A_SCALE, B_SCALE, C_SCALE, (elem_t*)A, (elem_t*)B,
             (elem_t*)gold, USE_RELU);
     unsigned long cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
@@ -73,7 +75,7 @@ int main() {
 
     printf("Starting gemmini resadd\n");
     unsigned long start = read_cycles();
-    tiled_resadd_auto(MAT_DIM_I, MAT_DIM_J, A_SHIFT, (elem_t*)A, (elem_t*)B,
+    tiled_resadd_auto(MAT_DIM_I, MAT_DIM_J, A_SCALE, B_SCALE, C_SCALE, (elem_t*)A, (elem_t*)B,
             (elem_t*)C, USE_RELU, WS);
     unsigned long end = read_cycles();
     printf("Cycles taken: %u\n", end-start);
