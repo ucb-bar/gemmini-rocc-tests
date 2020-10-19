@@ -19,6 +19,7 @@ tests = \
 	tiled_matmul_cpu \
 	tiled_matmul_option \
 	transpose \
+	fp_acc \
 	template
 
 tests_baremetal = $(tests:=-baremetal)

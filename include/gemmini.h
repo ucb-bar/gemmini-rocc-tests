@@ -31,6 +31,11 @@
     ((x) / (1 << (shift)))
 #endif
 
+#define ROUNDING_RIGHT_SHIFT_BITS(x, shift) \
+    ({(shift) > 0 ? (((x) >> (shift)) + \
+        (((shift) == 0 ? 0 : (((x) >> ((shift)-1)) & 1)) & \
+             ((((shift) <= 1 ? 0 : ((x) & ((1 << ((shift)-1)) - 1))) != 0) | (((x) >> (shift)) & 1)))) : ((x) << (-(shift)));})
+
 // Accelerator interface
 #include "rocc-software/src/xcustom.h"
 
