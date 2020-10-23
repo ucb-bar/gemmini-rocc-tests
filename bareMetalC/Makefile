@@ -21,6 +21,7 @@ tests = \
 	transpose \
 	matrix_add \
 	resadd \
+	tiled_matmul_ws_perf \
 	template
 
 tests_baremetal = $(tests:=-baremetal)
