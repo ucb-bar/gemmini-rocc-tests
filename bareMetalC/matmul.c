@@ -136,7 +136,7 @@ void test_os (bool A_transpose, bool B_transpose) {
       }
 
       // printf("Setting mode\n");
-      gemmini_extended_config_ex(OUTPUT_STATIONARY, activation, shift, 0, relu6_shift, 1, A_transpose, B_transpose);
+      gemmini_extended2_config_ex(OUTPUT_STATIONARY, activation, shift, 0, relu6_shift, 1, A_transpose, B_transpose);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
@@ -343,7 +343,7 @@ void test_ws(bool A_transpose, bool B_transpose) {
         gemmini_mvin(D[n], D_addr + n*DIM);
 
       // printf("Setting mode\n");
-      gemmini_extended_config_ex(WEIGHT_STATIONARY, activation, 0, shift, relu6_shift, 1, A_transpose, B_transpose);
+      gemmini_extended2_config_ex(WEIGHT_STATIONARY, activation, 0, shift, relu6_shift, 1, A_transpose, B_transpose);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
@@ -412,6 +412,7 @@ int main() {
 
   gemmini_flush(0);
   gemmini_config_ld(DIM * sizeof(elem_t));
+  gemmini_config_st(DIM * sizeof(elem_t));
 
   for (int A_transpose = 0; A_transpose < 2; A_transpose++) {
     for (int B_transpose = 0; B_transpose < 2; B_transpose++) {

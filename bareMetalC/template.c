@@ -38,6 +38,7 @@ int main() {
 
   printf("Move \"In\" matrix from main memory into Gemmini's scratchpad\n");
   gemmini_config_ld(DIM * sizeof(elem_t));
+  gemmini_config_st(DIM * sizeof(elem_t));
   gemmini_mvin(In, In_sp_addr);
 
   printf("Move \"Identity\" matrix from main memory into Gemmini's scratchpad\n");

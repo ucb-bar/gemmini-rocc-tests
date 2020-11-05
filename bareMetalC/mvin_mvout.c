@@ -27,6 +27,7 @@ int main() {
   // printf("Flush\n");
   gemmini_flush(0);
   gemmini_config_ld(DIM * sizeof(elem_t));
+  gemmini_config_st(DIM * sizeof(elem_t));
 
   static elem_t In[N][DIM][DIM] row_align(1);
   static elem_t Out[N][DIM][DIM] row_align(1);

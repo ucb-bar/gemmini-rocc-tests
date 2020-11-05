@@ -40,13 +40,14 @@ int main() {
 
   printf("Move \"In\" matrix from main memory into Gemmini's scratchpad\n");
   gemmini_config_ld(DIM * sizeof(elem_t));
+  gemmini_config_st(DIM * sizeof(elem_t));
   gemmini_mvin(In, In_sp_addr);
 
   printf("Move \"Identity\" matrix from main memory into Gemmini's scratchpad\n");
   gemmini_mvin(Identity, Identity_sp_addr);
 
   printf("Multiply \"In\" matrix with \"Identity\" matrix with a bias of 0\n");
-  gemmini_extended_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0, 1, true, false)
+  gemmini_extended2_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0, 1, true, false)
   gemmini_preload_zeros(Out_sp_addr);
   gemmini_compute_preloaded(In_sp_addr, Identity_sp_addr);
 

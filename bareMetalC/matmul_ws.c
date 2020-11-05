@@ -35,6 +35,7 @@ int main() {
 
   gemmini_flush(0);
   gemmini_config_ld(DIM * sizeof(elem_t));
+  gemmini_config_st(DIM * sizeof(elem_t));
 
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 12; shift += 4) {
