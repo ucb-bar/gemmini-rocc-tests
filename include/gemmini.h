@@ -667,8 +667,6 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   }
 
   // Combined loop
-  gemmini_extended_config_ld(A_row_stride * sizeof(elem_t), A_scale_factor);
-
   gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_row_stride, B_row_stride, D_row_stride, C_row_stride,
     !no_bias || D == NULL);
 
@@ -768,6 +766,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
 
   gemmini_config_ex(dataflow, act, 0, scale, relu6_shift);
   gemmini_config_st(stride_C * sizeof(elem_t));
+  gemmini_extended_config_ld(stride_A * sizeof(elem_t), A_scale_factor);
 
   for (size_t i0 = 0; i0 < I0; i0++)
     for (size_t j0 = 0; j0 < J0; j0++)
@@ -1046,11 +1045,17 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
     exit(1);
   }
 
+  const bool double_buffered = tiled_matmul_type == WS;
+
+  const size_t total_spad_size = double_buffered ? BANK_NUM * BANK_ROWS / 2 :
+      BANK_NUM * BANK_ROWS;
+  const size_t total_acc_size = double_buffered ? ACC_ROWS / 2 : ACC_ROWS;
+
   const size_t total_spad_rows =
       (tile_I * tile_K * DIM) +   // Rows to store A
       (tile_K * tile_J * DIM);    // Rows to store B
 
-  if (total_spad_rows > BANK_NUM * BANK_ROWS) {
+  if (total_spad_rows > total_spad_size) {
     printf("Not enough space in scratchpad to store A and B matrices\n");
     exit(1);
   }
@@ -1058,7 +1063,7 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
   const size_t total_acc_rows =
       tile_I * tile_J * DIM;      // Rows to store C
 
-  if (total_acc_rows > ACC_ROWS) {
+  if (total_acc_rows > total_acc_size) {
     printf("Not enough space in accumulator to store C\n");
     exit(1);
   }
@@ -1102,13 +1107,30 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #define max_tile_i_j ((size_t)sqrt(mats_in_acc))
 #define max_tile_k (mats_in_partition / max_tile_i_j)
 
+    // "db_" means "double-buffered"
+#define db_partition_rows ((BANK_NUM * BANK_ROWS / 2) / 2)
+#define db_mats_in_partition (db_partition_rows / DIM)
+#define db_mats_in_acc ((ACC_ROWS / 2) / DIM)
+#define db_max_tile_i_j ((size_t)sqrt(db_mats_in_acc))
+#define db_max_tile_k (db_mats_in_partition / db_max_tile_i_j)
+
     const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
     const size_t dim_J_padded = (dim_J / DIM + (dim_J % DIM != 0)) * DIM;
     const size_t dim_K_padded = (dim_K / DIM + (dim_K % DIM != 0)) * DIM;
 
-    const size_t tile_I = dim_I_padded/DIM < max_tile_i_j ? dim_I_padded/DIM : max_tile_i_j;
-    const size_t tile_J = dim_J_padded/DIM < max_tile_i_j ? dim_J_padded/DIM : max_tile_i_j;
-    const size_t tile_K = dim_K_padded/DIM < max_tile_k ? dim_K_padded/DIM : max_tile_k;
+    const bool double_buffered = tiled_matmul_type = WS;
+
+    size_t tile_I, tile_J, tile_K;
+
+    if (double_buffered) {
+       tile_I = dim_I_padded/DIM < db_max_tile_i_j ? dim_I_padded/DIM : db_max_tile_i_j;
+       tile_J = dim_J_padded/DIM < db_max_tile_i_j ? dim_J_padded/DIM : db_max_tile_i_j;
+       tile_K = dim_K_padded/DIM < db_max_tile_k ? dim_K_padded/DIM : db_max_tile_k;
+    } else {
+       tile_I = dim_I_padded/DIM < max_tile_i_j ? dim_I_padded/DIM : max_tile_i_j;
+       tile_J = dim_J_padded/DIM < max_tile_i_j ? dim_J_padded/DIM : max_tile_i_j;
+       tile_K = dim_K_padded/DIM < max_tile_k ? dim_K_padded/DIM : max_tile_k;
+    }
 
     tiled_matmul(dim_I, dim_J, dim_K,
         A, B, D, C,
