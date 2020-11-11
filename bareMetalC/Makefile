@@ -5,6 +5,7 @@ tests = \
 	mvin_mvout_stride \
 	mvin_mvout_acc \
 	mvin_mvout_acc_full \
+	mvin_mvout_acc_small \
 	mvin_mvout_acc_stride \
 	mvin_mvout_acc_full_stride \
 	matmul_os \

@@ -220,12 +220,15 @@ scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
     gemmini_extended_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, 1, 0, 0)
 
 #if defined(HAS_MVIN_SCALE) || defined(HAS_MVIN_ACC_SCALE)
-#define gemmini_extended_config_ld(stride, scale) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale_t_to_scale_t_bits(scale)) << 32) | CONFIG_LD, stride, k_CONFIG)
+#define gemmini_extended2_config_ld(stride, scale, shrunk) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale_t_to_scale_t_bits(scale)) << 32) | ((shrunk) << 2) | CONFIG_LD, stride, k_CONFIG)
 #else
-#define gemmini_extended_config_ld(stride, scale) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_LD, stride, k_CONFIG)
+#define gemmini_extended2_config_ld(stride, scale, shrunk) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((shrunk) << 2) | CONFIG_LD, stride, k_CONFIG)
 #endif
+
+#define gemmini_extended_config_ld(stride, scale) \
+  gemmini_extended2_config_ld(stride, scale, false)
 
 #define gemmini_config_ld(stride) \
   gemmini_extended_config_ld(stride, MVIN_SCALE_ONE)
