@@ -12,7 +12,7 @@
 #include <time.h>
 #include "include/gemmini_testutils.h"
 
-#define N (2)
+#define N 2
 
 static elem_t ZERO[DIM][DIM];
 
@@ -22,9 +22,27 @@ void operands(int c, int * a, int * b, int * d) {
   *a = c / (N*N);
 }
 
-void test_os() {
+void test_os (bool A_transpose, bool B_transpose) {
   // Output stationary
-  // printf("Output-stationary\n");
+  printf("Output-stationary\n");
+
+  void (*matmul_ptr)(elem_t[DIM][DIM], elem_t[DIM][DIM], elem_t[DIM][DIM], full_t[DIM][DIM]);
+  void (*matmul_full_ptr)(elem_t[DIM][DIM], elem_t[DIM][DIM], full_t[DIM][DIM], full_t[DIM][DIM]);
+
+  if (!A_transpose && !B_transpose) {
+    matmul_ptr = &matmul;
+    matmul_full_ptr = &matmul_full;
+  } else if (A_transpose && !B_transpose) {
+    matmul_ptr = &matmul_A_transposed;
+    matmul_full_ptr = &matmul_full_A_transposed;
+  } else if (!A_transpose && B_transpose) {
+    // Just return immediately because we don't support this
+    return;
+  } else if (A_transpose && B_transpose) {
+    matmul_ptr = &matmul_AB_transposed;
+    matmul_full_ptr = &matmul_full_AB_transposed;
+  }
+
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 4; shift += 4) {
       // printf("activation: %d, shift: %d\n", activation, shift);
@@ -43,12 +61,12 @@ void test_os() {
       // ...taking into account the preloads or accumulates
       static int preload[N*N*N] = {1};
       for (int i = 1; i < N*N*N; ++i)
-        preload[i] = rand() % 2;
+        preload[i] = 1; // rand() % 2;
 
       // ...and for the actual preloads, do we just preload zeros?
       static int preload_zeros[N*N*N];
       for (int i = 0; i < N*N*N; ++i)
-        preload_zeros[i] = rand() % 2;
+        preload_zeros[i] = 1; // rand() % 2;
 
       // ...and finally, which results won't produce any output
       static int no_output[N*N*N];
@@ -85,11 +103,12 @@ void test_os() {
         operands(g, &a, &b, &d);
 
         if (!preload[g])
-          matmul_full(A[a], B[b], gold_full[g-1], gold_full[g]);
-        else if (preload_zeros[g])
-          matmul(A[a], B[b], ZERO, gold_full[g]);
-        else
-          matmul(A[a], B[b], D[d], gold_full[g]);
+          (*matmul_full_ptr)(A[a], B[b], gold_full[g-1], gold_full[g]);
+        else if (preload_zeros[g]) {
+          (*matmul_ptr)(A[a], B[b], ZERO, gold_full[g]);
+        } else {
+          (*matmul_ptr)(A[a], B[b], D[d], gold_full[g]);
+        }
       }
 
       for (size_t g = 0; g < N*N*N; ++g) {
@@ -101,9 +120,9 @@ void test_os() {
       }
 
       int A_addr = 0;
-      int B_addr = BANK_ROWS; // N*DIM;
-      int D_addr = 2*BANK_ROWS; // 2*N*DIM;
-      int C_addr = 3*BANK_ROWS; // 3*N*DIM;
+      int B_addr = N*DIM;
+      int D_addr = 2*N*DIM;
+      int C_addr = 3*N*DIM;
 
       // printf("Moving in\n");
       for (size_t n = 0; n < N; ++n)
@@ -117,7 +136,7 @@ void test_os() {
       }
 
       // printf("Setting mode\n");
-      gemmini_config_ex(OUTPUT_STATIONARY, activation, shift, 0, relu6_shift);
+      gemmini_extended_config_ex(OUTPUT_STATIONARY, activation, shift, 0, relu6_shift, 1, A_transpose, B_transpose);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
@@ -169,8 +188,12 @@ void test_os() {
 
       for (int n = 0; n < N*N*N; ++n)
         if (!no_output[n] && !is_equal(C[n], gold[n])) {
-          printf("activation: %d, shift: %d, n: %d\n", activation, shift, n);
+          printf("activation: %d, shift: %d, n: %d, A_transpose: %d, B_transpose: %d\n", activation, shift, n, A_transpose, B_transpose);
 
+          printf("A:\n");
+          printMatrix(A[n]);
+          printf("B:\n");
+          printMatrix(B[n]);
           printf("C:\n");
           printMatrix(C[n]);
           printf("Gold:\n");
@@ -183,9 +206,22 @@ void test_os() {
   }
 }
 
-void test_ws() {
+void test_ws(bool A_transpose, bool B_transpose) {
   // Weight-stationary
-  // printf("Weight-stationary\n");
+  printf("Weight-stationary\n");
+
+  void (*matmul_ptr)(elem_t[DIM][DIM], elem_t[DIM][DIM], elem_t[DIM][DIM], full_t[DIM][DIM]);
+
+  if (!A_transpose && !B_transpose) {
+    matmul_ptr = &matmul;
+  } else if (A_transpose && !B_transpose) {
+    matmul_ptr = &matmul_A_transposed;
+  } else if (!A_transpose && B_transpose) {
+    matmul_ptr = &matmul_B_transposed;
+  } else if (A_transpose && B_transpose) {
+    return;
+  }
+
   for (int activation = 0; activation <= 2; ++activation) {
     for (int shift = 0; shift <= 4; shift += 4) {
       static elem_t A[N][DIM][DIM] row_align(1);
@@ -260,10 +296,11 @@ void test_ws() {
             }
         }
 
-        if (add_to_zeros[g])
-          matmul(A[a], B[b], ZERO, gold_full[g]);
-        else
-          matmul(A[a], B[b], D[d], gold_full[g]);
+        if (add_to_zeros[g]) {
+          (*matmul_ptr)(A[a], B[b], ZERO, gold_full[g]);
+        } else {
+          (*matmul_ptr)(A[a], B[b], D[d], gold_full[g]);
+        }
 
         if (accumulate[g])
           matadd(gold_full[g], gold_full[g-1], gold_full[g]);
@@ -278,8 +315,8 @@ void test_ws() {
       }
 
       uint32_t A_addr = 0;
-      uint32_t B_addr = BANK_ROWS; // N*DIM;
-      uint32_t D_addr = 2*BANK_ROWS; // 2*N*DIM;
+      uint32_t B_addr = N*DIM;
+      uint32_t D_addr = 2*N*DIM;
       uint32_t C_addr_acc = 1 << (ADDR_LEN-1);
 
       // Calculate the proper destination addresses of everything
@@ -306,7 +343,7 @@ void test_ws() {
         gemmini_mvin(D[n], D_addr + n*DIM);
 
       // printf("Setting mode\n");
-      gemmini_config_ex(WEIGHT_STATIONARY, activation, 0, shift, relu6_shift);
+      gemmini_extended_config_ex(WEIGHT_STATIONARY, activation, 0, shift, relu6_shift, 1, A_transpose, B_transpose);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
@@ -346,8 +383,21 @@ void test_ws() {
       }*/
 
       for (int n = 0; n < N*N*N; ++n)
-        if (!no_output[n] && !is_equal(C[n], gold[n]))
-            exit(1);
+        if (!no_output[n] && !is_equal(C[n], gold[n])) {
+          printf("activation: %d, shift: %d, n: %d, A_transpose: %d, B_transpose: %d\n", activation, shift, n, A_transpose, B_transpose);
+
+          printf("A:\n");
+          printMatrix(A[n]);
+          printf("B:\n");
+          printMatrix(B[n]);
+          printf("C:\n");
+          printMatrix(C[n]);
+          printf("Gold:\n");
+          printMatrix(gold[n]);
+          printf("\n");
+
+          exit(1);
+        }
     }
   }
 }
@@ -363,11 +413,17 @@ int main() {
   gemmini_flush(0);
   gemmini_config_ld(DIM * sizeof(elem_t));
 
-  for (size_t i = 0; i < 4; i++) {
-    if (i % 2)
-      test_os();
-    else
-      test_ws();
+  for (int A_transpose = 0; A_transpose < 2; A_transpose++) {
+    for (int B_transpose = 0; B_transpose < 2; B_transpose++) {
+      for (int dataflow = OUTPUT_STATIONARY; dataflow <= WEIGHT_STATIONARY; dataflow++) {
+        printf("A_transpose: %d, B_transpose: %d, dataflow: %d\n", A_transpose, B_transpose, dataflow);
+
+        if (dataflow == OUTPUT_STATIONARY)
+          test_os(A_transpose, B_transpose);
+        else
+          test_ws(A_transpose, B_transpose);
+      }
+    }
   }
 
   exit(0);

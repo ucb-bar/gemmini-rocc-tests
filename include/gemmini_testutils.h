@@ -55,6 +55,87 @@ void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], ful
     }
 }
 
+void matmul_A_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C_full[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C_full[r][c] += A[k][r]*B[k][c];
+    }
+}
+
+void matmul_short_A_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C[r][c] += A[k][r]*B[k][c];
+    }
+}
+
+void matmul_full_A_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C_full[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C_full[r][c] += A[k][r]*B[k][c];
+    }
+}
+
+void matmul_B_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C_full[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C_full[r][c] += A[r][k]*B[c][k];
+    }
+}
+
+void matmul_short_B_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C[r][c] += A[r][k]*B[c][k];
+    }
+}
+
+void matmul_full_B_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C_full[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C_full[r][c] += A[r][k]*B[c][k];
+    }
+}
+
+void matmul_AB_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C_full[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C_full[r][c] += A[k][r]*B[c][k];
+    }
+}
+
+void matmul_short_AB_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C[r][c] += A[k][r]*B[c][k];
+    }
+}
+
+void matmul_full_AB_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      C_full[r][c] = D[r][c];
+      for (size_t k = 0; k < DIM; k++)
+        C_full[r][c] += A[k][r]*B[c][k];
+    }
+}
+
 void matadd(full_t sum[DIM][DIM], full_t m1[DIM][DIM], full_t m2[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++)
@@ -145,6 +226,22 @@ int is_equal(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
       bool isnany = elem_t_isnan(y[i][j]);
 
       if (x[i][j] != y[i][j] && !(isnanx && isnany))
+#endif
+          return 0;
+    }
+  return 1;
+}
+
+int is_equal_transposed(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
+  for (size_t i = 0; i < DIM; ++i)
+    for (size_t j = 0; j < DIM; ++j) {
+#ifndef ELEM_T_IS_FLOAT
+      if (x[i][j] != y[j][i])
+#else
+      bool isnanx = elem_t_isnan(x[i][j]);
+      bool isnany = elem_t_isnan(y[j][i]);
+
+      if (x[i][j] != y[j][i] && !(isnanx && isnany))
 #endif
           return 0;
     }

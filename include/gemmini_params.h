@@ -19,9 +19,11 @@ elem_t elem_t_min = -128;
 typedef int32_t acc_t;
 typedef int64_t full_t;
 
+#define HAS_MVIN_SCALE
 typedef int32_t scale_t;
 typedef uint32_t scale_t_bits;
 
+#define HAS_MVIN_ACC_SCALE
 typedef int32_t scale_acc_t;
 typedef uint32_t scale_acc_t_bits;
 
