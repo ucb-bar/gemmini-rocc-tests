@@ -20,6 +20,7 @@
 #include "rocc-software/src/xcustom.h"
 
 #define k_CONFIG 0
+#define k_MVIN2 1
 #define k_MVIN 2
 #define k_MVOUT 3
 #define k_COMPUTE_PRELOADED 4
@@ -33,6 +34,8 @@
 #define k_LOOP_WS_CONFIG_ADDRS_DC 11
 #define k_LOOP_WS_CONFIG_STRIDES_AB 12
 #define k_LOOP_WS_CONFIG_STRIDES_DC 13
+
+#define k_MVIN3 14
 
 #define CONFIG_EX 0
 #define CONFIG_LD 1
@@ -179,6 +182,12 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define gemmini_extended_mvin(dram_addr, spad_addr, cols, rows) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)(rows) << (ADDR_LEN + 16)) | ((uint64_t)(cols) << ADDR_LEN) | (spad_addr), k_MVIN)
 
+#define gemmini_extended_mvin2(dram_addr, spad_addr, cols, rows) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)(rows) << (ADDR_LEN + 16)) | ((uint64_t)(cols) << ADDR_LEN) | (spad_addr), k_MVIN2)
+
+#define gemmini_extended_mvin3(dram_addr, spad_addr, cols, rows) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)(rows) << (ADDR_LEN + 16)) | ((uint64_t)(cols) << ADDR_LEN) | (spad_addr), k_MVIN3)
+
 #define gemmini_block_mvin(dram_addr, spad_addr, len) \
   gemmini_extended_mvin(dram_addr, spad_addr, (len) * DIM, DIM)
 
@@ -215,13 +224,13 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
   gemmini_preload(GARBAGE_ADDR, C)
 
 // weight-stationary matmul loop
-#define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, bias) \
+#define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, ex_accumulate) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(pad_K) << 32) | ((uint64_t)(pad_J) << 16) | (uint64_t)(pad_I), ((uint64_t)(K) << 32) | ((uint64_t)(J) << 16) | (uint64_t)(I), k_LOOP_WS_CONFIG_BOUNDS) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_LOOP_WS_CONFIG_ADDRS_AB) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D, C, k_LOOP_WS_CONFIG_ADDRS_DC) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A_stride, B_stride, k_LOOP_WS_CONFIG_STRIDES_AB) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D_stride, C_stride, k_LOOP_WS_CONFIG_STRIDES_DC) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, bias, 0, k_LOOP_WS)
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ex_accumulate, 0, k_LOOP_WS)
 
 // config
 #define gemmini_extended_config_ex(mode, act, sys_shift, acc_scale, relu6_shift, A_stride, A_transpose, B_transpose) \
@@ -231,12 +240,15 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
     gemmini_extended_config_ex(mode, act, sys_shift, acc_scale, relu6_shift, 1, 0, 0)
 
 #if defined(HAS_MVIN_SCALE) || defined(HAS_MVIN_ACC_SCALE)
-#define gemmini_extended2_config_ld(stride, scale, shrunk) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale_t_to_scale_t_bits(scale)) << 32) | ((shrunk) << 2) | CONFIG_LD, stride, k_CONFIG)
+#define gemmini_extended3_config_ld(stride, scale, shrunk, id) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale_t_to_scale_t_bits(scale)) << 32) | ((id) << 3) | ((shrunk) << 2) | CONFIG_LD, stride, k_CONFIG)
 #else
-#define gemmini_extended2_config_ld(stride, scale, shrunk) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((shrunk) << 2) | CONFIG_LD, stride, k_CONFIG)
+#define gemmini_extended2_config_ld(stride, scale, shrunk, id) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((id) << 3) | ((shrunk) << 2) | CONFIG_LD, stride, k_CONFIG)
 #endif
+
+#define gemmini_extended2_config_ld(stride, scale, shrunk) \
+  gemmini_extended3_config_ld(stride, scale, shrunk, 0)
 
 #define gemmini_extended_config_ld(stride, scale) \
   gemmini_extended2_config_ld(stride, scale, false)
@@ -263,9 +275,6 @@ static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const acc_t *
         size_t I, size_t J, size_t K, size_t pad_I, size_t pad_J, size_t pad_K,
         size_t A_row_stride, size_t B_row_stride, size_t D_row_stride, size_t C_row_stride,
         bool no_bias, bool repeating_bias) {
-
-  printf("OS matmul not supported yet!\n");
-  exit(1);
 
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
@@ -503,16 +512,6 @@ static void sp_tiled_matmul_ws_overlapped(const elem_t * A, const elem_t * B,
         size_t A_row_stride, size_t B_row_stride, size_t D_row_stride, size_t C_row_stride,
         bool no_bias, bool repeating_bias) {
 
-  if (A_scale_factor != B_scale_factor) {
-    printf("A_scale_factor must match B_scale_factor for now!\n");
-    exit(1);
-  }
-
-  if (A_row_stride != B_row_stride) {
-    printf("A_row_stride must match B_row_stride for now!\n");
-    exit(1);
-  }
-
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
   const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
@@ -623,16 +622,6 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         size_t A_row_stride, size_t B_row_stride, size_t D_row_stride, size_t C_row_stride,
         bool no_bias, bool repeating_bias) {
 
-  if (A_scale_factor != B_scale_factor) {
-    printf("A_scale_factor must match B_scale_factor for now!\n");
-    exit(1);
-  }
-
-  if (A_row_stride != B_row_stride) {
-    printf("A_row_stride must match B_row_stride for now!\n");
-    exit(1);
-  }
-
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
   const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
@@ -642,6 +631,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   const int B_blocks = J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN;
   const int D_blocks = J <= MAX_BLOCK_LEN_ACC ? J : MAX_BLOCK_LEN_ACC;
 
+  /*
   // Move-in D
   if (D != NULL && !no_bias) {
     printf("Biases not allowed for overlap yet!\n");
@@ -665,9 +655,11 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
       }
     }
   }
+  */
 
   // Combined loop
-  gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_row_stride, B_row_stride, D_row_stride, C_row_stride,
+  gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
+    A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
     !no_bias || D == NULL);
 
   /*
@@ -766,7 +758,9 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
 
   gemmini_config_ex(dataflow, act, 0, scale, relu6_shift);
   gemmini_config_st(stride_C * sizeof(elem_t));
-  gemmini_extended_config_ld(stride_A * sizeof(elem_t), A_scale_factor);
+  gemmini_extended3_config_ld(stride_A * sizeof(elem_t), A_scale_factor, false, 0);
+  gemmini_extended3_config_ld(stride_B * sizeof(elem_t), B_scale_factor, false, 1)
+  gemmini_extended3_config_ld(repeating_bias ? 0 : (stride_D * sizeof(acc_t)), D_scale_factor, false, 2);
 
   for (size_t i0 = 0; i0 < I0; i0++)
     for (size_t j0 = 0; j0 < J0; j0++)
@@ -1092,6 +1086,14 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
   }
 }
 
+static size_t tiled_matmul_total_spad_rows(size_t I, size_t J, size_t K) {
+  return (I * K + K * J) * DIM;
+}
+
+static size_t tiled_matmul_total_acc_rows(size_t I, size_t J) {
+  return (I * J) * DIM;
+}
+
 // This function runs a tiled matrix multiplication, with automatically
 // calculated tiling factors
 void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
@@ -1120,6 +1122,10 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 
     const bool double_buffered = tiled_matmul_type = WS;
 
+    const size_t max_spad_rows = double_buffered ? BANK_NUM * BANK_ROWS / 2 :
+      BANK_NUM * BANK_ROWS;
+    const size_t max_acc_rows = double_buffered ? ACC_ROWS / 2 : ACC_ROWS;
+
     size_t tile_I, tile_J, tile_K;
 
     if (double_buffered) {
@@ -1130,6 +1136,34 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
        tile_I = dim_I_padded/DIM < max_tile_i_j ? dim_I_padded/DIM : max_tile_i_j;
        tile_J = dim_J_padded/DIM < max_tile_i_j ? dim_J_padded/DIM : max_tile_i_j;
        tile_K = dim_K_padded/DIM < max_tile_k ? dim_K_padded/DIM : max_tile_k;
+    }
+
+    // Fill scratchpad as much as possible
+    while (true) {
+      bool increased = false;
+
+      if (tiled_matmul_total_spad_rows(tile_I, tile_J+1, tile_K) <= max_spad_rows &&
+          tiled_matmul_total_acc_rows(tile_I, tile_J+1) <= max_acc_rows &&
+          (tile_J+1) * DIM <= dim_J_padded) {
+        tile_J++;
+        increased = true;
+      }
+
+      if (tiled_matmul_total_spad_rows(tile_I+1, tile_J, tile_K) <= max_spad_rows &&
+          tiled_matmul_total_acc_rows(tile_I+1, tile_J) <= max_acc_rows &&
+          (tile_I+1) * DIM <= dim_I_padded) {
+        tile_I++;
+        increased = true;
+      }
+
+      if (tiled_matmul_total_spad_rows(tile_I, tile_J, tile_K+1) <= max_spad_rows &&
+          (tile_K+1) * DIM <= dim_K_padded) {
+        tile_K++;
+        increased = true;
+      }
+
+      if (!increased)
+        break;
     }
 
     tiled_matmul(dim_I, dim_J, dim_K,
