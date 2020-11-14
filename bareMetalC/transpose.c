@@ -51,6 +51,7 @@ int main() {
   gemmini_compute_preloaded(In_sp_addr, Identity_sp_addr);
 
   printf("Move \"Out\" matrix from Gemmini's scratchpad into main memory\n");
+  gemmini_config_st(DIM * sizeof(elem_t));
   gemmini_mvout(Out, Out_sp_addr);
 
   printf("Fence till Gemmini completes all memory operations\n");

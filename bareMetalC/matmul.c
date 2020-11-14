@@ -412,6 +412,7 @@ int main() {
 
   gemmini_flush(0);
   gemmini_config_ld(DIM * sizeof(elem_t));
+  gemmini_config_st(DIM * sizeof(elem_t));
 
   for (int A_transpose = 0; A_transpose < 2; A_transpose++) {
     for (int B_transpose = 0; B_transpose < 2; B_transpose++) {

@@ -23,11 +23,11 @@ int main() {
       B[i][j] = (rand() % 16) - 8;
     }
 
-  for (int ashift = -2; ashift < 2; ashift++) {
-    for (int bshift = -2; bshift < 2; bshift++) {
+  for (int ascale = -2; ascale < 2; ascale++) {
+    for (int bscale = -2; bscale < 2; bscale++) {
       for (size_t i = 0; i < DIM; i++)
         for (size_t j = 0; j < DIM; j++) {
-          acc_t sum = MVIN_SCALE(A[i][j], ashift) + MVIN_SCALE(B[i][j], bshift);
+          acc_t sum = MVIN_SCALE(A[i][j], ascale) + MVIN_SCALE(B[i][j], bscale);
           gold[i][j] = sum > elem_t_max ? elem_t_max :
             (sum < elem_t_min ? elem_t_min : sum);
         }
@@ -36,19 +36,20 @@ int main() {
       uint32_t B_acc_addr = (1 << (ADDR_LEN - 1)) | (1 << (ADDR_LEN - 2));
       uint32_t C_acc_addr = 1 << (ADDR_LEN - 1);
 
-      gemmini_extended2_config_ld(DIM * sizeof(elem_t), ashift, true);
+      gemmini_extended2_config_ld(DIM * sizeof(elem_t), ascale, true);
       gemmini_mvin(A, A_acc_addr);
 
-      gemmini_extended2_config_ld(DIM * sizeof(elem_t), bshift, true);
+      gemmini_extended2_config_ld(DIM * sizeof(elem_t), bscale, true);
       gemmini_mvin(B, B_acc_addr);
 
       gemmini_config_ex(0, NO_ACTIVATION, 0, ACC_SCALE_IDENTITY, 0);
+      gemmini_config_st(DIM * sizeof(elem_t));
       gemmini_mvout(C, C_acc_addr);
 
       gemmini_fence();
 
       if (!is_equal(C, gold)) {
-        printf("Wrong (ashift: %d, bshift: %d)\n", ashift, bshift);
+        printf("Wrong (ascale: %d, bscale: %d)\n", ascale, bscale);
         printf("\"C\" matrix:\n");
         printMatrix(C);
         printf("\n");
@@ -61,7 +62,7 @@ int main() {
         printf("\"B\" matrix:\n");
         printMatrix(B);
         printf("\n");
-        printf("Wrong (ashift: %d, bshift: %d)\n", ashift, bshift);
+        printf("Wrong (ascale: %d, bscale: %d)\n", ascale, bscale);
         exit(1);
       }
     }

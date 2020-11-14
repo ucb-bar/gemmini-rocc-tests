@@ -36,6 +36,8 @@ int main() {
       for (size_t j = 0; j < DIM; ++j)
         In[n][i][j] = i*DIM + j + n;
 
+  gemmini_config_st(DIM * sizeof(elem_t));
+
   for (int n = 0; n < N; ++n) {
     gemmini_extended_config_ld(DIM * sizeof(elem_t), n);
     gemmini_mvin(In[n], n*DIM);
