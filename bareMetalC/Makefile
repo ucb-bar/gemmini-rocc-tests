@@ -1,8 +1,9 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	mt_tiled_ws \
-
+	chol_cpu \
+	gh_matmul \
+	
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY
 	tests_linux =
@@ -12,6 +13,7 @@ endif
 
 BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
 GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_testutils.h
+BENCH_VECTOR = /scratch/sakim/chipyard/toolchains/esp-tools/riscv-tests/benchmarks
 
 CFLAGS := $(CFLAGS) \
 	-DPREALLOCATE=1 \
@@ -29,6 +31,7 @@ CFLAGS := $(CFLAGS) \
 	-I$(abs_top_srcdir)/riscv-tests/env \
 	-I$(abs_top_srcdir) \
 	-I$(BENCH_COMMON) \
+	-I$(BENCH_VECTOR) \
 	-DID_STRING=$(ID_STRING) \
 
 CFLAGS_BAREMETAL := \

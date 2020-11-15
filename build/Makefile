@@ -4,8 +4,8 @@ XLEN            := 64
 RISCVTOOLS      := @RISCVTOOLS@
 ROCC = examples
 
-.PHONY: all bareMetalC clean imagenet sample_data mlps
-all: bareMetalC imagenet mlps sample_data
+.PHONY: all bareMetalC clean imagenet mlps
+all: bareMetalC imagenet mlps
 
 vars = \
 	abs_top_srcdir=$(abs_top_srcdir) \
@@ -26,14 +26,8 @@ mlps:
 	mkdir -p $@
 	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
 
-sample_data:
-	mkdir -p $@
-	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
-
-
 clean:
 	$(MAKE) -C bareMetalC -f $(abs_top_srcdir)/bareMetalC/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-bareMetalC clean
 	$(MAKE) -C imagenet -f $(abs_top_srcdir)/imagenet/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-imagenet clean
 	$(MAKE) -C mlps -f $(abs_top_srcdir)/mlps/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-mlps clean
-	$(MAKE) -C sample_data -f $(abs_top_srcdir)/sample_data/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-sample_data clean
 

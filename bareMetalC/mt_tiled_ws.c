@@ -11,7 +11,7 @@
 #include "include/gemmini_testutils.h"
 #include "util.h"
 
-#define CHECK_RESULT 1
+#define CHECK_RESULT 0
 
 #define NO_BIAS 1
 #define FULL_BIAS_WIDTH 1
@@ -28,10 +28,11 @@ typedef elem_t ACC_T;
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM_I 64
-#define MAT_DIM_K 64
-#define MAT_DIM_J 64
+#define MAT_DIM_I 32
+#define MAT_DIM_K 32
+#define MAT_DIM_J 32
 #endif
+#define num_thread 2
 
 void print_tile(elem_t* in, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++) {
@@ -88,7 +89,8 @@ static elem_t in_A[MAT_DIM_I][MAT_DIM_K] row_align(1) = {0};
 static elem_t in_B[MAT_DIM_K][MAT_DIM_J] row_align(1) = {0};
 //static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
 static ACC_T bias[MAT_DIM_I][MAT_DIM_J] row_align_acc(1) = {0};
-
+static elem_t Out[num_thread][MAT_DIM_I][MAT_DIM_J] row_align(1) = {0};
+static elem_t gold[MAT_DIM_I][MAT_DIM_J];
 
 void thread_entry(int cid, int nc)
 {
@@ -96,27 +98,86 @@ void thread_entry(int cid, int nc)
     if (i == cid) printf("Thread %d/%d starting\n", cid, nc);
     barrier(nc);
   }
+#if CHECK_RESULT == 1
+    // printf("Init A\n");
+  if(cid == 0){
+    static full_t gold_full[MAT_DIM_I][MAT_DIM_J];
+    
+    for (size_t i = 0; i < MAT_DIM_I; ++i) {
+      for (size_t j = 0; j < MAT_DIM_K; ++j) {
+        in_A[i][j] = rand() % 2;
+      }
+    }
+
+    // printf("Init B\n");
+    for (size_t i = 0; i < MAT_DIM_K; ++i) {
+      for (size_t j = 0; j < MAT_DIM_J; ++j) {
+        in_B[i][j] = rand() % 2;
+      }
+    }
+
+    // printf("Init D\n");
+    for (size_t i = 0; i < MAT_DIM_I; ++i) {
+      for (size_t j = 0; j < MAT_DIM_J; ++j) {
+        bias[i][j] = NO_BIAS ? 0 : rand() % 2;
+      }
+    }
+
+    printf("Starting slow CPU matmul\n");
+    unsigned long cpu_start = read_cycles();
+    full_matmul(in_A, in_B, bias, gold_full);
+    unsigned long cpu_end = read_cycles();
+    printf("Cycles taken: %u\n", cpu_end-cpu_start);
+    full_matshift(gold_full, gold, 0);
+  }
+#endif
+
+  unsigned long total_cycles = 0;
 
   for (int i = 0; i < nc; i++) {
     if (i == cid) printf("Starting gemmini tiled_matmul\n");
     barrier(nc);
   }
-  static elem_t Out[MAT_DIM_I][MAT_DIM_J] row_align(1);
+  unsigned long start = read_cycles();
+  barrier(nc);
 
   gemmini_flush(0);
-  unsigned long start = read_cycles();
-  tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-			(elem_t*)in_A, (elem_t*)in_B, NO_BIAS ? NULL : &bias[0][0], (elem_t*)Out,
-			MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
-			MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
-			NO_ACTIVATION, 0, 0, false,
-			WS);
+  for(int j = 0; j < 3; j++){
+		//printf("thread: %d, loop: %d \n", cid, j);
+	  tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+				(elem_t*)in_A, (elem_t*)in_B, NO_BIAS ? NULL : &bias[0][0], (elem_t*)Out[cid],
+				MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
+				MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
+				NO_ACTIVATION, 0, 0, false,
+				WS);
+	  /*
+	  for (int i = 0; i < nc; i++) {
+		 if (i == cid) printf("Thread %d Cycles taken: %u\n", cid, end-start);
+	    barrier(nc);
+	  }
+	  */
+  }
+  barrier(nc);
   unsigned long end = read_cycles();
-
+  total_cycles = end - start;
   for (int i = 0; i < nc; i++) {
-    if (i == cid) printf("Thread %d Cycles taken: %u\n", cid, end-start);
+	 if (i == cid) printf("Thread %d Cycles taken: %u\n", cid, total_cycles);
     barrier(nc);
   }
+
+#if CHECK_RESULT == 1
+    if (!full_is_equal(Out[cid], gold)) {
+		printf("wrong result: thread %d \n", cid);
+		printf("Gold:\n");
+      full_printMatrix(gold);
+ 		printf("C:\n");
+      full_printMatrix(Out[cid]);
+      printf("\n");
+
+      exit(1);
+    }
+#endif
+
 
   exit(0);
 }
