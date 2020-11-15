@@ -38,7 +38,11 @@ int main() {
   gemmini_config_st(DIM * sizeof(elem_t));
 
   for (int activation = 0; activation <= 2; ++activation) {
-    for (int scale = 0; scale <= 12; scale += 4) {
+#ifdef ACC_SCALE_T_IS_FLOAT
+    for (acc_scale_t scale = 0; scale <= 1.5; scale += 0.5) {
+#else
+    for (acc_scale_t scale = 0; scale <= 12; scale += 4) {
+#endif
       static elem_t A[N][DIM][DIM] row_align(1);
       static elem_t B[N][DIM][DIM] row_align(1);
       static elem_t D[N][DIM][DIM] row_align(1);

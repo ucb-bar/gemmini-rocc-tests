@@ -82,6 +82,7 @@ int main() {
         In_acc[n][i][j] = i*DIM + j + n;
 
   gemmini_config_ex(0, NO_ACTIVATION, 0, 0, 0); // Set shift to 0
+  gemmini_config_st(DIM * sizeof(elem_t));
 
   for (int n = 0; n < N; ++n) {
     gemmini_extended_config_ld(DIM * sizeof(acc_t), (n+1));
