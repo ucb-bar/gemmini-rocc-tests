@@ -425,11 +425,9 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   */
 
   // Combined loop
-  printf("loop_ws\n");
   gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
     A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
     !no_bias || D == NULL);
-  printf("loop_ws2\n");
 
   /*
   for (size_t j = 0; j < J; j++) {
@@ -525,14 +523,11 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
     D = (acc_t*) 1; // Dummy address which isn't NULL
   }
 
-  printf("here\n");
   gemmini_config_ex(dataflow, act, 0, scale, relu6_shift);
   gemmini_config_st(stride_C * sizeof(elem_t));
-  printf("here2\n");
   gemmini_extended3_config_ld(stride_A * sizeof(elem_t), A_scale_factor, false, 0);
   gemmini_extended3_config_ld(stride_B * sizeof(elem_t), B_scale_factor, false, 1)
   gemmini_extended3_config_ld(repeating_bias ? 0 : (stride_D * sizeof(acc_t)), D_scale_factor, false, 2);
-  printf("here3\n");
 
   for (size_t i0 = 0; i0 < I0; i0++)
     for (size_t j0 = 0; j0 < J0; j0++)
@@ -842,7 +837,6 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
 
   // Run a tiled matrix multiplication on either Gemmini or the CPU
   if (tiled_matmul_type == OS || tiled_matmul_type == WS) {
-      printf("os or ws\n");
       tiled_matmul_outer(dim_I, dim_J, dim_K,
               A, B, D, C,
               stride_A, stride_B, stride_D, stride_C,
@@ -851,7 +845,6 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
               act, scale, relu6_shift, repeating_bias,
               (int)tiled_matmul_type);
   } else /*if (tiled_matmul_type == CPU)*/ {
-      printf("cpu\n");
       matmul_cpu(dim_I, dim_J, dim_K,
               A, B, D, C,
               stride_A, stride_B, stride_D, stride_C,
@@ -940,7 +933,6 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         break;
     }
 
-    printf("hey\n");
     tiled_matmul(dim_I, dim_J, dim_K,
         A, B, D, C,
         stride_A, stride_B, stride_D, stride_C,

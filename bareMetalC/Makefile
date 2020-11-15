@@ -20,10 +20,10 @@ tests = \
 	tiled_matmul_ws \
 	tiled_matmul_cpu \
 	tiled_matmul_option \
+	tiled_matmul_ws_perf \
 	transpose \
 	matrix_add \
 	resadd \
-	tiled_matmul_ws_perf \
 	template
 
 tests_baremetal = $(tests:=-baremetal)

@@ -47,7 +47,7 @@ void full_printMatrix64Bit(full_t m[MAT_DIM_I][MAT_DIM_J]) {
   }
 }
 
-void full_matshift(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_DIM_J], acc_scale_t scale) {
+void full_matscale(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_DIM_J], acc_scale_t scale) {
   for (size_t r = 0; r < MAT_DIM_I; r++)                             
     for (size_t c = 0; c < MAT_DIM_J; c++) {
       // Bitshift and round element
@@ -100,16 +100,16 @@ int main() {
 #ifdef BAREMETAL
   for (enum tiled_matmul_type_t option = OS; option <= WS; option++) {
     for (int activation = 0; activation <= 1; activation++) {
-      for (int shift = 0; shift <= 1; shift += 1) {
+      for (int scale = 0; scale <= 1; scale += 1) {
 #else
   for (enum tiled_matmul_type_t option = OS; option <= CPU; option++) {
     for (int activation = 0; activation <= 2; activation++) {
-      for (int shift = 0; shift <= 12; shift += 6) {
+      for (int scale = 0; scale <= 12; scale += 6) {
 #endif
         for (bool no_bias = true; no_bias; no_bias = false) {
           for (bool repeating_bias = true; repeating_bias; repeating_bias = false) {
 
-            size_t relu6_shift = shift + 1;
+            size_t relu6_shift = scale + 1;
 
             static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
             static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
@@ -142,7 +142,7 @@ int main() {
 
             printf("Starting CPU matmul\n");
             full_matmul(full_A, full_B, full_D, gold_full, repeating_bias);
-            full_matshift(gold_full, gold, shift);
+            full_matscale(gold_full, gold, scale);
 
             if (activation == RELU) {
               full_matrelu(gold, gold);
@@ -155,14 +155,14 @@ int main() {
                     (elem_t*)full_A, (elem_t*)full_B, no_bias ? NULL : &full_D[0][0], (elem_t*)full_C,
                     MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
                     MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-                    activation, shift, relu6_shift, repeating_bias,
+                    activation, scale, relu6_shift, repeating_bias,
                     option);
 
             if (!full_is_equal(full_C, gold)) {
               printf("\nINCORRECT!\n");
               printf("option: %d\n", option);
               printf("activation: %d\n", activation);
-              printf("shift: %d\n", shift);
+              printf("scale: %d\n", scale);
               printf("relu_shift: %d\n", relu6_shift);
               printf("no_bias: %d\n", no_bias);
               printf("repeating_bias: %d\n", repeating_bias);
