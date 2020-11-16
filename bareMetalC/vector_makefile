@@ -1,8 +1,9 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-		  vec-dgemm-opt \
-
+	chol_cpu \
+	gh_matmul \
+	
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY
 	tests_linux =
@@ -47,7 +48,7 @@ vpath %.c $(src_dir)
 
 %-baremetal: %.c $(GEMMINI_HEADERS)
 	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \
-		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(wildcard $(BENCH_VECTOR)/%/*.c)$(wildcard $(BENCH_VECTOR)/%/*.S) $(LIBS)
+		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
 
 %-linux: %.c $(GEMMINI_HEADERS)
 	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@

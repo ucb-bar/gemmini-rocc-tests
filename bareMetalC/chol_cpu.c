@@ -76,18 +76,29 @@ void full_matshift(full_t full[MAT_DIM][MAT_DIM], elem_t out[MAT_DIM][MAT_DIM], 
     }
 }
 
-void full_right_chol(int block_dim, elem_t L[block_dim][block_dim]){
+void full_right_chol(int block_dim, elem_t* L){
 	for(int k = 0; k < block_dim; k++){
 		//printf("%d %d \n", (int)(L[k][k]*100), (int)((float)(sqrt(L[k][k]))*100));
-		L[k][k] = (float)(sqrt(L[k][k]));
+		*(L+k*block_dim+k) = (float)(sqrt(*(L+k*block_dim+k)));
 		for(int i = k+1; i < block_dim; i++)
-			L[i][k] = (float)(L[i][k] / L[k][k]);
+			*(L+i*block_dim+k) = (float)(*(L+i*block_dim+k) / *(L+k*block_dim+k));
 		for(int j = k+1; j < block_dim; j++)
 			for(int i = j; i < block_dim; i++){
 				//if(i==block_dim-1 && j==block_dim-1) printf("Lkk: %d, Lik:%d, Ljk: %d, mult: %d \n", (int)(L[i][j]*100), (int)(L[i][k]*100), (int)(L[j][k]*100), (int)(L[i][k]*L[j][k]*100));
-				L[i][j] = L[i][j] - L[i][k]*L[j][k];
+				*(L+i*block_dim+j) -= (*(L+i*block_dim+k))*(*(L+j*block_dim+k));
 			}
 				//printf("%d \n", (int)(L[k][k]));
+	}
+}
+
+void block_right_chol(int block_dim, elem_t* L){
+	int num_block = MAT_DIM/block_dim;
+	for(int k = 0; k < num_block; k++){
+		full_right_chol(block_dim, L+k*MAT_DIM+k);
+		for(int i = k+1; i < num_block; i++){
+			lower_triangle_inverse(block_dim, L+k*MAT_DIM+k);
+			
+		}
 	}
 }
 
@@ -103,7 +114,36 @@ void full_left_chol(int block_dim, elem_t L[block_dim][block_dim]){
 			L[i][j] = (float)(L[i][j]/L[j][j]);
 	}
 }
-
+/*
+void lower_triangle_inverse(int block_dim, elem_t A[block_dim][block_dim]){
+	elem_t M[block_dim][block_dim];
+	for(int i = 0; i < block_dim; i++){
+		M[i][i] = 1/A[i][i];
+		for(int j = 0; j < i; j++){
+			for(int k = j; k < i; k++)
+				M[i][j] += A[i][k]*M[k][j];
+			M[i][j] = -M[i][j]/A[i][i];
+		}
+	}
+	for(int i = 0; i < block_dim; i++)
+		for(int j = 0; j < block_dim; j++)
+			A[i][j] = M[i][j];
+}
+*/
+void lower_triangle_inverse(int block_dim, elem_t* A){
+	elem_t M[block_dim][block_dim];
+	for(int i = 0; i < block_dim; i++){
+		M[i][i] = 1/(*(A+i*MAT_DIM+i));
+		for(int j = 0; j < i; j++){
+			for(int k = j; k < i; k++)
+				M[i][j] += (*(A+i*MAT_DIM+k))*M[k][j];
+			M[i][j] = -M[i][j]/(*(A+i*MAT_DIM+i));
+		}
+	}
+	for(int i = 0; i < block_dim; i++)
+		for(int j = 0; j < block_dim; j++)
+			*(A+i*MAT_DIM+j) = M[i][j];
+}
 int main() {
 #ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
@@ -117,6 +157,9 @@ int main() {
     static elem_t LR[MAT_DIM][MAT_DIM] row_align(1) = {0};
 	 static elem_t LL[MAT_DIM][MAT_DIM] row_align(1) = {0};
 
+    static elem_t LR_block[MAT_DIM][MAT_DIM] row_align(1) = {0};
+	 static elem_t LL_block[MAT_DIM][MAT_DIM] row_align(1) = {0};
+
 #if CHECK_RESULT == 1
 
 	 for(int k = 0; k < MAT_DIM; k++)
@@ -125,7 +168,7 @@ int main() {
 
 	 printf("Starting naive right CPU chol\n");
     unsigned long cpu_start = read_cycles();
-    full_right_chol(MAT_DIM, LR);
+    full_right_chol(MAT_DIM, (elem_t *) LR);
     unsigned long cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
 
@@ -138,6 +181,23 @@ int main() {
 	 full_left_chol(MAT_DIM, LL);
 	 cpu_end = read_cycles();
 	 printf("Cycles taken: %u\n", cpu_end-cpu_start);
+
+	 int num_block = MAT_DIM/DIM;
+	 int block_size = MAT_DIM/num_block;
+	 for(int i = 0; i < num_block; i++)
+		 for(int j = 0; j < num_block; j++)
+			 for(int ii = 0; ii < block_size; ii++){
+				 for(int jj = 0; jj < block_size; jj++){
+					 if(j > i){
+						 LR_block[i*block_size+ii][j*block_size+jj] = 0;
+						 LL_block[i*block_size+ii][j*block_size+jj] = 0;
+					 }
+					 else{
+						 LR_block[i*block_size+ii][j*block_size+jj] = in_A[i*block_size+ii][j*block_size+jj];
+					    LL_block[i*block_size+ii][j*block_size+jj] = in_A[i*block_size+ii][j*block_size+jj];
+					 }
+				 }
+			 }
 
 
 #endif
@@ -164,6 +224,21 @@ int main() {
     }
 	
 #endif
+
+	lower_triangle_inverse(MAT_DIM, (elem_t*) LL);
+#if CHECK_RESULT == 1
+    if (!full_is_equal(LL, gold_invL)) {
+      printf("inverse:\n");
+      full_printMatrix(LL);
+      printf("inverse gold:\n");
+      full_printMatrix(gold_invL);
+      printf("\n");
+
+      exit(1);
+    }
+	
+#endif
+
 
   exit(0);
 }
