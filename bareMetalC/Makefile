@@ -1,8 +1,8 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-		  vec-dgemm-opt \
-
+	gh_matmul \
+	
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY
 	tests_linux =
@@ -11,8 +11,8 @@ else
 endif
 
 BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
+BENCH_VECTOR = $(abs_top_srcdir)/riscv-tests/benchmarks/vec-dgemm-opt
 GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_testutils.h
-BENCH_VECTOR = /scratch/sakim/chipyard/toolchains/esp-tools/riscv-tests/benchmarks
 
 CFLAGS := $(CFLAGS) \
 	-DPREALLOCATE=1 \
@@ -41,16 +41,19 @@ CFLAGS_BAREMETAL := \
 	-T $(BENCH_COMMON)/test.ld \
 	-DBAREMETAL=1 \
 
+		  
 all: $(tests_baremetal) $(tests_linux)
+
 
 vpath %.c $(src_dir)
 
 %-baremetal: %.c $(GEMMINI_HEADERS)
-	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \
-		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(wildcard $(BENCH_VECTOR)/%/*.c)$(wildcard $(BENCH_VECTOR)/%/*.S) $(LIBS)
+	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \	
+		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(BENCH_VECTOR)/vec-dgemm-opt.c $(wildcard $(BENCH_VECTOR)/*.S) $(LIBS)
 
 %-linux: %.c $(GEMMINI_HEADERS)
 	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@
+
 
 junk += $(tests_baremetal) $(tests_linux)
 
