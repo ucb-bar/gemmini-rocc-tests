@@ -3598,12 +3598,14 @@ void tiled_conv_auto_original(
     int kchs = args[4];
 
 
-     printf("batches = %d\n", batches);
-     printf("orows = %d\n", orows);
-     printf("ocols = %d\n", ocols);
-     printf("ochs = %d\n", ochs);
-     printf("kcols = %d\n", kernel_dim);
-     printf("kchs = %d\n", kchs);
+    /*
+    printf("batches = %d\n", batches);
+    printf("orows = %d\n", orows);
+    printf("ocols = %d\n", ocols);
+    printf("ochs = %d\n", ochs);
+    printf("kcols = %d\n", kernel_dim);
+    printf("kchs = %d\n", kchs);
+    */
 
     tiled_conv_original(
         batch_size, in_dim, in_channels,
