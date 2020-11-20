@@ -10,7 +10,7 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define N 8
+#define N 1
 
 #if (N*DIM) > (BANK_NUM*BANK_ROWS)
 #error not enough scratchpad space
@@ -30,14 +30,17 @@ int main() {
 #ifdef HAS_MVIN_SCALE
   elem_t In[N][DIM][DIM] row_align(1);
   elem_t Out[N][DIM][DIM] row_align(1);
+  elem_t gold[DIM][DIM] row_align(1);
 
   for (size_t n = 0; n < N; ++n)
     for (size_t i = 0; i < DIM; ++i)
-      for (size_t j = 0; j < DIM; ++j)
-        In[n][i][j] = i*DIM + j + n;
+      for (size_t j = 0; j < DIM; ++j){
+        In[n][i][j] = i*DIM + j + n + 0.012;
+		  gold[i][j] = -1*(i*DIM+j);
+		}
 
   for (int n = 0; n < N; ++n) {
-    gemmini_extended_config_ld(DIM * sizeof(elem_t), n);
+    gemmini_extended_config_ld(DIM * sizeof(elem_t), -1);
     gemmini_mvin(In[n], n*DIM);
     gemmini_mvout(Out[n], n*DIM);
   }
@@ -60,6 +63,8 @@ int main() {
       printMatrix(In[n]);
       printf("Matrix %u output:\n", n);
       printMatrix(Out[n]);
+//		printf("negative output \n");
+//		printMatrix(gold);
       printf("\n");
 
       exit(1);

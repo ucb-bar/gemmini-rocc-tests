@@ -13,9 +13,9 @@ def print_arr(array_type, array_name, array_sz, pyarr):
     print("};")
     print("\n")
 
-dim = 48
+dim = 256
 #generate random spd matrix
-A = np.random.randint(-1, 2, size=(dim,dim))
+A = np.random.randint(-3, 4, size=(dim,dim))
 A = np.dot(A, A.transpose())
 #A = datasets.make_sparse_spd_matrix(dim, alpha=0.2, smallest_coef=0.5, largest_coef=0.9)
 A = np.float32(A)

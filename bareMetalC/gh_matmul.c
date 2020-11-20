@@ -12,9 +12,7 @@
 #include "include/gemmini_testutils.h"
 #include "util.h"
 #include "vec-util.h"
-#include "vec-dgemm-opt/vec-dgemm-opt.c"
-
-#define CHECK_RESULT 0
+#define CHECK_RESULT 1
 
 #define NO_BIAS 1
 #define FULL_BIAS_WIDTH 1
@@ -31,11 +29,12 @@ typedef elem_t ACC_T;
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM_I 64
-#define MAT_DIM_K 64
-#define MAT_DIM_J 64
+#define MAT_DIM_I 32
+#define MAT_DIM_K 32
+#define MAT_DIM_J 32
 #endif
 #define MVIN_SCALE_ONE 1
+
 
 void print_tile(elem_t* in, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++) {
@@ -59,7 +58,7 @@ void full_matmul(elem_t A[MAT_DIM_I][MAT_DIM_K], elem_t B[MAT_DIM_K][MAT_DIM_J],
 void full_printMatrix(elem_t m[MAT_DIM_I][MAT_DIM_J]) {
   for (size_t i = 0; i < MAT_DIM_I; ++i) {
     for (size_t j = 0; j < MAT_DIM_J; ++j)
-      printf("%d ", m[i][j]);
+      printf("%d.%d ", (int)(m[i][j]), ((int)(m[i][j]*100))%100);
     printf("\n");
   }
 }
@@ -105,7 +104,7 @@ int main() {
 
     static full_t gold_full[MAT_DIM_I][MAT_DIM_J];
     static elem_t gold[MAT_DIM_I][MAT_DIM_J];
-	 static double hwacha_C[MAT_DIM_I][MAT_DIM_J];
+	 static elem_t hwacha_C[MAT_DIM_I][MAT_DIM_J];
 
 #if CHECK_RESULT == 1
     // printf("Init A\n");
@@ -136,14 +135,12 @@ int main() {
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
     full_matshift(gold_full, gold, 0);
 #endif
-	 static double hwacha_A[MAT_DIM_I][MAT_DIM_K] = {0};
-	 static double hwacha_B[MAT_DIM_K][MAT_DIM_J] = {0};
 	 printf("Starting hwacha matmul \n");
 	 unsigned long h_start = read_cycles();
-	 vec_dgemm_opt_c(MAT_DIM_I, hwacha_C, hwacha_A, hwacha_B);
+	 vec_sgemm_opt_c(MAT_DIM_I, hwacha_C, full_A, full_B);
 	 unsigned long h_end = read_cycles();
 	 printf("cycles taken: %u\n", h_end - h_start);
-
+/*
     printf("Starting gemmini matmul\n");
     unsigned long start = read_cycles();
 
@@ -168,6 +165,20 @@ int main() {
       exit(1);
     }
 #endif
+*/
+#if CHECK_RESULT == 1
+    if (!full_is_equal(hwacha_C, gold)) {
+      printf("C:\n");
+      full_printMatrix(hwacha_C);
+      printf("Gold:\n");
+      full_printMatrix(gold);
+      printf("\n");
+
+      exit(1);
+    }
+	 else printf("result match \n");
+#endif
+
 
   exit(0);
 }

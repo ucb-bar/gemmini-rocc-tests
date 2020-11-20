@@ -43,8 +43,16 @@ void full_matmul(elem_t A[MAT_DIM][MAT_DIM], elem_t B[MAT_DIM][MAT_DIM], ACC_T D
     }
 }
 
-void full_transposed_matmul(int block_dim, int A_dim, int B_dim, int C_dim, elem_t* A, elem_t* B, elem_t* C, bool sub) {
-  for (size_t r = 0; r < block_dim; r++)
+void full_transposed_matmul(int block_dim, int I_block, int J_block, int K_block, int A_stride, int B_stride, int C_stride, elem_t* A, elem_t* B, elem_t* C, bool sub) {
+	
+	tiled_matmul_transpose_auto(block_dim*I_block, block_dim*J_block, block_dim*K_block,
+			A, B, sub ? C : NULL, C,
+			A_stride, B_stride, C_stride, C_stride,
+			MVIN_SCALE_IDENTITY, sub ? (-1) : MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+			NO_ACTIVATION, ACC_SCALE_IDENTITY, 
+			0, false, false, true, WS);	
+	/*
+	for (size_t r = 0; r < block_dim; r++)
     for (size_t c = 0; c < block_dim; c++) {
 		elem_t temp = 0;
       for (size_t k = 0; k < block_dim; k++){
@@ -54,12 +62,13 @@ void full_transposed_matmul(int block_dim, int A_dim, int B_dim, int C_dim, elem
 		if(!sub) *(C+C_dim*r+c) = temp;
 		else *(C+C_dim*r+c) -= temp;	
     }
+	*/
 }
 
 void full_printMatrix(elem_t m[MAT_DIM][MAT_DIM]) {
   for (size_t i = 0; i < MAT_DIM; ++i) {
     for (size_t j = 0; j < MAT_DIM; ++j)
-		 printf("%d.%d ", (int)m[i][j], ((int)(m[i][j]*100))%100);
+		 printf("%d.%d ", (int)m[i][j], ((int)(m[i][j]*1000))%1000);
     printf("\n");
   }
 }
@@ -67,8 +76,10 @@ void full_printMatrix(elem_t m[MAT_DIM][MAT_DIM]) {
 int full_is_equal(elem_t x[MAT_DIM][MAT_DIM], elem_t y[MAT_DIM][MAT_DIM]) {
   for (size_t i = 0; i < MAT_DIM; ++i)
     for (size_t j = 0; j < MAT_DIM; ++j)
-      if (((int)(x[i][j]*100)) != ((int)(y[i][j]*100)))
-        return 0;
+      if (((int)(x[i][j]*512)) != ((int)(y[i][j]*512))){
+			printf("i: %d, j: %d, value: %d.%d, %d.%d \n", i, j, (int)x[i][j], ((int)(x[i][j]*1000))%1000 , (int)y[i][j], ((int)(y[i][j]*1000))%1000);
+         return 0;
+		}
   return 1;
 }
 
@@ -137,6 +148,21 @@ void full_right_chol(int block_dim, elem_t* L){
 	}
 }
 
+void full_left_chol(int block_dim, elem_t* L){
+	for(int j=0; j < block_dim; j++){
+		for(int k=0; k < j; k++){
+			*(L+j*MAT_DIM+j) -= (*(L+j*MAT_DIM+k))*(*(L+j*MAT_DIM+k));
+			for(int i = j+1; i < block_dim; i++)
+				*(L+i*MAT_DIM+j) -= (*(L+i*MAT_DIM+k))*(*(L+j*MAT_DIM+k));
+		}
+		*(L+j*MAT_DIM+j) = (float)(sqrt(*(L+j*MAT_DIM+j)));
+		for(int i = j+1; i < block_dim; i++)
+			*(L+i*MAT_DIM+j) = (float)((*(L+i*MAT_DIM+j))/(*(L+j*MAT_DIM+j)));
+		for(int i = 0; i < j; i++)
+			*(L+i*MAT_DIM+j) = 0;
+	}
+}
+
 void copy_matrix(int block_dim, int A_dim, int B_dim, elem_t* A, elem_t* B){
 	for(int i = 0; i < block_dim; i++)
 		for(int j = 0; j < block_dim; j++)
@@ -151,66 +177,40 @@ void block_right_chol(int block_dim, elem_t* L){
 		lower_triangle_inverse(block_dim, L+(k*MAT_DIM+k)*block_dim, temp);
 		for(int i = k+1; i < num_block; i++){	
 			elem_t temp_mult[block_dim][block_dim];
-			full_transposed_matmul(block_dim, MAT_DIM, block_dim, block_dim, L+block_dim*(i*MAT_DIM+k), (elem_t*) temp, (elem_t*) temp_mult, false);	
+			full_transposed_matmul(block_dim, 1, 1, 1, MAT_DIM, block_dim, block_dim, L+block_dim*(i*MAT_DIM+k), (elem_t*) temp, (elem_t*) temp_mult, false);	
 			copy_matrix(block_dim, block_dim, MAT_DIM, (elem_t*) temp_mult, L+block_dim*(i*MAT_DIM+k));
 		}
 		for(int j = k+1; j < num_block; j++)
-			for(int i = j; i < num_block; i++){
-				full_transposed_matmul(block_dim, MAT_DIM, MAT_DIM, MAT_DIM, L+block_dim*(i*MAT_DIM+k), L+block_dim*(j*MAT_DIM+k), L+block_dim*(i*MAT_DIM+j), true);
-			}	
+			full_transposed_matmul(block_dim, (num_block-j), 1, 1, MAT_DIM, MAT_DIM, MAT_DIM, L+block_dim*(j*MAT_DIM+k), L+block_dim*(j*MAT_DIM+k), L+block_dim*(j*MAT_DIM+j), true);
+//			for(int i = j; i < num_block; i++)
+//				full_transposed_matmul(block_dim, 1, 1, 1, MAT_DIM, MAT_DIM, MAT_DIM, L+block_dim*(i*MAT_DIM+k), L+block_dim*(j*MAT_DIM+k), L+block_dim*(i*MAT_DIM+j), true);	
 	}
 }
+
 
 void block_left_chol(int block_dim, elem_t* L){
 	int num_block = MAT_DIM/block_dim;
 	for(int k = 0; k < num_block; k++){
-		for(int j = 0; j < k-1; j++)
-			full_transposed_matmul(block_dim, MAT_DIM, MAT_DIM, MAT_DIM, L+block_dim*(k*MAT_DIM+k), L+block_dim*(k*MAT_DIM+j), L+block_dim*(k*MAT_DIM+j), true);
-		full_right_chol(block_dim, L+block_dim*(MAT_DIM*k+k));
+		if(k > 0) full_transposed_matmul(block_dim, 1, 1, k, MAT_DIM, MAT_DIM, MAT_DIM, L+block_dim*(k*MAT_DIM), L+block_dim*(k*MAT_DIM), L+block_dim*(k*MAT_DIM+k), true);	
+		//for(int j = 0; j < k; j++)
+		//	full_transposed_matmul(block_dim, MAT_DIM, MAT_DIM, MAT_DIM, L+block_dim*(k*MAT_DIM+j), L+block_dim*(k*MAT_DIM+j), L+block_dim*(k*MAT_DIM+k), true);
+		full_left_chol(block_dim, L+block_dim*(MAT_DIM*k+k));
 		elem_t temp_inv[block_dim][block_dim];
 		lower_triangle_inverse(block_dim, L+(k*MAT_DIM+k)*block_dim, temp_inv);
 
 		for(int i = k+1; i < num_block; i++){
-			for(int j = 0; j < k-1; j++){
-				full_transposed_matmul(block_dim, MAT_DIM, MAT_DIM, MAT_DIM, L+block_dim*(i*MAT_DIM+k), L+block_dim*(i*MAT_DIM+j), L+block_dim*(k*MAT_DIM+j), true);
-			}
+			if(k > 0) full_transposed_matmul(block_dim, 1, 1, k, MAT_DIM, MAT_DIM, MAT_DIM, L+block_dim*(i*MAT_DIM), L+block_dim*(k*MAT_DIM), L+block_dim*(i*MAT_DIM+k), true);
+			
+//			for(int j = 0; j < k; j++)
+//				full_transposed_matmul(block_dim, MAT_DIM, MAT_DIM, MAT_DIM, L+block_dim*(i*MAT_DIM+j), L+block_dim*(k*MAT_DIM+j), L+block_dim*(i*MAT_DIM+k), true);
+			
 			elem_t temp[block_dim][block_dim];
-			full_transposed_matmul(block_dim, MAT_DIM, block_dim, block_dim, L+block_dim*(i*MAT_DIM+k), (elem_t*) temp_inv, (elem_t*) temp, false);
+			full_transposed_matmul(block_dim, 1, 1, 1, MAT_DIM, block_dim, block_dim, L+block_dim*(i*MAT_DIM+k), (elem_t*)temp_inv, (elem_t*) temp, false);
+			copy_matrix(block_dim, block_dim, MAT_DIM, (elem_t*) temp, L+block_dim*(i*MAT_DIM+k));	
 		}
 	}
 }
 	
-
-void full_left_chol(int block_dim, elem_t L[block_dim][block_dim]){
-	for(int j=0; j < block_dim; j++){
-		for(int k=0; k < j; k++){
-			L[j][j] -= L[j][k]*L[j][k];
-			for(int i = j+1; i < block_dim; i++)
-				L[i][j] -= L[i][k]*L[j][k];
-		}
-		L[j][j] = (float)(sqrt(L[j][j]));
-		for(int i = j+1; i < block_dim; i++)
-			L[i][j] = (float)(L[i][j]/L[j][j]);
-		for(int i = 0; i < j; i++)
-			L[i][j] = 0;
-	}
-}
-/*
-void lower_triangle_inverse(int block_dim, elem_t A[block_dim][block_dim]){
-	elem_t M[block_dim][block_dim];
-	for(int i = 0; i < block_dim; i++){
-		M[i][i] = 1/A[i][i];
-		for(int j = 0; j < i; j++){
-			for(int k = j; k < i; k++)
-				M[i][j] += A[i][k]*M[k][j];
-			M[i][j] = -M[i][j]/A[i][i];
-		}
-	}
-	for(int i = 0; i < block_dim; i++)
-		for(int j = 0; j < block_dim; j++)
-			A[i][j] = M[i][j];
-}
-*/
 
 int main() {
 #ifndef BAREMETAL
@@ -230,6 +230,9 @@ int main() {
 
 #if CHECK_RESULT == 1
 
+	 unsigned long cpu_start = 0;
+	 unsigned long cpu_end = 0;
+
 	 for(int k = 0; k < MAT_DIM; k++)
 		 for(int j = k; j < MAT_DIM; j++){
 			 LR[j][k] = in_A[j][k];
@@ -239,11 +242,11 @@ int main() {
 	 for(int k = 0; k < MAT_DIM; k++)
 		 for(int j = 0; j < MAT_DIM; j++)
 			 LR[j][k] = in_A[j][k];
-
+/*
 	 printf("Starting naive right CPU chol\n");
-    unsigned long cpu_start = read_cycles();
+    cpu_start = read_cycles();
     full_right_chol(MAT_DIM, (elem_t *) LR);
-    unsigned long cpu_end = read_cycles();
+    cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
 
 	 for(int j = 0; j < MAT_DIM; j++)
@@ -252,11 +255,11 @@ int main() {
 
 	 printf("Starting naive left CPU chol\n");
 	 cpu_start = read_cycles();
-	 full_left_chol(MAT_DIM, LL);
+	 full_left_chol(MAT_DIM, (elem_t *) LL);
 	 cpu_end = read_cycles();
 	 printf("Cycles taken: %u\n", cpu_end-cpu_start);
-
-	 int num_block = 6;
+*/
+	 int num_block = 8;
 	 int block_size = MAT_DIM/num_block;
 
 	 for(int i = 0; i < num_block; i++)
@@ -282,7 +285,7 @@ int main() {
 
 	 printf("Starting block left CPU chol\n");
     cpu_start = read_cycles();
-    block_right_chol(block_size, (elem_t *) LL_block);
+    block_left_chol(block_size, (elem_t *) LL_block);
     cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
 
@@ -291,7 +294,8 @@ int main() {
 
 
 #if CHECK_RESULT == 1
-    if (!full_is_equal(LR, gold_L)) {
+/*
+	 if (!full_is_equal(LR, gold_L)) {
       printf("C:\n");
       full_printMatrix(LR);
       printf("Right Gold:\n");
@@ -309,7 +313,7 @@ int main() {
 
       exit(1);
     }
-	
+*/	
     if (!full_is_equal(LR_block, gold_L)) {
       printf("C:\n");
       full_printMatrix(LR_block);
@@ -322,7 +326,7 @@ int main() {
 	 if (!full_is_equal(LL_block, gold_L)) {
       printf("C:\n");
       full_printMatrix(LL_block);
-      printf("Block Right Gold:\n");
+      printf("Block left Gold:\n");
       full_printMatrix(gold_L);
       printf("\n");
       exit(1);

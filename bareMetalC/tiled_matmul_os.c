@@ -137,8 +137,8 @@ int main() {
     tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
             (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
-            MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
-            NO_ACTIVATION, 0, 0, false,
+            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
             OS);
 
     unsigned long end = read_cycles();
