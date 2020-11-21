@@ -13,7 +13,7 @@ def print_arr(array_type, array_name, array_sz, pyarr):
     print("};")
     print("\n")
 
-dim = 256
+dim = 128
 #generate random spd matrix
 A = np.random.randint(-3, 4, size=(dim,dim))
 A = np.dot(A, A.transpose())

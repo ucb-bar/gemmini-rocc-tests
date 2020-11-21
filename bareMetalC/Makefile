@@ -3,6 +3,8 @@ include $(abs_top_srcdir)/Makefrag
 tests = \
 	chol_cpu \
 	chol_gemm \
+	chol_mt_left \
+	chol_mt_right \
 	tiled_matmul_ws \
 	tiled_matmul_transpose \
 	
