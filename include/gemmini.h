@@ -63,7 +63,7 @@
 #define RELU6 2
 
 #ifdef ELEM_T_IS_FLOAT
-elem_t elem_t_bits_to_elem_t(elem_t_bits x) {
+static elem_t elem_t_bits_to_elem_t(elem_t_bits x) {
     union {
         elem_t_bits b;
         elem_t f;
@@ -73,7 +73,7 @@ elem_t elem_t_bits_to_elem_t(elem_t_bits x) {
     return un.f;
 }
 
-elem_t_bits elem_t_to_elem_t_bits(elem_t x) {
+static elem_t_bits elem_t_to_elem_t_bits(elem_t x) {
     union {
         elem_t_bits b;
         elem_t f;
@@ -83,7 +83,7 @@ elem_t_bits elem_t_to_elem_t_bits(elem_t x) {
     return un.b;
 }
 
-acc_t acc_t_bits_to_acc_t(acc_t_bits x) {
+static acc_t acc_t_bits_to_acc_t(acc_t_bits x) {
     union {
         acc_t_bits b;
         acc_t f;
@@ -93,7 +93,7 @@ acc_t acc_t_bits_to_acc_t(acc_t_bits x) {
     return un.f;
 }
 
-acc_t_bits acc_t_to_acc_t_bits(acc_t x) {
+static acc_t_bits acc_t_to_acc_t_bits(acc_t x) {
     union {
         acc_t_bits b;
         acc_t f;
@@ -103,7 +103,7 @@ acc_t_bits acc_t_to_acc_t_bits(acc_t x) {
     return un.b;
 }
 
-bool elem_t_isnan(elem_t x) {
+static bool elem_t_isnan(elem_t x) {
     elem_t_bits bits = elem_t_to_elem_t_bits(x);
     uint64_t exp = (bits >> (ELEM_T_SIG_BITS-1)) & (((uint64_t)1 << ELEM_T_EXP_BITS) - 1);
     uint64_t sig = bits & (((uint64_t)1 << ELEM_T_SIG_BITS) - 1);
@@ -112,7 +112,7 @@ bool elem_t_isnan(elem_t x) {
     return is_nan_or_inf && is_not_inf;
 }
 
-bool acc_t_isnan(acc_t x) {
+static bool acc_t_isnan(acc_t x) {
     acc_t_bits bits = acc_t_to_acc_t_bits(x);
     uint64_t exp = (bits >> (ACC_T_SIG_BITS-1)) & (((uint64_t)1 << ACC_T_EXP_BITS) - 1);
     uint64_t sig = bits & (((uint64_t)1 << ACC_T_SIG_BITS) - 1);
@@ -123,7 +123,7 @@ bool acc_t_isnan(acc_t x) {
 #endif
 
 #ifdef HAS_MVIN_SCALE
-scale_t scale_t_bits_to_scale_t(scale_t_bits x) {
+static scale_t scale_t_bits_to_scale_t(scale_t_bits x) {
     union {
         scale_t_bits b;
         scale_t f;
@@ -133,7 +133,7 @@ scale_t scale_t_bits_to_scale_t(scale_t_bits x) {
     return un.f;
 }
 
-scale_t_bits scale_t_to_scale_t_bits(scale_t x) {
+static scale_t_bits scale_t_to_scale_t_bits(scale_t x) {
     union {
         scale_t_bits b;
         scale_t f;
@@ -145,7 +145,7 @@ scale_t_bits scale_t_to_scale_t_bits(scale_t x) {
 #endif
 
 #ifdef HAS_MVIN_ACC_SCALE
-scale_acc_t scale_acc_t_bits_to_scale_acc_t(scale_acc_t_bits x) {
+static scale_acc_t scale_acc_t_bits_to_scale_acc_t(scale_acc_t_bits x) {
     union {
         scale_acc_t_bits b;
         scale_acc_t f;
@@ -155,7 +155,7 @@ scale_acc_t scale_acc_t_bits_to_scale_acc_t(scale_acc_t_bits x) {
     return un.f;
 }
 
-scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
+static scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
     union {
         scale_acc_t_bits b;
         scale_acc_t f;
@@ -760,7 +760,7 @@ enum tiled_matmul_type_t {OS, WS, CPU}; // TODO rename this so it's name also ap
 
 // This function runs a tiled matrix multiplication, with hardcoded tiling
 // factors
-void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
+static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t* A, const elem_t* B,
         const acc_t * D, elem_t* C,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
@@ -840,7 +840,7 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
 
 // This function runs a tiled matrix multiplication, with automatically
 // calculated tiling factors
-void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
+static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t* A, const elem_t* B,
         const acc_t * D, elem_t* C,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
@@ -876,7 +876,7 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #undef max_tile_k
 }
 
-void sp_tiled_conv(
+static void sp_tiled_conv(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -1123,7 +1123,7 @@ static int tiled_conv_total_spad_rows(bool acc,
         return A_rows + B_rows;
 }
 
-void conv_cpu_without_pool(
+static void conv_cpu_without_pool(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -1171,7 +1171,7 @@ void conv_cpu_without_pool(
   }
 }
 
-void conv_cpu(
+static void conv_cpu(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -1257,7 +1257,7 @@ void conv_cpu(
   }
 }
 
-void tiled_conv(
+static void tiled_conv(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -1437,7 +1437,7 @@ void tiled_conv(
     }
 }
 
-void tiled_conv_auto(
+static void tiled_conv_auto(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -1516,7 +1516,7 @@ void tiled_conv_auto(
         tiled_conv_type);
 }
 
-void resadd_cpu(const size_t I, const size_t J,
+static void resadd_cpu(const size_t I, const size_t J,
         const int A_shift,
         const elem_t * A,
         const elem_t * B,
@@ -1541,7 +1541,7 @@ void resadd_cpu(const size_t I, const size_t J,
     }
 }
 
-void sp_tiled_resadd(const size_t I, const size_t J,
+static void sp_tiled_resadd(const size_t I, const size_t J,
         const size_t A_shift,
         const elem_t * A, const elem_t * B, elem_t * C,
         size_t A_row_stride, size_t B_row_stride, size_t C_row_stride,
@@ -1626,7 +1626,7 @@ void sp_tiled_resadd(const size_t I, const size_t J,
 }
 
 // Compute (A >> A_shift) + B = C
-void tiled_resadd(const size_t I, const size_t J,
+static void tiled_resadd(const size_t I, const size_t J,
         const size_t tile_I, const size_t tile_J,
         const size_t A_shift,
         const elem_t * A,
@@ -1658,7 +1658,7 @@ void tiled_resadd(const size_t I, const size_t J,
 }
 
 // Compute (A >> A_shift) + B = C
-void tiled_resadd_auto(const size_t I, const size_t J,
+static void tiled_resadd_auto(const size_t I, const size_t J,
         const int A_shift,
         const elem_t * A,
         const elem_t * B,
