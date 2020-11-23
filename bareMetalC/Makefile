@@ -27,6 +27,9 @@ tests = \
 	template
 
 tests_baremetal = $(tests:=-baremetal)
+# Currently don't support conv or conv-with-pool on spike
+runs_baremetal = $(addsuffix .run,$(filter-out conv-baremetal conv_with_pool-baremetal,$(tests_baremetal)))
+
 ifdef BAREMETAL_ONLY
 	tests_linux =
 else
@@ -72,6 +75,11 @@ vpath %.c $(src_dir)
 
 %-linux: %.c $(GEMMINI_HEADERS)
 	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@
+
+run-baremetal: $(runs_baremetal)
+
+%-baremetal.run: %-baremetal
+	$(RUNNER)$(abs_top_srcdir)/build/bareMetalC/$^
 
 junk += $(tests_baremetal) $(tests_linux)
 
