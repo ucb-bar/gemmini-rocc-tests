@@ -2,7 +2,11 @@ include $(abs_top_srcdir)/Makefrag
 
 tests = \
 	chol_cpu \
-	gh_matmul \
+	chol_gemm \
+	chol_mt_left \
+	chol_mt_right \
+	tiled_matmul_ws \
+	tiled_matmul_transpose \
 	
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY

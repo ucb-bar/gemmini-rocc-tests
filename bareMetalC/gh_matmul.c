@@ -12,7 +12,7 @@
 #include "include/gemmini_testutils.h"
 #include "util.h"
 #include "vec-util.h"
-#define CHECK_RESULT 1
+#define CHECK_RESULT 0
 
 #define NO_BIAS 1
 #define FULL_BIAS_WIDTH 1
@@ -29,9 +29,9 @@ typedef elem_t ACC_T;
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM_I 32
-#define MAT_DIM_K 32
-#define MAT_DIM_J 32
+#define MAT_DIM_I 64*2
+#define MAT_DIM_K 64*2
+#define MAT_DIM_J 64*2
 #endif
 #define MVIN_SCALE_ONE 1
 

@@ -1,6 +1,7 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
+	mt_tiled_ws_linux \
 	chol_cpu \
 	chol_gemm \
 	chol_mt_left \

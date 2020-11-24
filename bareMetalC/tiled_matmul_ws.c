@@ -10,7 +10,7 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define CHECK_RESULT 1
+#define CHECK_RESULT 0
 
 #define NO_BIAS 1
 #define FULL_BIAS_WIDTH 1
@@ -27,9 +27,9 @@ typedef elem_t ACC_T;
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM_I 64
-#define MAT_DIM_K 64
-#define MAT_DIM_J 64
+#define MAT_DIM_I 64*2
+#define MAT_DIM_K 64*2
+#define MAT_DIM_J 64*2
 #endif
 
 void print_tile(elem_t* in, int tile_dim) {
@@ -144,6 +144,7 @@ int main() {
     unsigned long end = read_cycles();
     printf("Cycles taken: %u\n", end-start);
 
+	
 #if CHECK_RESULT == 1
     if (!full_is_equal(full_C, gold)) {
       printf("C:\n");
