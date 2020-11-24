@@ -1,4 +1,7 @@
 // See LICENSE for license details.
+#define _GNU_SOURCE
+#include <sched.h>
+
 #include <stdint.h>
 #include <stddef.h>
 #include <assert.h>
@@ -24,8 +27,6 @@ typedef elem_t ACC_T;
 #endif
 
 #ifndef BAREMETAL
-#define _GNU_SOURCE
-#include <sched.h>
 #define MAT_DIM 512
 #define MAT_DIM_I MAT_DIM
 #define MAT_DIM_K MAT_DIM
@@ -198,7 +199,7 @@ int main() {
 		 for(int i = 0; i < num_proc;i++){
 			 CPU_ZERO(&cpuset); //empty the cpu set
 			 CPU_SET(i, &cpuset); //add each cpu to cpu set
-			 pthread_attr_set_affinitiy(&attr, sizeof(cpu_set_t), &cpuset);
+			 pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset);
 			 pthread_create(&thread[i], &attr, thread_matmul, &matmul_args);
 		 }
 		

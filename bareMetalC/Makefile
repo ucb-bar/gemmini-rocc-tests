@@ -18,7 +18,6 @@ endif
 
 BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
 GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_testutils.h
-BENCH_VECTOR = /scratch/sakim/chipyard/toolchains/esp-tools/riscv-tests/benchmarks
 
 CFLAGS := $(CFLAGS) \
 	-DPREALLOCATE=1 \
@@ -32,11 +31,11 @@ CFLAGS := $(CFLAGS) \
 	-march=rv64gc -Wa,-march=rv64gcxhwacha \
 	-lm \
 	-lgcc \
+	-lpthread \
 	-I$(abs_top_srcdir)/riscv-tests \
 	-I$(abs_top_srcdir)/riscv-tests/env \
 	-I$(abs_top_srcdir) \
 	-I$(BENCH_COMMON) \
-	-I$(BENCH_VECTOR) \
 	-DID_STRING=$(ID_STRING) \
 
 CFLAGS_BAREMETAL := \
