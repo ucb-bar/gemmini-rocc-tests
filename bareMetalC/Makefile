@@ -4,6 +4,7 @@ tests = \
 	mvin_mvout \
 	mvin_mvout_stride \
 	mvin_mvout_acc \
+	mvin_mvout_acc_zero_stride \
 	mvin_mvout_acc_stride \
 	mvin_mvout_acc_full \
 	mvin_mvout_acc_full_stride \
