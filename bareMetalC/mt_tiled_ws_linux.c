@@ -111,6 +111,9 @@ void *thread_matmul(void *arg){
 	elem_t* Out_start = (elem_t*) Out + MAT_DIM_J*(matmul_args->start_I)+matmul_args->start_J;
 	ACC_T* bias_start = (ACC_T*) bias + MAT_DIM_J*(matmul_args->start_I)+matmul_args->start_J;
 
+	printf("start I, J, K: %d, %d, %d \n", matmul_args->start_I, matmul_args->start_J, matmul_args->start_K);
+	printf("dim I, J, K: %d, %d, %d \n", matmul_args->dim_I, matmul_args->dim_J, matmul_args->dim_K);
+
 	tiled_matmul_auto(matmul_args->dim_I, matmul_args->dim_J, matmul_args->dim_K,
 			in_A_start, in_B_start, NO_BIAS? NULL : bias_start, Out_start,
 			MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
@@ -174,7 +177,6 @@ int main() {
 	 int range; //current starting point, range of matmul
 	 current_I = 0;
 	 current_J = 0;
-	 current_K = 0;
 	 //divide matrix into 2x2 block
 	 range = MAT_DIM / num_proc; //for now, assume square
 
@@ -187,13 +189,12 @@ int main() {
 			 matmul_args[i].first = (j==0); //for gemmini_flush
 			 matmul_args[i].start_I = current_I;
 			 matmul_args[i].start_J = current_J;
-			 matmul_args[i].start_K = current_K;
+			 matmul_args[i].start_K = 0;
 			 matmul_args[i].dim_I = (range + current_I) > MAT_DIM ? MAT_DIM - current_I : range;
 			 matmul_args[i].dim_J = (range + current_J) > MAT_DIM ? MAT_DIM - current_J : range;
-			 matmul_args[i].dim_K = (range + current_K) > MAT_DIM ? MAT_DIM - current_K : range;
+			 matmul_args[i].dim_K = MAT_DIM_K;
 			 current_I += (i == num_proc-1) ? matmul_args[i].dim_I : 0; //update starting point
-			 current_J += matmul_args[i].dim_J;
-			 current_K += 0; //only blocking output dimension I, J
+			 current_J = (i == num_proc-1) ? 0 : matmul_args[i].dim_J;
 		 }
 
 		 for(int i = 0; i < num_proc;i++){
