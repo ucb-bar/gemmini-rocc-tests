@@ -193,9 +193,9 @@ int main() {
     printf("initializing \n");
     pthread_create(&thread0, NULL, init, NULL);	
     pthread_create(&thread1, NULL, print_message, (void *) msg1);
-    pthread_detach(thread0);
-    pthread_detach(thread1);
-
+    pthread_join(thread0, NULL);
+    pthread_join(thread1, NULL);
+ 
     printf("multiplying \n");
     pthread_create(&thread0, NULL, cpu_matmul, NULL);
     pthread_create(&thread1, NULL, print_message, (void*) msg1);
