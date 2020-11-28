@@ -10,7 +10,7 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define CHECK_RESULT 0
+#define CHECK_RESULT 1
 
 #define NO_BIAS 1
 #define FULL_BIAS_WIDTH 1
@@ -23,9 +23,9 @@ typedef elem_t ACC_T;
 #endif
 
 #ifndef BAREMETAL
-#define MAT_DIM_I 512
-#define MAT_DIM_K 512
-#define MAT_DIM_J 512
+#define MAT_DIM_I 64
+#define MAT_DIM_K 64
+#define MAT_DIM_J 64
 #else
 #define MAT_DIM_I 64*2
 #define MAT_DIM_K 64*2
@@ -93,7 +93,7 @@ int main() {
 
     gemmini_flush(0);
 
-    static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
+    static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1) = {5};
     static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
     static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
     static ACC_T full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
@@ -102,12 +102,15 @@ int main() {
     static elem_t gold[MAT_DIM_I][MAT_DIM_J];
 
 #if CHECK_RESULT == 1
-    // printf("Init A\n");
+    printf("Init A\n");
+	full_printMatrix(full_A);
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
-        full_A[i][j] = rand() % 2;
+        full_A[i][j] = 9;//rand() % 2;
       }
     }
+	printf("after init \n");
+	full_printMatrix(full_A);
 
     // printf("Init B\n");
     for (size_t i = 0; i < MAT_DIM_K; ++i) {
@@ -143,7 +146,7 @@ int main() {
 
     unsigned long end = read_cycles();
     printf("Cycles taken: %u\n", end-start);
-
+full_printMatrix(gold);
 	
 #if CHECK_RESULT == 1
     if (!full_is_equal(full_C, gold)) {
