@@ -21,7 +21,7 @@ typedef union {
 #define toelem( a, b ) \
 { \
     float_cast tmp = { (a) }; \
-    (b) = (elem_t)ROUNDING_RIGHT_SHIFT(tmp.bits, (23 - (ELEM_T_SIG_BITS - 1))); \
+    (b) = (elem_t)ROUNDING_RIGHT_SHIFT_BITS(tmp.bits, (23 - (ELEM_T_SIG_BITS - 1))); \
 }
 #else
 #define toelem( a, b )  (b) = (a)
@@ -98,7 +98,7 @@ int main() {
     gemmini_mvin(InB+K0, InB_sp_addr+K0);
   
     printf("Multiply \"InA\" transposed matrix with \"InB\" matrix\n");
-    gemmini_extended_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0, 1, true, false)
+    gemmini_extended_config_ex(OUTPUT_STATIONARY, 0, 0, ACC_SCALE_IDENTITY, 0, 1, true, false)
     // gemmini_extended_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0, 1, false, false)
     
     gemmini_preload_zeros(K0 + DIM >= KDIM ? Out_sp_addr : GARBAGE_ADDR);
@@ -113,6 +113,7 @@ int main() {
   }
 
   printf("Move \"Out\" matrix from Gemmini's scratchpad into main memory\n");
+  gemmini_config_st(DIM * sizeof(elem_t));
   gemmini_mvout(Out, Out_sp_addr);
 
   printf("Fence till Gemmini completes all memory operations\n");
