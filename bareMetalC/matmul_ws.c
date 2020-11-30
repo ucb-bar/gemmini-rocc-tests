@@ -35,9 +35,14 @@ int main() {
 
   gemmini_flush(0);
   gemmini_config_ld(DIM * sizeof(elem_t));
+  gemmini_config_st(DIM * sizeof(elem_t));
 
   for (int activation = 0; activation <= 2; ++activation) {
-    for (int shift = 0; shift <= 12; shift += 4) {
+#ifdef ACC_SCALE_T_IS_FLOAT
+    for (acc_scale_t scale = 0; scale <= 1.5; scale += 0.5) {
+#else
+    for (acc_scale_t scale = 0; scale <= 12; scale += 4) {
+#endif
       static elem_t A[N][DIM][DIM] row_align(1);
       static elem_t B[N][DIM][DIM] row_align(1);
       static elem_t D[N][DIM][DIM] row_align(1);
@@ -47,7 +52,7 @@ int main() {
       static full_t gold_full[N*N*N][DIM][DIM];
       static elem_t gold[N*N*N][DIM][DIM];
 
-      int relu6_shift = shift+1;
+      int relu6_shift = scale+1;
 
       // ...taking into account whether we preload new weights or re-use the old ones
       static int preload[N*N*N] = {1};
@@ -120,7 +125,7 @@ int main() {
       }
 
       for (size_t g = 0; g < N*N*N; ++g) {
-        matshift(gold_full[g], gold[g], shift);
+        matscale(gold_full[g], gold[g], scale);
         if (activation == RELU)
           matrelu(gold[g], gold[g]);
         else if (activation == RELU6)
@@ -160,7 +165,7 @@ int main() {
         }
 
       // printf("Setting mode\n");
-      gemmini_config_ex(WEIGHT_STATIONARY, activation, 0, shift, relu6_shift);
+      gemmini_config_ex(WEIGHT_STATIONARY, activation, 0, scale, relu6_shift);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
@@ -202,7 +207,7 @@ int main() {
       // printf("Checking\n");
       for (int n = 0; n < N*N*N; ++n)
         if (!no_output[n] && !is_equal(C[n], gold[n])) {
-          printf("activation: %d, shift: %d\n", activation, shift);
+          printf("activation: %d, scale: %d\n", activation, scale);
           printf("Actual (%d):\n", n);
           printMatrix(C[n]);
           printf("\nGold:\n");

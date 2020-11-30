@@ -4,9 +4,10 @@ tests = \
 	mvin_mvout \
 	mvin_mvout_stride \
 	mvin_mvout_acc \
-	mvin_mvout_acc_full \
-	mvin_mvout_acc_small \
 	mvin_mvout_acc_stride \
+	mvin_mvout_acc_zero_stride \
+	mvin_mvout_acc_small \
+	mvin_mvout_acc_full \
 	mvin_mvout_acc_full_stride \
 	matmul_os \
 	matmul_ws \
@@ -19,10 +20,15 @@ tests = \
 	conv_with_pool \
 	tiled_matmul_os \
 	tiled_matmul_ws \
+	tiled_matmul_ws_At \
+	tiled_matmul_ws_Bt \
 	tiled_matmul_cpu \
 	tiled_matmul_option \
+	tiled_matmul_ws_perf \
 	transpose \
 	fp_acc \
+	matrix_add \
+	resadd \
 	template
 
 tests_baremetal = $(tests:=-baremetal)

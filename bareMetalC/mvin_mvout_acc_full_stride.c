@@ -54,10 +54,7 @@ void printMatrix_acc_big(acc_t m[BIG_DIM][BIG_DIM]) {
 }
 
 int main() {
-#ifndef ACC_READ_FULL_WIDTH
-    printf("Gemmini was not built with the ability to move out the full Accumulator output\n");
-    exit(1);
-#endif // #ifdef ACC_READ_FULL_WIDTH
+#ifdef ACC_READ_FULL_WIDTH
 
 #ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
@@ -158,6 +155,8 @@ int main() {
       exit(1);
     }
   }
+
+#endif // #ifdef ACC_READ_FULL_WIDTH
 
   exit(0);
 }

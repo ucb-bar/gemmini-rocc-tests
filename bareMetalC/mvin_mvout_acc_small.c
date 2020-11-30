@@ -26,8 +26,8 @@ int main() {
 
   gemmini_flush(0);
 
-  gemmini_extended2_config_ld(DIM * sizeof(elem_t), MVIN_SCALE_ONE, true);
-  gemmini_config_ex(0, NO_ACTIVATION, 0, 0, 0);
+  gemmini_extended2_config_ld(DIM * sizeof(elem_t), MVIN_SCALE_IDENTITY, true);
+  gemmini_config_ex(0, NO_ACTIVATION, 0, ACC_SCALE_IDENTITY, 0);
   gemmini_config_st(DIM * sizeof(elem_t));
 
   static elem_t In[N][DIM][DIM] row_align(1);

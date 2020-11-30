@@ -27,15 +27,15 @@ int main() {
   gemmini_flush(0);
 
   for (int activation = 0; activation <= 2; ++activation) {
-    for (int shift = 0; shift <= 12; shift += 4) {
-      // printf("activation: %d, shift: %d\n", activation, shift);
+    for (int scale = 0; scale <= 12; scale += 4) {
+      // printf("activation: %d, scale: %d\n", activation, scale);
 
       static acc_t In[N][DIM][DIM] row_align_acc(1);
       static full_t In_full[N][DIM][DIM];
       static elem_t Out[N][DIM][DIM] row_align(1);
       static elem_t Out_gold[N][DIM][DIM];
 
-      int relu6_shift = shift+1;
+      int relu6_shift = scale+1;
 
       // printf("Initializing matrices\n");
       for (size_t n = 0; n < N; ++n)
@@ -68,7 +68,7 @@ int main() {
 
       // printf("Shifting and activating matrices\n");
       for (size_t n = 0; n < N; ++n) {
-        matshift(In_full[n], Out_gold[n], shift);
+        matscale(In_full[n], Out_gold[n], scale);
 
         if (activation == RELU)
           matrelu(Out_gold[n], Out_gold[n]);
@@ -80,7 +80,7 @@ int main() {
 
       // printf("Config\n");
       gemmini_config_ld(DIM*sizeof(acc_t));
-      gemmini_config_ex(0, activation, 0, shift, relu6_shift);
+      gemmini_config_ex(0, activation, 0, scale, relu6_shift);
       gemmini_config_st(DIM*sizeof(elem_t));
 
       // printf("Mvin and mvout\n");
@@ -97,7 +97,7 @@ int main() {
       // printf("Check\n");
       for (size_t n = 0; n < N; ++n)
         if (!is_equal(Out[n], Out_gold[n])) {
-          printf("activation: %d, shift: %d\n", activation, shift);
+          printf("activation: %d, scale: %d\n", activation, scale);
 
           printf("Matrix %u:\n", n);
           for (size_t i = 0; i < DIM; ++i) {

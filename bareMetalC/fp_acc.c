@@ -21,13 +21,15 @@ typedef union {
 #define toelem( a, b ) \
 { \
     float_cast tmp = { (a) }; \
-    (b) = (elem_t)ROUNDING_RIGHT_SHIFT_BITS(tmp.bits, (23 - (ELEM_T_SIG_BITS - 1))); \
+    (b) = (elem_t)ROUNDING_RIGHT_SHIFT(tmp.bits, (23 - (ELEM_T_SIG_BITS - 1))); \
 }
 #else
 #define toelem( a, b )  (b) = (a)
 #endif
 
 int main() {
+#ifdef ELEM_T_IS_LOWPREC_FLOAT
+
 #ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
       perror("mlockall failed");
@@ -134,14 +136,13 @@ int main() {
     printMatrix(OutGold);
     printf("\n");
 
-    printf("\nShifted = %x\n", 0x43838000 >> (23 - 7));
-    printf("Shifted and rounded = %x\n", ROUNDING_RIGHT_SHIFT_BITS(0x43838000, (23 - 7)));
-    printf("Shifted and rounded 16 = %x\n", ROUNDING_RIGHT_SHIFT_BITS(0x43838000, 16));
-
     exit(1);
   }
 
   printf("Output and Gold matrices are identical, as expected\n");
+
+#endif // #ifdef ELEM_T_IS_LOWPREC_FLOAT
+
   exit(0);
 }
 

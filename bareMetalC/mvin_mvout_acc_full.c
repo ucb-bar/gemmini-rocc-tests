@@ -17,10 +17,7 @@
 #endif
 
 int main() {
-#ifndef ACC_READ_FULL_WIDTH
-    printf("Gemmini was not built with the ability to move out the full Accumulator output\n");
-    exit(1);
-#endif // #ifdef ACC_READ_FULL_WIDTH
+#ifdef ACC_READ_FULL_WIDTH
 
 #ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
@@ -94,14 +91,14 @@ int main() {
         printf("\n");
       }
 
-      printf("Matrix %u output:\n", n);
+      printf("\nMatrix %u output:\n", n);
 
       for (size_t i = 0; i < DIM; ++i) {
         for (size_t j = 0; j < DIM; ++j)
 #ifndef ELEM_T_IS_FLOAT
-          printf("%d ", In[n][i][j]);
+          printf("%d ", Out[n][i][j]);
 #else
-          printf("%llx ", acc_t_to_acc_t_bits(In[n][i][j]));
+          printf("%llx ", acc_t_to_acc_t_bits(Out[n][i][j]));
 #endif
         printf("\n");
       }
@@ -110,6 +107,8 @@ int main() {
 
       exit(1);
     }
+
+#endif // #ifdef ACC_READ_FULL_WIDTH
 
   exit(0);
 }

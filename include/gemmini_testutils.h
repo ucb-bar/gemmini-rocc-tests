@@ -159,6 +159,22 @@ void matshift(full_t full[DIM][DIM], elem_t out[DIM][DIM], int shift) {
     }
 }
 
+void matscale(full_t full[DIM][DIM], elem_t out[DIM][DIM], acc_scale_t scale) {
+  for (size_t r = 0; r < DIM; r++)
+    for (size_t c = 0; c < DIM; c++) {
+      // Bitshift and round element
+      full_t scaled = ACC_SCALE(full[r][c], scale);
+
+      // Saturate and cast element
+#ifndef ELEM_T_IS_FLOAT
+      full_t elem = scaled > elem_t_max ? elem_t_max : (scaled < elem_t_min ? elem_t_min : scaled);
+      out[r][c] = elem;
+#else
+      out[r][c] = scaled; // TODO should we also saturate when using floats?
+#endif
+    }
+}
+
 void matrelu(elem_t in[DIM][DIM], elem_t out[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++)
