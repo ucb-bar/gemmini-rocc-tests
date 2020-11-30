@@ -12,15 +12,28 @@
 #include <time.h>
 #include "include/gemmini_testutils.h"
 
-#define N 2
-
 static elem_t ZERO[DIM][DIM];
+
+#ifdef FAST
+#define AINIT 2
+#define SINIT 4
+#define RAND (rand())
+#define N 1
+#else
+#define AINIT 0
+#define SINIT 0
+#define RAND (rand())
+#define N 2
+#endif
+
 
 void operands(int c, int * a, int * b, int * d) {
   *d = c % N;
   *b = (c / N) % N;
   *a = c / (N*N);
 }
+
+
 
 void test_os (bool A_transpose, bool B_transpose) {
   // Output stationary
@@ -43,8 +56,8 @@ void test_os (bool A_transpose, bool B_transpose) {
     matmul_full_ptr = &matmul_full_AB_transposed;
   }
 
-  for (int activation = 0; activation <= 2; ++activation) {
-    for (int shift = 0; shift <= 4; shift += 4) {
+  for (int activation = AINIT; activation <= 2; ++activation) {
+    for (int shift = SINIT; shift <= 4; shift += 4) {
       // printf("activation: %d, shift: %d\n", activation, shift);
 
       static elem_t A[N][DIM][DIM] row_align(1);
@@ -91,13 +104,19 @@ void test_os (bool A_transpose, bool B_transpose) {
       for (size_t n = 0; n < N; ++n) {
         for (size_t i = 0; i < DIM; ++i) {
           for (size_t j = 0; j < DIM; ++j) {
-            A[n][i][j] = (rand() % 64) - 32;
-            B[n][i][j] = (rand() % 64) - 32;
-            D[n][i][j] = (rand() % 64) - 32;
+            A[n][i][j] = (RAND % 64) - 32;
+            B[n][i][j] = (RAND % 64) - 32;
+            D[n][i][j] = (RAND % 64) - 32;
           }
         }
       }
-
+ #ifdef FAST1
+        for (size_t i = 0; i < DIM; ++i) {
+          for (size_t j = 0; j < DIM; ++j) {
+            gold[0][i][j] = 1;
+          }
+        }
+#else
       for (size_t g = 0; g < N*N*N; ++g) {
         int a, b, d; 
         operands(g, &a, &b, &d);
@@ -118,7 +137,7 @@ void test_os (bool A_transpose, bool B_transpose) {
         else if (activation == RELU6)
           matrelu6(gold[g], gold[g], 1 << relu6_shift);
       }
-
+#endif
       int A_addr = 0;
       int B_addr = N*DIM;
       int D_addr = 2*N*DIM;
@@ -222,8 +241,8 @@ void test_ws(bool A_transpose, bool B_transpose) {
     return;
   }
 
-  for (int activation = 0; activation <= 2; ++activation) {
-    for (int scale = 0; scale <= 4; scale += 4) {
+  for (int activation = AINIT; activation <= 2; ++activation) {
+    for (int scale = SINIT; scale <= 4; scale += 4) {
       static elem_t A[N][DIM][DIM] row_align(1);
       static elem_t B[N][DIM][DIM] row_align(1);
       static elem_t D[N][DIM][DIM] row_align(1);
@@ -238,17 +257,17 @@ void test_ws(bool A_transpose, bool B_transpose) {
       // ...taking into account whether we preload new weights or re-use the old ones
       static int preload[N*N*N] = {1};
       for (int i = 1; i < N*N*N; ++i)
-        preload[i] = rand() % 2;
+        preload[i] = RAND % 2;
 
       // ...whether we pass in a D or just use zeros
       static int add_to_zeros[N*N*N];
       for (int i = 0; i < N*N*N; ++i)
-        add_to_zeros[i] = rand() % 2;
+        add_to_zeros[i] = RAND % 2;
 
       // ...and whether we accumulate on top of the previous result
       static int accumulate[N*N*N] = {0};
       for (int i = 1; i < N*N*N; ++i)
-        accumulate[i] = rand() % 2;
+        accumulate[i] = RAND % 2;
 
       static int no_output[N*N*N];
       for (int i = 0; i < N*N*N-1; ++i)
@@ -276,13 +295,19 @@ void test_ws(bool A_transpose, bool B_transpose) {
       for (size_t n = 0; n < N; ++n) {
         for (size_t i = 0; i < DIM; ++i) {
           for (size_t j = 0; j < DIM; ++j) {
-            A[n][i][j] = (rand() % 64) - 32;
-            B[n][i][j] = (rand() % 64) - 32;
-            D[n][i][j] = (rand() % 64) - 32;
+            A[n][i][j] = (RAND % 64) - 32;
+            B[n][i][j] = (RAND % 64) - 32;
+            D[n][i][j] = (RAND % 64) - 32;
           }
         }
       }
-
+#ifdef FAST1
+      for (size_t i = 0; i < DIM; ++i) {
+	for (size_t j = 0; j < DIM; ++j) {
+	  gold[0][i][j] = 64;
+        }
+      }
+#else
       for (size_t g = 0; g < N*N*N; ++g) {
         int a, b, d;
         operands(g, &a, &b, &d);
@@ -313,7 +338,7 @@ void test_ws(bool A_transpose, bool B_transpose) {
         else if (activation == RELU6)
           matrelu6(gold[g], gold[g], 1 << relu6_shift);
       }
-
+#endif
       uint32_t A_addr = 0;
       uint32_t B_addr = N*DIM;
       uint32_t D_addr = 2*N*DIM;

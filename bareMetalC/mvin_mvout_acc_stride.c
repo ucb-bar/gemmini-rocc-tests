@@ -10,7 +10,21 @@
 #endif
 #include "include/gemmini_testutils.h"
 
+
+
+#define MIN(a,b) ((a > b) ? b : a)
+
+#ifdef FAST
+#define BIG_DIM (DIM*2)
+#define BINIT MIN(MAX_BLOCK_LEN_ACC, BIG_DIM/DIM)
+#define AINIT 2
+#define SINIT 12
+#else
 #define BIG_DIM 64
+#define BINIT 1
+#define AINIT 0
+#define SINIT 0
+#endif
 
 #if (BIG_DIM % DIM) != 0
 #error incorrect dimensions
@@ -107,9 +121,9 @@ int main() {
 
   gemmini_flush(0);
 
-  for (int block_len = 1; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN_ACC; block_len++) {
-    for (int activation = 0; activation <= 2; ++activation) {
-      for (int scale = 0; scale <= 12; scale += 4) {
+  for (int block_len = BINIT; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN_ACC; block_len++) {
+    for (int activation = AINIT; activation <= 2; ++activation) {
+      for (int scale = SINIT; scale <= 12; scale += 4) {
         // printf("block_len: %d, activation: %d, scale: %d\n", block_len, activation, scale);
         
         static acc_t In[BIG_DIM][BIG_DIM] row_align_acc(1);
@@ -123,10 +137,14 @@ int main() {
           for (size_t j = 0; j < BIG_DIM; ++j) {
 #ifndef ELEM_T_IS_FLOAT
             In[i][j] = 0;
-
-            int bytes = rand() % 2 ? sizeof(acc_t) : sizeof(elem_t);
+#ifdef FAST
+#define RAND (j + i)
+#else
+#define RAND rand()
+#endif
+            int bytes = RAND % 2 ? sizeof(acc_t) : sizeof(elem_t);
             for (size_t b = 0; b < bytes; ++b) {
-              In[i][j] |= (rand() % 255) << (b*8);
+              In[i][j] |= (RAND % 255) << (b*8);
             }
 #else
             acc_t_bits data;

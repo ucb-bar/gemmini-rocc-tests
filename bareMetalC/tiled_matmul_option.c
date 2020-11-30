@@ -95,6 +95,10 @@ int main() {
   }
 #endif
 
+#ifdef FAST
+  exit(0);
+#endif
+
   gemmini_flush(0);
 
 #ifdef BAREMETAL

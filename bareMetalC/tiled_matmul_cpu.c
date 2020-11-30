@@ -91,6 +91,10 @@ int main() {
     }
 #endif
 
+#ifdef FAST
+    exit(0);
+#endif
+
     gemmini_flush(0);
 
     static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
