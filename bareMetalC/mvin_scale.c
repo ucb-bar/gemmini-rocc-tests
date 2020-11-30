@@ -81,7 +81,7 @@ int main() {
       for (size_t j = 0; j < DIM; ++j)
         In_acc[n][i][j] = i*DIM + j + n;
 
-  gemmini_config_ex(0, NO_ACTIVATION, 0, 0, 0); // Set shift to 0
+  gemmini_config_ex(0, NO_ACTIVATION, 0, ACC_SCALE_IDENTITY, 0); // Set shift to 0
   gemmini_config_st(DIM * sizeof(elem_t));
 
   for (int n = 0; n < N; ++n) {
@@ -97,8 +97,7 @@ int main() {
 
     for (size_t i = 0; i < DIM; ++i)
       for (size_t j = 0; j < DIM; ++j) {
-         // acc_t gold = (n+1) * In_acc[n][i][j];
-         acc_t gold = ACC_SCALE(In_acc[n][i][j], n+1);
+         acc_t gold = MVIN_SCALE_ACC(In_acc[n][i][j], n+1);
          if (gold > elem_t_max) {
              gold = elem_t_max;
          } else if (gold < elem_t_min) {
