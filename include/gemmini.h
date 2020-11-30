@@ -209,8 +209,8 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
   gemmini_preload(GARBAGE_ADDR, C)
 
 // weight-stationary matmul loop
-// #define gemmini_loop_ws(A, B, I, J, K, bias) \
-    // ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(B) << 32) | (A), ((uint64_t)(bias) << 48) | ((uint64_t)(K) << 32) | ((J) << 16) | (I), k_LOOP_WS)
+ #define gemmini_loop_ws(B, I, J, K, bias, B_transpose, pad_I, pad_J, pad_K) \
+     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(B) << 32) | ((uint64_t)(pad_K) << 20) | ((uint64_t)(pad_J) << 10) | ((uint64_t)(pad_I)), ((uint64_t)(B_transpose) << 49) | ((uint64_t)(bias) << 48) | ((uint64_t)(K) << 32) | ((J) << 16) | (I), k_LOOP_WS)
 
 // config
 #define gemmini_extended_config_ex(mode, act, sys_shift, acc_shift, relu6_shift, A_stride, A_transpose, B_transpose) \
@@ -407,7 +407,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
       const uint32_t B_sp_addr = B_sp_addr_start + (k*J + j)*DIM;
       const size_t blocks = j + B_blocks <= J ? B_blocks : J-j;
       const size_t cols = blocks * DIM - (j + blocks >= J ? pad_J : 0);
-      const size_t rows = DIM - (k == K-1 ? pad_K : 0);
+		const size_t rows = DIM - (k == K-1 ? pad_K : 0);
       gemmini_extended_mvin(B_dram_addr, B_sp_addr, cols, rows);
     }
   }
@@ -426,10 +426,11 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   }
 
   // Compute
-  // gemmini_loop_ws(A_sp_addr_start, B_sp_addr_start, I, J, K, !no_bias || D == NULL);
+  gemmini_loop_ws(B_sp_addr_start, I, J, K, !no_bias || D == NULL, 0, pad_I, pad_J, pad_K);
 
   // The above "gemmini_loop_ws" command will be unrolled in hardware into the
   // following loop:
+/*
   for (size_t j = 0; j < J; j++) {
     for (size_t k = 0; k < K; k++) {
       const uint32_t B_sp_addr = B_sp_addr_start + (k*J + j)*DIM;
@@ -465,7 +466,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
       }
     }
   }
-
+*/
   // Move-out C
   if (C != NULL) {
     for (size_t i = 0; i < I; i++) {
@@ -546,10 +547,11 @@ static void sp_tiled_matmul_transpose_ws(const elem_t * A, const elem_t * B,
   }
 
   // Compute
-  // gemmini_loop_ws(A_sp_addr_start, B_sp_addr_start, I, J, K, !no_bias || D == NULL);
+  gemmini_loop_ws(B_sp_addr_start, I, J, K, !no_bias || D == NULL, 1, pad_I, pad_J, pad_K);
 
   // The above "gemmini_loop_ws" command will be unrolled in hardware into the
   // following loop:
+/*
   for (size_t j = 0; j < J; j++) {
     for (size_t k = 0; k < K; k++) {
       const uint32_t B_sp_addr = B_sp_addr_start + (j*K + k)*DIM;
@@ -585,7 +587,7 @@ static void sp_tiled_matmul_transpose_ws(const elem_t * A, const elem_t * B,
       }
     }
   }
-
+*/
   // Move-out C
   if (C != NULL) {
     for (size_t i = 0; i < I; i++) {
