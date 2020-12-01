@@ -160,7 +160,7 @@ static scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
 }
 #endif
 
-acc_scale_t acc_scale_t_bits_to_acc_scale_t(acc_scale_t_bits x) {
+static acc_scale_t acc_scale_t_bits_to_acc_scale_t(acc_scale_t_bits x) {
     union {
         acc_scale_t_bits b;
         acc_scale_t f;
@@ -170,7 +170,7 @@ acc_scale_t acc_scale_t_bits_to_acc_scale_t(acc_scale_t_bits x) {
     return un.f;
 }
 
-acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
+static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
     union {
         acc_scale_t_bits b;
         acc_scale_t f;
