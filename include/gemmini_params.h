@@ -59,7 +59,7 @@ typedef uint32_t acc_scale_t_bits;
          result; })
 
 #define ACC_SCALE(x, scale) \
-    ({float y = ROUND_NEAR_EVEN((x) * (scale)); y > INT_MAX ? INT_MAX : (y < INT_MIN ? INT_MIN : (acc_t)y);})
+    ({float y = ROUND_NEAR_EVEN((x) * (scale)); y > INT8_MAX ? INT8_MAX : (y < INT8_MIN ? INT8_MIN : (acc_t)y);})
 
 #define MVIN_SCALE(x, scale) \
     ({float y = ROUND_NEAR_EVEN((x) * (scale)); y > INT8_MAX ? INT8_MAX : (y < INT8_MIN ? INT8_MIN : (elem_t)y);})
