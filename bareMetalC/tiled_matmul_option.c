@@ -208,6 +208,7 @@ int main() {
                         MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
                         activation, scale, relu6_shift, repeating_bias,
                         a_transpose, b_transpose,
+                        false,
                         option);
 
                 if (!full_is_equal(full_C, gold)) {
