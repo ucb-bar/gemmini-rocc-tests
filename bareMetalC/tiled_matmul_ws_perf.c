@@ -88,6 +88,7 @@ int main() {
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
             A_TRANSPOSE, B_TRANSPOSE,
+            false,
             WS);
 
     unsigned long end = read_cycles();
