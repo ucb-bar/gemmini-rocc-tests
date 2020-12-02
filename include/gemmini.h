@@ -632,12 +632,11 @@ static elem_t scale_and_sat(acc_t x, int act, acc_scale_t scale, size_t relu6_sh
   if (act == RELU) {
     x = x < 0 ? 0 : x;
   }
-  /* TODO add another define to check if relu6_shift is actually used or not
+  // TODO add another define to check if relu6_shift is actually used or not
   else if (act == RELU6) {
     int max = 6 << relu6_shift;
     x = x < 0 ? 0 : (x > max ? max : x);
   }
-  */
   return x;
 }
 
@@ -2809,7 +2808,7 @@ static void sp_tiled_conv_ws(
    for (int b = 0; b < batches; b++){
         for (int och = 0; och < ochs; och += DIM) {
             const int J = ochs - och > DIM ? DIM : ochs - och;
-     	    const int C_sp_addr_outer = C_sp_addr_start + (och / DIM) * batches * odims + b * odims;// + odim;
+     	    const uint32_t C_sp_addr_outer = C_sp_addr_start + (och / DIM) * batches * odims + b * odims;// + odim;
 
 	    for (int kch = 0; kch < kchs; kch += DIM) {
 	        const int K = kchs - kch > DIM ? DIM : kchs - kch;
@@ -2819,7 +2818,7 @@ static void sp_tiled_conv_ws(
 	
             	for(int odim = 0; odim < odims; odim += DIM){ //both dimension at the same time
 			const int I = odims - odim > DIM ? DIM : odims - odim;
-			const int C_sp_addr = C_sp_addr_outer + odim;
+			const uint32_t C_sp_addr = C_sp_addr_outer + odim;
 
 			for(int kkdim = 0; kkdim < kkdims; kkdim += K){	
                                 gemmini_extended_preload(B_sp_addr + kkdim, C_sp_addr,
