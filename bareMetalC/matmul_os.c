@@ -11,7 +11,15 @@
 #include <time.h>
 #include "include/gemmini_testutils.h"
 
-#define N (2)
+#ifdef FAST
+#define AINIT 2
+#define SINIT 12
+#define N 1
+#else
+#define AINIT 0
+#define SINIT 0
+#define N 2
+#endif
 
 void operands(int c, int * a, int * b, int * d) {
   *d = c % N;
@@ -37,8 +45,8 @@ int main() {
 
   static elem_t ZERO[DIM][DIM];
 
-  for (int activation = 0; activation <= 2; ++activation) {
-    for (int shift = 0; shift <= 12; shift += 4) {
+  for (int activation = AINIT; activation <= 2; ++activation) {
+    for (int shift = SINIT; shift <= 12; shift += 4) {
       // printf("activation: %d, shift: %d\n", activation, shift);
 
       static elem_t A[N][DIM][DIM] row_align(1);

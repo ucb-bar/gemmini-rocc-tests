@@ -12,6 +12,7 @@ tests = \
 	mlp4_32
 
 tests_baremetal = $(tests:=-baremetal)
+runs_baremetal = $(addsuffix .run,$(tests_baremetal))
 ifdef BAREMETAL_ONLY
 	tests_linux =
 else
@@ -57,6 +58,11 @@ vpath %.c $(src_dir)
 
 %-linux: %.c $(GEMMINI_HEADERS)
 	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@
+
+run-baremetal: $(runs_baremetal)
+
+%-baremetal.run: %-baremetal
+	$(RUNNER)$^
 
 junk += $(tests_baremetal) $(tests_linux)
 

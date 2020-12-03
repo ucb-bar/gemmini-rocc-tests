@@ -24,10 +24,17 @@
 
 #else
 
-#define BATCH_SIZE 3
+#ifdef FAST
+#define IN_DIM 9
+#define IN_CHANNELS 5
+#define OUT_CHANNELS 7
+#else
 #define IN_DIM 23
 #define IN_CHANNELS 17
 #define OUT_CHANNELS 31
+#endif
+
+#define BATCH_SIZE 3
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 2
@@ -46,7 +53,7 @@
 
 #define POOL_OUT_DIM ((OUT_DIM + 2*POOL_PADDING - POOL_SIZE) / POOL_STRIDE + 1)
 
-#define NO_POOL false 
+#define NO_POOL false
 
 #if NO_POOL == true && !(POOL_SIZE == 1 && POOL_STRIDE == 1 && POOL_PADDING == 0)
 #error NO_POOL is not set correctly
@@ -274,16 +281,26 @@ bool vec_is_equal(elem_t * a, elem_t * b, int len) {
 }
 
 void init_random(elem_t * buf, int len) {
+    elem_t i = 0;
     for (elem_t * ptr = buf; ptr < buf + len; ptr++) {
         // *ptr = (rand() % 32) - 16;
+#ifdef FAST
+      *ptr = 1;
+#else
         *ptr = (rand() % 5) - 2;
+#endif
     }
 }
 
 void init_random_acc(acc_t * buf, int len) {
+    elem_t i = 0;
     for (acc_t * ptr = buf; ptr < buf + len; ptr++) {
         // *ptr = (rand() % 32) - 16;
+#ifdef FAST
+      *ptr = 1;
+#else
         *ptr = (rand() % 5) - 2;
+#endif
     }
 }
 
@@ -327,6 +344,7 @@ int main() {
     else
         init_random_acc(&bias[0], sizeof(bias) / sizeof(acc_t));
 
+#ifndef FAST
     printf("CPU conv...\n");
     uint64_t start_cpu = read_cycles();
     conv(BATCH_SIZE, IN_CHANNELS, IN_DIM,
@@ -350,6 +368,7 @@ int main() {
     printf("CPU pool took %llu cycles\n", end_cpu_pool - start_cpu_pool);
 
     printf("CPU conv+pool took %llu cycles\n", end_cpu_pool - start_cpu_pool + end_cpu - start_cpu);
+#endif
 
     static elem_t weights_mat[PATCH_SIZE][OUT_CHANNELS];
     static elem_t output_mat[N_PATCHES][OUT_CHANNELS];
@@ -388,7 +407,19 @@ int main() {
 
     assert(sizeof(pool_output_mat) == sizeof(pool_output));
 
+#ifdef FAST
+    bool success = true;
+    for (int orow = 0; orow < BATCH_SIZE * POOL_OUT_DIM * POOL_OUT_DIM; orow++) {
+      for (int ocol = 0; ocol < OUT_CHANNELS; ocol++) {
+	if (pool_output_mat[orow][ocol] != 46) {
+	  success = false;
+	  break;
+	}
+      }
+    }
+#else
     bool success = vec_is_equal(&pool_output[0][0][0][0], &pool_output_mat[0][0], sizeof(pool_output) / sizeof(elem_t));
+#endif
 
     if (!success) {
         // return 1;
@@ -500,4 +531,3 @@ int main() {
 
     return 0;
 }
-

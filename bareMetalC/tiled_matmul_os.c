@@ -103,29 +103,43 @@ int main() {
 
 #if CHECK_RESULT == 1
     // printf("Init A\n");
+#ifdef FAST
+#define RAND 1
+#else
+#define RAND rand()
+#endif
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
-        full_A[i][j] = rand() % 2;
+        full_A[i][j] = RAND % 2;
       }
     }
 
     // printf("Init B\n");
     for (size_t i = 0; i < MAT_DIM_K; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_B[i][j] = rand() % 2;
+        full_B[i][j] = RAND % 2;
       }
     }
 
     // printf("Init D\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_D[i][j] = NO_BIAS ? 0 : rand() % 2;
+        full_D[i][j] = NO_BIAS ? 0 : RAND % 2;
       }
     }
 
     printf("Starting slow CPU matmul\n");
     unsigned long cpu_start = read_cycles();
+#ifndef FAST
     full_matmul(full_A, full_B, full_D, gold_full);
+#else
+    for (size_t i = 0; i < MAT_DIM_I; ++i) {
+      for (size_t j = 0; j < MAT_DIM_J; ++j) {
+        gold_full[i][j] = MAT_DIM_K;
+      }
+    }
+
+#endif
     unsigned long cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
     full_matshift(gold_full, gold, 0);
