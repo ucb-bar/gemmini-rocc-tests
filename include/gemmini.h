@@ -1964,7 +1964,7 @@ static void sp_tiled_conv_ws_original(
 	   } else {
 //		   printf("pool \n");
               gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
-//             gemmini_fence(); // TODO remove this when the ROB can accurately handle these
+            gemmini_fence(); // TODO remove this when the ROB can accurately handle these
             for (int b = 0; b < batches; b++) {
                 for (int poch = 0; poch < pochs; poch += DIM) {
                     const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
@@ -1975,6 +1975,7 @@ static void sp_tiled_conv_ws_original(
                             channels, 0);
                 }
             }
+            gemmini_fence(); // TODO remove this when the ROB can accurately handle these
        }
    }
 
@@ -2865,7 +2866,8 @@ static void sp_tiled_conv_ws(
                     }
 
       } else {
-           for (int b = 0; b < batches; b++) {
+            gemmini_fence(); // TODO remove this when the ROB can accurately handle these
+            for (int b = 0; b < batches; b++) {
                 for (int poch = 0; poch < pochs; poch += DIM) {
                     const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
                     elem_t * pout = output + (b * pool_out_dim * pool_out_dim)*out_channels + poch;
@@ -2875,6 +2877,7 @@ static void sp_tiled_conv_ws(
                             channels, 0);
                 }
             }
+            gemmini_fence(); // TODO remove this when the ROB can accurately handle these
       }
    }
 //attempts to merge mvin-matmul-mvout loops
