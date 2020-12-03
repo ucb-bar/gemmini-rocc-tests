@@ -27,9 +27,9 @@ typedef elem_t ACC_T;
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM_I 64
-#define MAT_DIM_K 128
-#define MAT_DIM_J 32
+#define MAT_DIM_I 16
+#define MAT_DIM_K 96
+#define MAT_DIM_J 16
 #endif
 
 void print_tile(elem_t* in, int tile_dim) {
@@ -156,6 +156,7 @@ int main() {
 
       exit(1);
     }
+	 printf("correct \n");
 #endif
 
   exit(0);

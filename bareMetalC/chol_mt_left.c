@@ -44,7 +44,7 @@ void full_matmul(elem_t A[MAT_DIM][MAT_DIM], elem_t B[MAT_DIM][MAT_DIM], ACC_T D
     }
 }
 
-void full_transposed_matmul(int block_dim, int I_block, int J_block, int K_block, int A_stride, int B_stride, int C_stride, elem_t* A, elem_t* B, elem_t* C, bool sub) {
+void full_transposed_matmul(int I_block, int J_block, int K_block, int A_stride, int B_stride, int C_stride, elem_t* A, elem_t* B, elem_t* C, bool sub) {
 	
 	tiled_matmul_transpose_auto(block_dim*I_block, block_dim*J_block, block_dim*K_block,
 			A, B, sub ? C : NULL, C,
@@ -89,10 +89,10 @@ void full_matshift(full_t full[MAT_DIM][MAT_DIM], elem_t out[MAT_DIM][MAT_DIM], 
     }
 }
 
-void lower_triangle_inverse(int block_dim, elem_t* A, elem_t M[block_dim][block_dim]){
-	for(int i = 0; i < block_dim; i++)
-		for(int j = 0; j < block_dim; j++)
-			M[i][j] = 0;
+void lower_triangle_inverse(elem_t* A, elem_t M[block_dim][block_dim]){
+//	for(int i = 0; i < block_dim; i++)
+//		for(int j = 0; j < block_dim; j++)
+//			M[i][j] = 0;
 
 	for(int i = 0; i < block_dim; i++){
 		M[i][i] = 1/(*(A+i*MAT_DIM+i));
@@ -106,10 +106,10 @@ void lower_triangle_inverse(int block_dim, elem_t* A, elem_t M[block_dim][block_
 }
 
 //store transposed inverse for vector
-void lower_triangle_inverse_transpose(int block_dim, elem_t* A, elem_t M[block_dim][block_dim]){
-	for(int i = 0; i < block_dim; i++)
-		for(int j = 0; j < block_dim; j++)
-			M[i][j] = 0;
+void lower_triangle_inverse_transpose(elem_t* A, elem_t M[block_dim][block_dim]){
+//	for(int i = 0; i < block_dim; i++)
+//		for(int j = 0; j < block_dim; j++)
+//			M[i][j] = 0;
 
 	for(int i = 0; i < block_dim; i++){
 		M[i][i] = 1/(*(A+i*MAT_DIM+i));
@@ -121,7 +121,7 @@ void lower_triangle_inverse_transpose(int block_dim, elem_t* A, elem_t M[block_d
 		}
 	}
 }
-void full_right_chol(int block_dim, elem_t* L){
+void full_right_chol(elem_t* L){
 	for(int k = 0; k < block_dim; k++){
 		//printf("%d %d \n", (int)(L[k][k]*100), (int)((float)(sqrt(L[k][k]))*100));
 		*(L+k*MAT_DIM+k) = (float)(sqrt(*(L+k*MAT_DIM+k)));
@@ -138,8 +138,7 @@ void full_right_chol(int block_dim, elem_t* L){
 	}
 }
 
-
-void full_left_chol(int block_dim, elem_t* L){
+void full_left_chol(elem_t* L){
 	for(int j=0; j < block_dim; j++){
 		for(int k=0; k < j; k++){
 			*(L+j*MAT_DIM+j) -= (*(L+j*MAT_DIM+k))*(*(L+j*MAT_DIM+k));
@@ -154,32 +153,35 @@ void full_left_chol(int block_dim, elem_t* L){
 	}
 }
 
-void copy_matrix(int block_dim, int A_dim, int B_dim, elem_t* A, elem_t* B){
-	for(int i = 0; i < block_dim; i++)
-		for(int j = 0; j < block_dim; j++)
+
+void copy_matrix(int block_size, int A_dim, int B_dim, elem_t* A, elem_t* B){
+	for(int i = 0; i < block_size; i++)
+		for(int j = 0; j < block_size; j++)
 			*(B+i*B_dim+j) = *(A+i*A_dim+j);
 }
 
-void block_left_chol(int block_dim, elem_t* L){
-	int num_block = MAT_DIM/block_dim;
+void block_left_chol(elem_t* L){
 	for(int k = 0; k < num_block; k++){
-		if(k > 0) full_transposed_matmul(block_dim, 1, 1, k, MAT_DIM, MAT_DIM, MAT_DIM, L+block_dim*(k*MAT_DIM), L+block_dim*(k*MAT_DIM), L+block_dim*(k*MAT_DIM+k), true);	
-		full_left_chol(block_dim, L+block_dim*(MAT_DIM*k+k));
-		elem_t temp_inv[block_dim][block_dim];
-		lower_triangle_inverse(block_dim, L+(k*MAT_DIM+k)*block_dim, temp_inv);
+		if(k > 0) full_transposed_matmul(1, 1, k, MAT_DIM, MAT_DIM, MAT_DIM, L+block_dim*(k*MAT_DIM), L+block_dim*(k*MAT_DIM), L+block_dim*(k*MAT_DIM+k), true);	
+		//for(int j = 0; j < k; j++)
+		//	full_transposed_matmul(block_dim, MAT_DIM, MAT_DIM, MAT_DIM, L+block_dim*(k*MAT_DIM+j), L+block_dim*(k*MAT_DIM+j), L+block_dim*(k*MAT_DIM+k), true);
+		full_left_chol(L+block_dim*(MAT_DIM*k+k));
+		elem_t temp_inv[block_dim][block_dim] = {0};
+		lower_triangle_inverse(L+(k*MAT_DIM+k)*block_dim, temp_inv);
 
 		for(int i = k+1; i < num_block; i++){
-			if(k > 0) full_transposed_matmul(block_dim, 1, 1, k, MAT_DIM, MAT_DIM, MAT_DIM, L+block_dim*(i*MAT_DIM), L+block_dim*(k*MAT_DIM), L+block_dim*(i*MAT_DIM+k), true);
-					
-			elem_t temp[block_dim][block_dim];
-			full_transposed_matmul(block_dim, 1, 1, 1, MAT_DIM, block_dim, block_dim, L+block_dim*(i*MAT_DIM+k), (elem_t*)temp_inv, (elem_t*) temp, false);
+			if(k > 0) full_transposed_matmul(1, 1, k, MAT_DIM, MAT_DIM, MAT_DIM, L+block_dim*(i*MAT_DIM), L+block_dim*(k*MAT_DIM), L+block_dim*(i*MAT_DIM+k), true);
+			
+//			for(int j = 0; j < k; j++)
+//				full_transposed_matmul(block_dim, MAT_DIM, MAT_DIM, MAT_DIM, L+block_dim*(i*MAT_DIM+j), L+block_dim*(k*MAT_DIM+j), L+block_dim*(i*MAT_DIM+k), true);
+			
+			elem_t temp[block_dim][block_dim] = {0};
+			full_transposed_matmul(1, 1, 1, MAT_DIM, block_dim, block_dim, L+block_dim*(i*MAT_DIM+k), (elem_t*)temp_inv, (elem_t*) temp, false);
 			copy_matrix(block_dim, block_dim, MAT_DIM, (elem_t*) temp, L+block_dim*(i*MAT_DIM+k));	
 		}
 	}
 }
-
 static elem_t LL_mt[MAT_DIM][MAT_DIM] row_align(1) = {0};	
-//static bool thread_lock = false;
 
 void thread_entry(int cid, int nc){
   for (int i = 0; i < nc; i++) {
@@ -187,7 +189,6 @@ void thread_entry(int cid, int nc){
     barrier(nc);
   }
 
- int num_block = 8;
  int block_size = MAT_DIM/num_block;
 
  for(int i = 0; i < num_block; i++)
@@ -214,19 +215,19 @@ void thread_entry(int cid, int nc){
 	
   for(int k = 0; k < num_block; k++){
 		if(cid == 0) {
-			if(k > 0) full_transposed_matmul(block_size, 1, 1, k, MAT_DIM, MAT_DIM, MAT_DIM, LL_pt+block_size*(k*MAT_DIM), LL_pt+block_size*(k*MAT_DIM), LL_pt+block_size*(k*MAT_DIM+k), true);	
-			full_left_chol(block_size, LL_pt+block_size*(MAT_DIM*k+k));
+			if(k > 0) full_transposed_matmul(1, 1, k, MAT_DIM, MAT_DIM, MAT_DIM, LL_pt+block_size*(k*MAT_DIM), LL_pt+block_size*(k*MAT_DIM), LL_pt+block_size*(k*MAT_DIM+k), true);	
+			full_left_chol(LL_pt+block_size*(MAT_DIM*k+k));
 		}
 		barrier(nc);
-		elem_t temp_inv[block_size][block_size];
-		lower_triangle_inverse(block_size, LL_pt+(k*MAT_DIM+k)*block_size, temp_inv);
+		elem_t temp_inv[block_dim][block_dim] = {0};
+		lower_triangle_inverse(LL_pt+(k*MAT_DIM+k)*block_dim, temp_inv);
 
 		for(int i = k+1; i < num_block; i++){
 			if(i%nc == cid){
-				if(k > 0) full_transposed_matmul(block_size, 1, 1, k, MAT_DIM, MAT_DIM, MAT_DIM, LL_pt+block_size*(i*MAT_DIM), LL_pt+block_size*(k*MAT_DIM), LL_pt+block_size*(i*MAT_DIM+k), true);
+				if(k > 0) full_transposed_matmul(1, 1, k, MAT_DIM, MAT_DIM, MAT_DIM, LL_pt+block_dim*(i*MAT_DIM), LL_pt+block_dim*(k*MAT_DIM), LL_pt+block_dim*(i*MAT_DIM+k), true);
 				
-				elem_t temp[block_size][block_size];
-				full_transposed_matmul(block_size, 1, 1, 1, MAT_DIM, block_size, block_size, LL_pt+block_size*(i*MAT_DIM+k), (elem_t*)temp_inv, (elem_t*) temp, false);
+				elem_t temp[block_dim][block_dim] = {0};
+				full_transposed_matmul(1, 1, 1, MAT_DIM, block_dim, block_dim, LL_pt+block_dim*(i*MAT_DIM+k), (elem_t*)temp_inv, (elem_t*) temp, false);
 				copy_matrix(block_size, block_size, MAT_DIM, (elem_t*) temp, LL_pt+block_size*(i*MAT_DIM+k));	
 		
 			}
@@ -315,7 +316,6 @@ int main() {
 	 cpu_end = read_cycles();
 	 printf("Cycles taken: %u\n", cpu_end-cpu_start);
 */
-	 int num_block = 8;
 	 int block_size = MAT_DIM/num_block;
 
 	 for(int i = 0; i < num_block; i++)
@@ -335,7 +335,7 @@ int main() {
 
 	 printf("Starting block right CPU chol\n");
     cpu_start = read_cycles();
-    block_left_chol(block_size, (elem_t *) LL_block);
+    block_left_chol((elem_t *) LL_block);
     cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
 

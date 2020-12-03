@@ -13,7 +13,9 @@ def print_arr(array_type, array_name, array_sz, pyarr):
     print("};")
     print("\n")
 
-dim = 128
+dim = 96
+num_block = 6
+block_dim = (int)(dim/num_block)
 #generate random spd matrix
 A = np.random.randint(-3, 4, size=(dim,dim))
 A = np.dot(A, A.transpose())
@@ -25,6 +27,8 @@ invL = np.linalg.inv(L)
 invL = np.float32(invL)
 
 print("#define MAT_DIM {}".format(dim))
+print("#define num_block {}".format(num_block))
+print("#define block_dim {}".format(block_dim))
 print_arr('elem_t', 'in_A', 'MAT_DIM', A)
 print_arr('elem_t', 'gold_L', 'MAT_DIM', L)
 print_arr('elem_t', 'gold_invL', 'MAT_DIM', invL)
