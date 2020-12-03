@@ -4,18 +4,18 @@
 #include <stdint.h>
 #include <limits.h>
 
-#define DIM 16
+#define DIM 4
 #define ADDR_LEN 32
 #define BANK_NUM 4
-#define BANK_ROWS 1024
-#define ACC_ROWS 1024
+#define BANK_ROWS 4096
+#define ACC_ROWS 8192
 #define MAX_BYTES 64
 #define MAX_BLOCK_LEN (MAX_BYTES/(DIM*4))
 #define MAX_BLOCK_LEN_ACC (MAX_BYTES/(DIM*4))
 
 typedef float elem_t;
-elem_t elem_t_max = 3.4028235E38;
-elem_t elem_t_min = -3.4028235E38;
+static const elem_t elem_t_max = 3.4028235E38;
+static const elem_t elem_t_min = -3.4028235E38;
 typedef float acc_t;
 typedef double full_t;
 
@@ -48,6 +48,12 @@ typedef uint32_t acc_scale_t_bits;
 #define ROUNDING_RIGHT_SHIFT(x, shift) \
     ((x) / (1 << (shift)))
 
+// Rounding right shift equation: https://riscv.github.io/documents/riscv-v-spec/#_vector_fixed_point_rounding_mode_register_vxrm
+#define ROUNDING_RIGHT_SHIFT_BITS(x, shift) \
+    ((shift) > 0 ? (((x) >> (shift)) + \
+        (((shift) == 0 ? 0 : (((x) >> ((shift)-1)) & 1)) & \
+             ((((shift) <= 1 ? 0 : ((x) & ((1 << ((shift)-1)) - 1))) != 0) | (((x) >> (shift)) & 1)))) : ((x) << (-(shift))))
+
 #ifdef __cplusplus
 #define SAME_TYPE(x) decltype(x)
 #else
@@ -76,5 +82,11 @@ typedef uint32_t acc_scale_t_bits;
 #define ACC_SCALE_T_IS_FLOAT
 #define ACC_SCALE_EXP_BITS 8
 #define ACC_SCALE_SIG_BITS 24
+
+#define ACC_READ_SMALL_WIDTH
+#define ACC_READ_FULL_WIDTH
+
+#define ACC_READ_SMALL_WIDTH
+#define ACC_READ_FULL_WIDTH
 
 #endif // GEMMINI_PARAMS_H
