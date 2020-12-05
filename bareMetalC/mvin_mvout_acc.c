@@ -10,7 +10,15 @@
 #endif
 #include "include/gemmini_testutils.h"
 
+#ifdef FAST
+#define N 2
+#define AINIT 2
+#define SINIT 12
+#else
 #define N 4
+#define AINIT 0
+#define SINIT 12
+#endif
 
 #if (N*DIM) > ACC_ROWS
 #error not enough accumulator space
@@ -26,8 +34,8 @@ int main() {
 
   gemmini_flush(0);
 
-  for (int activation = 0; activation <= 2; ++activation) {
-    for (int scale = 0; scale <= 12; scale += 4) {
+  for (int activation = AINIT; activation <= 2; ++activation) {
+    for (int scale = SINIT; scale <= 12; scale += 4) {
       // printf("activation: %d, scale: %d\n", activation, scale);
 
       static acc_t In[N][DIM][DIM] row_align_acc(1);
@@ -43,10 +51,14 @@ int main() {
           for (size_t j = 0; j < DIM; ++j) {
 #ifndef ELEM_T_IS_FLOAT
             In[n][i][j] = 0;
-
-            int bytes = rand() % 2 ? sizeof(acc_t) : sizeof(elem_t);
+#ifdef FAST
+#define RAND (j + i)
+#else
+#define RAND rand()
+#endif
+            int bytes = RAND % 2 ? sizeof(acc_t) : sizeof(elem_t);
             for (size_t b = 0; b < bytes; ++b) {
-              In[n][i][j] |= (rand() % 255) << (b*8);
+              In[n][i][j] |= (RAND % 255) << (b*8);
             }
 #else
             acc_t_bits data;

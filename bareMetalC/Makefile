@@ -23,6 +23,7 @@ tests = \
 	tiled_matmul_ws_At \
 	tiled_matmul_ws_Bt \
 	tiled_matmul_ws_full_C \
+	tiled_matmul_ws_low_D \
 	tiled_matmul_cpu \
 	tiled_matmul_option \
 	tiled_matmul_ws_perf \
@@ -33,6 +34,15 @@ tests = \
 	template
 
 tests_baremetal = $(tests:=-baremetal)
+
+ifeq ($(findstring spike,$(RUNNER)),spike)
+# Currently don't support conv or conv-with-pool on spike
+runs_baremetal = $(addsuffix .run,$(filter-out conv-baremetal conv_with_pool-baremetal,$(tests_baremetal)))
+else
+# Don't run very long benchmarks for RTL sim
+runs_baremetal = $(addsuffix .run,$(filter-out tiled_matmul_cpu-baremetal tiled_matmul_option-baremetal,$(tests_baremetal)))
+endif
+
 ifdef BAREMETAL_ONLY
 	tests_linux =
 else
@@ -78,6 +88,11 @@ vpath %.c $(src_dir)
 
 %-linux: %.c $(GEMMINI_HEADERS)
 	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@
+
+run-baremetal: $(runs_baremetal)
+
+%-baremetal.run: %-baremetal
+	$(RUNNER)$(abs_top_srcdir)/build/bareMetalC/$^
 
 junk += $(tests_baremetal) $(tests_linux)
 

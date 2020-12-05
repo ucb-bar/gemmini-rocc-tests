@@ -19,7 +19,6 @@
 typedef acc_t ACC_T;
 #else
 typedef elem_t ACC_T;
-#error variable-bitwidth bias not currently supported
 #endif
 
 #ifndef BAREMETAL
@@ -140,7 +139,7 @@ int main() {
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
             false, true,
-            false,
+            false, !FULL_BIAS_WIDTH,
             WS);
 
     unsigned long end = read_cycles();

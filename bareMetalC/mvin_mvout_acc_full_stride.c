@@ -10,7 +10,13 @@
 #endif
 #include "include/gemmini_testutils.h"
 
+#ifdef FAST
+#define BIG_DIM (DIM*2)
+#define BINIT MIN(MAX_BLOCK_LEN_ACC, BIG_DIM/DIM)
+#else
 #define BIG_DIM 64
+#define BINIT 1
+#endif
 
 #if (BIG_DIM % DIM) != 0
 #error incorrect dimensions
@@ -19,6 +25,11 @@
 #if (BIG_DIM * BIG_DIM / DIM) > ACC_ROWS
 #error not enough accumulator space
 #endif
+
+#define MIN(a,b) ((a > b) ? b : a)
+
+
+
 
 int is_equal_big(acc_t x[BIG_DIM][BIG_DIM], acc_t y[BIG_DIM][BIG_DIM]) {
   for (size_t i = 0; i < BIG_DIM; ++i)
@@ -65,7 +76,7 @@ int main() {
 
   gemmini_flush(0);
 
-  for (int block_len = 1; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN_ACC; block_len++) {
+  for (int block_len = BINIT; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN_ACC; block_len++) {
     static acc_t In[BIG_DIM][BIG_DIM] row_align_acc(1);
     static acc_t Out[BIG_DIM][BIG_DIM] row_align(1);
 
@@ -73,10 +84,14 @@ int main() {
       for (size_t j = 0; j < BIG_DIM; ++j) {
 #ifndef ELEM_T_IS_FLOAT
         In[i][j] = 0;
-
-        int bytes = rand() % 2 ? sizeof(acc_t) : sizeof(elem_t);
+#ifdef FAST
+#define RAND (j + i)
+#else
+#define RAND rand()
+#endif
+        int bytes = RAND % 2 ? sizeof(acc_t) : sizeof(elem_t);
         for (size_t b = 0; b < bytes; ++b) {
-          In[i][j] |= (rand() % 255) << (b*8);
+          In[i][j] |= (RAND % 255) << (b*8);
         }
 #else
         acc_t_bits data;

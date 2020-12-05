@@ -10,6 +10,7 @@
 #endif
 #include "include/gemmini_testutils.h"
 
+
 #define N 4
 
 #if (N*DIM) > ACC_ROWS
@@ -37,10 +38,15 @@ int main() {
       for (size_t j = 0; j < DIM; ++j) {
 #ifndef ELEM_T_IS_FLOAT
         In[n][i][j] = 0;
+#ifdef FAST
+#define RAND (j + i)
+#else
+#define RAND rand()
+#endif
 
-        int bytes = rand() % 2 ? sizeof(acc_t) : sizeof(elem_t);
+        int bytes = RAND % 2 ? sizeof(acc_t) : sizeof(elem_t);
         for (size_t b = 0; b < bytes; ++b) {
-          In[n][i][j] |= (rand() % 255) << (b*8);
+          In[n][i][j] |= (RAND % 255) << (b*8);
         }
 #else
         acc_t_bits data;
