@@ -71,9 +71,6 @@ void conv(int batch_size, int in_channels, int in_dim,
                         }
                     }
 
-                    // Shift while rounding to nearest integer (ties round to negative infinity)
-                    result = ROUNDING_RIGHT_SHIFT(result, 0);
-
                     // Clip result
                     result = result > elem_t_max ? elem_t_max : (result < elem_t_min ? elem_t_min : result);
 
@@ -199,7 +196,7 @@ int main() {
         NO_BIAS ? NULL : (acc_t*)bias,
         (elem_t*)output_mat,
 
-        NO_ACTIVATION, 0, 0, 0, 0, 0,
+        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, 0,
 
         WS);
     uint64_t end_gemmini = read_cycles();

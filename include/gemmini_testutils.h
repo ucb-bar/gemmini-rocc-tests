@@ -216,11 +216,9 @@ void printMatrix(elem_t m[DIM][DIM]) {
   for (size_t i = 0; i < DIM; ++i) {
     for (size_t j = 0; j < DIM; ++j)
 #ifndef ELEM_T_IS_FLOAT
-		printf("%d ", m[i][j]);
+      printf("%d ", m[i][j]);
 #else
-      printf("%d.%d ", (int)m[i][j], ((int)(m[i][j]*10000))%10000);
-   
-      //printf("%x ", elem_t_to_elem_t_bits(m[i][j]));
+      printf("%x ", elem_t_to_elem_t_bits(m[i][j]));
 #endif
     printf("\n");
   }
@@ -229,7 +227,11 @@ void printMatrix(elem_t m[DIM][DIM]) {
 void printMatrixAcc(acc_t m[DIM][DIM]) {
   for (size_t i = 0; i < DIM; ++i) {
     for (size_t j = 0; j < DIM; ++j)
+#ifndef ELEM_T_IS_FLOAT
       printf("%d ", m[i][j]);
+#else
+      printf("%x ", acc_t_to_acc_t_bits(m[i][j]));
+#endif
     printf("\n");
   }
 }

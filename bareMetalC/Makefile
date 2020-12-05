@@ -1,12 +1,35 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
+	mvin_mvout \
+	mvin_mvout_stride \
+	mvin_mvout_acc \
+	mvin_mvout_acc_stride \
+	mvin_mvout_acc_zero_stride \
+	mvin_mvout_acc_small \
+	mvin_mvout_acc_full \
+	mvin_mvout_acc_full_stride \
+	matmul_os \
+	matmul_ws \
+	matmul \
+	raw_hazard \
+	aligned \
+	padded \
+	mvin_scale \
+	conv \
+	conv_with_pool \
+	tiled_matmul_os \
 	tiled_matmul_ws \
-	tiled_matmul_transpose \
-	chol_gemm \
-	chol_gemm_opt \
-	chol_mt_left \
-	chol_mt_right \
+	tiled_matmul_ws_At \
+	tiled_matmul_ws_Bt \
+	tiled_matmul_cpu \
+	tiled_matmul_option \
+	tiled_matmul_ws_perf \
+	transpose \
+	fp_acc \
+	matrix_add \
+	resadd \
+	template
 
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY
@@ -17,7 +40,6 @@ endif
 
 BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
 GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_testutils.h
-BENCH_VECTOR = /scratch/sakim/chipyard/toolchains/esp-tools/riscv-tests/benchmarks
 
 CFLAGS := $(CFLAGS) \
 	-DPREALLOCATE=1 \
@@ -35,7 +57,6 @@ CFLAGS := $(CFLAGS) \
 	-I$(abs_top_srcdir)/riscv-tests/env \
 	-I$(abs_top_srcdir) \
 	-I$(BENCH_COMMON) \
-	-I$(BENCH_VECTOR) \
 	-DID_STRING=$(ID_STRING) \
 
 CFLAGS_BAREMETAL := \

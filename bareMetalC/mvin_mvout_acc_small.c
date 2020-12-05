@@ -24,13 +24,16 @@ int main() {
     }
 #endif
 
-  // printf("Flush\n");
   gemmini_flush(0);
-  gemmini_config_ld(DIM * sizeof(elem_t));
+
+  gemmini_extended2_config_ld(DIM * sizeof(elem_t), MVIN_SCALE_IDENTITY, true);
+  gemmini_config_ex(0, NO_ACTIVATION, 0, ACC_SCALE_IDENTITY, 0);
   gemmini_config_st(DIM * sizeof(elem_t));
 
   static elem_t In[N][DIM][DIM] row_align(1);
   static elem_t Out[N][DIM][DIM] row_align(1);
+
+  const uint32_t acc_addr = 1 << (ADDR_LEN-1);
 
   for (size_t n = 0; n < N; ++n)
     for (size_t i = 0; i < DIM; ++i)
@@ -38,10 +41,8 @@ int main() {
         In[n][i][j] = i*DIM + j + n;
 
   for (size_t n = 0; n < N; ++n) {
-    // printf("Mvin %d\n", n);
-    gemmini_mvin(In[n], n*DIM);
-    // printf("Mvout %d\n", n);
-    gemmini_mvout(Out[n], n*DIM);
+    gemmini_mvin(In[n], acc_addr | (n*DIM));
+    gemmini_mvout(Out[n], acc_addr | (n*DIM));
   }
 
   // printf("Fence");

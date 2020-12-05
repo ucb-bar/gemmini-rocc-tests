@@ -13,8 +13,8 @@ def print_arr(array_type, array_name, array_sz, pyarr):
     print("};")
     print("\n")
 
-dim = 96
-num_block = 6
+dim = 128
+num_block = 4
 block_dim = (int)(dim/num_block)
 #generate random spd matrix
 A = np.random.randint(-3, 4, size=(dim,dim))
