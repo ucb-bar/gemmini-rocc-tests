@@ -92,9 +92,9 @@ void full_printMatrix(elem_t m[MAT_DIM][MAT_DIM]) {
 int full_is_equal(elem_t x[MAT_DIM][MAT_DIM], elem_t y[MAT_DIM][MAT_DIM]) {
   for (size_t i = 0; i < MAT_DIM; ++i)
     for (size_t j = 0; j < MAT_DIM; ++j)
-      if (((int)(x[i][j]*100)) != ((int)(y[i][j]*100))){
+      if (((int)(x[i][j]*50)) != ((int)(y[i][j]*50))){
 			printf("i: %d, j: %d, value: %d.%d, %d.%d \n", i, j, (int)x[i][j], ((int)(x[i][j]*1000))%1000 , (int)y[i][j], ((int)(y[i][j]*1000))%1000);
-         return 0;
+         //return 0;
 		}
   return 1;
 }

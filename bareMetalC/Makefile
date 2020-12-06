@@ -1,35 +1,14 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	mvin_mvout \
-	mvin_mvout_stride \
-	mvin_mvout_acc \
-	mvin_mvout_acc_stride \
-	mvin_mvout_acc_zero_stride \
-	mvin_mvout_acc_small \
-	mvin_mvout_acc_full \
-	mvin_mvout_acc_full_stride \
-	matmul_os \
-	matmul_ws \
-	matmul \
-	raw_hazard \
-	aligned \
-	padded \
-	mvin_scale \
-	conv \
-	conv_with_pool \
-	tiled_matmul_os \
+	chol_mt_right \
+	chol_mt_left \
+	chol_gemm \
+	chol_gemm_opt \
+	tiled_matmul_reuse \
 	tiled_matmul_ws \
-	tiled_matmul_ws_At \
 	tiled_matmul_ws_Bt \
-	tiled_matmul_cpu \
-	tiled_matmul_option \
-	tiled_matmul_ws_perf \
-	transpose \
-	fp_acc \
-	matrix_add \
-	resadd \
-	template
+
 
 tests_baremetal = $(tests:=-baremetal)
 ifdef BAREMETAL_ONLY

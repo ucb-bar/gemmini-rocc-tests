@@ -45,14 +45,29 @@ void full_matmul(elem_t A[MAT_DIM][MAT_DIM], elem_t B[MAT_DIM][MAT_DIM], ACC_T D
 }
 
 void full_transposed_matmul(int I_block, int J_block, int K_block, int A_stride, int B_stride, int C_stride, elem_t* A, elem_t* B, elem_t* C, bool sub) {
-	
-	tiled_matmul_transpose_auto(block_dim*I_block, block_dim*J_block, block_dim*K_block,
-			A, B, sub ? C : NULL, C,
-			A_stride, B_stride, C_stride, C_stride,
-			MVIN_SCALE_IDENTITY, sub ? (-1) : MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-			NO_ACTIVATION, ACC_SCALE_IDENTITY, 
-			0, false, false, true, WS);	
 
+	bool no_B_tiling = false;
+	if(I_block > 1 && J_block == 1 && K_block == 1)
+		no_B_tiling = true;
+
+	if(no_B_tiling)
+		tiled_matmul_auto_notileB(block_dim*I_block, block_dim, block_dim,
+				A, B, sub ? C : NULL, C,
+				A_stride, B_stride, C_stride, C_stride,
+				MVIN_SCALE_IDENTITY, sub ? (-1) : MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+				NO_ACTIVATION, ACC_SCALE_IDENTITY, 
+				0, false, 
+				false, true, 
+				WS);	
+	else
+		tiled_matmul_auto(block_dim*I_block, block_dim*J_block, block_dim*K_block,
+				A, B, sub ? C : NULL, C,
+				A_stride, B_stride, C_stride, C_stride,
+				MVIN_SCALE_IDENTITY, sub ? (-1) : MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+				NO_ACTIVATION, ACC_SCALE_IDENTITY, 
+				0, false, 
+				false, true, 
+				WS);	
 }
 
 void full_printMatrix(elem_t m[MAT_DIM][MAT_DIM]) {
@@ -66,7 +81,7 @@ void full_printMatrix(elem_t m[MAT_DIM][MAT_DIM]) {
 int full_is_equal(elem_t x[MAT_DIM][MAT_DIM], elem_t y[MAT_DIM][MAT_DIM]) {
   for (size_t i = 0; i < MAT_DIM; ++i)
     for (size_t j = 0; j < MAT_DIM; ++j)
-      if (((int)(x[i][j]*100)) != ((int)(y[i][j]*100))){
+      if (((int)(x[i][j]*50)) != ((int)(y[i][j]*50))){
 			printf("i: %d, j: %d, value: %d.%d, %d.%d \n", i, j, (int)x[i][j], ((int)(x[i][j]*1000))%1000 , (int)y[i][j], ((int)(y[i][j]*1000))%1000);
          return 0;
 		}
@@ -205,21 +220,24 @@ void thread_entry(int cid, int nc){
   }
 
   elem_t* LR_pt = (elem_t *) LR_mt;
+
   unsigned long start = read_cycles();
   barrier(nc);
   //set up
 	
   for(int k = 0; k < num_block; k++){
-		if(cid == 0) full_right_chol(LR_pt+block_dim*(MAT_DIM*k+k));
+		if(cid == 0) 
+			full_right_chol(LR_pt+block_dim*(MAT_DIM*k+k));
 		barrier(nc);
+
 		elem_t temp[block_dim][block_dim] = {0};
 		lower_triangle_inverse(LR_pt+(k*MAT_DIM+k)*block_dim, temp);	
 		barrier(nc);
+
 		for(int i = k+1; i < num_block; i++){
 			if(i%nc == cid){
-				elem_t temp_mult[block_dim][block_dim] = {0};
-				full_transposed_matmul(1, 1, 1, MAT_DIM, block_dim, block_dim, LR_pt+block_dim*(i*MAT_DIM+k), (elem_t*) temp, (elem_t*) temp_mult, false);	
-				copy_matrix(block_dim, block_dim, MAT_DIM, (elem_t*) temp_mult, LR_pt+block_dim*(i*MAT_DIM+k));
+				bool skip_B = (i != k+1) && (i != k+2);
+				full_transposed_matmul(1, 1, 1, MAT_DIM, block_dim, MAT_DIM, LR_pt+block_dim*(i*MAT_DIM+k), skip_B ? NULL : (elem_t*) temp, LR_pt+block_dim*(i*MAT_DIM+k), false);				
 			}
 		}
 		barrier(nc);
@@ -242,7 +260,7 @@ void thread_entry(int cid, int nc){
 	  if (!full_is_equal(LR_mt, gold_L)) {
 			printf("C:\n");
 			full_printMatrix(LR_mt);
-			printf("thread 1 Block Right Gold:\n");
+			printf("thread 0 Block Right Gold:\n");
 			full_printMatrix(gold_L);
 			printf("\n");
 		}
