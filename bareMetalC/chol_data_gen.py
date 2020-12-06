@@ -13,7 +13,7 @@ def print_arr(array_type, array_name, array_sz, pyarr):
     print("};")
     print("\n")
 
-dim = 64
+dim = 128
 num_block = 8
 block_dim = (int)(dim/num_block)
 #generate random spd matrix
