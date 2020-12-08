@@ -405,7 +405,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         size_t A_row_stride, size_t B_row_stride, size_t D_row_stride, size_t C_row_stride,
         bool a_transpose, bool b_transpose,
         bool no_bias, bool repeating_bias) {
-
+//if(B == NULL) printf("skip mvin B\n");
 /*  
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
@@ -586,10 +586,13 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
     inner = &sp_tiled_matmul_ws;
   }
 
+  bool notileB = false;
+  if(J0 == 1 && K0 == 1) notileB = true;
+
   for (size_t i0 = 0; i0 < I0; i0++)
     for (size_t j0 = 0; j0 < J0; j0++)
       for (size_t k0 = 0; k0 < K0; k0++) {
-
+			bool first = (i0 == 0 && j0 == 0 && k0 == 0);
         const acc_t * pre;
         if (k0 != 0) {
           pre = NULL;
@@ -613,7 +616,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t * b = b_transpose ? (B + j0*tile_J*DIM*stride_B + k0*tile_K*DIM)
           : (B + k0*tile_K*DIM*stride_B + j0*tile_J*DIM);
 
-        (*inner)(a, (B == NULL) ? NULL : b, pre, out,
+        (*inner)(a, (B == NULL || (notileB && !first)) ? NULL : b, pre, out,
             A_scale_factor, B_scale_factor, D_scale_factor,
             I, J, K,
             pad_I, pad_J, pad_K,
