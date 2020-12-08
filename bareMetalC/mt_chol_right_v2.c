@@ -1,3 +1,4 @@
+//overlap cpu cholesky and inverse with panel updates
 // See LICENSE for license details.
 #define _GNU_SOURCE
 #include <sched.h>
@@ -133,29 +134,48 @@ struct thread_args{
 	//elem_t temp[block_dim][block_dim];
 	elem_t *temp;
 };
+void full_right_chol(elem_t* L){
+	for(int k = 0; k < block_dim; k++){
+		//printf("%d %d \n", (int)(L[k][k]*100), (int)((float)(sqrt(L[k][k]))*100));
+		*(L+k*MAT_DIM+k) = (float)(sqrt(*(L+k*MAT_DIM+k)));
+		for(int i = 0; i < block_dim; i++){
+			if(i > k) *(L+i*MAT_DIM+k) = (float)(*(L+i*MAT_DIM+k) / *(L+k*MAT_DIM+k));
+			else if(i < k) *(L+i*MAT_DIM+k) = 0;
+		}
+		for(int j = k+1; j < block_dim; j++)
+			for(int i = j; i < block_dim; i++){
+				//if(i==block_dim-1 && j==block_dim-1) printf("Lkk: %d, Lik:%d, Ljk: %d, mult: %d \n", (int)(L[i][j]*100), (int)(L[i][k]*100), (int)(L[j][k]*100), (int)(L[i][k]*L[j][k]*100));
+				*(L+i*MAT_DIM+j) -= (*(L+i*MAT_DIM+k))*(*(L+j*MAT_DIM+k));
+			}
+				//printf("%d \n", (int)(L[k][k]));
+	}
+}
 
 void *panel_update1(void *args){
 	elem_t * L = (elem_t*) LR_block;
 	struct thread_args * chol_args = (struct thread_args*) args;
 	int k = chol_args->k;
 	int cpu_id = chol_args->cpu_id;
-	for(int i = k+1; i < num_block; i++){
-		if(i%num_proc == cpu_id){
-			bool skip_B = (i != k+1) && (i != k+2);
-			full_transposed_matmul(1, 1, 1, MAT_DIM, block_dim, MAT_DIM, L+block_dim*(i*MAT_DIM+k), skip_B ? NULL : chol_args->temp, L+block_dim*(i*MAT_DIM+k), false);				
-		}
-	}
+	int left = num_block - k;
+	int length = (cpu_id == 0) ? left/2 : num_block-left/2-k-1;
+	int i = (cpu_id == 0) ? num_block - left/2 : k+1;
+	if(length > 0) full_transposed_matmul(length, 1, 1, MAT_DIM, block_dim, MAT_DIM, L+block_dim*(i*MAT_DIM+k), chol_args->temp, L+block_dim*(i*MAT_DIM+k), false);				
+	
 }
 
 void *panel_update2(void *args){
 	elem_t* LR_pt = (elem_t*) LR_block;
 	struct thread_args * chol_args = (struct thread_args*) args;
 	int k = chol_args->k;
-	int cpu_id = chol_args->cpu_id;
+	int cid = chol_args->cpu_id;
+	int left = num_block - k;
+	int id0 = k+1 + (int)(left/7); //to be determined
 	for(int j = k+1; j < num_block; j++){
-		if(j%num_proc == cpu_id)
+		if((j <= id0 && cid==0)||(j>id0&&cid!=0))
 			full_transposed_matmul((num_block-j), 1, 1, MAT_DIM, MAT_DIM, MAT_DIM, LR_pt+block_dim*(j*MAT_DIM+k), LR_pt+block_dim*(j*MAT_DIM+k), LR_pt+block_dim*(j*MAT_DIM+j), true);
 	}
+	if(cid == 0 && k < num_block - 1)
+		full_right_chol(LR_pt + block_dim * (MAT_DIM + 1)*(k + 1));
 }
 
 void *print_message(void *ptr){
@@ -198,22 +218,6 @@ void *lower_triangle_inverse(void *args){
 	}
 }
 */
-void full_right_chol(elem_t* L){
-	for(int k = 0; k < block_dim; k++){
-		//printf("%d %d \n", (int)(L[k][k]*100), (int)((float)(sqrt(L[k][k]))*100));
-		*(L+k*MAT_DIM+k) = (float)(sqrt(*(L+k*MAT_DIM+k)));
-		for(int i = 0; i < block_dim; i++){
-			if(i > k) *(L+i*MAT_DIM+k) = (float)(*(L+i*MAT_DIM+k) / *(L+k*MAT_DIM+k));
-			else if(i < k) *(L+i*MAT_DIM+k) = 0;
-		}
-		for(int j = k+1; j < block_dim; j++)
-			for(int i = j; i < block_dim; i++){
-				//if(i==block_dim-1 && j==block_dim-1) printf("Lkk: %d, Lik:%d, Ljk: %d, mult: %d \n", (int)(L[i][j]*100), (int)(L[i][k]*100), (int)(L[j][k]*100), (int)(L[i][k]*L[j][k]*100));
-				*(L+i*MAT_DIM+j) -= (*(L+i*MAT_DIM+k))*(*(L+j*MAT_DIM+k));
-			}
-				//printf("%d \n", (int)(L[k][k]));
-	}
-}
 
 int main() {
 #ifndef BAREMETAL
@@ -269,11 +273,12 @@ int main() {
 
   //set up
 	
-  for(int k = 0; k < num_block; k++){
-	full_right_chol(LR_pt+block_dim*(MAT_DIM*k+k));
+  for(int k = 0; k < num_block-1; k++){
+	if(k == 0)
+	   full_right_chol(LR_pt+block_dim*(MAT_DIM*k+k));
 	elem_t temp[block_dim][block_dim] = {0};
 	lower_triangle_inverse(LR_pt+(k*MAT_DIM+k)*block_dim, temp);
-	
+	//barrier
 	for(int i = 0; i < num_proc; i++){
 		matmul_args[i].k = k;
 		matmul_args[i].cpu_id = i;
