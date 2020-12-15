@@ -1,3 +1,4 @@
+//with smaller grained first panel
 //overlap cpu cholesky and inverse with panel updates
 // See LICENSE for license details.
 #define _GNU_SOURCE
@@ -109,24 +110,68 @@ void full_matshift(full_t full[MAT_DIM][MAT_DIM], elem_t out[MAT_DIM][MAT_DIM], 
     }
 }
 
-
-//store transposed inverse for vector
-void lower_triangle_inverse_transpose(elem_t* A, elem_t M[block_dim][block_dim]){
-//	for(int i = 0; i < block_dim; i++)
-//		for(int j = 0; j < block_dim; j++)
-//			M[i][j] = 0;
-
-	for(int i = 0; i < block_dim; i++){
+void small_lower_triangle_inverse(elem_t* A, int small_dim, elem_t M[small_dim][small_dim]){
+	for(int i = 0; i < small_dim; i++){
 		M[i][i] = 1/(*(A+i*MAT_DIM+i));
-		for(int j = i+1; j < block_dim; j++){
+		for(int j = 0; j < i; j++)
+			M[j][i] = 0;
+		for(int j = i+1; j < small_dim; j++){
 			elem_t sum = 0;
-			for(int k = i; k < j; k++)
-				sum += (*(A+j*MAT_DIM+k))*M[i][k];///(*(A+j*MAT_DIM+j));
-			M[i][j] = M[i][j] - sum/(*(A+j*MAT_DIM+j));
+			M[j][i] = 0;
+			for(int k = i; k < j; k++){
+	//			if(j == i+1 && k != i) M[k][i] = 0;
+				sum += (*(A+j*MAT_DIM+k))*M[k][i];///(*(A+j*MAT_DIM+j));
+			}
+			M[j][i] = M[j][i] - sum/(*(A+j*MAT_DIM+j));
 		}
 	}
 }
 
+void small_right_chol(elem_t* L, int small_dim){
+	for(int k = 0; k < small_dim; k++){
+		//printf("%d %d \n", (int)(L[k][k]*100), (int)((float)(sqrt(L[k][k]))*100));
+		*(L+k*MAT_DIM+k) = (float)(sqrt(*(L+k*MAT_DIM+k)));
+		for(int i = 0; i < small_dim; i++){
+			if(i > k) *(L+i*MAT_DIM+k) = (float)(*(L+i*MAT_DIM+k) / *(L+k*MAT_DIM+k));
+			else if(i < k) *(L+i*MAT_DIM+k) = 0;
+		}
+		for(int j = k+1; j < small_dim; j++)
+			for(int i = j; i < small_dim; i++){
+				//if(i==small_dim-1 && j==small_dim-1) printf("Lkk: %d, Lik:%d, Ljk: %d, mult: %d \n", (int)(L[i][j]*100), (int)(L[i][k]*100), (int)(L[j][k]*100), (int)(L[i][k]*L[j][k]*100));
+				*(L+i*MAT_DIM+j) -= (*(L+i*MAT_DIM+k))*(*(L+j*MAT_DIM+k));
+			}
+				//printf("%d \n", (int)(L[k][k]));
+	}
+}
+
+void small_transposed_matmul(int small_block_dim, int I_block, int J_block, int K_block, int A_stride, int B_stride, int C_stride, elem_t* A, elem_t* B, elem_t* C, bool sub) {
+
+	tiled_matmul_auto_notileB(small_block_dim*I_block, small_block_dim*J_block, small_block_dim*K_block,
+				A, B, sub ? C : NULL, C,
+				A_stride, B_stride, C_stride, C_stride,
+				MVIN_SCALE_IDENTITY, sub ? (-1) : MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+				NO_ACTIVATION, ACC_SCALE_IDENTITY, 
+				0, false, 
+				false, true, 
+				WS);	
+
+}
+
+void small_block_right_chol(elem_t* L, int small_dim){
+	int small_num_block = block_dim/small_dim;
+	for(int k = 0; k < small_num_block; k++){
+		small_right_chol(L+small_dim*(MAT_DIM*k+k), small_dim);
+		elem_t temp_inv[small_dim][small_dim];// = {0};
+		small_lower_triangle_inverse(L+(k*MAT_DIM+k)*small_dim, small_dim, temp_inv);
+		int i = k+1;
+		int length = small_num_block - i;
+		if(length > 0)	small_transposed_matmul(small_dim, length, 1, 1, MAT_DIM, small_dim, MAT_DIM, L+small_dim*(i*MAT_DIM+k), (elem_t*) temp_inv, L+small_dim*(i*MAT_DIM+k), false);				
+		for(int j = i; j < small_num_block; j++) {
+	//		full_transposed_matmul_share((num_block-j), 1, 1, MAT_DIM, MAT_DIM, L+small_dim*(j*MAT_DIM+k), L+small_dim*(j*MAT_DIM+j), true);
+			small_transposed_matmul(small_dim, (small_num_block-j), 1, 1, MAT_DIM, MAT_DIM, MAT_DIM, L+small_dim*(j*MAT_DIM+k), L+small_dim*(j*MAT_DIM+k), L+small_dim*(j*MAT_DIM+j), true);
+		}
+	}
+}
 
 static elem_t LR_block[MAT_DIM][MAT_DIM] row_align(1) = {0};	
 struct thread_args{
@@ -237,7 +282,7 @@ int main() {
     gemmini_flush(0);
     uint64_t cpu_start = 0;
     uint64_t cpu_end = 0;
-
+    int small_num_block = block_dim/16;
 #if CHECK_RESULT == 1
 
 	 int block_size = MAT_DIM/num_block;
@@ -286,7 +331,7 @@ int main() {
 	
   for(int k = 0; k < num_block-1; k++){
 	if(k == 0)
-	   full_right_chol(LR_pt);
+	   small_block_right_chol(LR_pt, block_dim/small_num_block);
 	elem_t temp[block_dim][block_dim];// = {0};
 	lower_triangle_inverse(LR_pt+(k*MAT_DIM+k)*block_dim, temp);
 	//barrier
