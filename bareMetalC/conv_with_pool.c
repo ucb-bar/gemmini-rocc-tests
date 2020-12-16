@@ -8,6 +8,18 @@
 #endif
 #include "include/gemmini_testutils.h"
 
+// #define BATCH_SIZE 4
+// #define IN_DIM 224
+// #define IN_CHANNELS 3
+// #define OUT_CHANNELS 32
+// #define KERNEL_DIM 3
+// #define PADDING 1
+// #define STRIDE 2
+// 
+// #define POOL_SIZE 3
+// #define POOL_STRIDE 2
+// #define POOL_PADDING 1
+
 #ifndef BAREMETAL
 
 #define BATCH_SIZE 4
@@ -29,12 +41,12 @@
 #define IN_CHANNELS 5
 #define OUT_CHANNELS 7
 #else
-#define IN_DIM 23
-#define IN_CHANNELS 17
-#define OUT_CHANNELS 31
+#define IN_DIM 17
+#define IN_CHANNELS 18
+#define OUT_CHANNELS 19
 #endif
 
-#define BATCH_SIZE 3
+#define BATCH_SIZE 2
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 2
@@ -383,7 +395,7 @@ int main() {
     printf("Gemmini conv...\n");
     uint64_t start_gemmini = read_cycles();
 
-    tiled_conv_auto(
+    tiled_conv_A_stride_auto(
     // tiled_conv(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
