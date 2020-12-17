@@ -197,17 +197,26 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 // LSB indicates if the page addr is load fault or store fault
 void handle_gemmini_xcpt(uint64_t rd) {
   char is_st = (uint64_t) rd & 1;
-  char* addr = (char*) rd;
+  char* addr = (char*) (rd & ~1);
   if (is_st) {
+    printf("[GEMMINI] Store page fault at %x\n", addr);
     *addr = 0;
   } else {
+    printf("[GEMMINI] Load page fault at %x\n", addr);
     volatile char t = *addr;
   }
   gemmini_flush(0);
 }
 
+#ifdef GEMMINI_XCPT_DEBUG
 #define ROCC_INSTRUCTION_RD_RS1_RS2(x, rs1, rs2, funct) \
   ROCC_INSTRUCTION_RD_RS1_RS2_labeled(x, rs1, rs2, funct, 0)
+#else
+#define ROCC_INSTRUCTION_RD_RS1_RS2(x, rs1, rs2, funct)	\
+  ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct)
+#endif
+
+
 
 // First, issue the instruction, and then check the return code
 // If the return code indicates a pending exception from gemmini, handle it,
