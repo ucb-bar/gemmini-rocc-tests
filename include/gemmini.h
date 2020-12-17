@@ -919,7 +919,7 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
     exit(1);
   }
 
-  char matmul_type_str[][3] = {"OS", "WS", "CPU"};
+  char matmul_type_str[][4] = {"OS", "WS", "CPU"};
 
   // Check if transpose options are correct
   if (((tiled_matmul_type == OS || tiled_matmul_type == CPU) && (transpose_A || transpose_B)) ||
@@ -948,7 +948,7 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         (int)tiled_matmul_type);
   } else /*if (tiled_matmul_type == CPU)*/ {
     matmul_cpu(dim_I, dim_J, dim_K,
-            A, B, D, (elem_t*)C,
+            A, B, (const acc_t*) D, (elem_t*)C,
             stride_A, stride_B, stride_D, stride_C,
             A_scale_factor, B_scale_factor, D_scale_factor,
             act, scale, relu6_shift, repeating_bias);
@@ -1321,11 +1321,11 @@ void sp_tiled_conv_ds(
         int lpad, int rpad, int upad, int dpad,
         int plpad, int prpad, int pupad, int pdpad,
 
-        elem_t * input,
+        const elem_t * input,
 	    uint32_t B_sp_addr_outer,
-        elem_t * weights,
+        const elem_t * weights,
         elem_t * output,
-        acc_t * bias,
+        const acc_t * bias,
 
 	    int act, acc_scale_t scale, int relu6_shift,
         bool no_bias, bool no_pool,
@@ -1403,7 +1403,7 @@ int bidims = batches*idims;
 
    for (int b = 0; b < batches; b++) {
         for (int irow = 0; irow < irows; irow++) {
-                elem_t * in = input + (b*in_dim*in_dim + irow*in_dim) * in_channels;// + ich;
+                const elem_t * in = input + (b*in_dim*in_dim + irow*in_dim) * in_channels;// + ich;
        		const uint32_t A_sp_addr = A_sp_addr_start + b * idims + irow * icols;
                    for (int ich = 0; ich < ichs; ich += DIM) {
                       // const int K = ichs - ich > DIM ? DIM : ichs - ich;
@@ -1870,10 +1870,10 @@ void sp_tiled_conv_ws_original(
         int lpad, int rpad, int upad, int dpad,
         int plpad, int prpad, int pupad, int pdpad,
 
-        elem_t * input,
-        elem_t * weights,
+        const elem_t * input,
+        const elem_t * weights,
         elem_t * output,
-        acc_t * bias,
+        const acc_t * bias,
 
 	    int act, int scale, int relu6_shift,
         bool no_bias, bool no_pool,
@@ -1955,7 +1955,7 @@ void sp_tiled_conv_ws_original(
 
             for (int icol = -lpad; icol < icols_unpadded + rpad;) {
                 int I = icols_unpadded - icol > DIM ? DIM : icols_unpadded - icol;
-                elem_t * in = input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels;// + ich;
+                const elem_t * in = input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels;// + ich;
 
                 if (icol < 0) {
                     I = -icol > DIM ? DIM : -icol;
@@ -2255,9 +2255,9 @@ void conv_cpu_without_pool(
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
 
-        elem_t * input,
-        elem_t * weights,
-        acc_t * bias,
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift) {
@@ -2303,9 +2303,9 @@ void conv_cpu(
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
 
-        elem_t * input,
-        elem_t * weights,
-        acc_t * bias,
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift,
@@ -2776,11 +2776,11 @@ void sp_tiled_conv_ws(
         int lpad, int rpad, int upad, int dpad,
         int plpad, int prpad, int pupad, int pdpad,
 
-        elem_t * input,
+        const elem_t * input,
 	uint32_t B_sp_addr_start,
         //elem_t * weights,
         elem_t * output,
-        acc_t * bias,
+        const acc_t * bias,
 
 	int act, acc_scale_t scale, int relu6_shift,
         bool no_bias, bool no_pool,
@@ -2850,7 +2850,7 @@ void sp_tiled_conv_ws(
 
             for (int icol = -lpad; icol < icols_unpadded + rpad;) {
                 int I = icols_unpadded - icol > DIM ? DIM : icols_unpadded - icol;
-                elem_t * in = input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels;// + ich;
+                const elem_t * in = input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels;// + ich;
 
                 if (icol < 0) {
                     I = -icol > DIM ? DIM : -icol;
@@ -3054,9 +3054,9 @@ void tiled_conv_original(
         int porows, int pocols, int pochs,
 	int kcols, int kchs,
 
-        elem_t * input,
-        elem_t * weights,
-        acc_t * bias,
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift,
@@ -3151,7 +3151,7 @@ void tiled_conv_original(
                                 if (kch + kchs < in_channels) {
                                     out = NULL;
                                 }
-                                acc_t * bias_ = bias + poch;
+                                const acc_t * bias_ = bias + poch;
                                 if (kch > 0) {
                                     bias_ = NULL;
                                 }
@@ -3245,9 +3245,9 @@ void tiled_conv(
         int porows, int pocols, int pochs,
         int krows, int kcols, int kchs,
 
-        elem_t * input,
-        elem_t * weights,
-        acc_t * bias,
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift,
@@ -3321,7 +3321,7 @@ void tiled_conv(
 
       for (int poch = 0; poch < out_channels; poch += pochs) {
            const int pochs_ = out_channels - poch > pochs ? pochs : out_channels - poch;
-                acc_t * bias_ = bias + poch;
+                const acc_t * bias_ = bias + poch;
 
 		const int kchs_ = in_channels;
 		gemmini_config_ld(out_channels*sizeof(elem_t));
@@ -3332,7 +3332,7 @@ void tiled_conv(
       			for (int ich = 0; ich < kchs_; ich += DIM) {
         		    const int K = kchs_ - ich > DIM ? DIM : kchs_ - ich;
         		    for (int krow = 0; krow < kcols; krow++){
-				elem_t * weight = weights + poch + (krow*kcols*in_channels + ich) * out_channels + och;
+				const elem_t * weight = weights + poch + (krow*kcols*in_channels + ich) * out_channels + och;
 				const uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * kdims * kchs_ + ich*kdims + krow*kcols*K;// + kcol*K;
             			for (int kcol = 0; kcol < kcols; kcol++){
 					gemmini_extended_mvin(weight + kcol*in_channels*out_channels,
@@ -3890,9 +3890,9 @@ void tiled_conv_auto(
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
 
-        elem_t * input,
-        elem_t * weights,
-        acc_t * bias,
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift,
