@@ -208,6 +208,11 @@ void handle_gemmini_xcpt(uint64_t rd) {
   gemmini_flush(0);
 }
 
+// When GEMMINI_XCPT_DEBUG is set, software will be compiled
+// to check exception status in gemmini. Page faults will attempt
+// to be resolved in the handle_gemmini_xcpt_routine.
+// When GEMMINI_XCPT_DEBUG is unset, exception status will not be
+// checked, so software must not cause page faults in gemmini
 #ifdef GEMMINI_XCPT_DEBUG
 #define ROCC_INSTRUCTION_RD_RS1_RS2(x, rs1, rs2, funct) \
   ROCC_INSTRUCTION_RD_RS1_RS2_labeled(x, rs1, rs2, funct, 0)
