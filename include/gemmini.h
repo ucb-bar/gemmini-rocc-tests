@@ -37,6 +37,14 @@
 
 #define k_MVIN3 14
 
+#define k_LOOP_CONV_WS 15
+#define k_LOOP_CONV_WS_CONFIG_1 16
+#define k_LOOP_CONV_WS_CONFIG_2 17
+#define k_LOOP_CONV_WS_CONFIG_3 18
+#define k_LOOP_CONV_WS_CONFIG_4 19
+#define k_LOOP_CONV_WS_CONFIG_5 20
+#define k_LOOP_CONV_WS_CONFIG_6 21
+
 #define CONFIG_EX 0
 #define CONFIG_LD 1
 #define CONFIG_ST 2
@@ -224,15 +232,6 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define gemmini_preload_zeros(C) \
   gemmini_preload(GARBAGE_ADDR, C)
 
-// weight-stationary matmul loop
-#define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, A_transpose, B_transpose, full_C, low_D, ex_accumulate) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(pad_K) << 32) | ((uint64_t)(pad_J) << 16) | (uint64_t)(pad_I), ((uint64_t)(K) << 32) | ((uint64_t)(J) << 16) | (uint64_t)(I), k_LOOP_WS_CONFIG_BOUNDS) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_LOOP_WS_CONFIG_ADDRS_AB) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D, C, k_LOOP_WS_CONFIG_ADDRS_DC) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A_stride, B_stride, k_LOOP_WS_CONFIG_STRIDES_AB) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D_stride, C_stride, k_LOOP_WS_CONFIG_STRIDES_DC) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((B_transpose) << 1) | (A_transpose), k_LOOP_WS)
-
 // config
 #define gemmini_extended2_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift, A_stride, A_transpose, B_transpose, ocol, row_turn, kdim, stride, channel, row_left, kdim2, weight_double_bank, weight_triple_bank) \
   { \
@@ -274,6 +273,36 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 
 // fence
 #define gemmini_fence() asm volatile("fence")
+
+// weight-stationary matmul loop
+#define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, A_transpose, B_transpose, full_C, low_D, ex_accumulate) \
+  { \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(pad_K) << 32) | ((uint64_t)(pad_J) << 16) | (uint64_t)(pad_I), ((uint64_t)(K) << 32) | ((uint64_t)(J) << 16) | (uint64_t)(I), k_LOOP_WS_CONFIG_BOUNDS) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_LOOP_WS_CONFIG_ADDRS_AB) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D, C, k_LOOP_WS_CONFIG_ADDRS_DC) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A_stride, B_stride, k_LOOP_WS_CONFIG_STRIDES_AB) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D_stride, C_stride, k_LOOP_WS_CONFIG_STRIDES_DC) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((B_transpose) << 1) | (A_transpose), k_LOOP_WS) \
+  }
+
+// weight-stationary matmul loop
+#define gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input) \
+  { \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(out_channels) << 48) | ((uint64_t)(in_channels) << 32) | ((uint64_t)(in_dim) << 16) | (uint64_t)(batch_size), \
+      ((uint64_t)(padding) << 48) | ((uint64_t)(stride) << 32) | ((uint64_t)(pool_out_dim) << 16) | (uint64_t)(out_dim), k_LOOP_CONV_WS_CONFIG_1) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(kernel_dim) << 48) | ((uint64_t)(pool_size) << 32) | ((uint64_t)(pool_stride) << 16) | (uint64_t)(pool_padding), \
+      ((uint64_t)(batches) << 48) | ((uint64_t)(porows) << 32) | ((uint64_t)(pocols) << 16) | (uint64_t)(pochs), k_LOOP_CONV_WS_CONFIG_2) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(krows) << 48) | ((uint64_t)(kcols) << 32) | ((uint64_t)(kchs) << 16) | (uint64_t)(lpad), \
+      ((uint64_t)(rpad) << 48) | ((uint64_t)(upad) << 32) | ((uint64_t)(dpad) << 16) | (uint64_t)(plpad), k_LOOP_CONV_WS_CONFIG_3) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(orows) << 48) | ((uint64_t)(prpad) << 32) | ((uint64_t)(pupad) << 16) | (uint64_t)(pdpad), \
+      ocols, k_LOOP_CONV_WS_CONFIG_4) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, weights, \
+      output, k_LOOP_CONV_WS_CONFIG_5) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, bias, \
+      input, k_LOOP_CONV_WS_CONFIG_6) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, no_bias, \
+      no_pool, k_LOOP_CONV_WS) \
+  }
 
 // Tiling functions
 static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const void * D, void * C,
@@ -1034,10 +1063,10 @@ void sp_tiled_conv_A_stride(
     const uint32_t D_sp_addr_start = 1 << (ADDR_LEN - 1);
     const uint32_t C_sp_addr_start = 3 << (ADDR_LEN - 2);
 
-    // const elem_t zeros[MAX_BYTES / sizeof(elem_t)] = {0};
+    gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input);
 
     // mvin bias
-    if (!no_bias && bias != NULL) {
+    if (false && !no_bias && bias != NULL) {
         // TODO we probably don't need quite this many nested loops for this part
 
         const int max_ochs_per_mvin = ochs < MAX_BLOCK_LEN_ACC * DIM ? ochs :
@@ -1065,7 +1094,7 @@ void sp_tiled_conv_A_stride(
     }
 
     // mvin input
-    {
+    if (false) {
         const int max_ichs_per_mvin = ichs < MAX_BLOCK_LEN * DIM ? ichs :
             MAX_BLOCK_LEN * DIM;
 
@@ -1110,7 +1139,7 @@ void sp_tiled_conv_A_stride(
     }
 
     // mvin weights
-    {
+    if (false) {
         const int max_ochs_per_mvin = ochs < MAX_BLOCK_LEN * DIM ? ochs :
             MAX_BLOCK_LEN * DIM;
 
@@ -1141,6 +1170,7 @@ void sp_tiled_conv_A_stride(
     }
 
     // Compute
+    if (false) {
     for (int b = 0; b < batches; b++)
         for (int orow = 0; orow < orows; orow++)
             for (int ocol = 0; ocol < ocols; ocol += DIM) {
@@ -1189,10 +1219,12 @@ void sp_tiled_conv_A_stride(
                     }
                 }
             }
+    }
 
     // mvout output
     if (output != NULL) {
         if (no_pool) {
+            if (false) {
             for (int b = 0; b < batches; b++)
                 for (int orow = 0; orow < orows; orow++)
                     for (int ocol = 0; ocol < ocols; ocol += DIM) {
@@ -1208,6 +1240,7 @@ void sp_tiled_conv_A_stride(
                                     J, I);
                         }
                     }
+            }
         } else {
             gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
 
@@ -2533,7 +2566,8 @@ void tiled_conv_A_stride_auto(
     int acc_rows = tiled_conv_total_spad_rows_A_stride(true,
         stride, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
 
-    while (spad_rows > BANK_NUM*BANK_ROWS || acc_rows > ACC_ROWS) {
+    // We divide by 2 for the sake of double-buffering
+    while (spad_rows > (BANK_NUM*BANK_ROWS / 2) || acc_rows > (ACC_ROWS / 2)) {
         int max_val = -1;
         int max_idx = -1;
 
