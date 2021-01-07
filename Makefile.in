@@ -5,8 +5,8 @@ RISCVTOOLS      := @RISCVTOOLS@
 ROCC = examples
 RUNNER         := "spike --extension=gemmini "
 
-.PHONY: all bareMetalC clean imagenet mlps
-all: bareMetalC imagenet mlps
+.PHONY: all bareMetalC clean imagenet mlps ee290
+all: bareMetalC imagenet mlps ee290
 
 vars = \
 	abs_top_srcdir=$(abs_top_srcdir) \
@@ -24,6 +24,10 @@ imagenet:
 	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
 
 mlps:
+	mkdir -p $@
+	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
+
+ee290:
 	mkdir -p $@
 	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
 
