@@ -5,3 +5,4 @@ autom4te.cache
 configure
 .ipynb_checkpoints
 .*.swp
+.*.swo
