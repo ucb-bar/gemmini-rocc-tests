@@ -61,13 +61,16 @@ int main() {
   const size_t B_sp_addr = BANK_ROWS;
   const size_t C_sp_addr = 2*BANK_ROWS;
 
+  gemmini_config_ld(DIM * sizeof(elem_t));
+  gemmini_config_st(DIM * sizeof(elem_t));
+
   for (size_t n = 0; n < N; n++) {
     gemmini_mvin(A[n], A_sp_addr + n*DIM);
     gemmini_mvin(B[n], B_sp_addr + n*DIM);
   }
 
   // Multiply A matrices with B matrices in Gemmini;
-  gemmini_config_ex(WEIGHT_STATIONARY, 0, 0, 0, 0);
+  gemmini_config_ex(WEIGHT_STATIONARY, NO_ACTIVATION, 0, ACC_SCALE_IDENTITY, 0);
 
   for (size_t n; n < N; n++) {
     gemmini_preload(B_sp_addr + n*DIM, C_sp_addr + n*DIM);

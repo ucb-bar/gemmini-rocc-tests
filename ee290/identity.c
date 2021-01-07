@@ -39,13 +39,15 @@ int main() {
   size_t Identity_sp_addr = 2*BANK_ROWS;
 
   // printf("Move \"In\" matrix from main memory into Gemmini's scratchpad\n");
+  gemmini_config_ld(DIM * sizeof(elem_t));
+  gemmini_config_st(DIM * sizeof(elem_t));
   gemmini_mvin(In, In_sp_addr);
 
   // printf("Move \"Identity\" matrix from main memory into Gemmini's scratchpad\n");
   gemmini_mvin(Identity, Identity_sp_addr);
 
   // printf("Multiply \"In\" matrix with \"Identity\" matrix with a bias of 0\n");
-  gemmini_config_ex(WEIGHT_STATIONARY, 0, 0, 0, 0);
+  gemmini_config_ex(WEIGHT_STATIONARY, NO_ACTIVATION, 0, ACC_SCALE_IDENTITY, 0);
   gemmini_preload(Identity_sp_addr, Out_sp_addr);
   gemmini_compute_preloaded(In_sp_addr, GARBAGE_ADDR);
 

@@ -34,10 +34,11 @@ int main() {
   static elem_t full_B[DIM_K][DIM_J] row_align(1);
   static elem_t full_C[DIM_I][DIM_J] row_align(1);
 
+#if CHECK_RESULT == 1
   static int64_t gold_full[DIM_I][DIM_J];
   static elem_t gold[DIM_I][DIM_J];
+#endif
 
-#if CHECK_RESULT == 1
   // printf("Init A\n");
   for (size_t i = 0; i < DIM_I; ++i) {
     for (size_t j = 0; j < DIM_K; ++j) {
@@ -51,7 +52,6 @@ int main() {
       full_B[i][j] = rand() % 2;
     }
   }
-#endif
 
 #if CHECK_RESULT == 1
   printf("Starting slow CPU matmul\n");
@@ -85,7 +85,6 @@ int main() {
                NO_ACTIVATION, 0, false, // activation, shift, repeating_bias
                tile_I, tile_J, tile_K,
                WS);
-
   */
 
   uint64_t end = read_cycles();

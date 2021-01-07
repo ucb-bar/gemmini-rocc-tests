@@ -123,6 +123,9 @@ int main() {
       C_addrs[c] = C_addrs[last_c] | (1 << (ADDR_LEN-2));
   }
 
+  gemmini_config_ld(DIM * sizeof(elem_t));
+  gemmini_config_st(DIM * sizeof(elem_t));
+
   // printf("Moving in\n");
   for (size_t n = 0; n < N; ++n)
     gemmini_mvin(A[n], A_addr + n*DIM);
@@ -131,7 +134,7 @@ int main() {
     gemmini_mvin(B[n], B_addr + n*DIM);
 
   // printf("Setting mode\n");
-  gemmini_config_ex(WEIGHT_STATIONARY, NO_ACTIVATION, 0, 0, 0);
+  gemmini_config_ex(WEIGHT_STATIONARY, NO_ACTIVATION, 0, ACC_SCALE_IDENTITY, 0);
 
   // printf("Matmulling\n");
   for (size_t c = 0; c < N*N*N; ++c) {
