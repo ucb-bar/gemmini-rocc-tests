@@ -66,7 +66,7 @@ int main (int argc, char * argv[]) {
 
     tiled_matmul_nn_auto(conv_1_params.I, conv_1_params.J, conv_1_params.K,
         conv_1_in, conv_1_w, NULL, conv_1_out,
-        RELU, conv_1_params.output_scale, 0, true,
+        RELU, 1.0 / (1 << (int)conv_1_params.output_scale), 0, true,
         tiled_matmul_type, check, "conv_1");
 
     end = read_cycles();
@@ -95,7 +95,7 @@ int main (int argc, char * argv[]) {
 
     tiled_matmul_nn_auto(conv_2_params.I, conv_2_params.J, conv_2_params.K,
         conv_2_in, conv_2_w, NULL, conv_2_out,
-        RELU, conv_2_params.output_scale, 0, true,
+        RELU, 1.0 / (1 << (int)conv_2_params.output_scale), 0, true,
         tiled_matmul_type, check, "conv_2");
 
     end = read_cycles();
@@ -135,7 +135,7 @@ int main (int argc, char * argv[]) {
 
     tiled_matmul_nn_auto(fc_3_params.I, fc_3_params.J, fc_3_params.K,
         fc_3_w, fc_3_in, NULL, fc_3_out,
-        RELU, fc_3_params.output_scale, 0, false,
+        RELU, 1.0 / (1 << (int)fc_3_params.output_scale), 0, false,
         tiled_matmul_type, check, "fc_3");
 
     end = read_cycles();
@@ -146,7 +146,7 @@ int main (int argc, char * argv[]) {
 
     tiled_matmul_nn_auto(fc_4_params.I, fc_4_params.J, fc_4_params.K,
         fc_4_w, fc_3_out, NULL, fc_4_out,
-        RELU, fc_4_params.output_scale, 0, false,
+        RELU, 1.0 / (1 << (int)fc_4_params.output_scale), 0, false,
         tiled_matmul_type, check, "fc_4");
 
     end = read_cycles();
@@ -157,7 +157,7 @@ int main (int argc, char * argv[]) {
 
     tiled_matmul_nn_auto(fc_5_params.I, fc_5_params.J, fc_5_params.K,
         fc_5_w, fc_4_out, NULL, fc_5_out,
-        NO_ACTIVATION, fc_5_params.output_scale, 0, false,
+        NO_ACTIVATION, 1.0 / (1 << (int)fc_5_params.output_scale), 0, false,
         tiled_matmul_type, check, "fc_5");
 
     end = read_cycles();
