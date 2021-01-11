@@ -25,7 +25,7 @@ struct ConvParams {
     acc_scale_t output_scale;
     scale_t res_scale;
     int pool_size, pool_stride, pool_padding, out_dim_pooled;
-    
+
     int I, J, K;
 };
 
@@ -85,7 +85,7 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
         printf("%s: gemmini\n", layer_name);
 
     tiled_matmul(dim_I, dim_J, dim_K,
-        (elem_t*)A, (elem_t*)B, D, (elem_t*)C, 
+        (elem_t*)A, (elem_t*)B, D, (elem_t*)C,
         dim_K, dim_J, dim_J, dim_J,
         MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
         act, scale, relu6_shift, repeating_bias,
@@ -98,7 +98,7 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
         printf("%s: CPU\n", layer_name);
         elem_t gold[dim_I][dim_J];
         tiled_matmul_auto(dim_I, dim_J, dim_K,
-            (elem_t*)A, (elem_t*)B, D, (elem_t*)gold, 
+            (elem_t*)A, (elem_t*)B, D, (elem_t*)gold,
             dim_K, dim_J, dim_J, dim_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             act, scale, relu6_shift, repeating_bias,
@@ -126,7 +126,7 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         printf("%s: gemmini\n", layer_name);
 
     tiled_matmul_auto(dim_I, dim_J, dim_K,
-        (elem_t*)A, (elem_t*)B, D, (elem_t*)C, 
+        (elem_t*)A, (elem_t*)B, D, (elem_t*)C,
         dim_K, dim_J, dim_J, dim_J,
         MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
         act, scale, relu6_shift, repeating_bias,
@@ -138,7 +138,7 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         printf("%s: CPU\n", layer_name);
         elem_t gold[dim_I][dim_J];
         tiled_matmul_auto(dim_I, dim_J, dim_K,
-            (elem_t*)A, (elem_t*)B, D, (elem_t*)gold, 
+            (elem_t*)A, (elem_t*)B, D, (elem_t*)gold,
             dim_K, dim_J, dim_J, dim_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             act, scale, relu6_shift, repeating_bias,
@@ -190,7 +190,7 @@ static void conv_dw(size_t I, size_t J,
                     if (result < 0) {
                         result = 0;
                     }
-                    
+
                     acc_t scaled = ACC_SCALE(result, params->output_scale);
 
                     if (scaled > elem_t_max) {
@@ -198,7 +198,7 @@ static void conv_dw(size_t I, size_t J,
                     } else if (scaled < elem_t_min) {
                         scaled = elem_t_min;
                     }
-                    
+
                     size_t r = batch * params->out_dim * params->out_dim + out_row * params->out_dim + out_col;
                     output[r][channel] = scaled;
                     // output[batch][out_row][out_col][channel] = scaled;
@@ -249,7 +249,7 @@ static void conv_dw_with_col2im(size_t prev_I, size_t prev_J, size_t I, size_t J
                     if (result < 0) {
                         result = 0;
                     }
-                    
+
                     acc_t scaled = ACC_SCALE(result, params->output_scale);
 
                     if (scaled > elem_t_max) {
@@ -257,7 +257,7 @@ static void conv_dw_with_col2im(size_t prev_I, size_t prev_J, size_t I, size_t J
                     } else if (scaled < elem_t_min) {
                         scaled = elem_t_min;
                     }
-                    
+
                     size_t r = batch * params->out_dim * params->out_dim + out_row * params->out_dim + out_col;
                     output[r][channel] = scaled;
                     // output[batch][out_row][out_col][channel] = scaled;
@@ -280,12 +280,13 @@ static void im2col(size_t batch_size, size_t channels, size_t im_dim,
             for (int im_col = -params->padding; im_col < params->in_dim - params->kernel_size + params->padding + 1; im_col += params->stride) {
                 int patch_col = 0;
 
+
                 for (int filter_row = 0; filter_row < params->kernel_size; filter_row++) {
                     for (int filter_col = 0; filter_col < params->kernel_size; filter_col++) {
                         for (int im_channel = 0; im_channel < params->in_channels; im_channel++) {
                             int pixel_row = im_row + filter_row;
                             int pixel_col = im_col + filter_col;
-                            
+
                             if (pixel_row < 0 || pixel_row >= params->in_dim
                                 || pixel_col < 0 || pixel_col >= params->in_dim) {
                                 // output[patch_row][patch_col] = 0;
@@ -297,7 +298,7 @@ static void im2col(size_t batch_size, size_t channels, size_t im_dim,
                         }
                     }
                 }
-                
+
                 patch_row++;
             }
         }
@@ -484,7 +485,7 @@ void pool(size_t batch_size, size_t channels, size_t in_dim, size_t out_dim,
 
                         in_row++;
                     }
-                    
+
                     output[batch][out_row][out_col][channel] = result;
                 }
             }
