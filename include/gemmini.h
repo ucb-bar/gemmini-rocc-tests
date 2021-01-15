@@ -541,7 +541,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K, size_t 
         bool a_transpose, bool b_transpose,
         int dataflow) {
   //assume one partition matches with MAX_BLOCK_LEN
-  size_t num_parts_J =(J_distance == 1) ? 1 : J_distance;
+  size_t num_parts_J =(J_distance == 1) ? 1 : 2;
   //size_t num_parts_J = J_distance;//(J_distance == 1) ? 1 : J_distance/MAX_BLOCK_LEN;
   size_t num_parts_I = (I_distance == 1) ? 1 : I_distance;
  // printf("J_distance: %d, num_parts_J: %d, tile_J: %d \n", J_distance, num_parts_J, tile_J);
@@ -1130,17 +1130,22 @@ static void tiled_matmul_auto_distance(size_t dim_I_total, size_t dim_J_total, s
        tile_K = dim_K_padded/DIM < max_tile_k ? dim_K_padded/DIM : max_tile_k;
     }
 
+	 bool lock = false;
     // Fill scratchpad as much as possible
-    while (true) {
+	 if(tile_J%MAX_BLOCK_LEN != 0){
+		 tile_J = tile_J - (tile_J%MAX_BLOCK_LEN);
+		 lock = true;
+	 }
+	 while (true) {
       bool increased = false;
-
-      if (tiled_matmul_total_spad_rows(tile_I, tile_J+1, tile_K) <= max_spad_rows &&
-          tiled_matmul_total_acc_rows(tile_I, tile_J+1) <= max_acc_rows &&
-          (tile_J+1) * DIM <= dim_J_padded) {
-        tile_J++;
-        increased = true;
-      }
-
+		if(!lock){
+			if (tiled_matmul_total_spad_rows(tile_I, tile_J+1, tile_K) <= max_spad_rows &&
+				 tiled_matmul_total_acc_rows(tile_I, tile_J+1) <= max_acc_rows &&
+				 (tile_J+1) * DIM <= dim_J_padded) {
+			  tile_J++;
+			  increased = true;
+			}
+		}
       if (tiled_matmul_total_spad_rows(tile_I+1, tile_J, tile_K) <= max_spad_rows &&
           tiled_matmul_total_acc_rows(tile_I+1, tile_J) <= max_acc_rows &&
           (tile_I+1) * DIM <= dim_I_padded) {
@@ -1158,9 +1163,7 @@ static void tiled_matmul_auto_distance(size_t dim_I_total, size_t dim_J_total, s
         break;
     }
 
-	int b_block = MAX_BLOCK_LEN;
-	tile_J = (tile_J > b_block) ? tile_J - (tile_J%b_block) : tile_J;
-	//printf("max_tile_J: %d, tile_J: %d, b_block: %d, J_distance: %d, dim_J_distance: %d \n", db_max_tile_i_j, tile_J, b_block, (dim_J_distance/DIM)/tile_J, dim_J_distance);
+//	printf("db_max_tile_i_j: %d, tile_I: %d. tile_J: %d, tile_K: %d \n", db_max_tile_i_j, tile_I, tile_J, tile_K);
 	tiled_matmul_distance(dim_I, dim_J, dim_K, dim_I_distance/DIM, dim_J_distance/DIM,//(dim_J_distance/DIM)/tile_J,
         A, B, D, C,
         stride_A, stride_B, stride_D, stride_C,
