@@ -35,6 +35,8 @@ int main() {
   static elem_t ZERO[DIM][DIM];
 
   gemmini_flush(0);
+  gemmini_config_ld(DIM * sizeof(elem_t));
+  gemmini_config_st(DIM * sizeof(elem_t));
 
   static elem_t A[N][DIM][DIM] row_align(1);
   static elem_t B[N][DIM][DIM] row_align(1);
@@ -106,12 +108,12 @@ int main() {
     matshift(gold_full[g], gold[g], 0);
   }
 
-  int A_addr = 0;
-  int B_addr = N*DIM;
+  uint32_t A_addr = 0;
+  uint32_t B_addr = N*DIM;
   uint32_t C_addr_acc = 1 << (ADDR_LEN-1);
 
   // Calculate the proper destination addresses of everything
-  int C_addrs[N*N*N];
+  uint32_t C_addrs[N*N*N];
   for (size_t c = 0; c < N*N*N; ++c)
     C_addrs[c] = C_addr_acc + c*DIM;
   for (size_t c = 0; c < N*N*N; ++c) {
@@ -122,9 +124,6 @@ int main() {
     if (c != last_c)
       C_addrs[c] = C_addrs[last_c] | (1 << (ADDR_LEN-2));
   }
-
-  gemmini_config_ld(DIM * sizeof(elem_t));
-  gemmini_config_st(DIM * sizeof(elem_t));
 
   // printf("Moving in\n");
   for (size_t n = 0; n < N; ++n)
@@ -159,16 +158,16 @@ int main() {
   gemmini_fence();
 
   // printf("Checking\n");
-  for (int n = 0; n < N*N*N; ++n)
+  for (int n = 0; n < N*N*N; ++n) {
     if (!no_output[n] && !is_equal(C[n], gold[n])) {
       printf("Actual (matrix %d):\n", n);
       printMatrix(C[n]);
       printf("\nCorrect:\n");
       printMatrix(gold[n]);
-
       printf("\nFAIL\n");
       exit(1);
     }
+  }
 
   printf("PASS\n");
   exit(0);
