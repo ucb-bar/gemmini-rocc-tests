@@ -9,6 +9,7 @@ tests = \
 	random_matmuls \
 	large_matmul \
 	large_matmul_without_cpu \
+	large_padded_matmul \
 	very_large_matmul \
 	cifar_quant
 
