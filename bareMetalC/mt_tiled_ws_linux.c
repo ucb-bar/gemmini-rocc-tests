@@ -1,5 +1,6 @@
 // See LICENSE for license details.
 #define _GNU_SOURCE
+#include <pthread.h>
 #include <sched.h>
 
 #include <stdint.h>
@@ -11,13 +12,16 @@
 #include <sys/mman.h>
 #endif
 #include "include/gemmini_testutils.h"
-#include "util.h"
-#include <pthread.h>
-
-#define CHECK_RESULT 1
+#define CHECK_RESULT 0
 
 #define NO_BIAS 1
+#define REPEATING_BIAS 0
 #define FULL_BIAS_WIDTH 1
+
+#define A_TRANSPOSE 0
+#define B_TRANSPOSE 0
+
+
 
 #if FULL_BIAS_WIDTH
 typedef acc_t ACC_T;
@@ -27,7 +31,7 @@ typedef elem_t ACC_T;
 #endif
 
 #ifndef BAREMETAL
-#define MAT_DIM 512
+#define MAT_DIM 1024
 #define MAT_DIM_I MAT_DIM
 #define MAT_DIM_K MAT_DIM
 #define MAT_DIM_J MAT_DIM
@@ -37,7 +41,20 @@ typedef elem_t ACC_T;
 #define MAT_DIM_K MAT_DIM
 #define MAT_DIM_J MAT_DIM
 #endif
-#define num_proc 2
+#define num_proc 4
+
+#if A_TRANSPOSE==0
+#define A_STRIDE MAT_DIM_K
+#else
+#define A_STRIDE MAT_DIM_I
+#endif
+
+#if B_TRANSPOSE==0
+#define B_STRIDE MAT_DIM_J
+#else
+#define B_STRIDE MAT_DIM_K
+#endif
+
 
 void print_tile(elem_t* in, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++) {
@@ -93,31 +110,47 @@ void full_matshift(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_
 //start from here
 static elem_t in_A[MAT_DIM_I][MAT_DIM_K] row_align(1) = {0};
 static elem_t in_B[MAT_DIM_K][MAT_DIM_J] row_align(1) = {0};
-static ACC_T bias[MAT_DIM_I][MAT_DIM_J] row_align_acc(1) = {0};
+//static ACC_T bias[MAT_DIM_I][MAT_DIM_J] row_align_acc(1) = {0};
 static elem_t Out[num_proc][MAT_DIM_I][MAT_DIM_J] row_align(1) = {0};
 
 struct thread_args{
-	int start_I, start_J, start_K;
-	int dim_I, dim_J, dim_K;
-	bool first;
+	int i;
 };
 
 void *thread_matmul(void *arg){
 	struct thread_args * matmul_args = (struct thread_args *) arg;
-	if(matmul_args->first) gemmini_flush(0);
+	gemmini_flush(0);
+	int cid = matmul_args->i;
+	int b_unit = MAX_BLOCK_LEN;
+	  elem_t* A = (elem_t*) in_A + MAT_DIM_K*DIM*(cid/2);
+	  elem_t* B = (elem_t*) in_B + b_unit*DIM*(cid%2);
+	  elem_t* C = (elem_t*) Out + b_unit*DIM*(cid%2) + MAT_DIM_J*DIM*(cid/2);
+//	  acc_t * D = (acc_t*) bias + b_unit*DIM*(cid%2) + MAT_DIM_J*DIM*(cid/2);
+	 
+   uint64_t start = read_cycles(); 
+	  tiled_matmul_auto_distance(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K, DIM*num_proc/2, DIM*num_proc/2*b_unit, 2, 2,
+				A, B, NULL, C, //NO_BIAS ? NULL : D, C,
+			   A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
+            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
+            A_TRANSPOSE, B_TRANSPOSE,
+            WS);
 
-	elem_t* in_A_start = (elem_t*) in_A + MAT_DIM_K*(matmul_args->start_I)+matmul_args->start_K;
-	elem_t* in_B_start = (elem_t*) in_B + MAT_DIM_J*(matmul_args->start_K)+matmul_args->start_J;
-	elem_t* Out_start = (elem_t*) Out + MAT_DIM_J*(matmul_args->start_I)+matmul_args->start_J;
-	ACC_T* bias_start = (ACC_T*) bias + MAT_DIM_J*(matmul_args->start_I)+matmul_args->start_J;
+    uint64_t end = read_cycles();
+    printf("CPU %d Cycles taken: %u\n", sched_getcpu(), end-start);
+    const uint64_t total_macs = MAT_DIM_I * MAT_DIM_J * MAT_DIM_K / num_proc;
+    const uint64_t ideal_cycles = total_macs / (DIM * DIM);
+    const int utilization = 100 * ideal_cycles / (end-start);
+    printf("CPU %d Utilization: %d%%\n", sched_getcpu(), utilization);
+	
+}
 
-	tiled_matmul_auto(matmul_args->dim_I, matmul_args->dim_J, matmul_args->dim_K,
-			in_A_start, in_B_start, NO_BIAS? NULL : bias_start, Out_start,
-			MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
-			MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-			NO_ACTIVATION, 0, 0, false,
-			WS);
-
+void *print_message(void *ptr){
+    int cpu_id = sched_getcpu();
+   // char *msg;
+   // msg = (char *) ptr;
+    printf("print msg - cpu_id: %d \n", cpu_id);
+   // printf("%s \n", msg);
 }
 
 int main() {
@@ -127,11 +160,10 @@ int main() {
       exit(1);
     }
 #endif
-
+#if CHECK_RESULT == 1
     static full_t gold_full[MAT_DIM_I][MAT_DIM_J];
     static elem_t gold[MAT_DIM_I][MAT_DIM_J];
 
-#if CHECK_RESULT == 1
     // printf("Init A\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
@@ -162,53 +194,58 @@ int main() {
 #endif
 
 #ifndef BAREMETAL
-
-	 cpu_set_t cpuset;
+	 int cpu_id;
+	 cpu_id = sched_getcpu();
+	 cpu_set_t cpuset[num_proc];
 	 pthread_t thread[num_proc];
-	 //int thread1_create, thread2_create;
-
 	 pthread_attr_t attr;
 	 pthread_attr_init(&attr);
 	 struct thread_args matmul_args[num_proc];
-	 int current_I, current_J, current_K;
-	 int range; //current starting point, range of matmul
-	 current_I = 0;
-	 current_J = 0;
-	 current_K = 0;
-	 //divide matrix into 2x2 block
-	 range = MAT_DIM / num_proc; //for now, assume square
 
-	 //start gemmini matmul cycle count
-	 printf("Starting gemmini matmul\n");
-    unsigned long start = read_cycles();
 
-	 for(int j = 0; j < 2; j++){ //there are 2 row blocks
-		 for(int i = 0; i < num_proc; i++){
-			 matmul_args[i].first = (j==0); //for gemmini_flush
-			 matmul_args[i].start_I = current_I;
-			 matmul_args[i].start_J = current_J;
-			 matmul_args[i].start_K = current_K;
-			 matmul_args[i].dim_I = (range + current_I) > MAT_DIM ? MAT_DIM - current_I : range;
-			 matmul_args[i].dim_J = (range + current_J) > MAT_DIM ? MAT_DIM - current_J : range;
-			 matmul_args[i].dim_K = (range + current_K) > MAT_DIM ? MAT_DIM - current_K : range;
-			 current_I += (i == num_proc-1) ? matmul_args[i].dim_I : 0; //update starting point
-			 current_J += matmul_args[i].dim_J;
-			 current_K += 0; //only blocking output dimension I, J
-		 }
-
-		 for(int i = 0; i < num_proc;i++){
-			 CPU_ZERO(&cpuset); //empty the cpu set
-			 CPU_SET(i, &cpuset); //add each cpu to cpu set
-			 pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset);
-			 pthread_create(&thread[i], &attr, thread_matmul, &matmul_args);
-		 }
-		
-		 for(int i = 0; i < num_proc; i++)
-			 pthread_join(thread[i], NULL);
+	 for(int i = 0; i < num_proc; i++){
+		matmul_args[i].i = i;
+		 CPU_ZERO(&cpuset[i]);
+		 CPU_SET(i, &cpuset[i]);
+		 pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset[i]);
+		 pthread_create(&thread[i], &attr, print_message, NULL);
 	 }
 
+/*	 for(int i = 0; i < num_proc; i++){
+		pthread_join(thread[i], NULL);
+	 }
+*/
+	 pthread_join(thread[0], NULL);
+	 pthread_join(thread[1], NULL); 
+	 pthread_join(thread[2], NULL);
+	 pthread_join(thread[3], NULL);
+	//start gemmini matmul cycle count
+	//unsigned long start = read_cycles();
+	pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset[0]);
+	pthread_create(&thread[0], &attr, thread_matmul, &matmul_args[0]);
+	pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset[1]);
+	pthread_create(&thread[1], &attr, thread_matmul, &matmul_args[1]);
+	pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset[2]);
+	pthread_create(&thread[2], &attr, thread_matmul, &matmul_args[2]);
+	pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset[3]);
+	pthread_create(&thread[3], &attr, thread_matmul, &matmul_args[3]);
+/*
+	for(int i = 0; i < num_proc; i++){
+		pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset[i]);
+		pthread_create(&thread[i], &attr, thread_matmul, &matmul_args[i]);
+	}
+*/
+	for(int i = 0; i < num_proc; i++)
+		pthread_join(thread[i], NULL);
+
+/*
     unsigned long end = read_cycles();
     printf("Cycles taken: %u\n", end-start);
+    const int total_macs = MAT_DIM_I * MAT_DIM_J * MAT_DIM_K / num_proc;
+    const int ideal_cycles = total_macs / (DIM * DIM);
+    const int utilization = 100 * ideal_cycles / (end-start);
+    printf("Utilization: %d%%\n", utilization);
+*/	
 #endif
 
 #if CHECK_RESULT == 1
