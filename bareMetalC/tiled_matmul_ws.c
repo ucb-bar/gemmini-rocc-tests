@@ -10,7 +10,7 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define CHECK_RESULT 0
+#define CHECK_RESULT 1
 
 #define NO_BIAS 1
 #define FULL_BIAS_WIDTH 1
@@ -19,7 +19,6 @@
 typedef acc_t ACC_T;
 #else
 typedef elem_t ACC_T;
-#error variable-bitwidth bias not currently supported
 #endif
 
 #ifndef BAREMETAL
@@ -27,9 +26,9 @@ typedef elem_t ACC_T;
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM_I 4
-#define MAT_DIM_K 4
-#define MAT_DIM_J 4
+#define MAT_DIM_I 64
+#define MAT_DIM_K 64
+#define MAT_DIM_J 64
 #endif
 
 void print_tile(elem_t* in, int tile_dim) {
@@ -102,30 +101,44 @@ int main() {
     static elem_t gold[MAT_DIM_I][MAT_DIM_J];
 
 #if CHECK_RESULT == 1
+#ifdef FAST
+#define RAND 1
+#else
+#define RAND rand()
+#endif
     // printf("Init A\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
-        full_A[i][j] = rand() % 2;
+        full_A[i][j] = RAND % 2;
       }
     }
 
     // printf("Init B\n");
     for (size_t i = 0; i < MAT_DIM_K; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_B[i][j] = rand() % 2;
+        full_B[i][j] = RAND % 2;
       }
     }
 
     // printf("Init D\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_D[i][j] = NO_BIAS ? 0 : rand() % 2;
+        full_D[i][j] = NO_BIAS ? 0 : RAND % 2;
       }
     }
 
     printf("Starting slow CPU matmul\n");
     unsigned long cpu_start = read_cycles();
+#ifdef FAST
+    for (size_t i = 0; i < MAT_DIM_I; ++i) {
+      for (size_t j = 0; j < MAT_DIM_J; ++j) {
+        gold_full[i][j] = MAT_DIM_K + (NO_BIAS ? 0 : (RAND % 2));
+      }
+    }
+
+#else
     full_matmul(full_A, full_B, full_D, gold_full);
+#endif
     unsigned long cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
     full_matscale(gold_full, gold, ACC_SCALE_IDENTITY);
@@ -140,6 +153,7 @@ int main() {
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
             false, false,
+            false, !FULL_BIAS_WIDTH,
             WS);
 
     unsigned long end = read_cycles();

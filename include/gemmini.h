@@ -5,10 +5,6 @@
 
 #undef abs
 
-#ifndef asm
-#define asm __asm__
-#endif
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -57,7 +53,7 @@
 #define RELU6 2
 
 #ifdef ELEM_T_IS_FLOAT
-static elem_t elem_t_bits_to_elem_t(elem_t_bits x) {
+elem_t elem_t_bits_to_elem_t(elem_t_bits x) {
     union {
         elem_t_bits b;
         elem_t f;
@@ -67,7 +63,7 @@ static elem_t elem_t_bits_to_elem_t(elem_t_bits x) {
     return un.f;
 }
 
-static elem_t_bits elem_t_to_elem_t_bits(elem_t x) {
+elem_t_bits elem_t_to_elem_t_bits(elem_t x) {
     union {
         elem_t_bits b;
         elem_t f;
@@ -77,7 +73,7 @@ static elem_t_bits elem_t_to_elem_t_bits(elem_t x) {
     return un.b;
 }
 
-static acc_t acc_t_bits_to_acc_t(acc_t_bits x) {
+acc_t acc_t_bits_to_acc_t(acc_t_bits x) {
     union {
         acc_t_bits b;
         acc_t f;
@@ -87,7 +83,7 @@ static acc_t acc_t_bits_to_acc_t(acc_t_bits x) {
     return un.f;
 }
 
-static acc_t_bits acc_t_to_acc_t_bits(acc_t x) {
+acc_t_bits acc_t_to_acc_t_bits(acc_t x) {
     union {
         acc_t_bits b;
         acc_t f;
@@ -97,7 +93,7 @@ static acc_t_bits acc_t_to_acc_t_bits(acc_t x) {
     return un.b;
 }
 
-static bool elem_t_isnan(elem_t x) {
+bool elem_t_isnan(elem_t x) {
     elem_t_bits bits = elem_t_to_elem_t_bits(x);
     uint64_t exp = (bits >> (ELEM_T_SIG_BITS-1)) & (((uint64_t)1 << ELEM_T_EXP_BITS) - 1);
     uint64_t sig = bits & (((uint64_t)1 << ELEM_T_SIG_BITS) - 1);
@@ -106,7 +102,7 @@ static bool elem_t_isnan(elem_t x) {
     return is_nan_or_inf && is_not_inf;
 }
 
-static bool acc_t_isnan(acc_t x) {
+bool acc_t_isnan(acc_t x) {
     acc_t_bits bits = acc_t_to_acc_t_bits(x);
     uint64_t exp = (bits >> (ACC_T_SIG_BITS-1)) & (((uint64_t)1 << ACC_T_EXP_BITS) - 1);
     uint64_t sig = bits & (((uint64_t)1 << ACC_T_SIG_BITS) - 1);
@@ -117,7 +113,7 @@ static bool acc_t_isnan(acc_t x) {
 #endif
 
 #ifdef HAS_MVIN_SCALE
-static scale_t scale_t_bits_to_scale_t(scale_t_bits x) {
+scale_t scale_t_bits_to_scale_t(scale_t_bits x) {
     union {
         scale_t_bits b;
         scale_t f;
@@ -127,7 +123,7 @@ static scale_t scale_t_bits_to_scale_t(scale_t_bits x) {
     return un.f;
 }
 
-static scale_t_bits scale_t_to_scale_t_bits(scale_t x) {
+scale_t_bits scale_t_to_scale_t_bits(scale_t x) {
     union {
         scale_t_bits b;
         scale_t f;
@@ -139,7 +135,7 @@ static scale_t_bits scale_t_to_scale_t_bits(scale_t x) {
 #endif
 
 #ifdef HAS_MVIN_ACC_SCALE
-static scale_acc_t scale_acc_t_bits_to_scale_acc_t(scale_acc_t_bits x) {
+scale_acc_t scale_acc_t_bits_to_scale_acc_t(scale_acc_t_bits x) {
     union {
         scale_acc_t_bits b;
         scale_acc_t f;
@@ -149,7 +145,7 @@ static scale_acc_t scale_acc_t_bits_to_scale_acc_t(scale_acc_t_bits x) {
     return un.f;
 }
 
-static scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
+scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
     union {
         scale_acc_t_bits b;
         scale_acc_t f;
@@ -160,7 +156,7 @@ static scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
 }
 #endif
 
-static acc_scale_t acc_scale_t_bits_to_acc_scale_t(acc_scale_t_bits x) {
+acc_scale_t acc_scale_t_bits_to_acc_scale_t(acc_scale_t_bits x) {
     union {
         acc_scale_t_bits b;
         acc_scale_t f;
@@ -170,7 +166,7 @@ static acc_scale_t acc_scale_t_bits_to_acc_scale_t(acc_scale_t_bits x) {
     return un.f;
 }
 
-static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
+acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
     union {
         acc_scale_t_bits b;
         acc_scale_t f;
@@ -229,13 +225,13 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
   gemmini_preload(GARBAGE_ADDR, C)
 
 // weight-stationary matmul loop
-#define gemmini_loop_ws(I, J, K, I_distance, J_distance, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, A_transpose, B_transpose, ex_accumulate) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(J_distance) << 48) | ((uint64_t)(pad_K) << 32) | ((uint64_t)(pad_J) << 16) | (uint64_t)(pad_I), ((uint64_t)(I_distance) << 48) | ((uint64_t)(K) << 32) | ((uint64_t)(J) << 16) | (uint64_t)(I), k_LOOP_WS_CONFIG_BOUNDS) \
+#define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, A_transpose, B_transpose, full_C, low_D, ex_accumulate) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(pad_K) << 32) | ((uint64_t)(pad_J) << 16) | (uint64_t)(pad_I), ((uint64_t)(K) << 32) | ((uint64_t)(J) << 16) | (uint64_t)(I), k_LOOP_WS_CONFIG_BOUNDS) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_LOOP_WS_CONFIG_ADDRS_AB) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D, C, k_LOOP_WS_CONFIG_ADDRS_DC) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A_stride, B_stride, k_LOOP_WS_CONFIG_STRIDES_AB) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D_stride, C_stride, k_LOOP_WS_CONFIG_STRIDES_DC) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ex_accumulate, ((B_transpose) << 1) | (A_transpose), k_LOOP_WS)
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((B_transpose) << 1) | (A_transpose), k_LOOP_WS)
 
 // config
 #define gemmini_extended2_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift, A_stride, A_transpose, B_transpose, ocol, row_turn, kdim, stride, channel, row_left, kdim2, weight_double_bank, weight_triple_bank) \
@@ -282,17 +278,18 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define gemmini_fence() asm volatile("fence")
 
 // Tiling functions
-static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const acc_t * D, elem_t * C,
+static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const void * D, void * C,
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
         size_t I, size_t J, size_t K, size_t pad_I, size_t pad_J, size_t pad_K,
         size_t A_row_stride, size_t B_row_stride, size_t D_row_stride, size_t C_row_stride,
         bool a_transpose, bool b_transpose,
+        bool full_C, bool low_D,
         bool no_bias, bool repeating_bias) {
 
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
   const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
-  const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2);
+  const uint32_t C_sp_addr_start = (3 << (ADDR_LEN-2)) | (full_C << (ADDR_LEN-3));
 
   const int A_blocks = K <= MAX_BLOCK_LEN ? K : MAX_BLOCK_LEN;
   const int B_blocks = J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN;
@@ -384,9 +381,11 @@ static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const acc_t *
 
   // Move-out C
   if (C != NULL) {
+    const size_t sizeof_C = full_C ? sizeof(acc_t) : sizeof(elem_t);
+
     for (size_t i = 0; i < I; i++) {
       for (size_t j = 0; j < J; j++) {
-        elem_t * const C_dram_addr = C + (i*C_row_stride + j)*DIM;
+        void * const C_dram_addr = (int8_t*)C + (i*C_row_stride + j)*DIM*sizeof_C;
         const uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
 
         const size_t C_cols = DIM - (j == J - 1 ? pad_J : 0);
@@ -399,24 +398,29 @@ static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const acc_t *
 }
 
 static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
-        const acc_t * D, elem_t * C,
+        const void * D, void * C,
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
-        size_t I, size_t J, size_t K, size_t I_distance, size_t J_distance, size_t pad_I, size_t pad_J, size_t pad_K,
+        size_t I, size_t J, size_t K, size_t pad_I, size_t pad_J, size_t pad_K,
         size_t A_row_stride, size_t B_row_stride, size_t D_row_stride, size_t C_row_stride,
         bool a_transpose, bool b_transpose,
+        bool full_C, bool low_D,
         bool no_bias, bool repeating_bias) {
-//if(B == NULL) printf("skip mvin B\n");
-/*  
+
+  /*
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
   const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
-  const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2);
+  const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2) | (full_C << (ADDR_LEN-3));
 
   const int A_blocks = a_transpose ? (I <= MAX_BLOCK_LEN ? I : MAX_BLOCK_LEN) :
     (K <= MAX_BLOCK_LEN ? K : MAX_BLOCK_LEN);
   const int B_blocks = b_transpose ? (K <= MAX_BLOCK_LEN ? K : MAX_BLOCK_LEN) :
     (J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN);
-  const int D_blocks = J <= MAX_BLOCK_LEN_ACC ? J : MAX_BLOCK_LEN_ACC;
+  const int D_blocks = low_D ? (J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN) :
+    (J <= MAX_BLOCK_LEN_ACC ? J : MAX_BLOCK_LEN_ACC);
+
+  const size_t sizeof_D = low_D ? sizeof(elem_t) : sizeof(acc_t);
+  const size_t sizeof_C = full_C ? sizeof(acc_t) : sizeof(elem_t);
 
   // Move-in D
   if (D != NULL && !no_bias) {
@@ -424,7 +428,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
       const size_t rows = DIM - (i == I-1 ? pad_I : 0);
       for (size_t j = 0; j < J; j += D_blocks) {
         const size_t bias_row = repeating_bias ? 0 : i;
-        const acc_t * const D_dram_addr = (acc_t *)D + (bias_row * D_row_stride + j)*DIM;
+        const void * const D_dram_addr = (int8_t *)D + (bias_row * D_row_stride + j)*DIM*sizeof_D;
         const uint32_t D_sp_addr_acc = D_sp_addr_start + (i*J + j)*DIM;
         size_t blocks = j + D_blocks <= J ? D_blocks : J-j;
         const size_t cols = blocks * DIM - (j + blocks >= J ? pad_J : 0);
@@ -462,25 +466,24 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         }
 
         // Mvin B
-		  if(B != NULL){
-			  if (b_transpose) {
-				 if (i == 0 && k % B_blocks == 0) {
-					const elem_t * const B_dram_addr = B + (j*B_row_stride + k)*DIM;
-					const size_t blocks = k + B_blocks <= K ? B_blocks : K-k;
-					const size_t cols = blocks * DIM - (k + blocks >= K ? pad_K : 0);
-					const size_t rows = DIM - (j == J-1 ? pad_J : 0);
-					gemmini_extended_mvin2(B_dram_addr, B_sp_addr, cols, rows);
-				 }
-			  } else {
-				 if (i == 0 && j % B_blocks == 0) {
-					const elem_t * const B_dram_addr = B + (k*B_row_stride + j)*DIM;
-					const size_t blocks = j + B_blocks <= J ? B_blocks : J-j;
-					const size_t cols = blocks * DIM - (j + blocks >= J ? pad_J : 0);
-					const size_t rows = DIM - (k == K-1 ? pad_K : 0);
-					gemmini_extended_mvin2(B_dram_addr, B_sp_addr, cols, rows);
-				 }
-			  }
-		  }
+        if (b_transpose) {
+          if (i == 0 && k % B_blocks == 0) {
+            const elem_t * const B_dram_addr = B + (j*B_row_stride + k)*DIM;
+            const size_t blocks = k + B_blocks <= K ? B_blocks : K-k;
+            const size_t cols = blocks * DIM - (k + blocks >= K ? pad_K : 0);
+            const size_t rows = DIM - (j == J-1 ? pad_J : 0);
+            gemmini_extended_mvin2(B_dram_addr, B_sp_addr, cols, rows);
+          }
+        } else {
+          if (i == 0 && j % B_blocks == 0) {
+            const elem_t * const B_dram_addr = B + (k*B_row_stride + j)*DIM;
+            const size_t blocks = j + B_blocks <= J ? B_blocks : J-j;
+            const size_t cols = blocks * DIM - (j + blocks >= J ? pad_J : 0);
+            const size_t rows = DIM - (k == K-1 ? pad_K : 0);
+            gemmini_extended_mvin2(B_dram_addr, B_sp_addr, cols, rows);
+          }
+        }
+
         // Compute
         {
           uint32_t pre_sp_addr = i == 0 ? B_sp_addr : GARBAGE_ADDR;
@@ -511,7 +514,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
 
         // Move-out C
         if (C != NULL && k == K-1) {
-          elem_t * const C_dram_addr = C + (i*C_row_stride + j)*DIM;
+          void * const C_dram_addr = (int8_t*)C + (i*C_row_stride + j)*DIM*sizeof_C;
 
           const size_t C_cols = DIM - (j == J - 1 ? pad_J : 0);
           const size_t C_rows = DIM - (i == I - 1 ? pad_I : 0);
@@ -521,30 +524,26 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
       }
     }
   }
-*/
+  */
 
   // Combined loop
-  gemmini_loop_ws(I, J, K, I_distance, J_distance, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
+  gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
     A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
     a_transpose, b_transpose,
-    !no_bias || D == NULL);
-
+    full_C, low_D, !no_bias || D == NULL);
 }
 
-static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K, size_t I_distance, size_t J_distance,
+static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t* A, const elem_t* B,
-        const acc_t * D, elem_t* C,
+        const void * D, void * C,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
         size_t tile_I, size_t tile_J, size_t tile_K,
         int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         bool a_transpose, bool b_transpose,
+        bool full_C, bool low_D,
         int dataflow) {
-  //assume one partition matches with MAX_BLOCK_LEN
-  size_t num_parts_J =(J_distance == 1) ? 1 : 2;
-  //size_t num_parts_J = J_distance;//(J_distance == 1) ? 1 : J_distance/MAX_BLOCK_LEN;
-  size_t num_parts_I = (I_distance == 1) ? 1 : I_distance;
- // printf("J_distance: %d, num_parts_J: %d, tile_J: %d \n", J_distance, num_parts_J, tile_J);
+
   const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
   const size_t dim_J_padded = (dim_J / DIM + (dim_J % DIM != 0)) * DIM;
   const size_t dim_K_padded = (dim_K / DIM + (dim_K % DIM != 0)) * DIM;
@@ -568,43 +567,46 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K, size_t 
   const bool no_bias = D == NULL;
 
   if (no_bias) {
-    D = (acc_t*) 1; // Dummy address which isn't NULL
+    D = (void*) 1; // Dummy address which isn't NULL
   }
 
+  const size_t sizeof_D = low_D ? sizeof(elem_t) : sizeof(acc_t) ;
+  const size_t sizeof_C = full_C ? sizeof(acc_t) : sizeof(elem_t);
+
   gemmini_extended_config_ex(dataflow, act, 0, scale, relu6_shift, 1, a_transpose, b_transpose);
-  gemmini_config_st(stride_C * sizeof(elem_t));
+  gemmini_config_st(stride_C * sizeof_C);
   gemmini_extended3_config_ld(stride_A * sizeof(elem_t), A_scale_factor, false, 0);
   gemmini_extended3_config_ld(stride_B * sizeof(elem_t), B_scale_factor, false, 1)
-  gemmini_extended3_config_ld(repeating_bias ? 0 : (stride_D * sizeof(acc_t)), D_scale_factor, false, 2);
+  gemmini_extended3_config_ld(repeating_bias ? 0 : (stride_D * sizeof_D), D_scale_factor, low_D, 2);
 
-  void (*inner)(const elem_t *, const elem_t *, const acc_t *, elem_t *,
+  void (*inner)(const elem_t *, const elem_t *, const void *, void *,
         scale_t, scale_t, scale_acc_t,
-        size_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t,
+        size_t, size_t, size_t, size_t, size_t, size_t,
         size_t, size_t, size_t, size_t,
+        bool, bool,
         bool, bool,
         bool, bool);
 
   if (dataflow == OUTPUT_STATIONARY) {
-//    inner = &sp_tiled_matmul_os;
+    inner = &sp_tiled_matmul_os;
   } else /* if (dataflow == WEIGHT_STATIONARY) */ {
     inner = &sp_tiled_matmul_ws;
   }
 
-  bool notileB = false;
-  if(J0 == 1 && K0 == 1) notileB = true;
-
   for (size_t i0 = 0; i0 < I0; i0++)
     for (size_t j0 = 0; j0 < J0; j0++)
       for (size_t k0 = 0; k0 < K0; k0++) {
-			bool first = (i0 == 0 && j0 == 0 && k0 == 0);
-        const acc_t * pre;
+
+        const void * pre;
         if (k0 != 0) {
           pre = NULL;
         } else {
-          size_t bias_row = repeating_bias ? 0 : i0*tile_I*DIM*num_parts_I;
-          pre = &(((acc_t*)D)[bias_row * stride_D + j0 * tile_J * DIM * num_parts_J]);
+          size_t bias_row = repeating_bias ? 0 : i0*tile_I*DIM;
+          // pre = &(((acc_t*)D)[bias_row * stride_D + j0 * tile_J * DIM]);
+          pre = (int8_t*)D + (bias_row * stride_D + j0 * tile_J * DIM)*sizeof_D;
         }
-        elem_t * out = k0 == K0-1 ? C + i0*tile_I*DIM*stride_C*num_parts_I + j0*tile_J*DIM*num_parts_J : NULL;
+
+        void * out = k0 == K0-1 ? (int8_t*)C + (i0*tile_I*DIM*stride_C + j0*tile_J*DIM)*sizeof_C : NULL;
 
         const size_t I = i0 < I0-1 ? tile_I : last_I;
         const size_t J = j0 < J0-1 ? tile_J : last_J;
@@ -614,18 +616,19 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K, size_t 
         const size_t pad_J = j0 == J0-1 ? padding_J : 0;
         const size_t pad_K = k0 == K0-1 ? padding_K : 0;
 
-        const elem_t * a = a_transpose ? (A + k0*tile_K*DIM*stride_A + i0*tile_I*DIM*num_parts_I)
-          : (A + i0*tile_I*DIM*stride_A*num_parts_I + k0*tile_K*DIM);
+        const elem_t * a = a_transpose ? (A + k0*tile_K*DIM*stride_A + i0*tile_I*DIM)
+          : (A + i0*tile_I*DIM*stride_A + k0*tile_K*DIM);
 
-        const elem_t * b = b_transpose ? (B + j0*tile_J*DIM*stride_B*num_parts_J + k0*tile_K*DIM)
-          : (B + k0*tile_K*DIM*stride_B + j0*tile_J*DIM*num_parts_J);
-//printf("%d \n", j0*tile_J*DIM*num_parts_J);
-		  (*inner)(a, (B == NULL || (notileB && !first)) ? NULL : b, pre, out,
+        const elem_t * b = b_transpose ? (B + j0*tile_J*DIM*stride_B + k0*tile_K*DIM)
+          : (B + k0*tile_K*DIM*stride_B + j0*tile_J*DIM);
+
+        (*inner)(a, b, pre, out,
             A_scale_factor, B_scale_factor, D_scale_factor,
-            I, J, K, I_distance, J_distance,//*tile_J,
+            I, J, K,
             pad_I, pad_J, pad_K,
             stride_A, stride_B, stride_D, stride_C,
             a_transpose, b_transpose,
+            full_C, low_D,
             no_bias, repeating_bias);
       }
 
@@ -641,12 +644,11 @@ static elem_t scale_and_sat(acc_t x, int act, acc_scale_t scale, size_t relu6_sh
   if (act == RELU) {
     x = x < 0 ? 0 : x;
   }
-  /* TODO add another define to check if relu6_shift is actually used or not
+  // TODO add another define to check if relu6_shift is actually used or not
   else if (act == RELU6) {
     int max = 6 << relu6_shift;
     x = x < 0 ? 0 : (x > max ? max : x);
   }
-  */
   return x;
 }
 
@@ -788,14 +790,15 @@ enum tiled_matmul_type_t {OS, WS, CPU}; // TODO rename this so it's name also ap
 
 // This function runs a tiled matrix multiplication, with hardcoded tiling
 // factors
-static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
+void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t* A, const elem_t* B,
-        const acc_t * D, elem_t* C,
+        const void * D, void* C,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
         int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         size_t tile_I, size_t tile_J, size_t tile_K,
         bool transpose_A, bool transpose_B,
+        bool full_C, bool low_D,
         enum tiled_matmul_type_t tiled_matmul_type) {
 
 #ifdef GEMMINI_ASSERTIONS
@@ -854,138 +857,42 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
     exit(1);
   }
 
+  char matmul_type_str[][4] = {"OS", "WS", "CPU"};
+
   // Check if transpose options are correct
   if (((tiled_matmul_type == OS || tiled_matmul_type == CPU) && (transpose_A || transpose_B)) ||
     (tiled_matmul_type == WS && transpose_A && transpose_B)) {
-    char matmul_type_str[][3] = {"OS", "WS", "CPU"};
-    printf("Not implemented. %s matmul, a_transpose=%d, b_transpose=%d\n", matmul_type_str[tiled_matmul_type], transpose_A, transpose_B);
+    printf("Not implemented: %s matmul, a_transpose=%d, b_transpose=%d\n", matmul_type_str[tiled_matmul_type], transpose_A, transpose_B);
     exit(1);
+  }
+
+  // Check if full_C options are correct
+  if ((tiled_matmul_type == CPU && (full_C || low_D)) ||
+      (tiled_matmul_type == OS && low_D)) {
+    printf("Not implemented: %s matmul, full_C=%d, low_D=%d\n", matmul_type_str[tiled_matmul_type], full_C, low_D);
   }
 #endif
 
   // Run a tiled matrix multiplication on either Gemmini or the CPU
   if (tiled_matmul_type == OS || tiled_matmul_type == WS) {
-    tiled_matmul_outer(dim_I, dim_J, dim_K, 1, 1,
+    tiled_matmul_outer(dim_I, dim_J, dim_K,
         A, B, D, C,
         stride_A, stride_B, stride_D, stride_C,
         A_scale_factor, B_scale_factor, D_scale_factor,
         tile_I, tile_J, tile_K,
         act, scale, relu6_shift, repeating_bias,
         transpose_A, transpose_B,
+        full_C, low_D,
         (int)tiled_matmul_type);
   } else /*if (tiled_matmul_type == CPU)*/ {
-    if (!transpose_A && !transpose_B) {
-      matmul_cpu(dim_I, dim_J, dim_K,
-              A, B, D, C,
-              stride_A, stride_B, stride_D, stride_C,
-              A_scale_factor, B_scale_factor, D_scale_factor,
-              act, scale, relu6_shift, repeating_bias);
-    } else {
-      printf("Not implemented. CPU matmul, a_transpose=%d, b_transpose=%d\n", transpose_A, transpose_B);
-      exit(1);
-    }
+    matmul_cpu(dim_I, dim_J, dim_K,
+            A, B, (const acc_t*) D, (elem_t*)C,
+            stride_A, stride_B, stride_D, stride_C,
+            A_scale_factor, B_scale_factor, D_scale_factor,
+            act, scale, relu6_shift, repeating_bias);
   }
 }
 
-static void tiled_matmul_distance(size_t dim_I, size_t dim_J, size_t dim_K,
-        size_t I_distance, size_t J_distance,
-		  const elem_t* A, const elem_t* B,
-        const acc_t * D, elem_t* C,
-        size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
-        scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
-        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
-        size_t tile_I, size_t tile_J, size_t tile_K,
-        bool transpose_A, bool transpose_B,
-        enum tiled_matmul_type_t tiled_matmul_type) {
-
-#ifdef GEMMINI_ASSERTIONS
-  // Make sure that the tiling factors make sense
-  if (tile_I <= 0) {
-    printf("tile_I is non-positive\n");
-    exit(1);
-  } else if (tile_J <= 0) {
-    printf("tile_J is non-positive\n");
-    exit(1);
-  } else if (tile_K <= 0) {
-    printf("tile_K is non-positive\n");
-    exit(1);
-  }
-
-  const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
-  const size_t dim_J_padded = (dim_J / DIM + (dim_J % DIM != 0)) * DIM;
-  const size_t dim_K_padded = (dim_K / DIM + (dim_K % DIM != 0)) * DIM;
-
-  if (tile_I * DIM > dim_I_padded) {
-    printf("tile_I is too large (tile_I * DIM > dim_I_padded)\n");
-    exit(1);
-  } else if (tile_J * DIM > dim_J_padded) {
-    printf("tile_J is too large (tile_J * DIM > dim_J_padded)\n");
-    exit(1);
-  } else if (tile_K * DIM > dim_K_padded) {
-    printf("tile_K is too large (tile_K * DIM > dim_K_padded)\n");
-    exit(1);
-  }
-
-  const bool double_buffered = tiled_matmul_type == WS;
-
-  const size_t total_spad_size = double_buffered ? BANK_NUM * BANK_ROWS / 2 :
-      BANK_NUM * BANK_ROWS;
-  const size_t total_acc_size = double_buffered ? ACC_ROWS / 2 : ACC_ROWS;
-
-  const size_t total_spad_rows =
-      (tile_I * tile_K * DIM) +   // Rows to store A
-      (tile_K * tile_J * DIM);    // Rows to store B
-
-  if (total_spad_rows > total_spad_size) {
-    printf("Not enough space in scratchpad to store A and B matrices\n");
-    exit(1);
-  }
-
-  const size_t total_acc_rows =
-      tile_I * tile_J * DIM;      // Rows to store C
-
-  if (total_acc_rows > total_acc_size) {
-    printf("Not enough space in accumulator to store C\n");
-    exit(1);
-  }
-
-  if (tile_I > 65535 || tile_J > 65535 || tile_K > 65535) {
-    printf("I, J, and K tiling factors must be less than 65535, to fit within the bounds of the LOOP_WS function");
-    exit(1);
-  }
-
-  // Check if transpose options are correct
-  if (((tiled_matmul_type == OS || tiled_matmul_type == CPU) && (transpose_A || transpose_B)) ||
-    (tiled_matmul_type == WS && transpose_A && transpose_B)) {
-    char matmul_type_str[][3] = {"OS", "WS", "CPU"};
-    printf("Not implemented. %s matmul, a_transpose=%d, b_transpose=%d\n", matmul_type_str[tiled_matmul_type], transpose_A, transpose_B);
-    exit(1);
-  }
-#endif
-
-  // Run a tiled matrix multiplication on either Gemmini or the CPU
-  if (tiled_matmul_type == OS || tiled_matmul_type == WS) {
-    tiled_matmul_outer(dim_I, dim_J, dim_K, I_distance, J_distance,
-        A, B, D, C,
-        stride_A, stride_B, stride_D, stride_C,
-        A_scale_factor, B_scale_factor, D_scale_factor,
-        tile_I, tile_J, tile_K,
-        act, scale, relu6_shift, repeating_bias,
-        transpose_A, transpose_B,
-        (int)tiled_matmul_type);
-  } else /*if (tiled_matmul_type == CPU)*/ {
-    if (!transpose_A && !transpose_B) {
-      matmul_cpu(dim_I, dim_J, dim_K,
-              A, B, D, C,
-              stride_A, stride_B, stride_D, stride_C,
-              A_scale_factor, B_scale_factor, D_scale_factor,
-              act, scale, relu6_shift, repeating_bias);
-    } else {
-      printf("Not implemented. CPU matmul, a_transpose=%d, b_transpose=%d\n", transpose_A, transpose_B);
-      exit(1);
-    }
-  }
-}
 static size_t tiled_matmul_total_spad_rows(size_t I, size_t J, size_t K) {
   return (I * K + K * J) * DIM;
 }
@@ -996,14 +903,16 @@ static size_t tiled_matmul_total_acc_rows(size_t I, size_t J) {
 
 // This function runs a tiled matrix multiplication, with automatically
 // calculated tiling factors
-static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
+void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t* A, const elem_t* B,
-        const acc_t * D, elem_t* C,
+        const void * D, void * C,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
         int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         bool transpose_A, bool transpose_B,
+        bool full_C, bool low_D,
         enum tiled_matmul_type_t tiled_matmul_type) {
+
 #define partition_rows (BANK_NUM * BANK_ROWS / 2)
 #define mats_in_partition (partition_rows / DIM)
 #define mats_in_acc (ACC_ROWS / DIM)
@@ -1066,6 +975,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
       if (!increased)
         break;
     }
+
     tiled_matmul(dim_I, dim_J, dim_K,
         A, B, D, C,
         stride_A, stride_B, stride_D, stride_C,
@@ -1073,6 +983,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         act, scale, relu6_shift, repeating_bias,
         tile_I, tile_J, tile_K,
         transpose_A, transpose_B,
+        full_C, low_D,
         tiled_matmul_type);
 
 #undef partition_rows
@@ -1082,180 +993,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #undef max_tile_k
 }
 
-// This function runs a tiled matrix multiplication, with automatically
-// calculated tiling factors
-static void tiled_matmul_auto_distance(size_t dim_I_total, size_t dim_J_total, size_t dim_K,
-		  size_t dim_I_distance, size_t dim_J_distance, size_t I_partition, size_t J_partition,
-		  const elem_t* A, const elem_t* B,
-        const acc_t * D, elem_t* C,
-        size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
-        scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
-        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
-        bool transpose_A, bool transpose_B,
-        enum tiled_matmul_type_t tiled_matmul_type) {
-#define partition_rows (BANK_NUM * BANK_ROWS / 2)
-#define mats_in_partition (partition_rows / DIM)
-#define mats_in_acc (ACC_ROWS / DIM)
-#define max_tile_i_j ((size_t)sqrt(mats_in_acc))
-#define max_tile_k (mats_in_partition / max_tile_i_j)
-
-    // "db_" means "double-buffered"
-#define db_partition_rows ((BANK_NUM * BANK_ROWS / 2) / 2)
-#define db_mats_in_partition (db_partition_rows / DIM)
-#define db_mats_in_acc ((ACC_ROWS / 2) / DIM)
-#define db_max_tile_i_j ((size_t)sqrt(db_mats_in_acc))
-#define db_max_tile_k (db_mats_in_partition / db_max_tile_i_j)
-
-	 size_t dim_J = dim_J_total/J_partition;
-	 size_t dim_I = dim_I_total/I_partition;
-    const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
-    const size_t dim_J_padded = (dim_J / DIM + (dim_J % DIM != 0)) * DIM;
-    const size_t dim_K_padded = (dim_K / DIM + (dim_K % DIM != 0)) * DIM;
-
-    const bool double_buffered = tiled_matmul_type == WS;
-
-    const size_t max_spad_rows = double_buffered ? BANK_NUM * BANK_ROWS / 2 :
-      BANK_NUM * BANK_ROWS;
-    const size_t max_acc_rows = double_buffered ? ACC_ROWS / 2 : ACC_ROWS;
-
-    size_t tile_I, tile_J, tile_K;
-
-    if (double_buffered) {
-       tile_I = dim_I_padded/DIM < db_max_tile_i_j ? dim_I_padded/DIM : db_max_tile_i_j;
-       tile_J = dim_J_padded/DIM < db_max_tile_i_j ? dim_J_padded/DIM : db_max_tile_i_j;
-       tile_K = dim_K_padded/DIM < db_max_tile_k ? dim_K_padded/DIM : db_max_tile_k;
-    } else {
-       tile_I = dim_I_padded/DIM < max_tile_i_j ? dim_I_padded/DIM : max_tile_i_j;
-       tile_J = dim_J_padded/DIM < max_tile_i_j ? dim_J_padded/DIM : max_tile_i_j;
-       tile_K = dim_K_padded/DIM < max_tile_k ? dim_K_padded/DIM : max_tile_k;
-    }
-
-	 bool lock = false;
-    // Fill scratchpad as much as possible
-	 if(tile_J%MAX_BLOCK_LEN != 0){
-		 tile_J = tile_J - (tile_J%MAX_BLOCK_LEN);
-		 lock = true;
-	 }
-	 while (true) {
-      bool increased = false;
-		if(!lock){
-			if (tiled_matmul_total_spad_rows(tile_I, tile_J+1, tile_K) <= max_spad_rows &&
-				 tiled_matmul_total_acc_rows(tile_I, tile_J+1) <= max_acc_rows &&
-				 (tile_J+1) * DIM <= dim_J_padded) {
-			  tile_J++;
-			  increased = true;
-			}
-		}
-      if (tiled_matmul_total_spad_rows(tile_I+1, tile_J, tile_K) <= max_spad_rows &&
-          tiled_matmul_total_acc_rows(tile_I+1, tile_J) <= max_acc_rows &&
-          (tile_I+1) * DIM <= dim_I_padded) {
-        tile_I++;
-        increased = true;
-      }
-
-      if (tiled_matmul_total_spad_rows(tile_I, tile_J, tile_K+1) <= max_spad_rows &&
-          (tile_K+1) * DIM <= dim_K_padded) {
-        tile_K++;
-        increased = true;
-      }
-
-      if (!increased)
-        break;
-    }
-
-//	printf("db_max_tile_i_j: %d, tile_I: %d. tile_J: %d, tile_K: %d \n", db_max_tile_i_j, tile_I, tile_J, tile_K);
-	tiled_matmul_distance(dim_I, dim_J, dim_K, dim_I_distance/DIM, dim_J_distance/DIM,//(dim_J_distance/DIM)/tile_J,
-        A, B, D, C,
-        stride_A, stride_B, stride_D, stride_C,
-        A_scale_factor, B_scale_factor, D_scale_factor,
-        act, scale, relu6_shift, repeating_bias,
-        tile_I, tile_J, tile_K,
-        transpose_A, transpose_B,
-        tiled_matmul_type);
-
-#undef partition_rows
-#undef mats_in_partition
-#undef mats_in_acc
-#undef max_tile_i_j
-#undef max_tile_k
-}
-
-//this function skips tiling B if matrix B size is small enough
-static void tiled_matmul_auto_notileB(size_t dim_I, size_t dim_J, size_t dim_K,
-        const elem_t* A, const elem_t* B,
-        const acc_t * D, elem_t* C,
-        size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
-        scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
-        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
-        bool transpose_A, bool transpose_B,
-        enum tiled_matmul_type_t tiled_matmul_type) {
-#define partition_rows (BANK_NUM * BANK_ROWS / 2)
-#define mats_in_partition (partition_rows / DIM)
-#define mats_in_acc (ACC_ROWS / DIM)
-#define max_tile_i_j ((size_t)sqrt(mats_in_acc))
-#define max_tile_k (mats_in_partition / max_tile_i_j)
-
-    // "db_" means "double-buffered"
-#define db_partition_rows ((BANK_NUM * BANK_ROWS / 2) / 2)
-#define db_mats_in_partition (db_partition_rows / DIM)
-#define db_mats_in_acc ((ACC_ROWS / 2) / DIM)
-#define db_max_tile_i_j ((size_t)sqrt(db_mats_in_acc))
-#define db_max_tile_k (db_mats_in_partition / db_max_tile_i_j)
-
-    const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
-    const size_t dim_J_padded = (dim_J / DIM + (dim_J % DIM != 0)) * DIM;
-    const size_t dim_K_padded = (dim_K / DIM + (dim_K % DIM != 0)) * DIM;
-	 const bool double_buffered = tiled_matmul_type == WS;
-
-	 if(!double_buffered || db_max_tile_i_j > dim_J_padded || db_max_tile_k > dim_K_padded){
-		 tiled_matmul_auto(dim_I, dim_J, dim_K, A, B, D, C,
-				 stride_A, stride_B, stride_D, stride_C,
-				 A_scale_factor, B_scale_factor, D_scale_factor,
-				 act, scale, relu6_shift, repeating_bias,
-				 transpose_A, transpose_B,
-				 tiled_matmul_type);
-	 }
-	 else{
-		 const size_t max_spad_rows = double_buffered ? BANK_NUM * BANK_ROWS / 2 :
-			BANK_NUM * BANK_ROWS;
-		 const size_t max_acc_rows = double_buffered ? ACC_ROWS / 2 : ACC_ROWS;
-
-		 size_t tile_I, tile_J, tile_K;
-		 tile_J = dim_J_padded/DIM;
-		 tile_K = dim_K_padded/DIM;
-		 tile_I = dim_I_padded/DIM < db_max_tile_i_j ? dim_I_padded/DIM : db_max_tile_i_j;
-
-		 // Fill scratchpad as much as possible
-		 while (true) {
-			bool increased = false;
-
-
-			if (tiled_matmul_total_spad_rows(tile_I+1, tile_J, tile_K) <= max_spad_rows &&
-				 tiled_matmul_total_acc_rows(tile_I+1, tile_J) <= max_acc_rows &&
-				 (tile_I+1) * DIM <= dim_I_padded) {
-			  tile_I++;
-			  increased = true;
-			}
-			if (!increased)
-			  break;
-		 }
-
-		 tiled_matmul(dim_I, dim_J, dim_K,
-			  A, B, D, C,
-			  stride_A, stride_B, stride_D, stride_C,
-			  A_scale_factor, B_scale_factor, D_scale_factor,
-			  act, scale, relu6_shift, repeating_bias,
-			  tile_I, tile_J, tile_K,
-			  transpose_A, transpose_B,
-			  tiled_matmul_type);
-	 }
-#undef partition_rows
-#undef mats_in_partition
-#undef mats_in_acc
-#undef max_tile_i_j
-#undef max_tile_k
-}
-static void sp_tiled_conv(
+void sp_tiled_conv(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -1507,7 +1245,7 @@ static void sp_tiled_conv(
 
 //resnet downsampling layer (no padding, kernel size 1, stride 2)
 //due to poor instruction issue bandwidth
-static void sp_tiled_conv_ds(
+void sp_tiled_conv_ds(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -1521,11 +1259,11 @@ static void sp_tiled_conv_ds(
         int lpad, int rpad, int upad, int dpad,
         int plpad, int prpad, int pupad, int pdpad,
 
-        elem_t * input,
+        const elem_t * input,
 	    uint32_t B_sp_addr_outer,
-        elem_t * weights,
+        const elem_t * weights,
         elem_t * output,
-        acc_t * bias,
+        const acc_t * bias,
 
 	    int act, acc_scale_t scale, int relu6_shift,
         bool no_bias, bool no_pool,
@@ -1603,7 +1341,7 @@ int bidims = batches*idims;
 
    for (int b = 0; b < batches; b++) {
         for (int irow = 0; irow < irows; irow++) {
-                elem_t * in = input + (b*in_dim*in_dim + irow*in_dim) * in_channels;// + ich;
+                const elem_t * in = input + (b*in_dim*in_dim + irow*in_dim) * in_channels;// + ich;
        		const uint32_t A_sp_addr = A_sp_addr_start + b * idims + irow * icols;
                    for (int ich = 0; ich < ichs; ich += DIM) {
                       // const int K = ichs - ich > DIM ? DIM : ichs - ich;
@@ -1724,7 +1462,7 @@ int bidims = batches*idims;
 
 }
 
-static void sp_tiled_conv_dw(
+void sp_tiled_conv_dw(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -1897,7 +1635,7 @@ static void sp_tiled_conv_dw(
 }
 
 //for first layer
-static void sp_tiled_conv_first(
+void sp_tiled_conv_first(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -2055,7 +1793,7 @@ static void sp_tiled_conv_first(
 }
 
 //has mvin weight
-static void sp_tiled_conv_ws_original(
+void sp_tiled_conv_ws_original(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -2070,10 +1808,10 @@ static void sp_tiled_conv_ws_original(
         int lpad, int rpad, int upad, int dpad,
         int plpad, int prpad, int pupad, int pdpad,
 
-        elem_t * input,
-        elem_t * weights,
+        const elem_t * input,
+        const elem_t * weights,
         elem_t * output,
-        acc_t * bias,
+        const acc_t * bias,
 
 	    int act, int scale, int relu6_shift,
         bool no_bias, bool no_pool,
@@ -2155,7 +1893,7 @@ static void sp_tiled_conv_ws_original(
 
             for (int icol = -lpad; icol < icols_unpadded + rpad;) {
                 int I = icols_unpadded - icol > DIM ? DIM : icols_unpadded - icol;
-                elem_t * in = input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels;// + ich;
+                const elem_t * in = input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels;// + ich;
  
                 if (icol < 0) {
                     I = -icol > DIM ? DIM : -icol;
@@ -2231,7 +1969,7 @@ static void sp_tiled_conv_ws_original(
 	   } else {
 //		   printf("pool \n");
               gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
-//             gemmini_fence(); // TODO remove this when the ROB can accurately handle these
+            gemmini_fence(); // TODO remove this when the ROB can accurately handle these
             for (int b = 0; b < batches; b++) {
                 for (int poch = 0; poch < pochs; poch += DIM) {
                     const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
@@ -2242,13 +1980,14 @@ static void sp_tiled_conv_ws_original(
                             channels, 0);
                 }
             }
+            gemmini_fence(); // TODO remove this when the ROB can accurately handle these
        }
    }
 
 }
 
 //first layer padding region
-static void sp_tiled_conv_ws_original_first(
+void sp_tiled_conv_ws_original_first(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -2449,14 +2188,14 @@ static int tiled_conv_total_spad_rows(bool acc, bool weight,
 }
 
 
-static void conv_cpu_without_pool(
+void conv_cpu_without_pool(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
 
-        elem_t * input,
-        elem_t * weights,
-        acc_t * bias,
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift) {
@@ -2497,14 +2236,14 @@ static void conv_cpu_without_pool(
   }
 }
 
-static void conv_cpu(
+void conv_cpu(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
 
-        elem_t * input,
-        elem_t * weights,
-        acc_t * bias,
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift,
@@ -2583,7 +2322,7 @@ static void conv_cpu(
   }
 }
 
-static void tiled_conv_dw(
+void tiled_conv_dw(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -2723,7 +2462,7 @@ static void tiled_conv_dw(
     }
 }
 
-static void tiled_conv_first(
+void tiled_conv_first(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding,
@@ -2960,7 +2699,7 @@ static void tiled_conv_first(
 }
 
 
-static void sp_tiled_conv_ws(
+void sp_tiled_conv_ws(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -2975,11 +2714,11 @@ static void sp_tiled_conv_ws(
         int lpad, int rpad, int upad, int dpad,
         int plpad, int prpad, int pupad, int pdpad,
 
-        elem_t * input,
+        const elem_t * input,
 	uint32_t B_sp_addr_start,
         //elem_t * weights,
         elem_t * output,
-        acc_t * bias,
+        const acc_t * bias,
 
 	int act, acc_scale_t scale, int relu6_shift,
         bool no_bias, bool no_pool,
@@ -3049,7 +2788,7 @@ static void sp_tiled_conv_ws(
 
             for (int icol = -lpad; icol < icols_unpadded + rpad;) {
                 int I = icols_unpadded - icol > DIM ? DIM : icols_unpadded - icol;
-                elem_t * in = input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels;// + ich;
+                const elem_t * in = input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels;// + ich;
  
                 if (icol < 0) {
                     I = -icol > DIM ? DIM : -icol;
@@ -3089,7 +2828,7 @@ static void sp_tiled_conv_ws(
    for (int b = 0; b < batches; b++){
         for (int och = 0; och < ochs; och += DIM) {
             const int J = ochs - och > DIM ? DIM : ochs - och;
-     	    const int C_sp_addr_outer = C_sp_addr_start + (och / DIM) * batches * odims + b * odims;// + odim;
+     	    const uint32_t C_sp_addr_outer = C_sp_addr_start + (och / DIM) * batches * odims + b * odims;// + odim;
 
 	    for (int kch = 0; kch < kchs; kch += DIM) {
 	        const int K = kchs - kch > DIM ? DIM : kchs - kch;
@@ -3099,7 +2838,7 @@ static void sp_tiled_conv_ws(
 	
             	for(int odim = 0; odim < odims; odim += DIM){ //both dimension at the same time
 			const int I = odims - odim > DIM ? DIM : odims - odim;
-			const int C_sp_addr = C_sp_addr_outer + odim;
+			const uint32_t C_sp_addr = C_sp_addr_outer + odim;
 
 			for(int kkdim = 0; kkdim < kkdims; kkdim += K){	
                                 gemmini_extended_preload(B_sp_addr + kkdim, C_sp_addr,
@@ -3132,7 +2871,8 @@ static void sp_tiled_conv_ws(
                     }
 
       } else {
-           for (int b = 0; b < batches; b++) {
+            gemmini_fence(); // TODO remove this when the ROB can accurately handle these
+            for (int b = 0; b < batches; b++) {
                 for (int poch = 0; poch < pochs; poch += DIM) {
                     const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
                     elem_t * pout = output + (b * pool_out_dim * pool_out_dim)*out_channels + poch;
@@ -3142,6 +2882,7 @@ static void sp_tiled_conv_ws(
                             channels, 0);
                 }
             }
+            gemmini_fence(); // TODO remove this when the ROB can accurately handle these
       }
    }
 //attempts to merge mvin-matmul-mvout loops
@@ -3242,7 +2983,7 @@ static void sp_tiled_conv_ws(
 }
 
 //outer loop without weight mvin (due to large channel size)
-static void tiled_conv_original(
+void tiled_conv_original(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -3251,9 +2992,9 @@ static void tiled_conv_original(
         int porows, int pocols, int pochs,
 	int kcols, int kchs,
 
-        elem_t * input,
-        elem_t * weights,
-        acc_t * bias,
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift,
@@ -3348,7 +3089,7 @@ static void tiled_conv_original(
                                 if (kch + kchs < in_channels) {
                                     out = NULL;
                                 }
-                                acc_t * bias_ = bias + poch;
+                                const acc_t * bias_ = bias + poch;
                                 if (kch > 0) {
                                     bias_ = NULL;
                                 }
@@ -3433,7 +3174,7 @@ static void tiled_conv_original(
 }
 
 
-static void tiled_conv(
+void tiled_conv(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -3442,9 +3183,9 @@ static void tiled_conv(
         int porows, int pocols, int pochs,
         int krows, int kcols, int kchs,
 
-        elem_t * input,
-        elem_t * weights,
-        acc_t * bias,
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift,
@@ -3518,7 +3259,7 @@ static void tiled_conv(
 
       for (int poch = 0; poch < out_channels; poch += pochs) {
            const int pochs_ = out_channels - poch > pochs ? pochs : out_channels - poch;
-                acc_t * bias_ = bias + poch;
+                const acc_t * bias_ = bias + poch;
 
 		const int kchs_ = in_channels;
 		gemmini_config_ld(out_channels*sizeof(elem_t));
@@ -3529,7 +3270,7 @@ static void tiled_conv(
       			for (int ich = 0; ich < kchs_; ich += DIM) {
         		    const int K = kchs_ - ich > DIM ? DIM : kchs_ - ich;
         		    for (int krow = 0; krow < kcols; krow++){
-				elem_t * weight = weights + poch + (krow*kcols*in_channels + ich) * out_channels + och;
+				const elem_t * weight = weights + poch + (krow*kcols*in_channels + ich) * out_channels + och;
 				const uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * kdims * kchs_ + ich*kdims + krow*kcols*K;// + kcol*K;
             			for (int kcol = 0; kcol < kcols; kcol++){
 					gemmini_extended_mvin(weight + kcol*in_channels*out_channels,
@@ -3643,7 +3384,7 @@ static void tiled_conv(
 //	printf("mvin total cycles %d \n", mvin_cycles);
 }
 
-static void tiled_conv_auto_first(
+void tiled_conv_auto_first(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -3743,7 +3484,7 @@ static void tiled_conv_auto_first(
 }
 
 //for mobilenet depthwise conv
-static void tiled_conv_auto_dw(
+void tiled_conv_auto_dw(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -3826,7 +3567,7 @@ static void tiled_conv_auto_dw(
 
 //for resnet deeper layers
 //when we need to tile input channel dimension
-static void tiled_conv_auto_original(
+void tiled_conv_auto_original(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -3967,7 +3708,7 @@ static void tiled_conv_auto_original(
 
 
 //tiling function for deeper layers (when C is large)
-static void tiled_conv_auto_largeC(
+void tiled_conv_auto_largeC(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -4082,14 +3823,14 @@ static void tiled_conv_auto_largeC(
         weight_bank, tiled_conv_type);
 }
 
-static void tiled_conv_auto(
+void tiled_conv_auto(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
 
-        elem_t * input,
-        elem_t * weights,
-        acc_t * bias,
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift,
@@ -4168,7 +3909,7 @@ static void tiled_conv_auto(
         weight_bank, tiled_conv_type);
 }
 
-static void resadd_cpu(const size_t I, const size_t J,
+void resadd_cpu(const size_t I, const size_t J,
         const scale_t A_scale,
         const scale_t B_scale,
         const acc_scale_t C_scale,
@@ -4195,7 +3936,7 @@ static void resadd_cpu(const size_t I, const size_t J,
     }
 }
 
-static void sp_tiled_resadd(const size_t I, const size_t J,
+void sp_tiled_resadd(const size_t I, const size_t J,
         const scale_t A_scale,
         const scale_t B_scale,
         const elem_t * A, const elem_t * B, elem_t * C,
@@ -4257,7 +3998,7 @@ static void sp_tiled_resadd(const size_t I, const size_t J,
 }
 
 // Compute MVIN_SCALE(A, A_scale) + MVIN_SCALE(B, B_scale) = C
-static void tiled_resadd(const size_t I, const size_t J,
+void tiled_resadd(const size_t I, const size_t J,
         const size_t tile_I, const size_t tile_J,
         const scale_t A_scale,
         const scale_t B_scale,
@@ -4291,7 +4032,7 @@ static void tiled_resadd(const size_t I, const size_t J,
 }
 
 // Compute (A >> A_shift) + B = C
-static void tiled_resadd_auto(const size_t I, const size_t J,
+void tiled_resadd_auto(const size_t I, const size_t J,
         const scale_t A_scale,
         const scale_t B_scale,
         const acc_scale_t C_scale,
