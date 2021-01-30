@@ -6,6 +6,7 @@ tests = \
 	double \
 	double_keep_weights \
 	double_keep_weights_then_change \
+	double_identity_swaps \
 	random_matmuls \
 	large_matmul \
 	large_matmul_without_cpu \
