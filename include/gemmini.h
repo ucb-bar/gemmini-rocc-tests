@@ -2432,11 +2432,11 @@ void tiled_conv_A_stride(
         const int acc_rows = tiled_conv_total_spad_rows_A_stride(true,
             stride, batches, porows, pocols, pochs, krows, kcols, kchs, pool_size, pool_stride);
 
-        if (spad_rows > BANK_NUM * BANK_ROWS) {
-            printf("not enough scratchpad space to store inputs and weights\n");
+        if (spad_rows > BANK_NUM * BANK_ROWS / 2) {
+            printf("not enough scratchpad space to store inputs and weights, %d\n", spad_rows);
             exit(1);
         }
-        if (acc_rows > ACC_ROWS) {
+        if (acc_rows > ACC_ROWS / 2) {
             printf("not enough accumulator space to store outputs\n");
             exit(1);
         }
@@ -2589,6 +2589,29 @@ void tiled_conv_A_stride_auto(
         acc_rows = tiled_conv_total_spad_rows_A_stride(true,
             stride, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     }
+
+    // Check if there are any parameters that we can currently still increase
+    bool nothing_increased = false;
+    while (!nothing_increased) {
+        nothing_increased = true;
+
+        for (size_t i = 0; i < sizeof(args)/sizeof(args[0]); i++) {
+            int args_candidate[] = {args[0], args[1], args[2], args[3], args[4], args[5], args[6]};
+            args_candidate[i]++;
+
+            spad_rows = tiled_conv_total_spad_rows_A_stride(false,
+                stride, args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
+            acc_rows = tiled_conv_total_spad_rows_A_stride(true,
+                stride, args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
+
+            if (spad_rows <= (BANK_NUM*BANK_ROWS / 2) && acc_rows <= (ACC_ROWS / 2)) {
+                args[i] = args_candidate[i];
+                nothing_increased = false;
+            }
+        }
+    }
+
+    // printf("total spad_rows reserved: %d\n", spad_rows);
 
     const int batches = args[0];
     const int orows = args[1];
