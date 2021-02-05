@@ -1079,9 +1079,7 @@ void sp_tiled_conv_A_stride(
                 for (int ocol = 0; ocol < ocols; ocol += DIM) {
                     const int I = ocols - ocol > DIM ? DIM : ocols - ocol;
 
-                    // for (int och = 0; och < ochs; och += DIM) {
                     for (int och = 0; och < ochs; och += max_ochs_per_mvin) {
-                        // const int J = ochs - och > DIM ? DIM : ochs - och;
                         const int J = ochs - och > max_ochs_per_mvin ? max_ochs_per_mvin : ochs - och;
 
                         const uint32_t D_sp_addr = D_sp_addr_start + (och / DIM) * batches * orows * ocols + b * orows * ocols + orow * ocols + ocol;
@@ -1145,9 +1143,6 @@ void sp_tiled_conv_A_stride(
 
         gemmini_extended4_config_ld(out_channels * sizeof(elem_t), MVIN_SCALE_IDENTITY, false, krows * kcols * kchs, 1);
 
-        // for (int och = 0; och < ochs; och += DIM) {
-        //     const int J = ochs - och > DIM ? DIM : ochs - och;
-
         for (int och = 0; och < ochs; och += max_ochs_per_mvin) {
             const int J = ochs - och > max_ochs_per_mvin ?
                 max_ochs_per_mvin : ochs - och;
@@ -1156,9 +1151,6 @@ void sp_tiled_conv_A_stride(
                 for (int kcol = 0; kcol < kcols; kcol++)
                     for (int kch = 0; kch < kchs; kch += DIM) {
                         const int K = kchs - kch > DIM ? DIM : kchs - kch;
-
-                    // for (int kch = 0; kch < kchs; kch += max_kchs_per_mvin) {
-                    //     const int K = kchs - kch > max_kchs_per_mvin ? max_kchs_per_mvin : kchs - kch;
 
                         const uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * krows * kcols * kchs + krow * kcols * kchs + kcol * kchs + kch;
 
@@ -1183,7 +1175,6 @@ void sp_tiled_conv_A_stride(
                     for (int krow = 0; krow < krows; krow++) {
                         const int irow = orow * stride + krow;
 
-                        // for (int kcol = 0; kcol < kcols; kcol++) {
                         for (int kcol = 0; kcol < kcols; kcol++) {
                             const int icol = ocol * stride + kcol;
 
