@@ -42,7 +42,7 @@ int main (int argc, char * argv[]) {
     bool conv = true;
     
     if (argc < 3) {
-        conv = true;
+        conv = false;
     } else if (strcmp(argv[2], "conv") == 0) {
         conv = true;
     } else if (strcmp(argv[2], "matmul") == 0) {
@@ -101,7 +101,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_first(
             conv_1_params.batch_size, conv_1_params.in_dim, conv_1_params.in_channels,
             conv_1_params.out_channels, conv_1_params.out_dim,
             conv_1_params.stride, conv_1_params.padding, conv_1_params.kernel_size,
@@ -178,7 +178,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto(
             conv_3_params.batch_size, conv_3_params.in_dim, conv_3_params.in_channels,
             conv_3_params.out_channels, conv_3_params.out_dim,
             conv_3_params.stride, conv_3_params.padding, conv_3_params.kernel_size,
@@ -324,7 +324,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto(
             conv_7_params.batch_size, conv_7_params.in_dim, conv_7_params.in_channels,
             conv_7_params.out_channels, conv_7_params.out_dim,
             conv_7_params.stride, conv_7_params.padding, conv_7_params.kernel_size,
@@ -434,7 +434,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto(
             conv_10_params.batch_size, conv_10_params.in_dim, conv_10_params.in_channels,
             conv_10_params.out_channels, conv_10_params.out_dim,
             conv_10_params.stride, conv_10_params.padding, conv_10_params.kernel_size,
@@ -544,7 +544,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_largeC(
             conv_13_params.batch_size, conv_13_params.in_dim, conv_13_params.in_channels,
             conv_13_params.out_channels, conv_13_params.out_dim,
             conv_13_params.stride, conv_13_params.padding, conv_13_params.kernel_size,
@@ -613,7 +613,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_largeC(
             conv_15_params.batch_size, conv_15_params.in_dim, conv_15_params.in_channels,
             conv_15_params.out_channels, conv_15_params.out_dim,
             conv_15_params.stride, conv_15_params.padding, conv_15_params.kernel_size,
@@ -697,7 +697,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_largeC(
             conv_17_params.batch_size, conv_17_params.in_dim, conv_17_params.in_channels,
             conv_17_params.out_channels, conv_17_params.out_dim,
             conv_17_params.stride, conv_17_params.padding, conv_17_params.kernel_size,
@@ -807,7 +807,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_largeC(
             conv_20_params.batch_size, conv_20_params.in_dim, conv_20_params.in_channels,
             conv_20_params.out_channels, conv_20_params.out_dim,
             conv_20_params.stride, conv_20_params.padding, conv_20_params.kernel_size,
@@ -917,7 +917,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_largeC(
             conv_23_params.batch_size, conv_23_params.in_dim, conv_23_params.in_channels,
             conv_23_params.out_channels, conv_23_params.out_dim,
             conv_23_params.stride, conv_23_params.padding, conv_23_params.kernel_size,
@@ -1027,7 +1027,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_largeC(
             conv_26_params.batch_size, conv_26_params.in_dim, conv_26_params.in_channels,
             conv_26_params.out_channels, conv_26_params.out_dim,
             conv_26_params.stride, conv_26_params.padding, conv_26_params.kernel_size,
@@ -1096,7 +1096,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_original(
             conv_28_params.batch_size, conv_28_params.in_dim, conv_28_params.in_channels,
             conv_28_params.out_channels, conv_28_params.out_dim,
             conv_28_params.stride, conv_28_params.padding, conv_28_params.kernel_size,
@@ -1180,7 +1180,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_largeC(
             conv_30_params.batch_size, conv_30_params.in_dim, conv_30_params.in_channels,
             conv_30_params.out_channels, conv_30_params.out_dim,
             conv_30_params.stride, conv_30_params.padding, conv_30_params.kernel_size,
@@ -1290,7 +1290,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_largeC(
             conv_33_params.batch_size, conv_33_params.in_dim, conv_33_params.in_channels,
             conv_33_params.out_channels, conv_33_params.out_dim,
             conv_33_params.stride, conv_33_params.padding, conv_33_params.kernel_size,
@@ -1400,7 +1400,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_largeC(
             conv_36_params.batch_size, conv_36_params.in_dim, conv_36_params.in_channels,
             conv_36_params.out_channels, conv_36_params.out_dim,
             conv_36_params.stride, conv_36_params.padding, conv_36_params.kernel_size,
@@ -1510,7 +1510,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_largeC(
             conv_39_params.batch_size, conv_39_params.in_dim, conv_39_params.in_channels,
             conv_39_params.out_channels, conv_39_params.out_dim,
             conv_39_params.stride, conv_39_params.padding, conv_39_params.kernel_size,
@@ -1620,7 +1620,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_largeC(
             conv_42_params.batch_size, conv_42_params.in_dim, conv_42_params.in_channels,
             conv_42_params.out_channels, conv_42_params.out_dim,
             conv_42_params.stride, conv_42_params.padding, conv_42_params.kernel_size,
@@ -1730,7 +1730,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_original(
             conv_45_params.batch_size, conv_45_params.in_dim, conv_45_params.in_channels,
             conv_45_params.out_channels, conv_45_params.out_dim,
             conv_45_params.stride, conv_45_params.padding, conv_45_params.kernel_size,
@@ -1799,7 +1799,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_original(
             conv_47_params.batch_size, conv_47_params.in_dim, conv_47_params.in_channels,
             conv_47_params.out_channels, conv_47_params.out_dim,
             conv_47_params.stride, conv_47_params.padding, conv_47_params.kernel_size,
@@ -1883,7 +1883,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_original(
             conv_49_params.batch_size, conv_49_params.in_dim, conv_49_params.in_channels,
             conv_49_params.out_channels, conv_49_params.out_dim,
             conv_49_params.stride, conv_49_params.padding, conv_49_params.kernel_size,
@@ -1993,7 +1993,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto_original(
             conv_52_params.batch_size, conv_52_params.in_dim, conv_52_params.in_channels,
             conv_52_params.out_channels, conv_52_params.out_dim,
             conv_52_params.stride, conv_52_params.padding, conv_52_params.kernel_size,

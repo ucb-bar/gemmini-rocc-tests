@@ -42,7 +42,7 @@ int main (int argc, char * argv[]) {
     bool conv = true;
     
     if (argc < 3) {
-        conv = true;
+        conv = false;
     } else if (strcmp(argv[2], "conv") == 0) {
         conv = true;
     } else if (strcmp(argv[2], "matmul") == 0) {
