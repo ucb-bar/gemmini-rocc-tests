@@ -1,4 +1,3 @@
-// See LICENSE for license details.
 
 #include <stdint.h>
 #include <stddef.h>
@@ -41,12 +40,6 @@ typedef elem_t ACC_T;
 #endif
 
 #endif // ifdef FAST
-
-#ifdef FAST
-#define RAND 1
-#else
-#define RAND rand()
-#endif
 
 void print_tile(elem_t* in, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++) {
@@ -144,7 +137,7 @@ int main() {
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
 #ifdef FAST
-        full_D[i][j] = 0;
+        full_D[i][j] = NO_BIAS ? 0 : 1;
 #else
         full_D[i][j] = NO_BIAS ? 0 : rand() % 2;
 #endif
@@ -152,10 +145,9 @@ int main() {
     }
 
 #ifdef FAST
-    // printf("Init D\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        gold[i][j] = MAT_DIM_K;
+        gold[i][j] = MAT_DIM_K + !NO_BIAS;
       }
     }
 #else
@@ -191,7 +183,7 @@ int main() {
 
       printf("Gold:\n");
 #ifdef FAST
-      printf("All elements must be %d\n", MAT_DIM_K);
+      printf("All elements must be %d\n", MAT_DIM_K + !NO_BIAS);
 #else
       full_printMatrix(gold);
       printf("\n");
