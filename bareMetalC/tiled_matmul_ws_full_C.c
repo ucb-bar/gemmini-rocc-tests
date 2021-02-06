@@ -107,7 +107,7 @@ int main() {
 #ifdef FAST
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        gold_full[i][j] = MAT_DIM_K + (NO_BIAS ? 0 : (RAND % 2));
+        gold[i][j] = MAT_DIM_K + (NO_BIAS ? 0 : (RAND % 2));
       }
     }
 
