@@ -21,6 +21,14 @@ typedef acc_t ACC_T;
 typedef elem_t ACC_T;
 #endif
 
+#ifdef FAST
+
+#define MAT_DIM_I 19
+#define MAT_DIM_K 18
+#define MAT_DIM_J 17
+
+#else
+
 #ifndef BAREMETAL
 #define MAT_DIM_I 500
 #define MAT_DIM_K 412
@@ -30,6 +38,8 @@ typedef elem_t ACC_T;
 #define MAT_DIM_K 50
 #define MAT_DIM_J 30
 #endif
+
+#endif // ifdef FAST
 
 void print_tile(elem_t* in, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++) {
@@ -104,30 +114,51 @@ int main() {
     // printf("Init A\n");
     for (size_t i = 0; i < MAT_DIM_K; ++i) {
       for (size_t j = 0; j < MAT_DIM_I; ++j) {
+#ifdef FAST
+        full_A[i][j] = 1;
+#else
         full_A[i][j] = rand() % 2;
+#endif
       }
     }
 
     // printf("Init B\n");
     for (size_t i = 0; i < MAT_DIM_K; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
+#ifdef FAST
+        full_B[i][j] = 1;
+#else
         full_B[i][j] = rand() % 2;
+#endif
       }
     }
 
     // printf("Init D\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
+#ifdef FAST
+        full_D[i][j] = NO_BIAS ? 0 : 1;
+#else
         full_D[i][j] = NO_BIAS ? 0 : rand() % 2;
+#endif
       }
     }
 
+#ifdef FAST
+    for (size_t i = 0; i < MAT_DIM_I; ++i) {
+      for (size_t j = 0; j < MAT_DIM_J; ++j) {
+        gold[i][j] = MAT_DIM_K + !NO_BIAS;
+      }
+    }
+#else
     printf("Starting slow CPU matmul\n");
     unsigned long cpu_start = read_cycles();
     full_matmul(full_A, full_B, full_D, gold_full);
     unsigned long cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
     full_matscale(gold_full, gold, ACC_SCALE_IDENTITY);
+#endif // #ifdef FAST
+
 #endif
 
     printf("Starting gemmini matmul\n");
@@ -150,8 +181,12 @@ int main() {
       printf("C:\n");
       full_printMatrix(full_C);
       printf("Gold:\n");
+#ifdef FAST
+      printf("All elements must be %d\n", MAT_DIM_K + !NO_BIAS);
+#else
       full_printMatrix(gold);
       printf("\n");
+#endif // ifdef FAST
 
       exit(1);
     }
