@@ -55,6 +55,8 @@ typedef elem_t ACC_T;
 #define B_STRIDE MAT_DIM_K
 #endif
 
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+int threads_ready = 0;
 
 void print_tile(elem_t* in, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++) {
@@ -126,7 +128,12 @@ void *thread_matmul(void *arg){
 	  elem_t* B = (elem_t*) in_B + (MAT_DIM/2)*(cid%2);
 	  elem_t* C = (elem_t*) Out + (MAT_DIM/2)*(cid%2) + MAT_DIM_J*(MAT_DIM/2)*(cid/2);
 //	  acc_t * D = (acc_t*) bias + b_unit*DIM*(cid%2) + MAT_DIM_J*DIM*(cid/2);
-	 
+	pthread_mutex_lock(&mutex);
+	threads_ready += 1;
+	pthread_mutex_unlock(&mutex);
+	while(threads_ready != 4) {
+		//spin
+	} 
    uint64_t start = read_cycles(); 
 	  tiled_matmul_auto(MAT_DIM/2, MAT_DIM/2, MAT_DIM,
 				A, B, NULL, C, //NO_BIAS ? NULL : D, C,
@@ -139,7 +146,7 @@ void *thread_matmul(void *arg){
 
     uint64_t end = read_cycles();
     matmul_args->cycles = end - start;
-	
+    threads_ready = 0;	
 }
 
 void *print_message(void *ptr){
