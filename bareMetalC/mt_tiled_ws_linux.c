@@ -32,9 +32,9 @@ typedef elem_t ACC_T;
 
 #ifndef BAREMETAL
 #define MAT_DIM 1024
-#define MAT_DIM_I MAT_DIM
-#define MAT_DIM_K MAT_DIM
-#define MAT_DIM_J MAT_DIM
+#define MAT_DIM_I MAT_DIM+64
+#define MAT_DIM_K MAT_DIM_I
+#define MAT_DIM_J MAT_DIM_I
 #else
 #define MAT_DIM 32
 #define MAT_DIM_I MAT_DIM
@@ -108,40 +108,37 @@ void full_matshift(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_
 } 
 
 //start from here
-static elem_t in_A[MAT_DIM_I][MAT_DIM_K] row_align(1) = {0};
-static elem_t in_B[MAT_DIM_K][MAT_DIM_J] row_align(1) = {0};
+static elem_t in_A[MAT_DIM_I][MAT_DIM_K] row_align(MAX_BLOCK_LEN) = {0};
+static elem_t in_B[MAT_DIM_K][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {0};
 //static ACC_T bias[MAT_DIM_I][MAT_DIM_J] row_align_acc(1) = {0};
-static elem_t Out[num_proc][MAT_DIM_I][MAT_DIM_J] row_align(1) = {0};
+static elem_t Out[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {0};
 
 struct thread_args{
-	int i;
+	uint64_t cycles;
 };
 
 void *thread_matmul(void *arg){
 	struct thread_args * matmul_args = (struct thread_args *) arg;
 	gemmini_flush(0);
-	int cid = matmul_args->i;
-	int b_unit = MAX_BLOCK_LEN;
-	  elem_t* A = (elem_t*) in_A + MAT_DIM_K*DIM*(cid/2);
-	  elem_t* B = (elem_t*) in_B + b_unit*DIM*(cid%2);
-	  elem_t* C = (elem_t*) Out + b_unit*DIM*(cid%2) + MAT_DIM_J*DIM*(cid/2);
+	int cid = sched_getcpu();//matmul_args->i;
+//	int b_unit = MAX_BLOCK_LEN;
+	  elem_t* A = (elem_t*) in_A + MAT_DIM_K*(MAT_DIM/2)*(cid/2);
+	  elem_t* B = (elem_t*) in_B + (MAT_DIM/2)*(cid%2);
+	  elem_t* C = (elem_t*) Out + (MAT_DIM/2)*(cid%2) + MAT_DIM_J*(MAT_DIM/2)*(cid/2);
 //	  acc_t * D = (acc_t*) bias + b_unit*DIM*(cid%2) + MAT_DIM_J*DIM*(cid/2);
 	 
    uint64_t start = read_cycles(); 
-	  tiled_matmul_auto_distance(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K, DIM*num_proc/2, DIM*num_proc/2*b_unit, 2, 2,
+	  tiled_matmul_auto(MAT_DIM/2, MAT_DIM/2, MAT_DIM,
 				A, B, NULL, C, //NO_BIAS ? NULL : D, C,
 			   A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
             A_TRANSPOSE, B_TRANSPOSE,
+	    false, !FULL_BIAS_WIDTH,
             WS);
 
     uint64_t end = read_cycles();
-    printf("CPU %d Cycles taken: %u\n", sched_getcpu(), end-start);
-    const uint64_t total_macs = MAT_DIM_I * MAT_DIM_J * MAT_DIM_K / num_proc;
-    const uint64_t ideal_cycles = total_macs / (DIM * DIM);
-    const int utilization = 100 * ideal_cycles / (end-start);
-    printf("CPU %d Utilization: %d%%\n", sched_getcpu(), utilization);
+    matmul_args->cycles = end - start;
 	
 }
 
@@ -196,19 +193,20 @@ int main() {
 #ifndef BAREMETAL
 	 int cpu_id;
 	 cpu_id = sched_getcpu();
+	 printf("main thread cpuid: %d \n", cpu_id);
 	 cpu_set_t cpuset[num_proc];
 	 pthread_t thread[num_proc];
-	 pthread_attr_t attr;
-	 pthread_attr_init(&attr);
+	 pthread_attr_t attr[num_proc];
+	 for(int i = 0; i < num_proc; i++)
+	 	pthread_attr_init(&attr[i]);
 	 struct thread_args matmul_args[num_proc];
 
 
 	 for(int i = 0; i < num_proc; i++){
-		matmul_args[i].i = i;
 		 CPU_ZERO(&cpuset[i]);
 		 CPU_SET(i, &cpuset[i]);
-		 pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset[i]);
-		 pthread_create(&thread[i], &attr, print_message, NULL);
+		 pthread_attr_setaffinity_np(&attr[i], sizeof(cpu_set_t), &cpuset[i]);
+		 pthread_create(&thread[i], &attr[i], print_message, NULL);
 	 }
 
 /*	 for(int i = 0; i < num_proc; i++){
@@ -219,16 +217,15 @@ int main() {
 	 pthread_join(thread[1], NULL); 
 	 pthread_join(thread[2], NULL);
 	 pthread_join(thread[3], NULL);
-	//start gemmini matmul cycle count
-	//unsigned long start = read_cycles();
-	pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset[0]);
-	pthread_create(&thread[0], &attr, thread_matmul, &matmul_args[0]);
-	pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset[1]);
-	pthread_create(&thread[1], &attr, thread_matmul, &matmul_args[1]);
-	pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset[2]);
-	pthread_create(&thread[2], &attr, thread_matmul, &matmul_args[2]);
-	pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset[3]);
-	pthread_create(&thread[3], &attr, thread_matmul, &matmul_args[3]);
+	for(int i = 0; i < num_proc; i++)
+		pthread_attr_setaffinity_np(&attr[i], sizeof(cpu_set_t), &cpuset[i]);
+
+	for(int i = 0; i < num_proc; i++){
+		if(i!=cpu_id)	pthread_create(&thread[i], &attr[i], thread_matmul, &matmul_args[i]);
+	}
+	pthread_create(&thread[cpu_id], &attr[cpu_id], thread_matmul, &matmul_args[cpu_id]);
+	//pthread_create(&thread[2], &attr, thread_matmul, &matmul_args[2]);
+	//pthread_create(&thread[3], &attr, thread_matmul, &matmul_args[3]);
 /*
 	for(int i = 0; i < num_proc; i++){
 		pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset[i]);
@@ -237,15 +234,42 @@ int main() {
 */
 	for(int i = 0; i < num_proc; i++)
 		pthread_join(thread[i], NULL);
+	for(int i = 0; i < num_proc; i++){
+	    printf("proc %d warm up cycles taken: %llu\n", i, matmul_args[i].cycles);
+	    const int total_macs = MAT_DIM * MAT_DIM * MAT_DIM / num_proc;
+	    const int ideal_cycles = total_macs / (DIM * DIM);
+	    const int utilization = 100 * ideal_cycles / matmul_args[i].cycles;
+	    printf("Utilization: %d%%\n", utilization);
+	}
 
-/*
-    unsigned long end = read_cycles();
-    printf("Cycles taken: %u\n", end-start);
-    const int total_macs = MAT_DIM_I * MAT_DIM_J * MAT_DIM_K / num_proc;
-    const int ideal_cycles = total_macs / (DIM * DIM);
-    const int utilization = 100 * ideal_cycles / (end-start);
-    printf("Utilization: %d%%\n", utilization);
-*/	
+	 for(int i = 0; i < num_proc; i++){
+		 pthread_attr_setaffinity_np(&attr[i], sizeof(cpu_set_t), &cpuset[i]);
+		 pthread_create(&thread[i], &attr[i], print_message, NULL);
+	 }
+
+	 pthread_join(thread[0], NULL);
+	 pthread_join(thread[1], NULL); 
+	 pthread_join(thread[2], NULL);
+	 pthread_join(thread[3], NULL);
+	for(int i = 0; i < num_proc; i++)
+		pthread_attr_setaffinity_np(&attr[i], sizeof(cpu_set_t), &cpuset[i]);
+
+	for(int i = 0; i < num_proc; i++){
+		if(i!=cpu_id)	pthread_create(&thread[i], &attr[i], thread_matmul, &matmul_args[i]);
+	}
+	pthread_create(&thread[cpu_id], &attr[cpu_id], thread_matmul, &matmul_args[cpu_id]);
+
+	for(int i = 0; i < num_proc; i++)
+		pthread_join(thread[i], NULL);
+	for(int i = 0; i < num_proc; i++){
+	    printf("proc %d cycles taken: %llu\n", i, matmul_args[i].cycles);
+	    const int total_macs = MAT_DIM * MAT_DIM * MAT_DIM / num_proc;
+	    const int ideal_cycles = total_macs / (DIM * DIM);
+	    const int utilization = 100 * ideal_cycles / matmul_args[i].cycles;
+	    printf("Utilization: %d%%\n", utilization);
+	}
+
+
 #endif
 
 #if CHECK_RESULT == 1
