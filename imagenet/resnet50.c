@@ -40,7 +40,7 @@ int main (int argc, char * argv[]) {
     }
 
     bool conv = true;
-    
+
     if (argc < 3) {
         conv = false;
     } else if (strcmp(argv[2], "conv") == 0) {
@@ -67,6 +67,9 @@ int main (int argc, char * argv[]) {
 
     uint64_t start, end;
     uint64_t im2col_cycles = 0, matmul_cycles = 0, conv_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, res_add_cycles = 0, other_cycles = 0;
+
+    check = false;
+    tiled_matmul_type = CPU;
 
     // conv_1
     if (!conv) {
@@ -646,7 +649,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_16
     if (!conv) {
         start = read_cycles();
@@ -756,7 +759,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_19
     if (!conv) {
         start = read_cycles();
@@ -866,7 +869,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_22
     if (!conv) {
         start = read_cycles();
@@ -976,7 +979,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_25
     if (!conv) {
         start = read_cycles();
@@ -1129,7 +1132,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_29
     if (!conv) {
         start = read_cycles();
@@ -1239,7 +1242,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_32
     if (!conv) {
         start = read_cycles();
@@ -1349,7 +1352,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_35
     if (!conv) {
         start = read_cycles();
@@ -1459,7 +1462,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_38
     if (!conv) {
         start = read_cycles();
@@ -1569,7 +1572,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_41
     if (!conv) {
         start = read_cycles();
@@ -1679,7 +1682,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_44
     if (!conv) {
         start = read_cycles();
@@ -1832,7 +1835,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_48
     if (!conv) {
         start = read_cycles();
@@ -1942,7 +1945,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_51
     if (!conv) {
         start = read_cycles();
@@ -2052,7 +2055,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // Global averaging
     static elem_t average[2048][4] row_align(1);
 

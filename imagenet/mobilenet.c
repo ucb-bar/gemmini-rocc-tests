@@ -40,7 +40,7 @@ int main (int argc, char * argv[]) {
     }
 
     bool conv = true;
-    
+
     if (argc < 3) {
         conv = false;
     } else if (strcmp(argv[2], "conv") == 0) {
@@ -54,7 +54,7 @@ int main (int argc, char * argv[]) {
     }
 
     bool check = false;
-    
+
     if (argc < 4) {
         check = false;
     } else if (strcmp(argv[3], "check") == 0) {
@@ -68,6 +68,10 @@ int main (int argc, char * argv[]) {
     uint64_t start, end;
     uint64_t im2col_cycles = 0, matmul_cycles = 0, conv_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, res_add_cycles = 0, other_cycles = 0;
 
+    check = true;
+    conv = false;
+    tiled_matmul_type = WS;
+
     // conv_1
     if (!conv) {
       start = read_cycles();
@@ -80,6 +84,33 @@ int main (int argc, char * argv[]) {
         im2col_cycles += end - start;
 
         start = read_cycles();
+
+        //printf("A:\n");
+        //for (size_t i = 0; i < conv_1_params.I; ++i) {
+        //  for (size_t k = 0; k < conv_1_params.K; ++k) {
+        //      printf("%ld, ", conv_1_in[i][k]);
+        //  }
+        //  printf("\n");
+        //}
+        //printf("\n");
+
+        //printf("B:\n");
+        //for (size_t k = 0; k < conv_1_params.K; ++k) {
+        //  for (size_t j = 0; j < conv_1_params.J; ++j) {
+        //      printf("%ld, ", conv_1_w[k][j]);
+        //  }
+        //  printf("\n");
+        //}
+        //printf("\n");
+
+        //printf("D:\n");
+        //for (size_t i = 0; i < conv_1_params.I; ++i) {
+        //  for (size_t j = 0; j < conv_1_params.J; ++j) {
+        //      printf("%ld, ", conv_1_b[j]);
+        //  }
+        //  printf("\n");
+        //}
+        //printf("\n");
 
         tiled_matmul_nn_auto(conv_1_params.I, conv_1_params.J, conv_1_params.K,
             conv_1_in, conv_1_w, conv_1_b, conv_1_out,
@@ -318,7 +349,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_10
     if (!conv) {
         start = read_cycles();
@@ -480,7 +511,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_16
     if (!conv) {
         start = read_cycles();
@@ -570,7 +601,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_19
     if (!conv) {
         start = read_cycles();
@@ -733,7 +764,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_25
     if (!conv) {
         start = read_cycles();
@@ -823,7 +854,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_28
     if (!conv) {
         start = read_cycles();
@@ -913,7 +944,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_31
     if (!conv) {
         start = read_cycles();
@@ -1077,7 +1108,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_37
     if (!conv) {
         start = read_cycles();
@@ -1167,7 +1198,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_40
     if (!conv) {
         start = read_cycles();
@@ -1331,7 +1362,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_46
     if (!conv) {
         start = read_cycles();
@@ -1421,7 +1452,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_49
     if (!conv) {
         start = read_cycles();
