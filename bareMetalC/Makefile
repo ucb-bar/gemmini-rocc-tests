@@ -2,7 +2,9 @@ include $(abs_top_srcdir)/Makefrag
 
 tests = \
 	mvin_mvout \
+	mvin_mvout_zeros \
 	mvin_mvout_stride \
+	mvin_mvout_block_stride \
 	mvin_mvout_acc \
 	mvin_mvout_acc_stride \
 	mvin_mvout_acc_zero_stride \

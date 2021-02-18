@@ -81,7 +81,7 @@ int main() {
       for (size_t j = 0; j < DIM; ++j)
         In_acc[n][i][j] = i*DIM + j + n;
 
-  gemmini_config_ex(0, NO_ACTIVATION, 0, ACC_SCALE_IDENTITY, 0); // Set shift to 0
+  gemmini_config_ex(0, NO_ACTIVATION, 0, ACC_SCALE_IDENTITY, 0); // Set acc_scale to identity
   gemmini_config_st(DIM * sizeof(elem_t));
 
   for (int n = 0; n < N; ++n) {
