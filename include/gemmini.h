@@ -1024,7 +1024,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #undef max_tile_k
 }
 
-void sp_tiled_conv_A_stride(
+static void sp_tiled_conv_A_stride(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -2356,7 +2356,7 @@ static void conv_cpu(
   }
 }
 
-void tiled_conv_A_stride(
+static void tiled_conv_A_stride(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -2525,7 +2525,7 @@ void tiled_conv_A_stride(
     }
 }
 
-void tiled_conv_A_stride_auto(
+static void tiled_conv_A_stride_auto(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -2628,7 +2628,7 @@ void tiled_conv_A_stride_auto(
         tiled_conv_type);
 }
 
-void tiled_conv_dw(
+static void tiled_conv_dw(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
