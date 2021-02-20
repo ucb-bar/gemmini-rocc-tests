@@ -314,7 +314,7 @@ static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const void * 
         bool no_bias, bool repeating_bias) {
 
   const uint32_t A_sp_addr_start = 0;
-  const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
+  const uint32_t B_sp_addr_start = I * K * DIM;
   const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
   const uint32_t C_sp_addr_start = (3 << (ADDR_LEN-2)) | (full_C << (ADDR_LEN-3));
 
@@ -434,7 +434,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         bool no_bias, bool repeating_bias) {
 
   const uint32_t A_sp_addr_start = 0;
-  const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
+  const uint32_t B_sp_addr_start = I * K * DIM;
   const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
   const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2) | (full_C << (ADDR_LEN-3));
 
@@ -685,6 +685,12 @@ static elem_t scale_and_sat(acc_t x, int act, acc_scale_t scale, size_t relu6_sh
 #define GEMMINI_SCALE(x, scale) (x)
 #endif
 
+#ifdef HAS_MVIN_ACC_SCALE
+#define GEMMINI_ACC_SCALE(x, scale) MVIN_ACC_SCALE((x), (scale))
+#else
+#define GEMMINI_ACC_SCALE(x, scale) (x)
+#endif
+
 static void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
         const elem_t* A, const elem_t* B, const acc_t * D,
         elem_t* C,
@@ -703,7 +709,7 @@ static void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
           for (size_t jj = 0; jj < 4; jj++) {
             const size_t bias_row = repeating_bias ? 0 : i + ii;
             result[ii][jj] = no_bias ? 0 :
-              GEMMINI_SCALE(*(D + bias_row*stride_D + j + jj), D_scale_factor);
+              GEMMINI_ACC_SCALE(*(D + bias_row*stride_D + j + jj), D_scale_factor);
           }
 
         for (size_t k = 0; k < DIM_K; k++) {
@@ -797,7 +803,7 @@ static void matmul_cpu(size_t DIM_I, size_t DIM_J, size_t DIM_K,
 
         const size_t bias_row = repeating_bias ? 0 : i;
 
-        acc_t result = no_bias ? 0 : GEMMINI_SCALE(*(D + bias_row * stride_D + j), D_scale_factor);
+        acc_t result = no_bias ? 0 : GEMMINI_ACC_SCALE(*(D + bias_row * stride_D + j), D_scale_factor);
 
         for (size_t k = 0; k < DIM_K; k++) {
           //acc_t past_opixel = result;
@@ -920,14 +926,6 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
   }
 }
 
-static size_t tiled_matmul_total_spad_rows(size_t I, size_t J, size_t K) {
-  return (I * K + K * J) * DIM;
-}
-
-static size_t tiled_matmul_total_acc_rows(size_t I, size_t J) {
-  return (I * J) * DIM;
-}
-
 // This function runs a tiled matrix multiplication, with automatically
 // calculated tiling factors
 void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
@@ -940,68 +938,15 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         bool full_C, bool low_D,
         enum tiled_matmul_type_t tiled_matmul_type) {
 
-#define partition_rows (BANK_NUM * BANK_ROWS / 2)
-#define mats_in_partition (partition_rows / DIM)
-#define mats_in_acc (ACC_ROWS / DIM)
-#define max_tile_i_j ((size_t)sqrt(mats_in_acc))
-#define max_tile_k (mats_in_partition / max_tile_i_j)
-
-    // "db_" means "double-buffered"
-#define db_partition_rows ((BANK_NUM * BANK_ROWS / 2) / 2)
-#define db_mats_in_partition (db_partition_rows / DIM)
-#define db_mats_in_acc ((ACC_ROWS / 2) / DIM)
-#define db_max_tile_i_j ((size_t)sqrt(db_mats_in_acc))
-#define db_max_tile_k (db_mats_in_partition / db_max_tile_i_j)
-
     const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
     const size_t dim_J_padded = (dim_J / DIM + (dim_J % DIM != 0)) * DIM;
     const size_t dim_K_padded = (dim_K / DIM + (dim_K % DIM != 0)) * DIM;
 
-    const bool double_buffered = tiled_matmul_type == WS;
-
-    const size_t max_spad_rows = double_buffered ? BANK_NUM * BANK_ROWS / 2 :
-      BANK_NUM * BANK_ROWS;
-    const size_t max_acc_rows = double_buffered ? ACC_ROWS / 2 : ACC_ROWS;
-
     size_t tile_I, tile_J, tile_K;
 
-    if (double_buffered) {
-       tile_I = dim_I_padded/DIM < db_max_tile_i_j ? dim_I_padded/DIM : db_max_tile_i_j;
-       tile_J = dim_J_padded/DIM < db_max_tile_i_j ? dim_J_padded/DIM : db_max_tile_i_j;
-       tile_K = dim_K_padded/DIM < db_max_tile_k ? dim_K_padded/DIM : db_max_tile_k;
-    } else {
-       tile_I = dim_I_padded/DIM < max_tile_i_j ? dim_I_padded/DIM : max_tile_i_j;
-       tile_J = dim_J_padded/DIM < max_tile_i_j ? dim_J_padded/DIM : max_tile_i_j;
-       tile_K = dim_K_padded/DIM < max_tile_k ? dim_K_padded/DIM : max_tile_k;
-    }
-
-    // Fill scratchpad as much as possible
-    while (true) {
-      bool increased = false;
-
-      if (tiled_matmul_total_spad_rows(tile_I, tile_J+1, tile_K) <= max_spad_rows &&
-          tiled_matmul_total_acc_rows(tile_I, tile_J+1) <= max_acc_rows &&
-          (tile_J+1) * DIM <= dim_J_padded) {
-        tile_J++;
-        increased = true;
-      }
-
-      if (tiled_matmul_total_spad_rows(tile_I+1, tile_J, tile_K) <= max_spad_rows &&
-          tiled_matmul_total_acc_rows(tile_I+1, tile_J) <= max_acc_rows &&
-          (tile_I+1) * DIM <= dim_I_padded) {
-        tile_I++;
-        increased = true;
-      }
-
-      if (tiled_matmul_total_spad_rows(tile_I, tile_J, tile_K+1) <= max_spad_rows &&
-          (tile_K+1) * DIM <= dim_K_padded) {
-        tile_K++;
-        increased = true;
-      }
-
-      if (!increased)
-        break;
-    }
+    tile_I = 1;
+    tile_J = 1;
+    tile_K = 1;
 
     tiled_matmul(dim_I, dim_J, dim_K,
         A, B, D, C,
@@ -1012,12 +957,6 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         transpose_A, transpose_B,
         full_C, low_D,
         tiled_matmul_type);
-
-#undef partition_rows
-#undef mats_in_partition
-#undef mats_in_acc
-#undef max_tile_i_j
-#undef max_tile_k
 }
 
 void sp_tiled_conv_A_stride(
