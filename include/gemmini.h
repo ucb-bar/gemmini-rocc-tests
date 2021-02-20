@@ -433,7 +433,6 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         bool full_C, bool low_D,
         bool no_bias, bool repeating_bias) {
 
-  /*
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
   const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
@@ -551,13 +550,14 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
       }
     }
   }
-  */
 
+/*
   // Combined loop
   gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
     A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
     a_transpose, b_transpose,
     full_C, low_D, !no_bias || D == NULL);
+*/
 }
 
 static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
