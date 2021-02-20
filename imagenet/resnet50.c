@@ -68,9 +68,6 @@ int main (int argc, char * argv[]) {
     uint64_t start, end;
     uint64_t im2col_cycles = 0, matmul_cycles = 0, conv_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, res_add_cycles = 0, other_cycles = 0;
 
-    check = false;
-    tiled_matmul_type = CPU;
-
     // conv_1
     if (!conv) {
       start = read_cycles();
@@ -100,6 +97,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         pool_cycles += end - start;
+	printf("conv_1 complete\n");
 
     } else {
         start = read_cycles();
@@ -142,6 +140,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_2 complete\n");
 
     } else {
         start = read_cycles();
@@ -177,6 +176,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_3 complete\n");
 
     } else {
         start = read_cycles();
@@ -210,6 +210,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_4 complete\n");
 
     } else {
         start = read_cycles();
@@ -246,6 +247,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_5 complete\n");
 
     } else {
         start = read_cycles();
@@ -288,6 +290,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_6 complete\n");
 
     } else {
         start = read_cycles();
@@ -323,6 +326,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_7 complete\n");
 
     } else {
         start = read_cycles();
@@ -356,6 +360,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_8 complete\n");
 
     } else {
         start = read_cycles();
@@ -398,6 +403,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_9 complete\n");
 
     } else {
         start = read_cycles();
@@ -433,6 +439,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_10 complete\n");
 
     } else {
         start = read_cycles();
@@ -466,6 +473,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_11 complete\n");
 
     } else {
         start = read_cycles();
@@ -508,6 +516,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_12 complete\n");
 
     } else {
         start = read_cycles();
@@ -543,6 +552,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_13 complete\n");
 
     } else {
         start = read_cycles();
@@ -576,6 +586,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_14 complete\n");
 
     } else {
         start = read_cycles();
@@ -612,6 +623,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_15 complete\n");
 
     } else {
         start = read_cycles();
@@ -661,6 +673,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_16 complete\n");
 
     } else {
         start = read_cycles();
@@ -696,6 +709,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_17 complete\n");
 
     } else {
         start = read_cycles();
@@ -729,6 +743,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_18 complete\n");
 
     } else {
         start = read_cycles();
@@ -771,6 +786,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_19 complete\n");
 
     } else {
         start = read_cycles();
@@ -806,6 +822,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_20 complete\n");
 
     } else {
         start = read_cycles();
@@ -839,6 +856,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_21 complete\n");
 
     } else {
         start = read_cycles();
@@ -881,6 +899,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_22 complete\n");
 
     } else {
         start = read_cycles();
@@ -916,6 +935,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_23 complete\n");
 
     } else {
         start = read_cycles();
@@ -949,6 +969,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_24 complete\n");
 
     } else {
         start = read_cycles();
@@ -991,6 +1012,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_25 complete\n");
 
     } else {
         start = read_cycles();
@@ -1026,6 +1048,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_26 complete\n");
 
     } else {
         start = read_cycles();
@@ -1059,6 +1082,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_27 complete\n");
 
     } else {
         start = read_cycles();
@@ -1095,6 +1119,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_28 complete\n");
 
     } else {
         start = read_cycles();
@@ -1144,6 +1169,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_29 complete\n");
 
     } else {
         start = read_cycles();
@@ -1179,6 +1205,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_30 complete\n");
 
     } else {
         start = read_cycles();
@@ -1212,6 +1239,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_31 complete\n");
 
     } else {
         start = read_cycles();
@@ -1254,6 +1282,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_32 complete\n");
 
     } else {
         start = read_cycles();
@@ -1289,6 +1318,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_33 complete\n");
 
     } else {
         start = read_cycles();
@@ -1322,6 +1352,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_34 complete\n");
 
     } else {
         start = read_cycles();
@@ -1364,6 +1395,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_35 complete\n");
 
     } else {
         start = read_cycles();
@@ -1399,6 +1431,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_36 complete\n");
 
     } else {
         start = read_cycles();
@@ -1432,6 +1465,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_37 complete\n");
 
     } else {
         start = read_cycles();
@@ -1474,6 +1508,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_38 complete\n");
 
     } else {
         start = read_cycles();
@@ -1509,6 +1544,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_39 complete\n");
 
     } else {
         start = read_cycles();
@@ -1542,6 +1578,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_40 complete\n");
 
     } else {
         start = read_cycles();
@@ -1584,6 +1621,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_41 complete\n");
 
     } else {
         start = read_cycles();
@@ -1619,6 +1657,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_42 complete\n");
 
     } else {
         start = read_cycles();
@@ -1652,6 +1691,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_43 complete\n");
 
     } else {
         start = read_cycles();
@@ -1694,6 +1734,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_44 complete\n");
 
     } else {
         start = read_cycles();
@@ -1729,6 +1770,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_45 complete\n");
 
     } else {
         start = read_cycles();
@@ -1762,6 +1804,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_46 complete\n");
 
     } else {
         start = read_cycles();
@@ -1798,6 +1841,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_47 complete\n");
 
     } else {
         start = read_cycles();
@@ -1847,6 +1891,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_48 complete\n");
 
     } else {
         start = read_cycles();
@@ -1882,6 +1927,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_49 complete\n");
 
     } else {
         start = read_cycles();
@@ -1915,6 +1961,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_50 complete\n");
 
     } else {
         start = read_cycles();
@@ -1957,6 +2004,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_51 complete\n");
 
     } else {
         start = read_cycles();
@@ -1992,6 +2040,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_52 complete\n");
 
     } else {
         start = read_cycles();
@@ -2025,6 +2074,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+	printf("conv_53 complete\n");
 
     } else {
         start = read_cycles();
@@ -2121,6 +2171,7 @@ int main (int argc, char * argv[]) {
     printf("Res add cycles: %llu (%d%%)\n", res_add_cycles, (res_add_cycles * 100) / total_cycles);
     printf("Other cycles: %llu (%d%%)\n", other_cycles, (other_cycles * 100) / total_cycles);
 
+#ifdef BAREMETAL
     int correct[] = {75, 900, 641, 897};
     for (int i = 0; i < fc_54_params.batch_size; i++) {
         if (preds[i] != correct[i] && fc_54_out[preds[i]][i] != fc_54_out[correct[i]][i]) {
@@ -2128,6 +2179,7 @@ int main (int argc, char * argv[]) {
             exit(1);
         }
     }
+#endif // BAREMETAL
 
     printf("PASS\n");
     exit(0);

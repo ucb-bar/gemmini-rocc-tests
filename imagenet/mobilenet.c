@@ -68,10 +68,6 @@ int main (int argc, char * argv[]) {
     uint64_t start, end;
     uint64_t im2col_cycles = 0, matmul_cycles = 0, conv_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, res_add_cycles = 0, other_cycles = 0;
 
-    check = true;
-    conv = false;
-    tiled_matmul_type = WS;
-
     // conv_1
     if (!conv) {
       start = read_cycles();
@@ -84,33 +80,6 @@ int main (int argc, char * argv[]) {
         im2col_cycles += end - start;
 
         start = read_cycles();
-
-        //printf("A:\n");
-        //for (size_t i = 0; i < conv_1_params.I; ++i) {
-        //  for (size_t k = 0; k < conv_1_params.K; ++k) {
-        //      printf("%ld, ", conv_1_in[i][k]);
-        //  }
-        //  printf("\n");
-        //}
-        //printf("\n");
-
-        //printf("B:\n");
-        //for (size_t k = 0; k < conv_1_params.K; ++k) {
-        //  for (size_t j = 0; j < conv_1_params.J; ++j) {
-        //      printf("%ld, ", conv_1_w[k][j]);
-        //  }
-        //  printf("\n");
-        //}
-        //printf("\n");
-
-        //printf("D:\n");
-        //for (size_t i = 0; i < conv_1_params.I; ++i) {
-        //  for (size_t j = 0; j < conv_1_params.J; ++j) {
-        //      printf("%ld, ", conv_1_b[j]);
-        //  }
-        //  printf("\n");
-        //}
-        //printf("\n");
 
         tiled_matmul_nn_auto(conv_1_params.I, conv_1_params.J, conv_1_params.K,
             conv_1_in, conv_1_w, conv_1_b, conv_1_out,
@@ -1614,6 +1583,8 @@ int main (int argc, char * argv[]) {
     printf("Res add cycles: %llu (%d%%)\n", res_add_cycles, (res_add_cycles * 100) / total_cycles);
     printf("Other cycles: %llu (%d%%)\n", other_cycles, (other_cycles * 100) / total_cycles);
 
+
+#ifdef BAREMETAL
     int correct[] = {75, 900, 125, 897};
     for (int i = 0; i < fc_53_params.batch_size; i++) {
         if (preds[i] != correct[i] && fc_53_out[preds[i]][i] != fc_53_out[correct[i]][i]) {
@@ -1621,6 +1592,7 @@ int main (int argc, char * argv[]) {
             exit(1);
         }
     }
+#endif // BAREMETAL
 
     printf("PASS\n");
     exit(0);
