@@ -52,9 +52,6 @@ int main (int argc, char * argv[]) {
     uint64_t start, end;
     uint64_t im2col_cycles = 0, matmul_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, res_add_cycles = 0, other_cycles = 0;
 
-    check = false;
-    tiled_matmul_type = CPU;
-
     // conv_1
     start = read_cycles();
 
