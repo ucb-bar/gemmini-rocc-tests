@@ -37,6 +37,8 @@
 
 #define k_MVIN3 14
 
+#define k_COUNTER 126
+
 #define CONFIG_EX 0
 #define CONFIG_LD 1
 #define CONFIG_ST 2
@@ -276,6 +278,49 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 
 // fence
 #define gemmini_fence() asm volatile("fence")
+
+// Counter access
+#define gemmini_counter_access(rd, config_reg) \
+  { \
+    uint32_t _placeholder; \
+    ROCC_INSTRUCTION(XCUSTOM_ACC, rd, config_reg, _placeholder, k_COUNTER) \
+  }
+
+// Read counter
+static uint32_t read_counter(size_t index) {
+  uint32_t config_reg = (index & 0x7);
+  uint32_t res;
+  gemmini_counter_access(res, config_reg);
+  return res;
+}
+
+// Configure counter to take a new signal
+static void configure_counter(size_t index, size_t counter_code) {
+  uint32_t config_reg = (index & 0x7) | 0x40 | (counter_code & 0x1f) << 7;
+  uint32_t placeholder;
+  gemmini_counter_access(placeholder, config_reg);
+}
+
+// Take a snapshot
+static void counter_snapshot_take() {
+  uint32_t config_reg = 0x20;
+  uint32_t placeholder;
+  gemmini_counter_access(placeholder, config_reg);
+}
+
+// Counter snapshot reset
+static void counter_snapshot_reset() {
+  uint32_t config_reg = 0x10;
+  uint32_t placeholder;
+  gemmini_counter_access(placeholder, config_reg);
+}
+
+// Counter module reset
+static void counter_reset() {
+  uint32_t config_reg = 0x8;
+  uint32_t placeholder;
+  gemmini_counter_access(placeholder, config_reg);
+}
 
 // Tiling functions
 static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const void * D, void * C,
