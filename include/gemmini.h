@@ -1058,12 +1058,46 @@ void sp_tiled_conv_A_stride(
     const int out_channels_per_bank = ochs / DIM + (ochs % DIM != 0);
     const int B_rows = out_channels_per_bank * kcols * krows * kchs;
 
+    static uint32_t D_sp_addr_row = 0;
+    static uint32_t C_sp_addr_row = 0;
+
     const uint32_t A_sp_addr_start = 0;
     const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - B_rows;
-    const uint32_t D_sp_addr_start = 1 << (ADDR_LEN - 1);
-    const uint32_t C_sp_addr_start = 3 << (ADDR_LEN - 2);
+    const uint32_t D_sp_addr_start = (1 << (ADDR_LEN - 1)) + D_sp_addr_row;
+    const uint32_t C_sp_addr_start = (3 << (ADDR_LEN - 2)) + C_sp_addr_row;
+
+    if (bias != 0) {
+      D_sp_addr_row = (D_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
+    }
+
+    if (output != 0) {
+      C_sp_addr_row = (C_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
+    }
 
     gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool);
+
+    // mvout output
+    if (output != NULL && !no_pool) {
+        gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
+
+        gemmini_fence(); // TODO remove this when the ROB can accurately handle these
+        for (int b = 0; b < batches; b++) {
+            for (int poch = 0; poch < pochs; poch += DIM) {
+                const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
+
+                elem_t * pout = output + (b * pool_out_dim * pool_out_dim)*out_channels + poch;
+
+                const uint32_t C_sp_addr = C_sp_addr_start + (poch / DIM) * batches * orows * ocols + b * orows * ocols;
+
+                gemmini_extended_mvout(pout,
+                        C_sp_addr,
+                        channels, 0);
+            }
+        }
+        gemmini_fence();
+
+        gemmini_config_st(out_channels * sizeof(elem_t));
+    }
 
     /*
     // mvin bias
