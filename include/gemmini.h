@@ -1003,6 +1003,21 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         break;
     }
 
+    /*
+    const int spad_rows = tiled_matmul_total_spad_rows(tile_I, tile_J, tile_K);
+    const int acc_rows = tiled_matmul_total_acc_rows(tile_I, tile_J);
+
+    printf("tile_I: %d\n", tile_I);
+    printf("tile_J: %d\n", tile_J);
+    printf("tile_K: %d\n\n", tile_J);
+
+    printf("spad_rows: %d\n", spad_rows);
+    printf("acc_rows: %d\n\n", acc_rows);
+
+    printf("spad_row utilization: %d%%\n", (spad_rows * 100) / max_spad_rows);
+    printf("acc_row utilization: %d%%\n\n", (acc_rows * 100) / max_acc_rows);
+    */
+
     tiled_matmul(dim_I, dim_J, dim_K,
         A, B, D, C,
         stride_A, stride_B, stride_D, stride_C,
@@ -2581,32 +2596,77 @@ void tiled_conv_A_stride_auto(
 
     const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
+    // Tile convolution params
+
     // int args[] = {batch_size, porows, pocols, pochs, krows, kcols, kchs};
     int args[] = {batch_size, pool_out_dim, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
+    const int max_args[] = {batch_size, pool_out_dim, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
+
+    const int orows_idx = 1;
+    const int ocols_idx = 2;
+    const int out_channels_idx = 3;
+    const int in_channels_idx = 6;
+
+    // We divide by 2 for the sake of double-buffering
+    const int max_spad_rows = (BANK_NUM*BANK_ROWS / 2);
+    const int max_acc_rows = (ACC_ROWS / 2);
 
     int spad_rows = tiled_conv_total_spad_rows_A_stride(false,
         stride, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     int acc_rows = tiled_conv_total_spad_rows_A_stride(true,
         stride, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
 
-    // We divide by 2 for the sake of double-buffering
-    while (spad_rows > (BANK_NUM*BANK_ROWS / 2) || acc_rows > (ACC_ROWS / 2)) {
+    while (spad_rows > max_spad_rows || acc_rows > max_acc_rows) {
         int max_val = -1;
         int max_idx = -1;
 
         for (size_t i = 0; i < sizeof(args)/sizeof(args[0]); i++) {
-            if (args[i] > max_val) {
+            // We avoid reducing ocols when possible to keep the spatial array fully utilized
+            if (!(i == ocols_idx && args[i] <= DIM && args[orows_idx] > 1)
+                    && args[i] > max_val) {
                 max_val = args[i];
                 max_idx = i;
             }
         }
 
-        args[max_idx]--;
+        if (max_idx == out_channels_idx || max_idx == in_channels_idx) {
+            // For input and output channels, there's no point in subtracting by just one
+            if (args[max_idx] % DIM != 0) {
+                args[max_idx] = (args[max_idx] / DIM) * DIM;
+            } else {
+                args[max_idx] -= DIM;
+            }
+            args[max_idx] = args[max_idx] == 0 ? 1 : args[max_idx];
+        } else {
+            args[max_idx]--;
+        }
 
         spad_rows = tiled_conv_total_spad_rows_A_stride(false,
             stride, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
         acc_rows = tiled_conv_total_spad_rows_A_stride(true,
             stride, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+    }
+
+    // Check if we can increase ocols
+    bool not_increased = false;
+    while (!not_increased) {
+        not_increased = true;
+
+        int args_candidate[] = {args[0], args[1], args[2], args[3], args[4], args[5], args[6]};
+        args_candidate[ocols_idx]++;
+
+        if (args_candidate[ocols_idx] > max_args[ocols_idx])
+            continue;
+
+        spad_rows = tiled_conv_total_spad_rows_A_stride(false,
+            stride, args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
+        acc_rows = tiled_conv_total_spad_rows_A_stride(true,
+            stride, args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
+
+        if (spad_rows <= max_spad_rows && acc_rows <= max_acc_rows) {
+            args[ocols_idx] = args_candidate[ocols_idx];
+            not_increased = false;
+        }
     }
 
     // Check if there are any parameters that we can currently still increase
@@ -2618,19 +2678,20 @@ void tiled_conv_A_stride_auto(
             int args_candidate[] = {args[0], args[1], args[2], args[3], args[4], args[5], args[6]};
             args_candidate[i]++;
 
+            if (args_candidate[i] > max_args[i])
+                continue;
+
             spad_rows = tiled_conv_total_spad_rows_A_stride(false,
                 stride, args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
             acc_rows = tiled_conv_total_spad_rows_A_stride(true,
                 stride, args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
 
-            if (spad_rows <= (BANK_NUM*BANK_ROWS / 2) && acc_rows <= (ACC_ROWS / 2)) {
+            if (spad_rows <= max_spad_rows && acc_rows <= max_acc_rows) {
                 args[i] = args_candidate[i];
                 nothing_increased = false;
             }
         }
     }
-
-    // printf("total spad_rows reserved: %d\n", spad_rows);
 
     const int batches = args[0];
     const int orows = args[1];
@@ -2639,6 +2700,29 @@ void tiled_conv_A_stride_auto(
     const int krows = args[4];
     const int kcols = args[5];
     const int kchs = args[6];
+
+    /*
+    spad_rows = tiled_conv_total_spad_rows_A_stride(false,
+        stride, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+    acc_rows = tiled_conv_total_spad_rows_A_stride(true,
+        stride, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+
+    printf("batches = %d\n", batches);
+    printf("orows   = %d\n", orows);
+    printf("ocols   = %d\n", ocols);
+    printf("ochs    = %d\n", ochs);
+    printf("krows   = %d\n", krows);
+    printf("kcols   = %d\n", kcols);
+    printf("kchs    = %d\n\n", kchs);
+
+    printf("total spad_rows reserved: %d\n", spad_rows);
+    printf("total acc_rows reserved: %d\n\n", acc_rows);
+
+    printf("scratchpad row utilization: %d%%\n", (spad_rows*100) / max_spad_rows);
+    printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
+
+    printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
+    */
 
     tiled_conv_A_stride(
         batch_size, in_dim, in_channels,
