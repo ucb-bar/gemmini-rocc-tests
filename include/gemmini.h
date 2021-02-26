@@ -50,8 +50,6 @@
 #define CONFIG_ST 2
 #define CONFIG_IM2COL 3
 
-#define XCUSTOM_ACC 3
-
 #define GARBAGE_ADDR ((uint32_t)(-1))
 #define OUTPUT_STATIONARY 0
 #define WEIGHT_STATIONARY 1
