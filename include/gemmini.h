@@ -248,8 +248,8 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D_stride, C_stride, k_LOOP_WS_CONFIG_STRIDES_DC) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ex_accumulate, ((B_transpose) << 1) | (A_transpose), k_LOOP_WS)
 
-#define gemmini_loop_ld(AB, max_row, max_col, pad_row, pad_col, dram_addr, row_stride, latency, alert_cycle, unlock_cycle) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(AB) << 63) | ((uint64_t)(pad_col) << 16) | (uint64_t)(pad_row), ((uint64_t)(unlock_cycle) << 54) | ((uint64_t)(alert_cycle) << 48) | ((uint64_t)(latency) << 32) | ((uint64_t)(max_col) << 16) | (uint64_t)(max_row), k_LOOP_LD_CONFIG_BOUNDS) \
+#define gemmini_loop_ld(AB, max_row, max_col, pad_row, pad_col, dram_addr, row_stride, latency, alert_cycle, unlock_cycle, pause_turn) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(AB) << 63) | ((uint64_t)(pad_col) << 16) | (uint64_t)(pad_row), ((uint64_t)(pause_turn) << 58) | ((uint64_t)(unlock_cycle) << 54) | ((uint64_t)(alert_cycle) << 48) | ((uint64_t)(latency) << 32) | ((uint64_t)(max_col) << 16) | (uint64_t)(max_row), k_LOOP_LD_CONFIG_BOUNDS) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, row_stride, k_LOOP_LD_CONFIG_ADDRS) 
 
 
@@ -451,14 +451,15 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
 		}
 	}
 	*/
-	int latency = 0;//conflict_detect ? 4000 : 0;
-	int alert = 0;//conflict_detect ? 30 : 0;
+	int latency = conflict_detect ? 4050 : 0;
+	int alert = 28;//conflict_detect ? 30 : 0;
 	int unlock_cycle = 5;
+	int pause_turn = 2;
 	if(skip_B) { 
-		gemmini_loop_ld(false, K, J, pad_K, pad_J, B, B_row_stride, latency, alert, unlock_cycle);
+		gemmini_loop_ld(false, K, J, pad_K, pad_J, B, B_row_stride, latency, alert, unlock_cycle, pause_turn);
 	}
 	else if(skip_A) {
-		gemmini_loop_ld(true, I, K, pad_I, pad_K, A, A_row_stride, latency, alert, unlock_cycle);
+		gemmini_loop_ld(true, I, K, pad_I, pad_K, A, A_row_stride, latency, alert, unlock_cycle, pause_turn);
 	}
 //gemmini_loop_ld(AB, max_row, max_col, pad_row, pad_col, dram_addr, row_stride, latency)
 /*  
