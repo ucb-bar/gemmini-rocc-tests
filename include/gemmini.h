@@ -817,7 +817,7 @@ enum tiled_matmul_type_t {OS, WS, CPU}; // TODO rename this so it's name also ap
 
 // This function runs a tiled matrix multiplication, with hardcoded tiling
 // factors
-void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
+static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t* A, const elem_t* B,
         const void * D, void* C,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
@@ -930,7 +930,7 @@ static size_t tiled_matmul_total_acc_rows(size_t I, size_t J) {
 
 // This function runs a tiled matrix multiplication, with automatically
 // calculated tiling factors
-void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
+static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t* A, const elem_t* B,
         const void * D, void * C,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
@@ -1035,7 +1035,7 @@ void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #undef max_tile_k
 }
 
-void sp_tiled_conv_A_stride(
+static void sp_tiled_conv_A_stride(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -1050,10 +1050,10 @@ void sp_tiled_conv_A_stride(
         int lpad, int rpad, int upad, int dpad,
         int plpad, int prpad, int pupad, int pdpad,
 
-        elem_t * input,
-        elem_t * weights,
+        const elem_t * input,
+        const elem_t * weights,
         elem_t * output,
-        acc_t * bias,
+        const acc_t * bias,
 
         bool no_bias, bool no_pool) {
 
@@ -1303,7 +1303,7 @@ void sp_tiled_conv_A_stride(
 
 //resnet downsampling layer (no padding, kernel size 1, stride 2)
 //due to poor instruction issue bandwidth
-void sp_tiled_conv_ds(
+static void sp_tiled_conv_ds(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -1520,7 +1520,7 @@ int bidims = batches*idims;
 
 }
 
-void sp_tiled_conv_dw(
+static void sp_tiled_conv_dw(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -1693,7 +1693,7 @@ void sp_tiled_conv_dw(
 }
 
 //for first layer
-void sp_tiled_conv_first(
+static void sp_tiled_conv_first(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -1851,7 +1851,7 @@ void sp_tiled_conv_first(
 }
 
 //has mvin weight
-void sp_tiled_conv_ws_original(
+static void sp_tiled_conv_ws_original(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -2045,7 +2045,7 @@ void sp_tiled_conv_ws_original(
 }
 
 //first layer padding region
-void sp_tiled_conv_ws_original_first(
+static void sp_tiled_conv_ws_original_first(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -2269,7 +2269,7 @@ static int tiled_conv_total_spad_rows_A_stride(bool acc,
     return acc ? C_rows : A_rows + B_rows;
 }
 
-void conv_cpu_without_pool(
+static void conv_cpu_without_pool(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -2317,7 +2317,7 @@ void conv_cpu_without_pool(
   }
 }
 
-void conv_cpu(
+static void conv_cpu(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -2403,7 +2403,7 @@ void conv_cpu(
   }
 }
 
-void tiled_conv_A_stride(
+static void tiled_conv_A_stride(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -2572,7 +2572,7 @@ void tiled_conv_A_stride(
     }
 }
 
-void tiled_conv_A_stride_auto(
+static void tiled_conv_A_stride_auto(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -2744,7 +2744,50 @@ void tiled_conv_A_stride_auto(
         tiled_conv_type);
 }
 
-void tiled_conv_dw(
+// This function is for a convolution with kernel_dim=1, stride==2, padding=0, and no pooling
+static void tiled_conv_downsample(
+        int batch_size, int in_dim, int in_channels,
+        int out_channels, int out_dim,
+
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
+        elem_t * output,
+
+        int act, acc_scale_t scale, size_t relu6_shift,
+
+        enum tiled_matmul_type_t tiled_conv_type) {
+
+    const int stride = 2;
+
+    for (int b = 0; b < batch_size; b++) {
+        for (int irow = 0; irow < in_dim; irow += stride) {
+            const int orow = irow / stride;
+
+            const int I = in_dim / stride; // number of columns in row
+            const int J = out_channels;
+            const int K = in_channels;
+
+            const elem_t * A = input + (b*in_dim + irow)*in_dim*in_channels;
+            const elem_t * B = weights;
+            const acc_t * D = bias;
+            elem_t * C = output + (b*out_dim + orow)*out_dim*out_channels;
+
+            const int A_stride = in_channels * 2;
+            const int B_stride = out_channels;
+            const int D_stride = out_channels;
+            const int C_stride = out_channels;
+
+            tiled_matmul_auto(I, J, K, A, B, (void*)D, (void*)C,
+                    A_stride, B_stride, D_stride, C_stride,
+                    MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+                    MVIN_SCALE_IDENTITY, act, scale, relu6_shift,
+                    true, false, false, false, false, tiled_conv_type);
+        }
+    }
+}
+
+static void tiled_conv_dw(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -2884,7 +2927,7 @@ void tiled_conv_dw(
     }
 }
 
-void tiled_conv_first(
+static void tiled_conv_first(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding,
@@ -3121,7 +3164,7 @@ void tiled_conv_first(
 }
 
 
-void sp_tiled_conv_ws(
+static void sp_tiled_conv_ws(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -3405,7 +3448,7 @@ void sp_tiled_conv_ws(
 }
 
 //outer loop without weight mvin (due to large channel size)
-void tiled_conv_original(
+static void tiled_conv_original(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -3596,7 +3639,7 @@ void tiled_conv_original(
 }
 
 
-void tiled_conv(
+static void tiled_conv(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -3806,7 +3849,7 @@ void tiled_conv(
 //	printf("mvin total cycles %d \n", mvin_cycles);
 }
 
-void tiled_conv_auto_first(
+static void tiled_conv_auto_first(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -3906,7 +3949,7 @@ void tiled_conv_auto_first(
 }
 
 //for mobilenet depthwise conv
-void tiled_conv_auto_dw(
+static void tiled_conv_auto_dw(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -3989,7 +4032,7 @@ void tiled_conv_auto_dw(
 
 //for resnet deeper layers
 //when we need to tile input channel dimension
-void tiled_conv_auto_original(
+static void tiled_conv_auto_original(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -4130,7 +4173,7 @@ void tiled_conv_auto_original(
 
 
 //tiling function for deeper layers (when C is large)
-void tiled_conv_auto_largeC(
+static void tiled_conv_auto_largeC(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -4245,7 +4288,7 @@ void tiled_conv_auto_largeC(
         weight_bank, tiled_conv_type);
 }
 
-void tiled_conv_auto(
+static void tiled_conv_auto(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int padding, int kernel_dim,
@@ -4331,7 +4374,7 @@ void tiled_conv_auto(
         weight_bank, tiled_conv_type);
 }
 
-void resadd_cpu(const size_t I, const size_t J,
+static void resadd_cpu(const size_t I, const size_t J,
         const scale_t A_scale,
         const scale_t B_scale,
         const acc_scale_t C_scale,
@@ -4358,7 +4401,7 @@ void resadd_cpu(const size_t I, const size_t J,
     }
 }
 
-void sp_tiled_resadd(const size_t I, const size_t J,
+static void sp_tiled_resadd(const size_t I, const size_t J,
         const scale_t A_scale,
         const scale_t B_scale,
         const elem_t * A, const elem_t * B, elem_t * C,
@@ -4420,7 +4463,7 @@ void sp_tiled_resadd(const size_t I, const size_t J,
 }
 
 // Compute MVIN_SCALE(A, A_scale) + MVIN_SCALE(B, B_scale) = C
-void tiled_resadd(const size_t I, const size_t J,
+static void tiled_resadd(const size_t I, const size_t J,
         const size_t tile_I, const size_t tile_J,
         const scale_t A_scale,
         const scale_t B_scale,
@@ -4454,7 +4497,7 @@ void tiled_resadd(const size_t I, const size_t J,
 }
 
 // Compute (A >> A_shift) + B = C
-void tiled_resadd_auto(const size_t I, const size_t J,
+static void tiled_resadd_auto(const size_t I, const size_t J,
         const scale_t A_scale,
         const scale_t B_scale,
         const acc_scale_t C_scale,
