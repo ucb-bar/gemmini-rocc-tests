@@ -4420,7 +4420,6 @@ static void sp_tiled_resadd(const size_t I, const size_t J,
 
     // Mvin A
     // printf("Mving A\n");
-    gemmini_extended2_config_ld(A_row_stride * sizeof(elem_t), A_scale, true);
     for (size_t i = 0; i < I; i += DIM) {
         for (size_t j = 0; j < J; j += blocks * DIM) {
             const size_t cols = j + blocks*DIM <= J ? blocks*DIM : J-j;
@@ -4435,7 +4434,6 @@ static void sp_tiled_resadd(const size_t I, const size_t J,
 
     // Mvin B
     // printf("Mving B\n");
-    gemmini_extended2_config_ld(B_row_stride * sizeof(elem_t), B_scale, true);
     for (size_t i = 0; i < I; i += DIM) {
         for (size_t j = 0; j < J; j += blocks * DIM) {
             const size_t cols = j + blocks*DIM <= J ? blocks*DIM : J-j;
@@ -4443,7 +4441,7 @@ static void sp_tiled_resadd(const size_t I, const size_t J,
 
             const elem_t * const B_dram_addr = B + i * B_row_stride + j;
             const uint32_t B_sp_addr = C_sp_addr_start + i * (rounded_up_J/DIM) + j;
-            gemmini_extended_mvin(B_dram_addr, B_sp_addr, cols, rows);
+            gemmini_extended_mvin2(B_dram_addr, B_sp_addr, cols, rows);
         }
     }
 
@@ -4476,6 +4474,9 @@ static void tiled_resadd(const size_t I, const size_t J,
 
     gemmini_config_st(J * sizeof(elem_t));
     gemmini_config_ex(WS, relu ? RELU : NO_ACTIVATION, 0, C_scale, 0);
+
+    gemmini_extended4_config_ld(J * sizeof(elem_t), A_scale, true, DIM, 0);
+    gemmini_extended4_config_ld(J * sizeof(elem_t), B_scale, true, DIM, 1);
 
     for (size_t i = 0; i < I; i += tile_I) {
         for (size_t j = 0; j < J; j += tile_J) {
