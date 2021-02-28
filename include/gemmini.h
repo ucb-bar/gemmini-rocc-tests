@@ -4410,8 +4410,8 @@ static void sp_tiled_resadd(const size_t I, const size_t J,
 
     // Use the new mvin2 command to overlap mvin A, mvin B, and mvout C
 
-    size_t blocks = J/DIM < MAX_BLOCK_LEN ? J/DIM : MAX_BLOCK_LEN;
-    if (blocks == 0) blocks = 1;
+    size_t blocks = (J/DIM + (J % DIM != 0));
+    if (blocks > MAX_BLOCK_LEN) blocks = MAX_BLOCK_LEN;
 
     const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
     const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2);
@@ -4448,8 +4448,8 @@ static void sp_tiled_resadd(const size_t I, const size_t J,
     // Mvout C from accumulator
     // printf("Mvout C from accumulator\n");
     for (size_t i = 0; i < I; i += DIM) {
-        for (size_t j = 0; j < J; j += DIM) {
-            const size_t cols = j + DIM <= J ? DIM : J-j;
+        for (size_t j = 0; j < J; j += blocks * DIM) {
+            const size_t cols = j + blocks*DIM <= J ? blocks*DIM : J-j;
             const size_t rows = i + DIM <= I ? DIM : I-i;
 
             elem_t * const C_dram_addr = C + i * C_row_stride + j;
@@ -4457,7 +4457,6 @@ static void sp_tiled_resadd(const size_t I, const size_t J,
             gemmini_extended_mvout(C_dram_addr, C_sp_addr, cols, rows);
         }
     }
-
 }
 
 // Compute MVIN_SCALE(A, A_scale) + MVIN_SCALE(B, B_scale) = C
@@ -4522,13 +4521,16 @@ static void tiled_resadd_auto(const size_t I, const size_t J,
 
     // TODO this is a very inefficient way of doing this...
     while (total_acc_rows > ACC_ROWS) {
-        if (tile_I > tile_J)
+        if (tile_I >= tile_J)
             tile_I--;
         else
             tile_J--;
 
         total_acc_rows = (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
     }
+
+    // printf("tile_I: %llu\n", tile_I);
+    // printf("tile_J: %llu\n", tile_J);
 
     if (matadd_type == WS) {
       tiled_resadd(I, J, tile_I, tile_J,
