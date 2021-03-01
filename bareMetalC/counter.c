@@ -10,18 +10,11 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define PG_SIZE (4*1024)
-#define OFFSET 1
+#define N 8
 
-/*struct aligned_buffer {
-  char garbage[0];
-  elem_t data[DIM][DIM];
-} __attribute__((__packed__));*/
-
-struct offset_buffer {
-  elem_t garbage[OFFSET];
-  elem_t data[DIM][DIM];
-} __attribute__((__packed__));
+#if (N*DIM) > (BANK_NUM*BANK_ROWS)
+#error not enough scratchpad space
+#endif
 
 int main() {
 #ifndef BAREMETAL
@@ -33,50 +26,85 @@ int main() {
 
   gemmini_flush(0);
 
-  // static struct aligned_buffer In __attribute__((aligned(PG_SIZE)));
-  static struct offset_buffer In __attribute__((aligned(PG_SIZE)));
-  static struct offset_buffer Out __attribute__((aligned(PG_SIZE)));
-
-  for (size_t i = 0; i < OFFSET; ++i) {
-      In.garbage[i] = ~0;
-      Out.garbage[i] = 1;
+  // Set counter and reset
+  counter_configure(0, RDMA_ACTIVE_CYCLE, false);
+  if(counter_read(0) != 0) {
+    printf("Counter Reset Failed (not equal to 0)\n");
+    exit(1);
   }
 
-  for (size_t i = 0; i < DIM; ++i)
-    for (size_t j = 0; j < DIM; ++j) {
-      In.data[i][j] = i*DIM + j;
-      Out.data[i][j] = 1;
-    }
-
+  // Initial matrix
   gemmini_config_ld(DIM * sizeof(elem_t));
   gemmini_config_st(DIM * sizeof(elem_t));
 
-  // printf("Mvin\n");
-  gemmini_mvin(In.data, 0);
-  // printf("Mvout\n");
-  gemmini_mvout(Out.data, 0);
+  static elem_t In[N][DIM][DIM] row_align(1);
+  static elem_t Out[N][DIM][DIM] row_align(1);
 
-  // printf("Fence\n");
+  for (size_t n = 0; n < N; ++n)
+    for (size_t i = 0; i < DIM; ++i)
+      for (size_t j = 0; j < DIM; ++j)
+        In[n][i][j] = i*DIM + j + n;
+
+  // Move in
+  gemmini_mvin(In[0], 0*DIM);
+  gemmini_mvout(Out[0], 0*DIM);
+
+  // Check value (should be increasing right now as Gemmini executes in the background)
+  int counter_val = counter_read(0);
+  printf("Read DMA cycles: %d\n", counter_val);
+  if (counter_val == 0) {
+    printf("Counter Value failed to increase\n");
+    exit(1);
+  } 
+
+  // Take a snapshot
+  counter_snapshot_take();
+  counter_val = counter_read(0);
+
+  // Wait till the operation finish
   gemmini_fence();
 
-  if (!is_equal(In.data, Out.data)) {
-    printf("Matrix:\n");
-    printMatrix(In.data);
-    printf("Matrix output:\n");
-    printMatrix(Out.data);
-    printf("\n");
+  // Check again
+  int snapshot_val = counter_read(0);
+  printf("Cycle when taking snapshot: %d, Cycle read after operation finished: %d\n",
+    counter_val, snapshot_val);
+  if (counter_val != snapshot_val) {
+    printf("Snapshot changed after taken; test failed\n");
+    exit(1);
+  }
 
+  // Reset snapshot, and check if cycles changed
+  counter_snapshot_reset();
+  counter_val = counter_read(0);
+  printf("Cycles after snapshot is reset: %d\n", counter_val);
+  if (counter_val < snapshot_val + 10) {
+    printf("Counter values changed too little after snapshot reset; check if counter continues properly\n");
+    exit(1);
+  }
+
+  // Global reset
+  counter_reset();
+  counter_val = counter_read(0);
+  printf("Cycles after counter reset: %d\n", counter_val);
+  if (counter_val != 0) {
+    printf("Cycles did not reset after global reset inst\n");
+    exit(1);
+  }
+
+  // Check external counter
+  counter_configure(7, ROB_LD_COUNT, true);
+  for (size_t i = 1; i < N; i++) {
+    gemmini_mvin(In[i], i*DIM);
+    gemmini_mvout(Out[i], i*DIM);
+  }
+  counter_val = counter_read(7);
+  printf("ROB # of load insts after executing %d mvin and mvout insts: %d\n", N-1, counter_val);
+  if (counter_val < 3) {
+    printf("The load ROB counter value is too small\n");
     exit(1);
   }
 
   exit(0);
 }
 
-// For counter, test the following:
-// 1. Set counter and reset
-// 2. Run something
-// 3. Check counter value and see if increase
-// 4. Take a snapshot, wait for a few cycles (like 10), access again and see if the value doesn't change
-// 5. Reset snapshot, wait, and check value changes
-// 6. Switch to external counter (like queue), and give it a bunch of work. Inspect the counter and see how many do we have
-// in the queue. 
+

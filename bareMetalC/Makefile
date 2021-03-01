@@ -29,7 +29,8 @@ tests = \
 	transpose \
 	matrix_add \
 	resadd \
-	template
+	template \
+	counter
 
 tests_baremetal = $(tests:=-baremetal)
 

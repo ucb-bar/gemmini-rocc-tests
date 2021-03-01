@@ -19,6 +19,9 @@
 // Accelerator interface
 #include "rocc-software/src/xcustom.h"
 
+// Counter Definition
+#include "include/counter.h"
+
 #define k_CONFIG 0
 #define k_MVIN2 1
 #define k_MVIN 2
@@ -287,7 +290,7 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
   }
 
 // Read counter
-static uint32_t read_counter(size_t index) {
+static uint32_t counter_read(size_t index) {
   uint32_t config_reg = (index & 0x7);
   uint32_t res;
   gemmini_counter_access(res, config_reg);
@@ -295,8 +298,8 @@ static uint32_t read_counter(size_t index) {
 }
 
 // Configure counter to take a new signal
-static void configure_counter(size_t index, size_t counter_code) {
-  uint32_t config_reg = (index & 0x7) | 0x40 | (counter_code & 0x1f) << 7;
+static void counter_configure(size_t index, size_t counter_code, bool external) {
+  uint32_t config_reg = (index & 0x7) | 0x40 | (counter_code & 0x1f) << 7 | external << 31;
   uint32_t placeholder;
   gemmini_counter_access(placeholder, config_reg);
 }
