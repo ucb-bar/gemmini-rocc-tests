@@ -46,28 +46,32 @@ int main() {
         In[n][i][j] = i*DIM + j + n;
 
   // Move in
-  gemmini_mvin(In[0], 0*DIM);
-  gemmini_mvout(Out[0], 0*DIM);
+  for (size_t i = 0; i < N; i++) {
+    gemmini_mvin(In[i], i*DIM);
+    gemmini_mvout(Out[i], i*DIM);
+  }
 
   // Check value (should be increasing right now as Gemmini executes in the background)
   int counter_val = counter_read(0);
+  // Take a snapshot
+  counter_snapshot_take();
+  int snapshot_val = counter_read(0);
+
+  // Print first counter value (Syscall takes a lot of time, and we might not capture a snapshot when
+  // the instructions are still being executed)
   printf("Read DMA cycles: %d\n", counter_val);
   if (counter_val == 0) {
     printf("Counter Value failed to increase\n");
     exit(1);
   } 
 
-  // Take a snapshot
-  counter_snapshot_take();
-  counter_val = counter_read(0);
-
   // Wait till the operation finish
   gemmini_fence();
 
   // Check again
-  int snapshot_val = counter_read(0);
+  counter_val = counter_read(0);
   printf("Cycle when taking snapshot: %d, Cycle read after operation finished: %d\n",
-    counter_val, snapshot_val);
+    snapshot_val, counter_val);
   if (counter_val != snapshot_val) {
     printf("Snapshot changed after taken; test failed\n");
     exit(1);
@@ -93,7 +97,7 @@ int main() {
 
   // Check external counter
   counter_configure(7, ROB_LD_COUNT, true);
-  for (size_t i = 1; i < N; i++) {
+  for (size_t i = 0; i < N; i++) {
     gemmini_mvin(In[i], i*DIM);
     gemmini_mvout(Out[i], i*DIM);
   }
