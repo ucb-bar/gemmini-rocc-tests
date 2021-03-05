@@ -862,11 +862,8 @@ void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
     exit(1);
   }
 
-  const bool double_buffered = tiled_matmul_type == WS;
-
-  const size_t total_spad_size = double_buffered ? BANK_NUM * BANK_ROWS / 2 :
-      BANK_NUM * BANK_ROWS;
-  const size_t total_acc_size = double_buffered ? ACC_ROWS / 2 : ACC_ROWS;
+  const size_t total_spad_size = BANK_NUM * BANK_ROWS;
+  const size_t total_acc_size = ACC_ROWS;
 
   const size_t total_spad_rows =
       (tile_I * tile_K * DIM) +   // Rows to store A
