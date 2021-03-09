@@ -445,6 +445,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
     (J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN);
   const int D_blocks = low_D ? (J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN) :
     (J <= MAX_BLOCK_LEN_ACC ? J : MAX_BLOCK_LEN_ACC);
+  const int C_blocks = full_C ? 1 : (J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN);
 
   const size_t sizeof_D = low_D ? sizeof(elem_t) : sizeof(acc_t);
   const size_t sizeof_C = full_C ? sizeof(acc_t) : sizeof(elem_t);
@@ -540,13 +541,17 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         }
 
         // Move-out C
-        if (C != NULL && k == K-1) {
-          void * const C_dram_addr = (int8_t*)C + (i*C_row_stride + j)*DIM*sizeof_C;
+        if (C != NULL && k == K-1 && (j == J-1 || j % C_blocks == C_blocks-1)) {
+          const size_t rounded_j = (j / C_blocks) * C_blocks;
 
-          const size_t C_cols = DIM - (j == J - 1 ? pad_J : 0);
-          const size_t C_rows = DIM - (i == I - 1 ? pad_I : 0);
+          const uint32_t rounded_C_sp_addr = C_sp_addr_start + (i*J + rounded_j)*DIM;
+          void * const C_dram_addr = (int8_t*)C + (i*C_row_stride + rounded_j)*DIM*sizeof_C;
 
-          gemmini_extended_mvout(C_dram_addr, C_sp_addr, C_cols, C_rows);
+          const size_t blocks = rounded_j + C_blocks <= J ? C_blocks : J-rounded_j;
+          const size_t cols = blocks * DIM - (rounded_j + blocks >= J ? pad_J : 0);
+          const size_t rows = DIM - (i == I - 1 ? pad_I : 0);
+
+          gemmini_extended_mvout(C_dram_addr, rounded_C_sp_addr, cols, rows);
         }
       }
     }
