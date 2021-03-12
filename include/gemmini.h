@@ -702,7 +702,7 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
         int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias) {
 
   const int no_bias = D == NULL;
-  if (DIM_I % 4 == 0 && DIM_J % 4 == 0) {
+  if (!transA && !transB && DIM_I % 4 == 0 && DIM_J % 4 == 0) {
     for (size_t i = 0; i < DIM_I; i += 4) {
       for (size_t j = 0; j < DIM_J; j += 4) {
 
