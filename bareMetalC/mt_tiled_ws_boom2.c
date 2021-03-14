@@ -29,7 +29,7 @@ typedef elem_t ACC_T;
 
 #define CHECK_RESULT 0
 
-#define WARMUP 1
+#define WARMUP 0
 
 #ifndef BAREMETAL
 #define MAT_DIM 512
@@ -37,7 +37,7 @@ typedef elem_t ACC_T;
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM 512
+#define MAT_DIM 512+64
 #define MAT_DIM_I MAT_DIM+64
 #define MAT_DIM_K MAT_DIM+64
 #define MAT_DIM_J MAT_DIM+64
@@ -45,6 +45,12 @@ typedef elem_t ACC_T;
 #define num_thread 4
 #define A_TRANSPOSE 0
 #define B_TRANSPOSE 0
+
+#define MAT_DIM_B 256+64
+#define MAT_DIM_I_B MAT_DIM_B+64
+#define MAT_DIM_K_B MAT_DIM_B+64
+#define MAT_DIM_J_B MAT_DIM_B+64
+
 
 #if A_TRANSPOSE==0
 #define A_STRIDE MAT_DIM_K
@@ -58,6 +64,8 @@ typedef elem_t ACC_T;
 #define B_STRIDE MAT_DIM_K
 #endif
 
+#define SKIP_A false
+#define SKIP_B true
 
 void print_tile(elem_t* in, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++) {
@@ -110,12 +118,45 @@ void full_matshift(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_
     }
 } 
 
-static elem_t in_A[MAT_DIM_I][MAT_DIM_K] row_align(MAX_BLOCK_LEN) = {1};
-static elem_t in_B[MAT_DIM_K][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {1};
+static void resadd_boom(const size_t I, const size_t J,
+        const scale_t A_scale,
+        const elem_t * A,
+        const elem_t * B,
+        elem_t * C) {
+
+	//const int minimum = relu ? 0 : elem_t_min;
+    for (size_t i = 0; i < I; i++) {
+        for (size_t j = 0; j < J; j++) {
+            const elem_t * a = A + i * J + j;
+            const elem_t * b = B + i * J + j;
+            elem_t * c = C + i * J + j;
+				
+            elem_t result = MVIN_SCALE(*a, A_scale) + (*b);
+            *c = result;
+        }
+    }
+}
+
+static elem_t in_A0[MAT_DIM_I][MAT_DIM_K] row_align(MAX_BLOCK_LEN) = {1};
+static elem_t in_B0[MAT_DIM_K][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {1};
 //static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
 //static ACC_T bias[MAT_DIM_I][MAT_DIM_J] row_align_acc(1) = {0};
-static elem_t Out[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {1};
-//static elem_t gold[MAT_DIM_I][MAT_DIM_J];
+static elem_t Out0[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {1};
+
+static elem_t in_A1[MAT_DIM_I][MAT_DIM_K] row_align(MAX_BLOCK_LEN) = {1};
+static elem_t in_B1[MAT_DIM_K][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {1};
+static elem_t Out1[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {1};
+static elem_t in_A2[MAT_DIM_I][MAT_DIM_K] row_align(MAX_BLOCK_LEN) = {1};
+static elem_t in_B2[MAT_DIM_K][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {1};
+static elem_t Out2[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {1};
+static elem_t in_A3[MAT_DIM_I][MAT_DIM_K] row_align(MAX_BLOCK_LEN) = {1};
+static elem_t in_B3[MAT_DIM_K][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {1};
+static elem_t Out3[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {1};
+//for boom
+static elem_t in_Ab[MAT_DIM_I_B][MAT_DIM_K_B] row_align(MAX_BLOCK_LEN) = {1};
+static elem_t in_Bb[MAT_DIM_K_B][MAT_DIM_J_B] row_align(MAX_BLOCK_LEN) = {1};
+static elem_t Outb[MAT_DIM_I_B][MAT_DIM_J_B] row_align(MAX_BLOCK_LEN) = {1};
+
 
 void thread_entry(int cid, int nc)
 {
@@ -178,29 +219,46 @@ void thread_entry(int cid, int nc)
   
 #endif
 
-	 elem_t* A = (elem_t*) in_A + MAT_DIM_K*(MAT_DIM/2)*(cid/2);
-	 elem_t* B = (elem_t*) in_B + (MAT_DIM/2)*(cid%2);
-	 elem_t* C = (elem_t*) Out + (MAT_DIM/2)*(cid%2) + MAT_DIM_J*(MAT_DIM/2)*(cid/2);
+	 elem_t* A = (cid == 0)? (elem_t*) in_A0:(elem_t*) in_A1;
+	 elem_t* B = (cid == 0)? (elem_t*) in_B0:(elem_t*) in_B1;
+	 elem_t* C = (cid == 0)? (elem_t*) Out0:(elem_t*) Out1;
+	 if(cid == 2){
+		 A = (elem_t*) in_A2;
+		 B = (elem_t*) in_B2;
+		 C = (elem_t*) Out2;
+	 }
+	 if(cid == 3){
+		 A = (elem_t*) in_A3;
+		 B = (elem_t*) in_B3;
+		 C = (elem_t*) Out3;
+	 }
+	 if(cid == 4){
+		 A = (elem_t*) in_Ab;
+		 B = (elem_t*) in_Bb;
+		 C = (elem_t*) Outb;
+	 }
 //	 acc_t * D = (acc_t*) bias + (MAT_DIM_J/2)*(cid%2) + MAT_DIM_J*(MAT_DIM_I/2)*(cid/2);
 #if WARMUP == 1
 	gemmini_flush(0);
 	 barrier(nc);
-  uint64_t warm_start = read_cycles();
+		
+	 uint64_t warm_start = read_cycles();
   for(int j = 0; j < nc; j++){
-	if(j==cid)		 
-		 tiled_matmul_auto(MAT_DIM/2, MAT_DIM/2, MAT_DIM, 
+	if(j==cid)	{
+		 tiled_matmul_auto(MAT_DIM, MAT_DIM, MAT_DIM, 
 				A, B, NULL, C,
 			   A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
-            A_TRANSPOSE, B_TRANSPOSE,
+            A_TRANSPOSE, B_TRANSPOSE, SKIP_A, SKIP_B,
             WS);
+	}
   }
   uint64_t warm_end = read_cycles();
   for(int i = 0; i < nc; i++){
 	  if (i == cid) {
 		 printf("Thread %d Cycles taken: %llu\n", cid, warm_end - warm_start);
-		 const int total_macs = MAT_DIM * MAT_DIM * MAT_DIM / nc;
+		 const int total_macs = MAT_DIM * MAT_DIM * MAT_DIM;
 		 const int ideal_cycles = total_macs / (DIM * DIM);
 		 const int utilization = 100 * ideal_cycles / (warm_end-warm_start);
 		 printf("Utilization: %d%%\n", utilization);
@@ -211,26 +269,27 @@ void thread_entry(int cid, int nc)
 
   for (int i = 0; i < nc; i++) {
     if (i == cid) printf("Starting gemmini tiled_matmul\n");
-    barrier(nc);
+	 if (i == cid && cid != 4)  gemmini_flush(0);
+	 barrier(nc);
   }
-  gemmini_flush(0);
-
 
   barrier(nc);
   uint64_t start = read_cycles();
   //barrier(nc);
 
   for(int j = 0; j < nc; j++){
-		//printf("thread: %d, loop: %d \n", cid, j);
-//	 if(j == cid && j == 0)
-	if(j==cid)		 
-		 tiled_matmul_auto(MAT_DIM/2, MAT_DIM/2, MAT_DIM, 
+	if(j==cid && cid < 3){	
+		 tiled_matmul_auto(MAT_DIM, MAT_DIM, MAT_DIM, 
 				A, B, NULL, C,
 			   A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
-            A_TRANSPOSE, B_TRANSPOSE,
+            A_TRANSPOSE, B_TRANSPOSE, SKIP_A, (cid == 0) ? false : SKIP_B,
             WS);
+	}
+	if(j==cid && cid == 4){
+		resadd_boom(MAT_DIM_B, MAT_DIM_B, 2, A, B, C);
+	}
   }
 
   uint64_t end = read_cycles();
@@ -238,7 +297,7 @@ void thread_entry(int cid, int nc)
   for(int i = 0; i < nc; i++){
 	  if (i == cid) {
 		 printf("Thread %d Cycles taken: %llu\n", cid, end - start);
-		 const int total_macs = MAT_DIM * MAT_DIM * MAT_DIM / nc;
+		 const int total_macs = MAT_DIM * MAT_DIM * MAT_DIM;
 		 const int ideal_cycles = total_macs / (DIM * DIM);
 		 const int utilization = 100 * ideal_cycles / (end-start);
 		 printf("Utilization: %d%%\n", utilization);

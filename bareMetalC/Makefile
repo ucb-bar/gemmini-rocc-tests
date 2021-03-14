@@ -1,13 +1,13 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	chol_mt_right \
-	chol_mt_left \
-	chol_gemm \
-	chol_gemm_opt \
-	tiled_matmul_reuse \
-	tiled_matmul_ws \
-	tiled_matmul_ws_Bt \
+	mt_tiled_ws_net_pad \
+	mt_tiled_ws_net3_3 \
+	mt_tiled_ws_net3_1 \
+	mt_tiled_ws_net5_1 \
+	mt_tiled_ws_bias5 \
+	mt_tiled_ws_bias4 \
+	mvin_mvout \
 
 
 tests_baremetal = $(tests:=-baremetal)

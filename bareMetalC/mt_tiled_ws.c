@@ -27,16 +27,20 @@ typedef elem_t ACC_T;
 #define A_TRANSPOSE 0
 #define B_TRANSPOSE 0
 
-#define CHECK_RESULT 1
+#define CHECK_RESULT 0
+
+#define WARMUP 1
 
 #ifndef BAREMETAL
+#define MAT_DIM 512
 #define MAT_DIM_I 512
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM_I 128*2
-#define MAT_DIM_K 128*2
-#define MAT_DIM_J 128*2
+#define MAT_DIM 512
+#define MAT_DIM_I MAT_DIM+64
+#define MAT_DIM_K MAT_DIM+64
+#define MAT_DIM_J MAT_DIM+64
 #endif
 #define num_thread 4
 #define A_TRANSPOSE 0
@@ -85,10 +89,8 @@ void full_printMatrix(elem_t m[MAT_DIM_I][MAT_DIM_J]) {
 int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]) {
   for (size_t i = 0; i < MAT_DIM_I; ++i)
     for (size_t j = 0; j < MAT_DIM_J; ++j)
-      if (x[i][j] != y[i][j]){
-			printf("(%d, %d) \n", i, j);
+      if (x[i][j] != y[i][j])
         return 0;
-		}
   return 1;
 }
 
@@ -108,12 +110,12 @@ void full_matshift(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_
     }
 } 
 
-static elem_t in_A[MAT_DIM_I][MAT_DIM_K] row_align(1) = {0};
-static elem_t in_B[MAT_DIM_K][MAT_DIM_J] row_align(1) = {0};
+static elem_t in_A[num_thread][MAT_DIM_I][MAT_DIM_K] row_align(MAX_BLOCK_LEN) = {1};
+static elem_t in_B[num_thread][MAT_DIM_K][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {1};
 //static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
-static ACC_T bias[MAT_DIM_I][MAT_DIM_J] row_align_acc(1) = {0};
-static elem_t Out[MAT_DIM_I][MAT_DIM_J] row_align(1) = {0};
-static elem_t gold[MAT_DIM_I][MAT_DIM_J];
+//static ACC_T bias[MAT_DIM_I][MAT_DIM_J] row_align_acc(1) = {0};
+static elem_t Out[num_thread][MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {1};
+//static elem_t gold[MAT_DIM_I][MAT_DIM_J];
 
 void thread_entry(int cid, int nc)
 {
@@ -126,7 +128,7 @@ void thread_entry(int cid, int nc)
   if(cid == 1){
     for (size_t i = 0; i < MAT_DIM_I/2; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
-        in_A[i][j] = rand() % 2;
+        in_A[i][j] = rand() % 3 - 1;
       }
     }
   }
@@ -134,7 +136,7 @@ void thread_entry(int cid, int nc)
     // printf("Init B\n");
     for (size_t i = 0; i < MAT_DIM_K/2; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        in_B[i][j] = rand() % 3;
+        in_B[i][j] = rand() % 3 -1;
       }
     }
   }
@@ -142,7 +144,7 @@ void thread_entry(int cid, int nc)
     
     for (size_t i = MAT_DIM_I/2; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
-        in_A[i][j] = rand() % 4 - 2;
+        in_A[i][j] = rand() % 3 - 1;
       }
     }
   }
@@ -150,12 +152,12 @@ void thread_entry(int cid, int nc)
     // printf("Init B\n");
     for (size_t i = MAT_DIM_K/2; i < MAT_DIM_K; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        in_B[i][j] = rand() % 2;
+        in_B[i][j] = rand() %  3 - 1;
       }
     }
   }
   barrier(nc);
- /* 
+  
   if(cid == 0){
     // printf("Init D\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
@@ -163,7 +165,7 @@ void thread_entry(int cid, int nc)
         bias[i][j] = NO_BIAS ? 0 : rand() % 2;
       }
     }
- 	static full_t gold_full[MAT_DIM_I][MAT_DIM_J];
+	static full_t gold_full[MAT_DIM_I][MAT_DIM_J];
     
     printf("Starting slow CPU matmul\n");
     uint64_t cpu_start = read_cycles();
@@ -173,46 +175,113 @@ void thread_entry(int cid, int nc)
     full_matshift(gold_full, gold, 0);
 
   }
-*/  
+  
 #endif
 
-  int b_unit = MAX_BLOCK_LEN;
-  elem_t* A = (elem_t*) in_A + MAT_DIM_K*DIM*(cid/2);
-  elem_t* B = (elem_t*) in_B + b_unit*DIM*(cid%2);
-  elem_t* C = (elem_t*) Out + b_unit*DIM*(cid%2) + MAT_DIM_J*DIM*(cid/2);
-  acc_t * D = (acc_t*) bias + b_unit*DIM*(cid%2) + MAT_DIM_J*DIM*(cid/2);
+	 elem_t* A = (elem_t*) in_A + cid*MAT_DIM_K*MAT_DIM_I;//MAT_DIM_K*(MAT_DIM/2)*(cid/2);
+	 elem_t* B = (elem_t*) in_B + cid*MAT_DIM_K*MAT_DIM_J;//(MAT_DIM/2)*(cid%2);
+	 elem_t* C = (elem_t*) Out + cid*MAT_DIM_I*MAT_DIM_J;//(MAT_DIM/2)*(cid%2) + MAT_DIM_J*(MAT_DIM/2)*(cid/2);
+//	 acc_t * D = (acc_t*) bias + (MAT_DIM_J/2)*(cid%2) + MAT_DIM_J*(MAT_DIM_I/2)*(cid/2);
+#if WARMUP == 1
+	gemmini_flush(0);
+	 barrier(nc);
+		if(cid == 0) {
+			uint64_t cid0_start = read_cycles();
+			uint64_t cid0_cycles = 0;
+			while(cid0_cycles < 200000){
+				uint64_t new = read_cycles();
+				cid0_cycles = new - cid0_start;
+			}
+		}
+		if(cid == 1) {
+			uint64_t cid1_start = read_cycles();
+			uint64_t cid1_cycles = 0;
+			while(cid1_cycles < 50000){
+				uint64_t new = read_cycles();
+				cid1_cycles = new - cid1_start;
+			}
+		}
+		if(cid == 2) {
+		   uint64_t cid2_start = read_cycles();
+			uint64_t cid2_cycles = 0;
+			while(cid2_cycles < 400000){
+				uint64_t new = read_cycles();
+				cid2_cycles = new - cid2_start;
+			}
+		}
+		
+	 uint64_t warm_start = read_cycles();
+  for(int j = 0; j < nc; j++){
+	if(j==cid)	{
+		 tiled_matmul_auto(MAT_DIM, MAT_DIM, MAT_DIM, 
+				A, B, NULL, C,
+			   A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
+            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
+            A_TRANSPOSE, B_TRANSPOSE,
+            WS);
+	}
+  }
+  uint64_t warm_end = read_cycles();
+  for(int i = 0; i < nc; i++){
+	  if (i == cid) {
+		 printf("Thread %d Cycles taken: %llu\n", cid, warm_end - warm_start);
+		 const int total_macs = MAT_DIM * MAT_DIM * MAT_DIM;
+		 const int ideal_cycles = total_macs / (DIM * DIM);
+		 const int utilization = 100 * ideal_cycles / (warm_end-warm_start);
+		 printf("Utilization: %d%%\n", utilization);
+	  }
+	  barrier(nc);
+  }
+#endif
+
   for (int i = 0; i < nc; i++) {
     if (i == cid) printf("Starting gemmini tiled_matmul\n");
     barrier(nc);
   }
   gemmini_flush(0);
-/*
-  for(int j = 0; j < nc; j++){
-		//printf("thread: %d, loop: %d \n", cid, j);
-	 if(j == cid)
-	  tiled_matmul_auto_distance(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K, DIM*nc/2, b_unit*DIM*nc/2, 2, 2,
-				A, B, NO_BIAS ? NULL : D, C,
-			   A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
-            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
-            A_TRANSPOSE, B_TRANSPOSE,
-            WS);
-  }
-*/
+
+
   barrier(nc);
+		if(cid == 0) {
+			uint64_t cid0_start = read_cycles();
+			uint64_t cid0_cycles = 0;
+			while(cid0_cycles < 200000){
+				uint64_t new = read_cycles();
+				cid0_cycles = new - cid0_start;
+			}
+		}
+		if(cid == 1) {
+			uint64_t cid1_start = read_cycles();
+			uint64_t cid1_cycles = 0;
+			while(cid1_cycles < 50000){
+				uint64_t new = read_cycles();
+				cid1_cycles = new - cid1_start;
+			}
+		}
+		if(cid == 2) {
+		   uint64_t cid2_start = read_cycles();
+			uint64_t cid2_cycles = 0;
+			while(cid2_cycles < 400000){
+				uint64_t new = read_cycles();
+				cid2_cycles = new - cid2_start;
+			}
+		}
   uint64_t start = read_cycles();
   //barrier(nc);
 
   for(int j = 0; j < nc; j++){
 		//printf("thread: %d, loop: %d \n", cid, j);
-	 if(j == cid)
-	  tiled_matmul_auto_distance(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K, DIM*nc/2, b_unit*DIM*nc/2, 2, 2,
-				A, B, NO_BIAS ? NULL : D, C,
+//	 if(j == cid && j == 0)
+	if(j==cid){	
+		 tiled_matmul_auto(MAT_DIM, MAT_DIM, MAT_DIM, 
+				A, B, NULL, C,
 			   A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
             A_TRANSPOSE, B_TRANSPOSE,
             WS);
+	}
   }
 
   uint64_t end = read_cycles();
@@ -220,7 +289,7 @@ void thread_entry(int cid, int nc)
   for(int i = 0; i < nc; i++){
 	  if (i == cid) {
 		 printf("Thread %d Cycles taken: %llu\n", cid, end - start);
-		 const int total_macs = MAT_DIM_I * MAT_DIM_J * MAT_DIM_K / nc;
+		 const int total_macs = MAT_DIM * MAT_DIM * MAT_DIM;
 		 const int ideal_cycles = total_macs / (DIM * DIM);
 		 const int utilization = 100 * ideal_cycles / (end-start);
 		 printf("Utilization: %d%%\n", utilization);
@@ -232,8 +301,8 @@ void thread_entry(int cid, int nc)
     if(cid == 0){
 		 if (!full_is_equal(Out, gold)) {
 			printf("wrong result: thread %d \n", cid);
-			//printf("Gold:\n");
-			//full_printMatrix(gold);
+//			printf("Gold:\n");
+//			full_printMatrix(gold);
 			printf("C:\n");
 			full_printMatrix(Out);
 			printf("\n");
@@ -314,8 +383,8 @@ int main() {
     if (!full_is_equal(full_C, gold)) {
       printf("C:\n");
       full_printMatrix(full_C);
-//      printf("Gold:\n");
-//      full_printMatrix(gold);
+      printf("Gold:\n");
+      full_printMatrix(gold);
       printf("\n");
 
       exit(1);

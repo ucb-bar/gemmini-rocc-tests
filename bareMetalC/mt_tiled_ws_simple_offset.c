@@ -37,7 +37,7 @@ typedef elem_t ACC_T;
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM 512
+#define MAT_DIM 1024
 #define MAT_DIM_I MAT_DIM+64
 #define MAT_DIM_K MAT_DIM+64
 #define MAT_DIM_J MAT_DIM+64
@@ -185,9 +185,34 @@ void thread_entry(int cid, int nc)
 #if WARMUP == 1
 	gemmini_flush(0);
 	 barrier(nc);
-  uint64_t warm_start = read_cycles();
+		if(cid == 0) {
+			uint64_t cid0_start = read_cycles();
+			uint64_t cid0_cycles = 0;
+			while(cid0_cycles < 200000){
+				uint64_t new = read_cycles();
+				cid0_cycles = new - cid0_start;
+			}
+		}
+		if(cid == 1) {
+			uint64_t cid1_start = read_cycles();
+			uint64_t cid1_cycles = 0;
+			while(cid1_cycles < 50000){
+				uint64_t new = read_cycles();
+				cid1_cycles = new - cid1_start;
+			}
+		}
+		if(cid == 2) {
+		   uint64_t cid2_start = read_cycles();
+			uint64_t cid2_cycles = 0;
+			while(cid2_cycles < 400000){
+				uint64_t new = read_cycles();
+				cid2_cycles = new - cid2_start;
+			}
+		}
+		
+	 uint64_t warm_start = read_cycles();
   for(int j = 0; j < nc; j++){
-	if(j==cid)		 
+	if(j==cid)	{
 		 tiled_matmul_auto(MAT_DIM/2, MAT_DIM/2, MAT_DIM, 
 				A, B, NULL, C,
 			   A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
@@ -195,6 +220,7 @@ void thread_entry(int cid, int nc)
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
             A_TRANSPOSE, B_TRANSPOSE,
             WS);
+	}
   }
   uint64_t warm_end = read_cycles();
   for(int i = 0; i < nc; i++){
@@ -217,13 +243,37 @@ void thread_entry(int cid, int nc)
 
 
   barrier(nc);
+		if(cid == 0) {
+			uint64_t cid0_start = read_cycles();
+			uint64_t cid0_cycles = 0;
+			while(cid0_cycles < 200000){
+				uint64_t new = read_cycles();
+				cid0_cycles = new - cid0_start;
+			}
+		}
+		if(cid == 1) {
+			uint64_t cid1_start = read_cycles();
+			uint64_t cid1_cycles = 0;
+			while(cid1_cycles < 50000){
+				uint64_t new = read_cycles();
+				cid1_cycles = new - cid1_start;
+			}
+		}
+		if(cid == 2) {
+		   uint64_t cid2_start = read_cycles();
+			uint64_t cid2_cycles = 0;
+			while(cid2_cycles < 400000){
+				uint64_t new = read_cycles();
+				cid2_cycles = new - cid2_start;
+			}
+		}
   uint64_t start = read_cycles();
   //barrier(nc);
 
   for(int j = 0; j < nc; j++){
 		//printf("thread: %d, loop: %d \n", cid, j);
 //	 if(j == cid && j == 0)
-	if(j==cid)		 
+	if(j==cid){	
 		 tiled_matmul_auto(MAT_DIM/2, MAT_DIM/2, MAT_DIM, 
 				A, B, NULL, C,
 			   A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
@@ -231,6 +281,7 @@ void thread_entry(int cid, int nc)
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
             A_TRANSPOSE, B_TRANSPOSE,
             WS);
+	}
   }
 
   uint64_t end = read_cycles();

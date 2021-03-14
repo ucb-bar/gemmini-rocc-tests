@@ -42,7 +42,7 @@
 #endif
 
 #define SKIP_A false
-#define SKIP_B false
+#define SKIP_B true
 
 int main() {
 #ifndef BAREMETAL

@@ -26,10 +26,14 @@ typedef elem_t ACC_T;
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM_I 64
-#define MAT_DIM_K 64
-#define MAT_DIM_J 64
+#define MAT_DIM_I 128*2
+#define MAT_DIM_K 128*2
+#define MAT_DIM_J 128*2
 #endif
+
+//#define FAST
+#define SKIP_A false
+#define SKIP_B true
 
 void print_tile(elem_t* in, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++) {
@@ -109,24 +113,24 @@ int main() {
     // printf("Init A\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
-        full_A[i][j] = RAND % 2;
+        full_A[i][j] = (i==j) ? 1 : 0; //RAND % 2;
       }
     }
 
     // printf("Init B\n");
     for (size_t i = 0; i < MAT_DIM_K; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_B[i][j] = RAND % 2;
+        full_B[i][j] = i;//RAND % 2;
       }
     }
-
+/*
     // printf("Init D\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
         full_D[i][j] = NO_BIAS ? 0 : RAND % 2;
       }
     }
-
+*/
     printf("Starting slow CPU matmul\n");
     unsigned long cpu_start = read_cycles();
 #ifdef FAST
@@ -137,11 +141,11 @@ int main() {
     }
 
 #else
-    full_matmul(full_A, full_B, full_D, gold_full);
+    //full_matmul(full_A, full_B, full_D, gold_full);
 #endif
     unsigned long cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
-    full_matscale(gold_full, gold, ACC_SCALE_IDENTITY);
+    //full_matscale(gold_full, gold, ACC_SCALE_IDENTITY);
 #endif
 
     printf("Starting gemmini matmul\n");
@@ -152,19 +156,19 @@ int main() {
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
-            false, false,
-            false, !FULL_BIAS_WIDTH,
+            false, false, SKIP_A, SKIP_B, 1,
+            //false, !FULL_BIAS_WIDTH,
             WS);
 
     unsigned long end = read_cycles();
     printf("Cycles taken: %u\n", end-start);
 
 #if CHECK_RESULT == 1
-    if (!full_is_equal(full_C, gold)) {
+    if (!full_is_equal(full_C, full_B)) {
       printf("C:\n");
       full_printMatrix(full_C);
       printf("Gold:\n");
-      full_printMatrix(gold);
+     // full_printMatrix(gold);
       printf("\n");
 
       exit(1);

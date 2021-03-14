@@ -10,23 +10,31 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define NO_BIAS 0
+#define NO_BIAS 1
 #define REPEATING_BIAS 1
 
 #define A_TRANSPOSE 0
 #define B_TRANSPOSE 0
-#define WARMUP 0
+
+#define WARMUP 1
 
 #ifndef BAREMETAL
-#define MAT_DIM 512
 #define MAT_DIM_I 256
 #define MAT_DIM_K 512
 #define MAT_DIM_J 256
 #else
-#define MAT_DIM 576
-#define MAT_DIM_I MAT_DIM+64
-#define MAT_DIM_K MAT_DIM_I
-#define MAT_DIM_J MAT_DIM_I
+#define MAT_DIM 512
+#define MAT_DIM_I 512+64
+#define MAT_DIM_K 512+64
+#define MAT_DIM_J 512+64
+// #define MAT_DIM_I 256
+// #define MAT_DIM_K 256
+// #define MAT_DIM_J 256
+
+// #define MAT_DIM_I 256
+// #define MAT_DIM_K 512
+// #define MAT_DIM_J 512
+
 #endif
 
 #if A_TRANSPOSE==0
@@ -40,9 +48,6 @@
 #else
 #define B_STRIDE MAT_DIM_K
 #endif
-
-#define SKIP_A false
-#define SKIP_B false
 
 int main() {
 #ifndef BAREMETAL
@@ -67,10 +72,10 @@ int main() {
 #endif
 
     static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN);
-    static acc_t full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(MAX_BLOCK_LEN);
+//    static acc_t full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
 
 	 printf("Starting gemmini matmul\n");
-    printf("I: %d, J: %d, K: %d\n", MAT_DIM, MAT_DIM, MAT_DIM);
+    printf("I: %d, J: %d, K: %d\n", MAT_DIM_I, MAT_DIM_J, MAT_DIM_K);
     printf("NO_BIAS: %d, REPEATING_BIAS: %d\n", NO_BIAS, REPEATING_BIAS);
     printf("A_TRANSPOSE: %d, B_TRANSPOSE: %d\n", A_TRANSPOSE, B_TRANSPOSE);
 
@@ -78,29 +83,26 @@ int main() {
 	 unsigned long warm_start = read_cycles();
 
     tiled_matmul_auto(MAT_DIM, MAT_DIM, MAT_DIM,
-            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
+            (elem_t*)full_A, (elem_t*)full_B, NULL, (elem_t*)full_C,
             A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
-            A_TRANSPOSE, B_TRANSPOSE, SKIP_A, SKIP_B,
+            A_TRANSPOSE, B_TRANSPOSE,
             WS);
-	 unsigned long warm_end = read_cycles();
-    printf("warm Cycles taken: %u\n", warm_end-warm_start);
+    unsigned long warm_end = read_cycles();
+    printf("Cycles taken: %u\n", warm_end-warm_start);
 
-    const int warm_total_macs = MAT_DIM * MAT_DIM * MAT_DIM;
-    const int warm_ideal_cycles = warm_total_macs / (DIM * DIM);
-    const int warm_utilization = 100 * warm_ideal_cycles / (warm_end-warm_start);
-    printf("Utilization: %d%%\n", warm_utilization);
+
 #endif
-	 gemmini_flush(0);
-
+	 
 	 unsigned long start = read_cycles();
+
     tiled_matmul_auto(MAT_DIM, MAT_DIM, MAT_DIM,
-            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
+            (elem_t*)full_A, (elem_t*)full_B, NULL, (elem_t*)full_C,
             A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
-            A_TRANSPOSE, B_TRANSPOSE, SKIP_A, SKIP_B,
+            A_TRANSPOSE, B_TRANSPOSE,
             WS);
     unsigned long end = read_cycles();
     printf("Cycles taken: %u\n", end-start);

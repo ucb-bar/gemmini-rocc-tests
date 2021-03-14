@@ -23,6 +23,7 @@ typedef elem_t ACC_T;
 #endif
 
 #define db_max_tile_i_j ((size_t)sqrt(db_mats_in_acc))
+#define WARMUP 1
 
 #define A_TRANSPOSE 0
 #define B_TRANSPOSE 0
@@ -106,11 +107,11 @@ void full_matshift(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_
     }
 } 
 
-static elem_t in_A[MAT_DIM_I][MAT_DIM_K] row_align(MAX_BLOCK_LEN) = {0};
-static elem_t in_B[MAT_DIM_K][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {0};
+static elem_t in_A[MAT_DIM_I][MAT_DIM_K] row_align(MAX_BLOCK_LEN) = {1};
+static elem_t in_B[MAT_DIM_K][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {1};
 //static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
 //static ACC_T bias[MAT_DIM_I][MAT_DIM_J] row_align_acc(1) = {0};
-static elem_t Out[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {0};
+static elem_t Out[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN) = {1};
 //static elem_t gold[MAT_DIM_I][MAT_DIM_J];
 
 void thread_entry(int cid, int nc)
@@ -185,10 +186,28 @@ void thread_entry(int cid, int nc)
   elem_t* C = (elem_t*) Out + DIM*(cid%2) + MAT_DIM_J*DIM*(cid/2);
   acc_t * D = (acc_t*) bias + DIM*(cid%2) + MAT_DIM_J*DIM*(cid/2);
 */
+#if WARMUP == 1
+  gemmini_flush(0);
+  for(int j = 0; j < nc; j++){
+		//printf("thread: %d, loop: %d \n", cid, j);
+//	 if(j == cid && j == 0)
+	if(j==cid)		 
+		 tiled_matmul_auto(MAT_DIM_I/2, MAT_DIM_J/2, MAT_DIM_K, 
+				A, B, NULL, C,
+			   A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
+            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
+            A_TRANSPOSE, B_TRANSPOSE,
+            WS);
+  }
+#endif
+
+
   for (int i = 0; i < nc; i++) {
     if (i == cid) printf("Starting gemmini tiled_matmul\n");
     barrier(nc);
   }
+  
   gemmini_flush(0);
 
 
