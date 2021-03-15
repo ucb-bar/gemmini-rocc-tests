@@ -20,7 +20,7 @@
 #include "rocc-software/src/xcustom.h"
 
 // Counter Definition
-#include "include/counter.h"
+#include "include/gemmini_counter.h"
 
 #define k_CONFIG 0
 #define k_MVIN2 1
