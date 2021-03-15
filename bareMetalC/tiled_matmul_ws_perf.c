@@ -22,13 +22,13 @@
 #define MAT_DIM_J 512
 #else
 
-#define MAT_DIM_I 128
-#define MAT_DIM_K 128
-#define MAT_DIM_J 128
+// #define MAT_DIM_I 128
+// #define MAT_DIM_K 128
+// #define MAT_DIM_J 128
 
-// #define MAT_DIM_I 256
-// #define MAT_DIM_K 256
-// #define MAT_DIM_J 256
+#define MAT_DIM_I 256
+#define MAT_DIM_K 256
+#define MAT_DIM_J 256
 
 // #define MAT_DIM_I 256
 // #define MAT_DIM_K 512
@@ -49,8 +49,6 @@
 #endif
 
 int main() {
-#ifndef FAST
-
 #ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
       perror("mlockall failed");
@@ -100,8 +98,6 @@ int main() {
     const int ideal_cycles = total_macs / (DIM * DIM);
     const int utilization = 100 * ideal_cycles / (end-start);
     printf("Utilization: %d%%\n", utilization);
-
-#endif // ifndef FAST
 
   exit(0);
 }
