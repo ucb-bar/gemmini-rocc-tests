@@ -32,7 +32,7 @@ tests = \
 	matrix_add \
 	resadd \
 	template \
-	counter
+	gemmini-counter
 
 tests_baremetal = $(tests:=-baremetal)
 
