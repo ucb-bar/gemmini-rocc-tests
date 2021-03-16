@@ -3136,18 +3136,9 @@ static void tiled_conv_A_stride_auto_loopld(
 		  int max_val = -1;
 		  int max_idx = -1;
 
-		  for (size_t j = 0; j < sizeof(args)/sizeof(args[0]); j++) {
+		  for (size_t i = 0; i < sizeof(args)/sizeof(args[0]); i++) {
 				// We avoid reducing ocols when possible to keep the spatial array fully utilized
 //			  if(!down_sample){
-			  size_t i = 0;
-			  if(j == 0) i = 0;
-			  else if (j == 1) i = orows_idx;
-			  else if(j == 2) i = ocols_idx;
-				else if (j == 3) i = 4;
-				else if(j == 4) i = 5;
-				else if(j == 5) i = down_sample ? in_channels_idx : out_channels_idx;
-				else if(j == 6) i = down_sample ? out_channels_idx : in_channels_idx;
-
 			  if(i == 0 && args[0] > 1){ // batch first
 					max_val = args[0];
 					max_idx = 0;
@@ -3160,17 +3151,23 @@ static void tiled_conv_A_stride_auto_loopld(
 					max_val = args[ocols_idx];
 					max_idx = ocols_idx;
 					break;
-				}else if((i==4 || i == 5) && args[i] > 1){
-					max_val = args[i];
-					max_idx = i;
-				  break;
 				}else if (!(i == ocols_idx && args[i] <= DIM && args[orows_idx] > 1)
 						  && args[i] > max_val) { // and then move on to channels
 					 max_val = args[i];
 					 max_idx = i;
 				}
+/*
+		      }
+			   else{
+					if (!(i == ocols_idx && args[i] <= DIM && args[orows_idx] > 1)
+							  && args[i] > max_val) {
+						 max_val = args[i];
+						 max_idx = i;
+					}
+				}
+*/
 		  }
-//			  printf("max_val: %d, max_idx: %d \n", max_val, max_idx);
+		//	  printf("max_val: %d, max_idx: %d \n", max_val, max_idx);
 	
 		  if (max_idx == out_channels_idx || max_idx == in_channels_idx) {
 				if(max_val > MAX_BLOCK_LEN * DIM){
@@ -3178,8 +3175,7 @@ static void tiled_conv_A_stride_auto_loopld(
 					if (args[max_idx] % (MAX_BLOCK_LEN * DIM) != 0) {
 						 args[max_idx] = (args[max_idx] / (MAX_BLOCK_LEN * DIM)) * (MAX_BLOCK_LEN * DIM);
 					} else {
-						 //args[max_idx] -= (MAX_BLOCK_LEN * DIM);
-						args[max_idx] = args[max_idx] / 2;
+						 args[max_idx] -= (MAX_BLOCK_LEN * DIM);
 					}
 					args[max_idx] = args[max_idx] == 0 ? 1 : args[max_idx];
 				}
@@ -3195,8 +3191,7 @@ static void tiled_conv_A_stride_auto_loopld(
 				  if(args[max_idx] % DIM != 0) args[max_idx] = (args[max_idx]/DIM)*DIM;
 				  else args[max_idx] -= DIM;
 			  }else{
-				  if(max_idx == 4 || max_idx == 5) args[max_idx] = 1;
-				  else args[max_idx]--;
+				  args[max_idx]--;
 			  }
 		  }
 
@@ -3260,16 +3255,15 @@ static void tiled_conv_A_stride_auto_loopld(
 				}
 				else{
 					if(j == 0) i = out_channels_idx;
-					else if (j == 1) i = orows_idx;//5;
-					else if (j == 2) i = ocols_idx;//4;
+					else if (j == 1) i = 5;
+					else if (j == 2) i = 4;
 					else if (j == 3) i = in_channels_idx;
-					else if(j == 4) i = 5;//orows_idx;//ocols_idx;
-					else if(j == 5) i = 4;//ocols_idx;//orows_idx;
+					else if(j == 4) i = orows_idx;//ocols_idx;
+					else if(j == 5) i = ocols_idx;//orows_idx;
 					else if(j == 6) i = 0;
 				}
 				int args_candidate[] = {args[0], args[1], args[2], args[3], args[4], args[5], args[6]};
-				if(i == out_channels_idx) args_candidate[i] *= 2;//+= MAX_BLOCK_LEN * DIM;//!down_sample ? MAX_BLOCK_LEN * DIM : DIM;
-				else if(i == in_channels_idx) args_candidate[i] += MAX_BLOCK_LEN * DIM;
+				if(i == out_channels_idx || i == in_channels_idx) args_candidate[i] += MAX_BLOCK_LEN * DIM;//!down_sample ? MAX_BLOCK_LEN * DIM : DIM;
 				else if(i == ocols_idx && (args[i] % DIM == 0)) args_candidate[i] += DIM;
 				else args_candidate[i]++;
 
@@ -3317,7 +3311,7 @@ static void tiled_conv_A_stride_auto_loopld(
     printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
 
     printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
-  */
+   */ 
 	 tiled_conv_A_stride_loopld(
 		  batch_size, in_dim, in_channels,
 		  out_channels, out_dim,
