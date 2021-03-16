@@ -180,6 +180,8 @@ int main() {
                   }
                 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
                 printf("Starting CPU matmul\n");
                 if (!a_transpose && !b_transpose) {
                   full_matmul(full_A, full_B, full_D, gold_full, repeating_bias);
@@ -191,6 +193,7 @@ int main() {
                   full_matmul_At_Bt(full_A, full_B, full_D, gold_full, repeating_bias);
                 }
                 full_matscale(gold_full, gold, scale);
+#pragma GCC diagnostic pop
 
                 if (activation == RELU) {
                   full_matrelu(gold, gold);
