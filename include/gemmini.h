@@ -702,7 +702,7 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
         int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias) {
 
   const int no_bias = D == NULL;
-  if (DIM_I % 4 == 0 && DIM_J % 4 == 0) {
+  if (!transA && !transB && DIM_I % 4 == 0 && DIM_J % 4 == 0) {
     for (size_t i = 0; i < DIM_I; i += 4) {
       for (size_t j = 0; j < DIM_J; j += 4) {
 
@@ -801,21 +801,20 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
       }
     }
   } else {
+    size_t A_dim_strides[2] = {!transA ? stride_A : 1, !transA ? 1 : stride_A}; // i, j stride
+    size_t B_dim_strides[2] = {!transB ? 1 : stride_B, !transB ? stride_B : 1}; // j, k stride
     for (size_t i = 0; i < DIM_I; i++) {
       for (size_t j = 0; j < DIM_J; j++) {
-        const elem_t* a = !transA ? (A + (i * stride_A)) : A + i;
-        const elem_t* b = !transB ? (B + j) : (B + (j * stride_B));
         elem_t* c = C + (i * stride_C) + j;
 
         const size_t bias_row = repeating_bias ? 0 : i;
         acc_t sum = no_bias ? 0 : GEMMINI_ACC_SCALE(*(D + bias_row * stride_D + j), D_scale_factor);
 
         for (size_t k = 0; k < DIM_K; k++) {
+          const elem_t* a = A + i * A_dim_strides[0] + k * A_dim_strides[1];
+          const elem_t* b = B + j * B_dim_strides[0] + k * B_dim_strides[1];
           sum += (GEMMINI_SCALE(*a, A_scale_factor) * GEMMINI_SCALE(*b, B_scale_factor));
-          b += !transB ? stride_B : 1;
-          a += !transA ? 1 : stride_A;
         }
-
         *c = scale_and_sat(sum, act, scale, relu6_shift);
       }
     }
