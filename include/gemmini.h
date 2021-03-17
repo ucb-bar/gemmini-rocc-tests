@@ -1098,7 +1098,6 @@ static void sp_tiled_conv_A_stride(
     if (output != NULL && !no_pool) {
         gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
 
-        gemmini_fence(); // TODO remove this when the ROB can accurately handle these
         for (int b = 0; b < batches; b++) {
             for (int poch = 0; poch < pochs; poch += DIM) {
                 const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
@@ -1112,7 +1111,6 @@ static void sp_tiled_conv_A_stride(
                         channels, 0);
             }
         }
-        gemmini_fence();
 
         gemmini_config_st(out_channels * sizeof(elem_t));
     }
