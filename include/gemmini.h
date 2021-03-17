@@ -293,7 +293,7 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, row_stride, k_LOOP_LD_CONFIG_ADDRS) 
 
 // weight-stationary matmul loop
-#define gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, och_padding, ich_padding) \
+#define gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, och_padding, ich_padding, och_divide) \
   { \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(out_channels) << 48) | ((uint64_t)(in_channels) << 32) | ((uint64_t)(in_dim) << 16) | (uint64_t)(batch_size), \
       ((uint64_t)(padding) << 48) | ((uint64_t)(stride) << 32) | ((uint64_t)(pool_out_dim) << 16) | (uint64_t)(out_dim), k_LOOP_CONV_WS_CONFIG_1) \
@@ -308,12 +308,12 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, bias, \
       input, k_LOOP_CONV_WS_CONFIG_6) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, no_bias, \
-      ((uint64_t)(och_padding << 2)) | ((uint64_t)(ich_padding) << 1) | ((uint64_t) no_pool), k_LOOP_CONV_WS) \
+      ((uint64_t)(och_divide) << 3) | ((uint64_t)(och_padding << 2)) | ((uint64_t)(ich_padding) << 1) | ((uint64_t) no_pool), k_LOOP_CONV_WS) \
   }
 
-#define gemmini_loop_ld_conv(dram_addr, padding, in_channels, out_channels, kernel_dim, pochs, krows, kcols, kchs, latency, alert_cycle, unlock_cycle, pause_turn)\
+#define gemmini_loop_ld_conv(dram_addr, och_divide, padding, in_channels, out_channels, kernel_dim, pochs, krows, kcols, kchs, latency, alert_cycle, unlock_cycle, pause_turn)\
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(krows) << 48) | ((uint64_t)(kcols) << 32) | ((uint64_t)(kchs) << 16) | ((uint64_t)(pochs)), ((uint64_t)(pause_turn) << 58) | ((uint64_t)(unlock_cycle) << 54) | ((uint64_t)(alert_cycle) << 48) | ((uint64_t)(latency) << 32) | ((uint64_t)(kernel_dim)), k_LOOP_CONV_LD_CONFIG_BOUNDS) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)(padding) << 32) | ((uint64_t)(out_channels) << 16) | ((uint64_t)(in_channels)), k_LOOP_CONV_LD_CONFIG_ADDRS)
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)(och_divide) << 33) | ((uint64_t)(padding) << 32) | ((uint64_t)(out_channels) << 16) | ((uint64_t)(in_channels)), k_LOOP_CONV_LD_CONFIG_ADDRS)
  
 
 
@@ -572,10 +572,10 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
     }
   }
   */
-	int latency = detect_conflict ? 2000 : 0;//priority*1500 + 1000 : 0;
-	int alert = 10;
-	int unlock_cycle = 5;//4 + priority*2;
-	int pause_turn = 1;//2;
+	int latency = detect_conflict ? 3000 : 0;//priority*1500 + 1000 : 0;
+	int alert = 50;
+	int unlock_cycle = 6;//4 + priority*2;
+	int pause_turn = 2;
 	if(skip_B) { 
 		gemmini_loop_ld(false, K, J, pad_K, pad_J, B, B_row_stride, latency, alert, unlock_cycle, pause_turn);
 	}
@@ -1208,7 +1208,7 @@ static void sp_tiled_conv_A_stride(
 
         bool no_bias, bool no_pool,
 		  bool skip_weight, 
-		  bool ich_padding, bool och_padding, bool detect_conflict) {
+		  bool ich_padding, bool och_padding, size_t och_divide, bool detect_conflict) {
 
     const int orows = porows * pool_stride + pool_size - 1 - pupad - pdpad;
     const int ocols = pocols * pool_stride + pool_size - 1 - plpad - prpad;
@@ -1247,10 +1247,10 @@ static void sp_tiled_conv_A_stride(
 	int unlock_cycle = 6;//4 + priority*2;
 	int pause_turn = 2;
 	if(skip_weight){
-		gemmini_loop_ld_conv(weights, ich_padding, in_channels, out_channels, kernel_dim, pochs, krows, kcols, kchs, latency, alert_cycle, unlock_cycle, pause_turn)
+		gemmini_loop_ld_conv(weights, och_divide, ich_padding, in_channels, out_channels, kernel_dim, pochs, krows, kcols, kchs, latency, alert_cycle, unlock_cycle, pause_turn)
 	}
 
-	gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, och_padding, ich_padding);
+	gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, och_padding, ich_padding, och_divide);
 
     // mvout output
     if (output != NULL && !no_pool) {
@@ -2729,7 +2729,7 @@ static void tiled_conv_A_stride(
                                     bias_,
 
                                     no_bias, no_pool,
-												skip_weight, false, false, false);
+												skip_weight, false, false, 1, false);
                             }
                         }
                     }
@@ -2757,7 +2757,7 @@ static void tiled_conv_A_stride_loopld(
         int pool_size, int pool_stride, int pool_padding,
 
         enum tiled_matmul_type_t tiled_conv_type, 
-		  bool ich_padding, bool och_padding, bool skip_weight) {
+		  bool ich_padding, bool och_padding, size_t och_divide, bool skip_weight) {
 
     if (tiled_conv_type == CPU) {
       if (pool_size == 1 && pool_stride == 1 && pool_padding == 0) {
@@ -2822,7 +2822,7 @@ static void tiled_conv_A_stride_loopld(
     }
 #endif
 
-	 int och_stride = (och_padding) ? out_channels + MAX_BLOCK_LEN * DIM : out_channels;
+	 int och_stride = (och_padding) ? out_channels * och_divide + MAX_BLOCK_LEN * DIM : out_channels * och_divide;
 	 int ich_stride = (ich_padding) ? in_channels + MAX_BLOCK_LEN * DIM : in_channels;
 	 gemmini_config_st(och_stride * sizeof(elem_t));
     gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, stride, false, false);
@@ -2905,7 +2905,7 @@ static void tiled_conv_A_stride_loopld(
                                     bias_,
 
                                     no_bias, no_pool,
-												skip_weight, ich_padding, och_padding, detect_conflict);
+												skip_weight, ich_padding, och_padding, och_divide, detect_conflict);
                             }
                         }
                     }
@@ -3100,7 +3100,7 @@ static void tiled_conv_A_stride_auto_loopld(
 		  int pool_size, int pool_stride, int pool_padding,
 
 		  enum tiled_matmul_type_t tiled_conv_type, 
-		  bool ich_padding, bool och_padding, bool skip_weight) {
+		  bool ich_padding, bool och_padding, size_t och_divide, bool skip_weight) {
 
 	 const bool no_pool = pool_stride == 0;
 	 if (no_pool) {
@@ -3346,7 +3346,7 @@ static void tiled_conv_A_stride_auto_loopld(
 		  act, scale, relu6_shift,
 		  pool_size, no_pool ? 0 : pool_stride, pool_padding,
 
-		  tiled_conv_type, ich_padding, och_padding, skip_weight);
+		  tiled_conv_type, ich_padding, och_padding, och_divide, skip_weight);
 }
 // This function is for a convolution with kernel_dim=1, stride==2, padding=0, and no pooling
 static void tiled_conv_downsample(
