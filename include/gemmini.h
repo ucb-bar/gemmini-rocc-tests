@@ -1094,7 +1094,8 @@ static void sp_tiled_conv_A_stride(
 
     gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool);
 
-    // mvout output
+    /*
+    // pool output
     if (output != NULL && !no_pool) {
         gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
 
@@ -1114,6 +1115,7 @@ static void sp_tiled_conv_A_stride(
 
         gemmini_config_st(out_channels * sizeof(elem_t));
     }
+    */
 
     /*
     // mvin bias
