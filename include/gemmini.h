@@ -1243,7 +1243,7 @@ static void sp_tiled_conv_A_stride(
     }
 
 	int latency = detect_conflict ? 2500 : 0;//priority*1500 + 1000 : 0;
-	int alert_cycle = 30;
+	int alert_cycle = 60;
 	int unlock_cycle = 6;//4 + priority*2;
 	int pause_turn = 2;
 	if(skip_weight){
@@ -3138,8 +3138,16 @@ static void tiled_conv_A_stride_auto_loopld(
 
 		  for (size_t j = 0; j < sizeof(args)/sizeof(args[0]); j++) {
 				// We avoid reducing ocols when possible to keep the spatial array fully utilized
-//			  if(!down_sample){
 			  size_t i = 0;
+	//		  if(!down_sample){
+			  if(j == 0) i = 0;
+			  else if (j == 4) i = orows_idx;
+			  else if(j == 1) i = ocols_idx;
+				else if (j == 2) i = 4;
+				else if(j == 3) i = 5;
+				else if(j == 5) i = down_sample ? in_channels_idx : out_channels_idx;
+				else if(j == 6) i = down_sample ? out_channels_idx : in_channels_idx;
+	/*		} else{
 			  if(j == 0) i = 0;
 			  else if (j == 1) i = orows_idx;
 			  else if(j == 2) i = ocols_idx;
@@ -3147,12 +3155,12 @@ static void tiled_conv_A_stride_auto_loopld(
 				else if(j == 4) i = 5;
 				else if(j == 5) i = down_sample ? in_channels_idx : out_channels_idx;
 				else if(j == 6) i = down_sample ? out_channels_idx : in_channels_idx;
-
+			}	*/		
 			  if(i == 0 && args[0] > 1){ // batch first
 					max_val = args[0];
 					max_idx = 0;
 					break;
-				}else if(i == orows_idx && args[orows_idx] > 1 && (args[orows_idx] >= args[ocols_idx] || args[ocols_idx] <= DIM)){ //decrease orows as much as possible 
+				}else if(i == orows_idx && args[orows_idx] > 1 && (args[ocols_idx] <= DIM || (args[in_channels_idx] == DIM * MAX_BLOCK_LEN && args[out_channels_idx] == MAX_BLOCK_LEN*DIM))){// && (args[orows_idx] >= args[ocols_idx] || args[ocols_idx] <= DIM)){ //decrease orows as much as possible 
 					max_val = args[orows_idx];
 					max_idx = orows_idx;
 					break;
@@ -3243,16 +3251,18 @@ static void tiled_conv_A_stride_auto_loopld(
  */
 	 // Check if there are any parameters that we can currently still increase
 	 bool nothing_increased = false;
+	 bool kdim_increase = true;
 	 while (!nothing_increased) {
 		  nothing_increased = true;
+		  kdim_increase = true;
 
 		  for (size_t j = 0; j < sizeof(args)/sizeof(args[0]); j++) {
 			   //size_t i =j;//  down_sample ? j : 6-j;
 				size_t i = j;
 			   if(!down_sample){
 					if(j == 0) i = in_channels_idx;
-					else if (j == 1) i = 5;
-					else if(j == 2) i = 4;
+					else if (j == 1) i = 4;
+					else if(j == 2) i = 5;
 					else if (j == 3) i = out_channels_idx;
 					else if(j == 4) i = ocols_idx;
 					else if(j == 5) i = orows_idx;
@@ -3263,15 +3273,15 @@ static void tiled_conv_A_stride_auto_loopld(
 					else if (j == 1) i = orows_idx;//5;
 					else if (j == 2) i = ocols_idx;//4;
 					else if (j == 3) i = in_channels_idx;
-					else if(j == 4) i = 5;//orows_idx;//ocols_idx;
-					else if(j == 5) i = 4;//ocols_idx;//orows_idx;
+					else if(j == 4) i = 4;//orows_idx;//ocols_idx;
+					else if(j == 5) i = 5;//ocols_idx;//orows_idx;
 					else if(j == 6) i = 0;
 				}
 				int args_candidate[] = {args[0], args[1], args[2], args[3], args[4], args[5], args[6]};
-				if(i == out_channels_idx) args_candidate[i] *= 2;//+= MAX_BLOCK_LEN * DIM;//!down_sample ? MAX_BLOCK_LEN * DIM : DIM;
-				else if(i == in_channels_idx) args_candidate[i] += MAX_BLOCK_LEN * DIM;
+				if(i == out_channels_idx || i == in_channels_idx) args_candidate[i] *= 2;//+= MAX_BLOCK_LEN * DIM;//!down_sample ? MAX_BLOCK_LEN * DIM : DIM;
+				//else if(i == in_channels_idx) args_candidate[i] += MAX_BLOCK_LEN * DIM;
 				else if(i == ocols_idx && (args[i] % DIM == 0)) args_candidate[i] += DIM;
-				else args_candidate[i]++;
+				else args_candidate[i]+= !kdim_increase && (i == 4 || i == 5) ? 2 : 1;
 
 				if (args_candidate[i] > max_args[i])
 					 continue;
@@ -3284,6 +3294,7 @@ static void tiled_conv_A_stride_auto_loopld(
 				if (spad_rows <= max_spad_rows && acc_rows <= max_acc_rows) {
 					 args[i] = args_candidate[i];
 					 nothing_increased = false;
+					 kdim_increase = false;
 				}
 		  }
 	 }
@@ -3296,7 +3307,7 @@ static void tiled_conv_A_stride_auto_loopld(
 	 const int kcols = args[5];
 	 const int kchs = args[6];
 
-   /*
+  /* 
     spad_rows = tiled_conv_total_spad_rows_A_stride(false,
         stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     acc_rows = tiled_conv_total_spad_rows_A_stride(true,
