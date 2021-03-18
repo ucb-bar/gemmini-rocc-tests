@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <limits.h>
 
+#define XCUSTOM_ACC 3
 #define DIM 16
 #define ADDR_LEN 32
 #define BANK_NUM 4
@@ -57,6 +58,12 @@ typedef uint32_t acc_scale_t_bits;
          SAME_TYPE(x) result = rem < 0.5 ? i : (rem > 0.5 ? next : ( \
                      i % 2 == 0 ? i : next)); \
          result; })
+
+// Rounding right shift equation: https://riscv.github.io/documents/riscv-v-spec/#_vector_fixed_point_rounding_mode_register_vxrm
+#define ROUNDING_RIGHT_SHIFT_BITS(x, shift) \
+((shift) > 0 ? (((x) >> (shift)) + \
+    (((shift) == 0 ? 0 : (((x) >> ((shift)-1)) & 1)) & \
+         ((((shift) <= 1 ? 0 : ((x) & ((1 << ((shift)-1)) - 1))) != 0) | (((x) >> (shift)) & 1)))) : ((x) << (-(shift))))
 
 #define ACC_SCALE(x, scale) \
     ({float y = ROUND_NEAR_EVEN((x) * (scale)); y > INT8_MAX ? INT8_MAX : (y < INT8_MIN ? INT8_MIN : (acc_t)y);})
