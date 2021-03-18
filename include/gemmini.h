@@ -2424,9 +2424,9 @@ static void tiled_conv_A_stride(
         int porows, int pocols, int pochs,
         int krows, int kcols, int kchs,
 
-        elem_t * input,
-        elem_t * weights,
-        acc_t * bias,
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift,
@@ -2593,9 +2593,9 @@ static void tiled_conv_A_stride_auto(
         int out_channels, int out_dim,
         int stride, int dilation, int padding, int kernel_dim,
 
-        elem_t * input,
-        elem_t * weights,
-        acc_t * bias,
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift,
@@ -2812,9 +2812,9 @@ static void tiled_conv_dw(
         int porows, int pocols,// int pochs,
 //        int krows, int kcols, int kchs,
 
-        elem_t * input,
-        elem_t * weights,
-        acc_t * bias,
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift,
