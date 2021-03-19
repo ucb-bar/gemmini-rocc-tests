@@ -1544,11 +1544,11 @@ static void sp_tiled_conv_dw(
         int lpad, int rpad, int upad, int dpad,
         int plpad, int prpad, int pupad, int pdpad,
 
-        elem_t * input,
+        const elem_t * input,
         // uint32_t B_sp_addr_start,
-        elem_t * weights,
+        const elem_t * weights,
         elem_t * output,
-        acc_t * bias,
+        const acc_t * bias,
 
 	    int act, acc_scale_t scale, int relu6_shift,
         bool no_bias, bool no_pool, bool mvin_weight
@@ -1621,7 +1621,7 @@ static void sp_tiled_conv_dw(
                 // TODO There might be some unnecessary mvins here at the edge of the image
 
                 int I = icols_unpadded - icol > DIM ? DIM : icols_unpadded - icol;
-                elem_t * in = input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels;// + ich;
+                const elem_t * in = input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels;// + ich;
  
                 if (icol < 0) {
                     I = -icol > DIM ? DIM : -icol;
@@ -2527,7 +2527,7 @@ static void tiled_conv_A_stride(
                                     out = NULL;
                                 }
 
-                                acc_t * bias_ = bias + poch;
+                                const acc_t * bias_ = bias + poch;
                                 if (krow > 0 ||
                                         kcol > 0 ||
                                         kch > 0) {
@@ -2884,7 +2884,7 @@ static void tiled_conv_dw(
                             //for (int kch = 0; kch < in_channels; kch += 1) {
                                 elem_t * out = output + (b*pool_out_dim*pool_out_dim + porow*pool_out_dim + pocol) * out_channels + poch;
 
-                                acc_t * bias_ = bias + poch;
+                                const acc_t * bias_ = bias + poch;
                                 const int batches_ = batch_size - b > batches ? batches : batch_size - b;
                                 const int porows_ = pool_out_dim - porow > porows ? porows : pool_out_dim - porow;
                                 const int pocols_ = pool_out_dim - pocol > pocols ? pocols : pool_out_dim - pocol;
