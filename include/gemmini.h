@@ -572,8 +572,8 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
     }
   }
   */
-	int latency = detect_conflict ? 3000 : 0;//priority*1500 + 1000 : 0;
-	int alert = 50;
+	int latency = detect_conflict ? 4000 : 0;//priority*1500 + 1000 : 0;
+	int alert = 60;
 	int unlock_cycle = 6;//4 + priority*2;
 	int pause_turn = 2;
 	if(skip_B) { 
@@ -3390,6 +3390,51 @@ static void tiled_conv_downsample(
         }
     }
 }
+
+static void tiled_conv_downsample_loopld(
+        int batch_size, int in_dim, int in_channels,
+        int out_channels, int out_dim,
+
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
+        elem_t * output,
+
+        int act, acc_scale_t scale, size_t relu6_shift,
+
+        enum tiled_matmul_type_t tiled_conv_type,
+        bool ich_padding, bool och_padding, size_t och_divide, bool skip_weight) {
+
+    const int stride = 2;
+
+    for (int b = 0; b < batch_size; b++) {
+        for (int irow = 0; irow < in_dim; irow += stride) {
+            const int orow = irow / stride;
+
+            const int I = in_dim / stride; // number of columns in row
+            const int J = out_channels;
+            const int K = in_channels;
+
+            const elem_t * A = input + (b*in_dim + irow)*in_dim*in_channels;
+            const elem_t * B = weights;
+            const acc_t * D = bias;
+            elem_t * C = output + (b*out_dim + orow)*out_dim*out_channels;
+
+            const int A_stride = ich_padding ? (in_channels + 64) * 2 : in_channels * 2;
+            const int B_stride = och_padding ? (out_channels * och_divide + 64) : out_channels * och_divide;
+            const int D_stride = och_padding ? (out_channels * och_divide + 64) : out_channels * och_divide;
+            const int C_stride = och_padding ? (out_channels * och_divide + 64) : out_channels * och_divide;
+
+            tiled_matmul_auto_loopld(I, J, K, A, B, (void*)D, (void*)C,
+                    A_stride, B_stride, D_stride, C_stride,
+                    MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+                    MVIN_SCALE_IDENTITY, act, scale, relu6_shift,
+                    true, false, false, false, false, tiled_conv_type,
+                    false, skip_weight);
+        }
+    }
+}
+
 
 static void tiled_conv_dw(
         int batch_size, int in_dim, int in_channels,
