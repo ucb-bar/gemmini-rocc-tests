@@ -14,6 +14,7 @@
 #include "resnet50_mt_params.h"
 #include "images.h"
 
+#define num_proc 4
 #define num_layer 54
 #define num_resadd 16
 
@@ -27,6 +28,12 @@
 #define SKIP_WEIGHT false //later
 
 pthread_barrier_t barrier;
+
+#define MAT_DIM_I 512
+#define MAT_DIM_J 512
+#define MAT_DIM_K 512
+#define FULL_BIAS_WIDTH true
+#define REPEATING_BIAS true
 
 //meaningless
 static elem_t in_A[MAT_DIM_I][MAT_DIM_K] row_align(MAX_BLOCK_LEN) = {0};
@@ -60,6 +67,7 @@ void *thread_matmul0(void *arg){
 void *thread_NN(void *arg){
 	int cid = sched_getcpu();
 	struct thread_args * nn_args = (struct thread_args *) arg;
+    enum tiled_matmul_type_t tiled_matmul_type = WS;
 	gemmini_flush(0);
     uint64_t start, end;
     uint64_t im2col_cycles = 0, matmul_cycles = 0, conv_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, res_add_cycles = 0, other_cycles = 0;
@@ -145,7 +153,8 @@ void *thread_NN(void *arg){
             tiled_matmul_nn_auto_loopld(conv_5_params.I, conv_5_params.J, conv_5_params.K,
                 conv_1_out_pooled0, conv_5_w0, conv_5_b0, conv_5_out0,
                 NO_ACTIVATION, conv_5_params.output_scale, 0, true,
-                tiled_matmul_type, check, "conv_5");
+                tiled_matmul_type, SKIP_A, SKIP_B, A_PADDING, B_PADDING);
+
 
             end = read_cycles();
             matmul_cycles += end - start;
@@ -1214,7 +1223,7 @@ void *thread_NN(void *arg){
         {
             start = read_cycles();
 
-            tiled_matmul_nn_auto_loopld_loopld(conv_51_params.I, conv_51_params.J, conv_51_params.K,
+            tiled_matmul_nn_auto_loopld(conv_51_params.I, conv_51_params.J, conv_51_params.K,
                 conv_50_out0, conv_51_w0, conv_51_b0, conv_51_out0,
                 RELU, conv_51_params.output_scale, 0, true,
                 tiled_matmul_type, SKIP_A, SKIP_B, A_PADDING, B_PADDING);
@@ -1291,7 +1300,7 @@ void *thread_NN(void *arg){
                     for (int col = 0; col < conv_53_params.out_dim; col++) {
                         size_t r = batch * conv_53_params.out_dim * conv_53_params.out_dim + row * conv_53_params.out_dim + col;
 
-                        sum += conv_53_out[r][channel];
+                        sum += conv_53_out0[r][channel];
                     }
                 }
                 const int count = conv_53_params.out_dim * conv_53_params.out_dim;
@@ -1394,7 +1403,8 @@ void *thread_NN(void *arg){
             tiled_matmul_nn_auto_loopld(conv_5_params.I, conv_5_params.J, conv_5_params.K,
                 conv_1_out_pooled1, conv_5_w1, conv_5_b1, conv_5_out1,
                 NO_ACTIVATION, conv_5_params.output_scale, 0, true,
-                tiled_matmul_type, check, "conv_5");
+                tiled_matmul_type, SKIP_A, SKIP_B, A_PADDING, B_PADDING);
+
 
             end = read_cycles();
             matmul_cycles += end - start;
@@ -2463,7 +2473,7 @@ void *thread_NN(void *arg){
         {
             start = read_cycles();
 
-            tiled_matmul_nn_auto_loopld_loopld(conv_51_params.I, conv_51_params.J, conv_51_params.K,
+            tiled_matmul_nn_auto_loopld(conv_51_params.I, conv_51_params.J, conv_51_params.K,
                 conv_50_out1, conv_51_w1, conv_51_b1, conv_51_out1,
                 RELU, conv_51_params.output_scale, 0, true,
                 tiled_matmul_type, SKIP_A, SKIP_B, A_PADDING, B_PADDING);
@@ -2540,7 +2550,7 @@ void *thread_NN(void *arg){
                     for (int col = 0; col < conv_53_params.out_dim; col++) {
                         size_t r = batch * conv_53_params.out_dim * conv_53_params.out_dim + row * conv_53_params.out_dim + col;
 
-                        sum += conv_53_out[r][channel];
+                        sum += conv_53_out1[r][channel];
                     }
                 }
                 const int count = conv_53_params.out_dim * conv_53_params.out_dim;
@@ -2643,7 +2653,8 @@ void *thread_NN(void *arg){
             tiled_matmul_nn_auto_loopld(conv_5_params.I, conv_5_params.J, conv_5_params.K,
                 conv_1_out_pooled2, conv_5_w2, conv_5_b2, conv_5_out2,
                 NO_ACTIVATION, conv_5_params.output_scale, 0, true,
-                tiled_matmul_type, check, "conv_5");
+                tiled_matmul_type, SKIP_A, SKIP_B, A_PADDING, B_PADDING);
+
 
             end = read_cycles();
             matmul_cycles += end - start;
@@ -3712,7 +3723,7 @@ void *thread_NN(void *arg){
         {
             start = read_cycles();
 
-            tiled_matmul_nn_auto_loopld_loopld(conv_51_params.I, conv_51_params.J, conv_51_params.K,
+            tiled_matmul_nn_auto_loopld(conv_51_params.I, conv_51_params.J, conv_51_params.K,
                 conv_50_out2, conv_51_w2, conv_51_b2, conv_51_out2,
                 RELU, conv_51_params.output_scale, 0, true,
                 tiled_matmul_type, SKIP_A, SKIP_B, A_PADDING, B_PADDING);
@@ -3789,7 +3800,7 @@ void *thread_NN(void *arg){
                     for (int col = 0; col < conv_53_params.out_dim; col++) {
                         size_t r = batch * conv_53_params.out_dim * conv_53_params.out_dim + row * conv_53_params.out_dim + col;
 
-                        sum += conv_53_out[r][channel];
+                        sum += conv_53_out2[r][channel];
                     }
                 }
                 const int count = conv_53_params.out_dim * conv_53_params.out_dim;
@@ -3892,7 +3903,7 @@ void *thread_NN(void *arg){
             tiled_matmul_nn_auto_loopld(conv_5_params.I, conv_5_params.J, conv_5_params.K,
                 conv_1_out_pooled3, conv_5_w3, conv_5_b3, conv_5_out3,
                 NO_ACTIVATION, conv_5_params.output_scale, 0, true,
-                tiled_matmul_type, check, "conv_5");
+                tiled_matmul_type, SKIP_A, SKIP_B, A_PADDING, B_PADDING);
 
             end = read_cycles();
             matmul_cycles += end - start;
@@ -4961,7 +4972,7 @@ void *thread_NN(void *arg){
         {
             start = read_cycles();
 
-            tiled_matmul_nn_auto_loopld_loopld(conv_51_params.I, conv_51_params.J, conv_51_params.K,
+            tiled_matmul_nn_auto_loopld(conv_51_params.I, conv_51_params.J, conv_51_params.K,
                 conv_50_out3, conv_51_w3, conv_51_b3, conv_51_out3,
                 RELU, conv_51_params.output_scale, 0, true,
                 tiled_matmul_type, SKIP_A, SKIP_B, A_PADDING, B_PADDING);
@@ -5038,7 +5049,7 @@ void *thread_NN(void *arg){
                     for (int col = 0; col < conv_53_params.out_dim; col++) {
                         size_t r = batch * conv_53_params.out_dim * conv_53_params.out_dim + row * conv_53_params.out_dim + col;
 
-                        sum += conv_53_out[r][channel];
+                        sum += conv_53_out3[r][channel];
                     }
                 }
                 const int count = conv_53_params.out_dim * conv_53_params.out_dim;
@@ -5116,15 +5127,15 @@ int main (int argc, char * argv[]) {
 
     //just random turn
     for(int i = 0; i < num_proc; i++){
-        pthread_create(&thread[i], &attr[i], thread_matmul0, &matmul_args[i]);
+        pthread_create(&thread[i], &attr[i], thread_matmul0, &nn_args[i]);
     }
 
     for(int i = 0; i < num_proc; i++)
         pthread_join(thread[i], NULL);
 
     pthread_barrier_init(&barrier, NULL, num_proc);
-    for(int i = 0; i < num_proc, i++)
-        pthread_create(&thread[i], &attr[i], thread_NN, &thread_args[i]);
+    for(int i = 0; i < num_proc; i++)
+        pthread_create(&thread[i], &attr[i], thread_NN, &nn_args[i]);
     
     for(int i = 0; i < num_proc; i++)
         pthread_join(thread[i], NULL);
@@ -5132,11 +5143,11 @@ int main (int argc, char * argv[]) {
     
 
 
-    for(int i = 0; i < num_proc, i++){
+    for(int i = 0; i < num_proc; i++){
         uint64_t matmul_cycles = nn_args[i].total_matmul_cycles;
         uint64_t conv_cycles = nn_args[i].total_conv_cycles;
         uint64_t res_add_cycles = nn_args[i].total_resadd_cycles;
-        uint64_t other_cycles = nn_args[i].other_cycles'
+        uint64_t other_cycles = nn_args[i].other_cycles;
         uint64_t total_cycles =  conv_cycles + matmul_cycles + res_add_cycles + other_cycles;
 
         printf("\nproc %d Total cycles: %llu (100%%)\n", i, total_cycles);
@@ -5146,10 +5157,10 @@ int main (int argc, char * argv[]) {
         printf("proc %d Res add cycles: %llu (%d%%)\n", i, res_add_cycles, (res_add_cycles * 100) / total_cycles);
         printf("proc %d Other cycles: %llu (%d%%)\n", i, other_cycles, (other_cycles * 100) / total_cycles);
         for(int j = 0; j < num_layer; j++)
-            printf("layer %d cycles: %llu \n", j, nn_args[i]->(conv_cycles[j]));
+            printf("layer %d cycles: %llu \n", j, nn_args[i].conv_cycles[j]);
         for(int j = 0; j < num_resadd; j++)
-            printf("resadd %d cycles: %llu \n", j, nn_args[i]->(res_add_cycles[j]));
-        printf("==================================\n")
+            printf("resadd %d cycles: %llu \n", j, nn_args[i].res_add_cycles[j]);
+        printf("==================================\n");
     }
 
     exit(0);

@@ -5,11 +5,11 @@
 #include <limits.h>
 
 #define XCUSTOM_ACC 3
-#define DIM 16
+#define DIM 8
 #define ADDR_LEN 32
 #define BANK_NUM 4
-#define BANK_ROWS 1024
-#define ACC_ROWS 512
+#define BANK_ROWS 2048
+#define ACC_ROWS 1024
 #define MAX_BYTES 64
 #define MAX_BLOCK_LEN (MAX_BYTES/(DIM*1))
 #define MAX_BLOCK_LEN_ACC (MAX_BYTES/(DIM*4))

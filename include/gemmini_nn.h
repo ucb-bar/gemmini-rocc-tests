@@ -92,7 +92,7 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
         tile_I, tile_J, tile_K,
         false, false,
         false, false,
-        tiled_matmul_type);
+        tiled_matmul_type, false, false);
 
     if (check) {
         printf("%s: CPU\n", layer_name);

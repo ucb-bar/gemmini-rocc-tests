@@ -221,7 +221,7 @@ static const acc_t conv_52_b0[512] row_align_acc(MAX_BLOCK_LEN_ACC);
 static const elem_t conv_53_w0[512][2048] row_align(MAX_BLOCK_LEN);
 static const acc_t conv_53_b0[2048] row_align_acc(MAX_BLOCK_LEN_ACC);
 static const elem_t fc_54_w0[1000][2048] row_align(MAX_BLOCK_LEN);
-
+static const acc_t fc_54_b0[1000][4] row_align_acc(1);
 
 // for core 1
 static elem_t conv_1_in1[50176][147] row_align(MAX_BLOCK_LEN);
@@ -440,7 +440,7 @@ static const acc_t conv_52_b1[512] row_align_acc(MAX_BLOCK_LEN_ACC);
 static const elem_t conv_53_w1[512][2048] row_align(MAX_BLOCK_LEN);
 static const acc_t conv_53_b1[2048] row_align_acc(MAX_BLOCK_LEN_ACC);
 static const elem_t fc_54_w1[1000][2048] row_align(MAX_BLOCK_LEN);
-
+static const acc_t fc_54_b1[1000][4] row_align_acc(1);
 
 
 // for core 2
@@ -660,6 +660,8 @@ static const acc_t conv_52_b2[512] row_align_acc(MAX_BLOCK_LEN_ACC);
 static const elem_t conv_53_w2[512][2048] row_align(MAX_BLOCK_LEN);
 static const acc_t conv_53_b2[2048] row_align_acc(MAX_BLOCK_LEN_ACC);
 static const elem_t fc_54_w2[1000][2048] row_align(MAX_BLOCK_LEN);
+static const acc_t fc_54_b2[1000][4] row_align_acc(1);
+
 
 // for core3
 static elem_t conv_1_in3[50176][147] row_align(MAX_BLOCK_LEN);
@@ -878,6 +880,8 @@ static const acc_t conv_52_b3[512] row_align_acc(MAX_BLOCK_LEN_ACC);
 static const elem_t conv_53_w3[512][2048] row_align(MAX_BLOCK_LEN);
 static const acc_t conv_53_b3[2048] row_align_acc(MAX_BLOCK_LEN_ACC);
 static const elem_t fc_54_w3[1000][2048] row_align(MAX_BLOCK_LEN);
+static const acc_t fc_54_b3[1000][4] row_align_acc(1);
+
 
 // params in common
 static const struct ConvParams conv_1_params = {.batch_size=4, .in_dim=224, .kernel_size=7, .in_channels=3, .out_channels=64, .stride=2, .padding=3, .bias=1, .depthwise=0, .out_dim=112, .n_patches=50176, .patch_size=147, .pool_size=3, .pool_stride=2, .pool_padding=1, .out_dim_pooled=56, .output_scale=(1.0 / (1 << 8)), .I=50176, .J=64, .K=147, .res_scale=(1.0 / (1 << 0))};
@@ -934,3 +938,5 @@ static const struct ConvParams conv_51_params = {.batch_size=4, .in_dim=7, .kern
 static const struct ConvParams conv_52_params = {.batch_size=4, .in_dim=7, .kernel_size=3, .in_channels=512, .out_channels=512, .stride=1, .padding=1, .bias=1, .depthwise=0, .out_dim=7, .n_patches=196, .patch_size=4608, .pool_size=1, .pool_stride=1, .pool_padding=0, .out_dim_pooled=7, .output_scale=(1.0 / (1 << 9)), .I=196, .J=512, .K=4608, .res_scale=(1.0 / (1 << 0))};
 static const struct ConvParams conv_53_params = {.batch_size=4, .in_dim=7, .kernel_size=1, .in_channels=512, .out_channels=2048, .stride=1, .padding=0, .bias=1, .depthwise=0, .out_dim=7, .n_patches=196, .patch_size=512, .pool_size=1, .pool_stride=1, .pool_padding=0, .out_dim_pooled=7, .output_scale=(1.0 / (1 << 6)), .I=196, .J=2048, .K=512, .res_scale=(1.0 / (1 << 0))};
 static const struct FcParams fc_54_params = {.batch_size=4, .in_features=2048, .out_features=1000, .bias=1, .output_scale=(1.0 / (1 << 9)), .I=1000, .J=4, .K=2048};
+
+#endif
