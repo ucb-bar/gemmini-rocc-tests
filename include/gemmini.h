@@ -1252,29 +1252,6 @@ static void sp_tiled_conv_A_stride(
 
 	gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, och_padding, ich_padding, och_divide);
 
-    // mvout output
-    if (output != NULL && !no_pool) {
-        gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
-
-        gemmini_fence(); // TODO remove this when the ROB can accurately handle these
-        for (int b = 0; b < batches; b++) {
-            for (int poch = 0; poch < pochs; poch += DIM) {
-                const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
-
-                elem_t * pout = output + (b * pool_out_dim * pool_out_dim)*out_channels + poch;
-
-                const uint32_t C_sp_addr = C_sp_addr_start + (poch / DIM) * batches * orows * ocols + b * orows * ocols;
-
-                gemmini_extended_mvout(pout,
-                        C_sp_addr,
-                        channels, 0);
-            }
-        }
-        gemmini_fence();
-
-        gemmini_config_st(out_channels * sizeof(elem_t));
-    }
-
     /*
     // mvin bias
     if (!no_bias && bias != NULL) {
@@ -1372,56 +1349,54 @@ static void sp_tiled_conv_A_stride(
         }
     }
 
-    // Compute
-    for (int b = 0; b < batches; b++)
-        for (int orow = 0; orow < orows; orow++)
-            for (int ocol = 0; ocol < ocols; ocol += DIM) {
-                const int I = ocols - ocol > DIM ? DIM : ocols - ocol;
-
-                for (int och = 0; och < ochs; och += DIM) {
-                    const int J = ochs - och > DIM ? DIM : ochs - och;
-
-                    const int C_sp_addr = C_sp_addr_start + (och / DIM) * batches * orows * ocols + b * orows * ocols + orow * ocols + ocol;
-
-                    for (int krow = 0; krow < krows; krow++) {
-                        const int irow = orow * stride + krow;
-
-                        for (int kcol = 0; kcol < kcols; kcol++) {
-                            const int icol = ocol * stride + kcol;
-
-                            for (int kch = 0; kch < kchs; kch += DIM) {
-                                // Over here, construct a new matrix
-                                //
-                                // Let us assume that we only ever operate on
-                                // one pixel in one row.
-                                // Thus, krow == kcol == 1
-                                //
-                                // Then, for every set of I, J, and K values
-                                //     - I = ocol
-                                //     - J = och
-                                //     - K = kch
-
-                                const int K = (kchs - kch > DIM ? DIM : kchs - kch);
-
-                                const uint32_t A_sp_addr = A_sp_addr_start + (kch / DIM) * batches * irows * icols + b * irows * icols + irow * icols + icol;
-                                const uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * krows * kcols * kchs + krow * kcols * kchs + kcol * kchs + kch;
-
-                                // perform matmul
-                                const uint32_t out_sp_addr =
-                                    (bias != NULL && no_bias) && krow == 0 && kcol == 0 && kch == 0 ?
-                                    C_sp_addr & ~((uint32_t)(1 << (ADDR_LEN - 2))) :
-                                    C_sp_addr;
-
-                                gemmini_extended_preload(B_sp_addr, out_sp_addr,
-                                        J, K, J, I);
-                                gemmini_extended_compute_preloaded(A_sp_addr, GARBAGE_ADDR, K, I, J, I);
-                            }
-                        }
-                    }
-                }
-            }
-
-    // mvout output
+    for (int och = 0; och < ochs; och += DIM) {
+      for (int krow = 0; krow < krows; krow++) {
+        for (int kcol = 0; kcol < kcols; kcol++) {
+          for (int kch = 0; kch < kchs; kch += DIM) {
+            for (int b = 0; b < batches; b++) {
+              for (int orow = 0; orow < orows; orow++) {
+                for (int ocol = 0; ocol < ocols; ocol += DIM) {
+                  const int irow = orow * stride + krow;
+                  const int icol = ocol * stride + kcol;
+                  const int C_sp_addr = C_sp_addr_start + (och / DIM) * batches * orows * ocols + b * orows * ocols + orow * ocols + ocol;
+                  // Over here, construct a new matrix
+                  //
+                  // Let us assume that we only ever operate on
+                  // one pixel in one row.
+                  // Thus, krows == kcols == 1
+                  //
+                  // Then, for every set of I, J, and K values
+                  //     - I = ocols
+                  //     - J = ochs
+                  //     - K = kchs
+                  const int I = ocols - ocol > DIM ? DIM : ocols - ocol;
+                  const int J = ochs - och > DIM ? DIM : ochs - och;
+                  const int K = (kchs - kch > DIM ? DIM : kchs - kch);
+                  const bool new_weights = b == 0 && orow == 0 && ocol == 0;
+                  const uint32_t A_sp_addr = A_sp_addr_start + (kch / DIM) * batches * irows * icols + b * irows * icols + irow * icols + icol;
+                  const uint32_t B_sp_addr = new_weights ?
+                    (B_sp_addr_start + (och / DIM) * krows * kcols * kchs + krow * kcols * kchs + kcol * kchs + kch)
+                    : GARBAGE_ADDR;
+                  // perform matmul
+                  const uint32_t out_sp_addr =
+                    (bias != NULL && no_bias) && krow == 0 && kcol == 0 && kch == 0 ?
+                    C_sp_addr & ~((uint32_t)(1 << (ADDR_LEN - 2))) :
+                    C_sp_addr;
+                  gemmini_extended_preload(B_sp_addr, out_sp_addr,
+                          J, K, J, I);
+                  if (new_weights) {
+                    gemmini_extended_compute_preloaded(A_sp_addr, GARBAGE_ADDR, K, I, J, I);
+                  } else {
+                    gemmini_extended_compute_accumulated(A_sp_addr, GARBAGE_ADDR, K, I, J, I);
+                  }
+					 }
+				  }
+				}
+			 }
+		  }
+		}
+	 }
+	 // mvout output
     if (output != NULL) {
         if (no_pool) {
             for (int b = 0; b < batches; b++)
@@ -3043,12 +3018,12 @@ static void tiled_conv_A_stride_auto(
     const int kcols = args[5];
     const int kchs = args[6];
 
-/*    
+    
     spad_rows = tiled_conv_total_spad_rows_A_stride(false,
         stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     acc_rows = tiled_conv_total_spad_rows_A_stride(true,
         stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
-
+/*
     printf("batches = %d\n", batches);
     printf("orows   = %d\n", orows);
     printf("ocols   = %d\n", ocols);
@@ -3160,7 +3135,7 @@ static void tiled_conv_A_stride_auto_loopld(
 					max_val = args[0];
 					max_idx = 0;
 					break;
-				}else if(i == orows_idx && args[orows_idx] > 1 && (args[ocols_idx] <= DIM || (args[in_channels_idx] == DIM * MAX_BLOCK_LEN && args[out_channels_idx] == MAX_BLOCK_LEN*DIM))){// && (args[orows_idx] >= args[ocols_idx] || args[ocols_idx] <= DIM)){ //decrease orows as much as possible 
+				}else if(i == orows_idx && args[orows_idx] > 1 && (args[ocols_idx] <= DIM || (args[in_channels_idx] <= DIM * MAX_BLOCK_LEN && args[out_channels_idx] == MAX_BLOCK_LEN*DIM))){// && (args[orows_idx] >= args[ocols_idx] || args[ocols_idx] <= DIM)){ //decrease orows as much as possible 
 					max_val = args[orows_idx];
 					max_idx = orows_idx;
 					break;
@@ -3178,7 +3153,7 @@ static void tiled_conv_A_stride_auto_loopld(
 					 max_idx = i;
 				}
 		  }
-//			  printf("max_val: %d, max_idx: %d \n", max_val, max_idx);
+			  //printf("max_val: %d, max_idx: %d \n", max_val, max_idx);
 	
 		  if (max_idx == out_channels_idx || max_idx == in_channels_idx) {
 				if(max_val > MAX_BLOCK_LEN * DIM){
@@ -3191,12 +3166,15 @@ static void tiled_conv_A_stride_auto_loopld(
 					}
 					args[max_idx] = args[max_idx] == 0 ? 1 : args[max_idx];
 				}
-				else{
+				else if (args[4] > 1 || args[5] > 1){
 //					if(down_sample) args[max_idx] -= DIM;
 //					else {
 					if(args[4] > 1) args[4] = 1;//args[4]--;
-					else args[5]--;
+					else if(args[5] > 1) args[5]--;
 //					}
+				}
+				else if(args[in_channels_idx] < DIM){//for first layer
+					args[max_idx] = args[max_idx] / 2;
 				}
 		  } else {
 			  if(max_idx == ocols_idx){
@@ -3307,7 +3285,7 @@ static void tiled_conv_A_stride_auto_loopld(
 	 const int kcols = args[5];
 	 const int kchs = args[6];
 
-  /* 
+/*  
     spad_rows = tiled_conv_total_spad_rows_A_stride(false,
         stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     acc_rows = tiled_conv_total_spad_rows_A_stride(true,
@@ -3328,7 +3306,7 @@ static void tiled_conv_A_stride_auto_loopld(
     printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
 
     printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
-  */
+*/  
 	 tiled_conv_A_stride_loopld(
 		  batch_size, in_dim, in_channels,
 		  out_channels, out_dim,
