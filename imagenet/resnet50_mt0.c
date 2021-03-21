@@ -11,7 +11,7 @@
 #include "include/gemmini.h"
 #include "include/gemmini_nn.h"
 
-#include "resnet50_params.h"
+#include "resnet50_mt_params.h"
 #include "images.h"
 
 #define num_layer 54
