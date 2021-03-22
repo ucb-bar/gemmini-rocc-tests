@@ -2954,7 +2954,12 @@ static void tiled_conv_A_stride_auto(
                 args[max_idx] -= DIM;
             }
             args[max_idx] = args[max_idx] == 0 ? 1 : args[max_idx];
-        } else {
+        } else if(max_idx == ocols_idx){
+			  if(args[max_idx] % DIM != 0)
+				  args[max_idx] = (args[max_idx] / DIM) * DIM;
+			  else args[max_idx] -= DIM;
+		  }
+		  else {
             args[max_idx]--;
         }
 
@@ -2970,7 +2975,7 @@ static void tiled_conv_A_stride_auto(
         not_increased = true;
 
         int args_candidate[] = {args[0], args[1], args[2], args[3], args[4], args[5], args[6]};
-        args_candidate[ocols_idx]++;
+        args_candidate[ocols_idx]+=DIM;
 
         if (args_candidate[ocols_idx] > max_args[ocols_idx])
             continue;
@@ -2993,7 +2998,8 @@ static void tiled_conv_A_stride_auto(
 
         for (size_t i = 0; i < sizeof(args)/sizeof(args[0]); i++) {
             int args_candidate[] = {args[0], args[1], args[2], args[3], args[4], args[5], args[6]};
-            args_candidate[i]++;
+            if(i == ocols_idx) args_candidate[i] += DIM;
+				else args_candidate[i]++;
 
             if (args_candidate[i] > max_args[i])
                 continue;
@@ -3018,12 +3024,13 @@ static void tiled_conv_A_stride_auto(
     const int kcols = args[5];
     const int kchs = args[6];
 
-    
+    /*
     spad_rows = tiled_conv_total_spad_rows_A_stride(false,
         stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     acc_rows = tiled_conv_total_spad_rows_A_stride(true,
         stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
-/*
+
+	 
     printf("batches = %d\n", batches);
     printf("orows   = %d\n", orows);
     printf("ocols   = %d\n", ocols);
@@ -3039,7 +3046,7 @@ static void tiled_conv_A_stride_auto(
     printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
 
     printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
-*/  
+  */
 
     tiled_conv_A_stride(
         batch_size, in_dim, in_channels,
