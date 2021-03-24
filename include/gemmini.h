@@ -119,7 +119,7 @@ bool acc_t_isnan(acc_t x) {
 #endif
 
 #ifdef HAS_MVIN_SCALE
-scale_t scale_t_bits_to_scale_t(scale_t_bits x) {
+static scale_t scale_t_bits_to_scale_t(scale_t_bits x) {
     union {
         scale_t_bits b;
         scale_t f;
@@ -129,7 +129,7 @@ scale_t scale_t_bits_to_scale_t(scale_t_bits x) {
     return un.f;
 }
 
-scale_t_bits scale_t_to_scale_t_bits(scale_t x) {
+static scale_t_bits scale_t_to_scale_t_bits(scale_t x) {
     union {
         scale_t_bits b;
         scale_t f;
@@ -141,7 +141,7 @@ scale_t_bits scale_t_to_scale_t_bits(scale_t x) {
 #endif
 
 #ifdef HAS_MVIN_ACC_SCALE
-scale_acc_t scale_acc_t_bits_to_scale_acc_t(scale_acc_t_bits x) {
+static scale_acc_t scale_acc_t_bits_to_scale_acc_t(scale_acc_t_bits x) {
     union {
         scale_acc_t_bits b;
         scale_acc_t f;
@@ -151,7 +151,7 @@ scale_acc_t scale_acc_t_bits_to_scale_acc_t(scale_acc_t_bits x) {
     return un.f;
 }
 
-scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
+static scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
     union {
         scale_acc_t_bits b;
         scale_acc_t f;
@@ -162,7 +162,7 @@ scale_acc_t_bits scale_acc_t_to_scale_acc_t_bits(scale_acc_t x) {
 }
 #endif
 
-acc_scale_t acc_scale_t_bits_to_acc_scale_t(acc_scale_t_bits x) {
+static acc_scale_t acc_scale_t_bits_to_acc_scale_t(acc_scale_t_bits x) {
     union {
         acc_scale_t_bits b;
         acc_scale_t f;
@@ -172,7 +172,7 @@ acc_scale_t acc_scale_t_bits_to_acc_scale_t(acc_scale_t_bits x) {
     return un.f;
 }
 
-acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
+static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
     union {
         acc_scale_t_bits b;
         acc_scale_t f;
@@ -489,6 +489,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
             const size_t rows = DIM - (i == I-1 ? pad_I : 0);
             gemmini_extended_mvin(A_dram_addr, A_sp_addr, cols, rows);
           }
+
         }
 
         // Mvin B
