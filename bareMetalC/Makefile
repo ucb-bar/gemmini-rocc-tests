@@ -32,6 +32,7 @@ tests = \
 	transpose \
 	matrix_add \
 	resadd \
+	global_average \
 	template
 
 tests_baremetal = $(tests:=-baremetal)

@@ -4546,6 +4546,108 @@ static void tiled_resadd_auto(const size_t I, const size_t J,
       exit(1);
     }
 }
+
+static void global_average_cpu(const elem_t * input, elem_t * output,
+    int batches, int channels, int dim) {
+  const int count = dim * dim;
+
+  for (int batch = 0; batch < batches; batch++) {
+    for (int channel = 0; channel < channels; channel++) {
+      acc_t sum = 0;
+      for (int row = 0; row < dim; row++) {
+        for (int col = 0; col < dim; col++) {
+          size_t pixel = batch * dim * dim + row * dim + col;
+
+          sum += input[pixel * channels + channel];
+        }
+      }
+
+      output[batch * channels + channel] = (sum + count/2) / count;
+    }
+  }
+}
+
+static void sp_tiled_global_average(const elem_t * input, elem_t * output,
+    int batches, int channels, int dim, int channel_tile_size) {
+  const uint32_t C_acc_addr_start = ((uint32_t)1 << 31);
+
+  size_t blocks = channel_tile_size/DIM + (channel_tile_size % DIM != 0);
+  if (blocks > MAX_BLOCK_LEN) blocks = MAX_BLOCK_LEN;
+
+  for (int channel = 0; channel < channel_tile_size; channel += blocks*DIM) {
+    for (int row = 0; row < dim; row++) {
+      for (int col = 0; col < dim; col++) {
+        const elem_t * in = input +
+          (row * dim + col) * channels +
+          channel;
+
+        const uint32_t acc_addr_start = C_acc_addr_start |
+          ((row != 0 || col != 0) << 30);
+
+        const uint32_t acc_addr = acc_addr_start + channel / DIM;
+
+        const size_t cols = channel + blocks*DIM <= channel_tile_size ?
+          blocks*DIM : channel_tile_size - channel;
+
+        const size_t rows = 1;
+
+        gemmini_extended_mvin(in, acc_addr, cols, rows);
+      }
+    }
+  }
+
+  for (int channel = 0; channel < channel_tile_size; channel += DIM) {
+    elem_t * out = output + channel;
+
+    const uint32_t acc_addr = C_acc_addr_start + channel / DIM;
+
+    const size_t cols = channel + DIM <= channel_tile_size ?
+      DIM : channel_tile_size - channel;
+
+    const size_t rows = 1; // TODO we should move out more than just one row here
+
+    gemmini_extended_mvout(out, acc_addr, cols, rows);
+  }
+}
+
+static void tiled_global_average(const elem_t * input, elem_t * output,
+    int batches, int channels, int dim,
+    int channel_tile_size) {
+
+  gemmini_extended4_config_ld(DIM*sizeof(elem_t), MVIN_SCALE_IDENTITY, true, 1, 0);
+  gemmini_config_ex(0, NO_ACTIVATION, 0, 1.0 / (dim*dim), 0);
+
+  for (int batch = 0; batch < batches; batch++) {
+    for (int channel = 0; channel < channels; channel += channel_tile_size) {
+      const int tile_size = channel + channel_tile_size <= channels ?
+        channel_tile_size : channels - channel;
+
+      sp_tiled_global_average(input + batch * dim * dim * channels + channel,
+          output + batch * channels + channel,
+          batches, channels, dim, tile_size);
+    }
+  }
+}
+
+static void tiled_global_average_auto(const elem_t * input, elem_t * output,
+    int batches, int channels, int dim,
+    enum tiled_matmul_type_t type) {
+  if (type == CPU) {
+    return global_average_cpu(input, output, batches, channels, dim);
+  }
+
+  int channel_tile_size = channels;
+
+  int acc_rows = channel_tile_size / DIM + (channel_tile_size % DIM != 0);
+  while (acc_rows > ACC_ROWS) {
+    channel_tile_size--;
+    acc_rows = channel_tile_size / DIM + (channel_tile_size % DIM != 0);
+  }
+
+  tiled_global_average(input, output, batches, channels, dim,
+      channel_tile_size);
+}
+
 #undef abs
 
 #endif // SRC_MAIN_C_GEMMINI_H

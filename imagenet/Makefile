@@ -33,6 +33,7 @@ CFLAGS := $(CFLAGS) \
 	-I$(abs_top_srcdir) \
 	-I$(BENCH_COMMON) \
 	-DID_STRING=$(ID_STRING) \
+	-Wno-incompatible-pointer-types
 
 CFLAGS_BAREMETAL := \
 	$(CFLAGS) \
