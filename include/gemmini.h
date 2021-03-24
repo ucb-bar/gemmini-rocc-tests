@@ -4616,6 +4616,7 @@ static void tiled_global_average(const elem_t * input, elem_t * output,
 
   gemmini_extended4_config_ld(DIM*sizeof(elem_t), MVIN_SCALE_IDENTITY, true, 1, 0);
   gemmini_config_ex(0, NO_ACTIVATION, 0, 1.0 / (dim*dim), 0);
+  gemmini_config_st(0);
 
   for (int batch = 0; batch < batches; batch++) {
     for (int channel = 0; channel < channels; channel += channel_tile_size) {
