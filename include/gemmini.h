@@ -284,7 +284,7 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
   }
 
 // weight-stationary matmul loop
-#define gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool) \
+#define gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample) \
   { \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(out_channels) << 48) | ((uint64_t)(in_channels) << 32) | ((uint64_t)(in_dim) << 16) | (uint64_t)(batch_size), \
       ((uint64_t)(padding) << 48) | ((uint64_t)(stride) << 32) | ((uint64_t)(pool_out_dim) << 16) | (uint64_t)(out_dim), k_LOOP_CONV_WS_CONFIG_1) \
@@ -299,7 +299,7 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, bias, \
       input, k_LOOP_CONV_WS_CONFIG_6) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, no_bias, \
-      no_pool, k_LOOP_CONV_WS) \
+      ((downsample) << 1) | (no_pool), k_LOOP_CONV_WS) \
   }
 
 // Tiling functions
@@ -1067,7 +1067,7 @@ static void sp_tiled_conv_A_stride(
         elem_t * output,
         const acc_t * bias,
 
-        bool no_bias, bool no_pool) {
+        bool no_bias, bool no_pool, bool downsample) {
 
     const int orows = porows * pool_stride + pool_size - 1 - pupad - pdpad;
     const int ocols = pocols * pool_stride + pool_size - 1 - plpad - prpad;
@@ -1101,7 +1101,7 @@ static void sp_tiled_conv_A_stride(
       C_sp_addr_row = (C_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
     }
 
-    gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool);
+    gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample);
 
     /*
     // mvin bias
@@ -1135,16 +1135,17 @@ static void sp_tiled_conv_A_stride(
         const int max_ichs_per_mvin = ichs < MAX_BLOCK_LEN * DIM ? ichs :
             MAX_BLOCK_LEN * DIM;
 
-        gemmini_extended4_config_ld(in_channels * sizeof(elem_t), MVIN_SCALE_IDENTITY, false, batches * irows * icols, 0);
+        gemmini_extended4_config_ld((in_channels * sizeof(elem_t)) << downsample, MVIN_SCALE_IDENTITY, false, batches * (irows >> downsample) * (icols >> downsample), 0);
 
         for (int b = 0; b < batches; b++)
-            for (int irow = -upad; irow < irows_unpadded + dpad; irow++) {
+            for (int irow = -upad; irow < irows_unpadded + dpad; irow += 1 + downsample) {
                 const int irow_padded = irow + upad;
 
                 for (int icol = -lpad; icol < icols_unpadded + rpad;) {
                     // TODO There might be some unnecessary mvins here at the edge of the image
 
-                    int I = icols_unpadded - icol > DIM ? DIM : icols_unpadded - icol;
+                    int I = icols_unpadded - icol > (DIM << downsample) ?
+                        (DIM << downsample) : icols_unpadded - icol;
 
                     if (icol < 0) {
                         I = -icol > DIM ? DIM : -icol;
@@ -1158,16 +1159,18 @@ static void sp_tiled_conv_A_stride(
                         const int K = ichs - ich > max_ichs_per_mvin ?
                             max_ichs_per_mvin : ichs - ich;
 
-                        const uint32_t A_sp_addr = A_sp_addr_start + (ich / DIM) * batches * irows * icols + b * irows * icols + irow_padded * icols + icol_padded;
+#define DS(x) ((x) >> (downsample))
+
+                        const uint32_t A_sp_addr = A_sp_addr_start + (ich / DIM) * batches * DS(irows) * DS(icols) + b * DS(irows) * DS(icols) + DS(irow_padded) * DS(icols) + DS(icol_padded);
 
                         const bool is_zeros = irow < 0 || irow >= irows_unpadded || icol < 0 || icol >= icols_unpadded;
 
-                        elem_t * in = is_zeros ? NULL :
+                        const elem_t * in = is_zeros ? NULL :
                             input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels + ich;
 
                         gemmini_extended_mvin(in,
                                 A_sp_addr,
-                                K, I);
+                                K, I >> downsample);
                     }
 
                     icol += I;
@@ -1230,7 +1233,7 @@ static void sp_tiled_conv_A_stride(
 
                   const bool new_weights = b == 0 && orow == 0 && ocol == 0;
 
-                  const uint32_t A_sp_addr = A_sp_addr_start + (kch / DIM) * batches * irows * icols + b * irows * icols + irow * icols + icol;
+                  const uint32_t A_sp_addr = A_sp_addr_start + (kch / DIM) * batches * DS(irows) * DS(icols) + b * DS(irows) * DS(icols) + DS(irow) * DS(icols) + DS(icol);
                   const uint32_t B_sp_addr = new_weights ?
                     (B_sp_addr_start + (och / DIM) * krows * kcols * kchs + krow * kcols * kchs + kcol * kchs + kch)
                     : GARBAGE_ADDR;
@@ -1256,6 +1259,8 @@ static void sp_tiled_conv_A_stride(
         }
       }
     }
+
+#undef DS
 
     // mvout output
     if (output != NULL) {
@@ -2453,6 +2458,8 @@ static void tiled_conv_A_stride(
         pool_padding = 0;
     }
 
+    const bool downsample = stride == 2 && kernel_dim == 1 && padding == 0 && no_pool;
+
 #ifdef GEMMINI_ASSERTIONS
     {
         // const int orows = porows * pool_stride + pool_size - 1;
@@ -2484,7 +2491,7 @@ static void tiled_conv_A_stride(
 #endif
 
     gemmini_config_st(out_channels * sizeof(elem_t));
-    gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, stride, false, false);
+    gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, stride >> downsample, false, false);
 
     const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
@@ -2564,7 +2571,7 @@ static void tiled_conv_A_stride(
                                     out,
                                     bias_,
 
-                                    no_bias, no_pool);
+                                    no_bias, no_pool, downsample);
                             }
                         }
                     }
@@ -2597,6 +2604,8 @@ static void tiled_conv_A_stride_auto(
     }
 
     const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+
+    const bool downsample = stride == 2 && kernel_dim == 1 && padding == 0 && no_pool;
 
     // Tile convolution params
 
@@ -2744,49 +2753,6 @@ static void tiled_conv_A_stride_auto(
         pool_size, no_pool ? 0 : pool_stride, pool_padding,
 
         tiled_conv_type);
-}
-
-// This function is for a convolution with kernel_dim=1, stride==2, padding=0, and no pooling
-static void tiled_conv_downsample(
-        int batch_size, int in_dim, int in_channels,
-        int out_channels, int out_dim,
-
-        const elem_t * input,
-        const elem_t * weights,
-        const acc_t * bias,
-        elem_t * output,
-
-        int act, acc_scale_t scale, size_t relu6_shift,
-
-        enum tiled_matmul_type_t tiled_conv_type) {
-
-    const int stride = 2;
-
-    for (int b = 0; b < batch_size; b++) {
-        for (int irow = 0; irow < in_dim; irow += stride) {
-            const int orow = irow / stride;
-
-            const int I = in_dim / stride; // number of columns in row
-            const int J = out_channels;
-            const int K = in_channels;
-
-            const elem_t * A = input + (b*in_dim + irow)*in_dim*in_channels;
-            const elem_t * B = weights;
-            const acc_t * D = bias;
-            elem_t * C = output + (b*out_dim + orow)*out_dim*out_channels;
-
-            const int A_stride = in_channels * 2;
-            const int B_stride = out_channels;
-            const int D_stride = out_channels;
-            const int C_stride = out_channels;
-
-            tiled_matmul_auto(I, J, K, A, B, (void*)D, (void*)C,
-                    A_stride, B_stride, D_stride, C_stride,
-                    MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-                    MVIN_SCALE_IDENTITY, act, scale, relu6_shift,
-                    true, false, false, false, false, tiled_conv_type);
-        }
-    }
 }
 
 static void tiled_conv_dw(
