@@ -4426,67 +4426,57 @@ static void resadd_cpu(const size_t I, const size_t J,
     }
 }
 
-static void sp_tiled_resadd(const size_t I, const size_t J,
+static void sp_tiled_resadd(const size_t IJ,
         const scale_t A_scale,
         const scale_t B_scale,
         const elem_t * A, const elem_t * B, elem_t * C,
-        size_t A_row_stride, size_t B_row_stride, size_t C_row_stride,
+        // size_t A_row_stride, size_t B_row_stride, size_t C_row_stride,
         bool relu) {
 
     // Use the new mvin2 command to overlap mvin A, mvin B, and mvout C
 
-    size_t blocks = (J/DIM + (J % DIM != 0));
-    if (blocks > MAX_BLOCK_LEN) blocks = MAX_BLOCK_LEN;
+    const size_t max_cols = IJ < MAX_BLOCK_LEN * DIM ? IJ : MAX_BLOCK_LEN * DIM;
 
     const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
     const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2);
 
-    const size_t rounded_up_J = (J / DIM + (J % DIM != 0)) * DIM;
-
     // Mvin A
     // printf("Mving A\n");
-    for (size_t i = 0; i < I; i += DIM) {
-        for (size_t j = 0; j < J; j += blocks * DIM) {
-            const size_t cols = j + blocks*DIM <= J ? blocks*DIM : J-j;
-            const size_t rows = i + DIM <= I ? DIM : I-i;
+    for (size_t ij = 0; ij < IJ; ij += max_cols) {
+        const size_t cols = ij + max_cols <= IJ ? max_cols : IJ-ij;
 
-            const elem_t * const A_dram_addr = A + i * A_row_stride + j;
-            const uint32_t A_sp_addr = D_sp_addr_start + i * (rounded_up_J/DIM) + j;
+        const elem_t * const A_dram_addr = A + ij;
+        const uint32_t A_sp_addr = D_sp_addr_start + ij/DIM;
 
-            gemmini_extended_mvin(A_dram_addr, A_sp_addr, cols, rows);
-        }
+        gemmini_extended_mvin(A_dram_addr, A_sp_addr, cols, 1);
     }
 
     // Mvin B
     // printf("Mving B\n");
-    for (size_t i = 0; i < I; i += DIM) {
-        for (size_t j = 0; j < J; j += blocks * DIM) {
-            const size_t cols = j + blocks*DIM <= J ? blocks*DIM : J-j;
-            const size_t rows = i + DIM <= I ? DIM : I-i;
+    for (size_t ij = 0; ij < IJ; ij += max_cols) {
+        const size_t cols = ij + max_cols <= IJ ? max_cols : IJ-ij;
 
-            const elem_t * const B_dram_addr = B + i * B_row_stride + j;
-            const uint32_t B_sp_addr = C_sp_addr_start + i * (rounded_up_J/DIM) + j;
-            gemmini_extended_mvin2(B_dram_addr, B_sp_addr, cols, rows);
-        }
+        const elem_t * const B_dram_addr = B + ij;
+        const uint32_t B_sp_addr = C_sp_addr_start + ij/DIM;
+
+        gemmini_extended_mvin2(B_dram_addr, B_sp_addr, cols, 1);
     }
 
     // Mvout C from accumulator
     // printf("Mvout C from accumulator\n");
-    for (size_t i = 0; i < I; i += DIM) {
-        for (size_t j = 0; j < J; j += blocks * DIM) {
-            const size_t cols = j + blocks*DIM <= J ? blocks*DIM : J-j;
-            const size_t rows = i + DIM <= I ? DIM : I-i;
+    for (size_t ij = 0; ij < IJ; ij += DIM) {
+        const size_t cols = ij + DIM <= IJ ? DIM : IJ-ij;
 
-            elem_t * const C_dram_addr = C + i * C_row_stride + j;
-            const uint32_t C_sp_addr = D_sp_addr_start + i * (rounded_up_J/DIM) + j;
-            gemmini_extended_mvout(C_dram_addr, C_sp_addr, cols, rows);
-        }
+        elem_t * const C_dram_addr = C + ij;
+        const uint32_t C_sp_addr = D_sp_addr_start + ij/DIM;
+
+        gemmini_extended_mvout(C_dram_addr, C_sp_addr, cols, 1);
     }
 }
 
 // Compute MVIN_SCALE(A, A_scale) + MVIN_SCALE(B, B_scale) = C
 static void tiled_resadd(const size_t I, const size_t J,
-        const size_t tile_I, const size_t tile_J,
+        const size_t tile_IJ,
         const scale_t A_scale,
         const scale_t B_scale,
         const acc_scale_t C_scale,
@@ -4496,27 +4486,26 @@ static void tiled_resadd(const size_t I, const size_t J,
         bool relu,
         enum tiled_matmul_type_t matadd_type) {
 
-    gemmini_config_st(J * sizeof(elem_t));
-    gemmini_config_ex(WS, relu ? RELU : NO_ACTIVATION, 0, C_scale, 0);
+    const size_t IJ = I * J;
 
-    gemmini_extended4_config_ld(J * sizeof(elem_t), A_scale, true, DIM, 0);
-    gemmini_extended4_config_ld(J * sizeof(elem_t), B_scale, true, DIM, 1);
+    gemmini_config_st(DIM * sizeof(elem_t));
+    gemmini_config_ex(0, relu ? RELU : NO_ACTIVATION, 0, C_scale, 0);
 
-    for (size_t i = 0; i < I; i += tile_I) {
-        for (size_t j = 0; j < J; j += tile_J) {
-            const size_t I_tile = i + tile_I <= I ? tile_I : I - i;
-            const size_t J_tile = j + tile_J <= J ? tile_J : J - j;
+    gemmini_extended4_config_ld(DIM * sizeof(elem_t), A_scale, true, 1, 0);
+    gemmini_extended4_config_ld(DIM * sizeof(elem_t), B_scale, true, 1, 1);
 
-            const elem_t * a = A + i * J + j;
-            const elem_t * b = B + i * J + j;
-            elem_t * c = C + i * J + j;
+    for (size_t ij = 0; ij < IJ; ij += tile_IJ) {
+        const size_t IJ_tile = ij + tile_IJ <= IJ ? tile_IJ : IJ - ij;
 
-            sp_tiled_resadd(I_tile, J_tile,
-                    A_scale, B_scale, a, b, c,
-                    J, J, J,
-                    relu);
-        }
+        const elem_t * a = A + ij;
+        const elem_t * b = B + ij;
+        elem_t * c = C + ij;
+
+        sp_tiled_resadd(IJ_tile,
+                A_scale, B_scale, a, b, c,
+                relu);
     }
+
 
     gemmini_fence();
 }
@@ -4539,26 +4528,24 @@ static void tiled_resadd_auto(const size_t I, const size_t J,
         return;
     }
 
-    size_t tile_I = I, tile_J = J;
+    const size_t IJ = I * J;
 
-    // size_t total_spad_rows = 2 * (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
-    size_t total_acc_rows = (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
+    size_t tile_IJ = IJ;
+
+    // size_t total_acc_rows = (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
+    size_t total_acc_rows = (tile_IJ / DIM) + (tile_IJ % DIM != 0);
 
     // TODO this is a very inefficient way of doing this...
     while (total_acc_rows > ACC_ROWS) {
-        if (tile_I >= tile_J)
-            tile_I--;
-        else
-            tile_J--;
-
-        total_acc_rows = (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
+        tile_IJ--;
+        total_acc_rows = (tile_IJ / DIM) + (tile_IJ % DIM != 0);
     }
 
     // printf("tile_I: %llu\n", tile_I);
     // printf("tile_J: %llu\n", tile_J);
 
     if (matadd_type == WS) {
-      tiled_resadd(I, J, tile_I, tile_J,
+      tiled_resadd(I, J, tile_IJ,
             A_scale, B_scale, C_scale, A, B, C,
             relu, matadd_type);
     } else if(matadd_type == CPU){
