@@ -2250,6 +2250,7 @@ static int tiled_conv_total_spad_rows(bool acc, bool weight,
 static int tiled_conv_total_spad_rows_A_stride(bool acc,
         int stride,
         int dilation,
+        bool downsample,
         int batches,
         int porows, int pocols, int ochs,
         int krows, int kcols, int kchs,
@@ -2265,7 +2266,8 @@ static int tiled_conv_total_spad_rows_A_stride(bool acc,
     const int in_channels_per_bank = ichs / DIM + (ichs % DIM != 0);
     const int out_channels_per_bank = ochs / DIM + (ochs % DIM != 0);
 
-    const int A_rows = in_channels_per_bank * batches * irows * icols;
+    const int A_rows = in_channels_per_bank * batches *
+      (irows >> downsample) * (icols >> downsample);
     const int B_rows = out_channels_per_bank * kcols * krows * kchs;
     const int C_rows = out_channels_per_bank * batches * orows * ocols;
 
@@ -2467,9 +2469,11 @@ static void tiled_conv_A_stride(
 
         // Check that data will fit in scratchpad
         const int spad_rows = tiled_conv_total_spad_rows_A_stride(false,
-            stride, dilation, batches, porows, pocols, pochs, krows, kcols, kchs, pool_size, pool_stride);
+            stride, dilation, downsample,
+            batches, porows, pocols, pochs, krows, kcols, kchs, pool_size, pool_stride);
         const int acc_rows = tiled_conv_total_spad_rows_A_stride(true,
-            stride, dilation, batches, porows, pocols, pochs, krows, kcols, kchs, pool_size, pool_stride);
+            stride, dilation, downsample,
+            batches, porows, pocols, pochs, krows, kcols, kchs, pool_size, pool_stride);
 
         if (spad_rows > BANK_NUM * BANK_ROWS / 2) {
             printf("not enough scratchpad space to store inputs and weights, %d\n", spad_rows);
@@ -2623,9 +2627,11 @@ static void tiled_conv_A_stride_auto(
     const int max_acc_rows = (ACC_ROWS / 2);
 
     int spad_rows = tiled_conv_total_spad_rows_A_stride(false,
-        stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+        stride, dilation, downsample,
+        args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     int acc_rows = tiled_conv_total_spad_rows_A_stride(true,
-        stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+        stride, dilation, downsample,
+        args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
 
     while (spad_rows > max_spad_rows || acc_rows > max_acc_rows) {
         int max_val = -1;
@@ -2653,9 +2659,11 @@ static void tiled_conv_A_stride_auto(
         }
 
         spad_rows = tiled_conv_total_spad_rows_A_stride(false,
-            stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+            stride, dilation, downsample,
+            args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
         acc_rows = tiled_conv_total_spad_rows_A_stride(true,
-            stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+            stride, dilation, downsample,
+            args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     }
 
     // Check if we can increase ocols
@@ -2670,9 +2678,11 @@ static void tiled_conv_A_stride_auto(
             continue;
 
         spad_rows = tiled_conv_total_spad_rows_A_stride(false,
-            stride, dilation, args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
+            stride, dilation, downsample,
+            args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
         acc_rows = tiled_conv_total_spad_rows_A_stride(true,
-            stride, dilation, args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
+            stride, dilation, downsample,
+            args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
 
         if (spad_rows <= max_spad_rows && acc_rows <= max_acc_rows) {
             args[ocols_idx] = args_candidate[ocols_idx];
@@ -2693,9 +2703,11 @@ static void tiled_conv_A_stride_auto(
                 continue;
 
             spad_rows = tiled_conv_total_spad_rows_A_stride(false,
-                stride, dilation, args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
+                stride, dilation, downsample,
+                args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
             acc_rows = tiled_conv_total_spad_rows_A_stride(true,
-                stride, dilation, args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
+                stride, dilation, downsample,
+                args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
 
             if (spad_rows <= max_spad_rows && acc_rows <= max_acc_rows) {
                 args[i] = args_candidate[i];
@@ -2714,9 +2726,11 @@ static void tiled_conv_A_stride_auto(
 
     /*
     spad_rows = tiled_conv_total_spad_rows_A_stride(false,
-        stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+        stride, dilation, downsample,
+        args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     acc_rows = tiled_conv_total_spad_rows_A_stride(true,
-        stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+        stride, dilation, downsample,
+        args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
 
     printf("batches = %d\n", batches);
     printf("orows   = %d\n", orows);
@@ -2753,6 +2767,49 @@ static void tiled_conv_A_stride_auto(
         pool_size, no_pool ? 0 : pool_stride, pool_padding,
 
         tiled_conv_type);
+}
+
+// This function is for a convolution with kernel_dim=1, stride==2, padding=0, and no pooling
+static void tiled_conv_downsample(
+        int batch_size, int in_dim, int in_channels,
+        int out_channels, int out_dim,
+
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
+        elem_t * output,
+
+        int act, acc_scale_t scale, size_t relu6_shift,
+
+        enum tiled_matmul_type_t tiled_conv_type) {
+
+    const int stride = 2;
+
+    for (int b = 0; b < batch_size; b++) {
+        for (int irow = 0; irow < in_dim; irow += stride) {
+            const int orow = irow / stride;
+
+            const int I = in_dim / stride; // number of columns in row
+            const int J = out_channels;
+            const int K = in_channels;
+
+            const elem_t * A = input + (b*in_dim + irow)*in_dim*in_channels;
+            const elem_t * B = weights;
+            const acc_t * D = bias;
+            elem_t * C = output + (b*out_dim + orow)*out_dim*out_channels;
+
+            const int A_stride = in_channels * 2;
+            const int B_stride = out_channels;
+            const int D_stride = out_channels;
+            const int C_stride = out_channels;
+
+            tiled_matmul_auto(I, J, K, A, B, (void*)D, (void*)C,
+                    A_stride, B_stride, D_stride, C_stride,
+                    MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+                    MVIN_SCALE_IDENTITY, act, scale, relu6_shift,
+                    true, false, false, false, false, tiled_conv_type);
+        }
+    }
 }
 
 static void tiled_conv_dw(

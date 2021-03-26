@@ -599,15 +599,16 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        // tiled_conv_A_stride_auto(
+        tiled_conv_downsample(
             conv_15_params.batch_size, conv_15_params.in_dim, conv_15_params.in_channels,
             conv_15_params.out_channels, conv_15_params.out_dim,
-            conv_15_params.stride, 1, conv_15_params.padding, conv_15_params.kernel_size,
+            // conv_15_params.stride, 1, conv_15_params.padding, conv_15_params.kernel_size,
 
             (elem_t*)conv_11_out, (elem_t*)conv_15_w, (acc_t*)conv_15_b, (elem_t*)conv_15_out,
 
             NO_ACTIVATION, conv_15_params.output_scale, 0,
-            conv_15_params.pool_size, 0, conv_15_params.pool_padding,
+            // conv_15_params.pool_size, 0, conv_15_params.pool_padding,
 
             tiled_matmul_type);
 
@@ -1069,15 +1070,16 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        // tiled_conv_A_stride_auto(
+        tiled_conv_downsample(
             conv_28_params.batch_size, conv_28_params.in_dim, conv_28_params.in_channels,
             conv_28_params.out_channels, conv_28_params.out_dim,
-            conv_28_params.stride, 1, conv_28_params.padding, conv_28_params.kernel_size,
+            // conv_28_params.stride, 1, conv_28_params.padding, conv_28_params.kernel_size,
 
             (elem_t*)conv_24_out, (elem_t*)conv_28_w, (acc_t*)conv_28_b, (elem_t*)conv_28_out,
 
             NO_ACTIVATION, conv_28_params.output_scale, 0,
-            conv_28_params.pool_size, 0, conv_28_params.pool_padding,
+            // conv_28_params.pool_size, 0, conv_28_params.pool_padding,
 
             tiled_matmul_type);
 
