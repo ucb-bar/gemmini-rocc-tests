@@ -3142,7 +3142,8 @@ static void tiled_conv_A_stride_auto_loopld(
 					max_val = args[0];
 					max_idx = 0;
 					break;
-				}else if(i == orows_idx && args[orows_idx] > 1 && (args[ocols_idx] <= DIM || (args[in_channels_idx] <= DIM * MAX_BLOCK_LEN && args[out_channels_idx] == MAX_BLOCK_LEN*DIM))){// && (args[orows_idx] >= args[ocols_idx] || args[ocols_idx] <= DIM)){ //decrease orows as much as possible 
+				}else if(args[in_channels_idx] == MAX_BLOCK_LEN * DIM && args[out_channels_idx] <= MAX_BLOCK_LEN * DIM){
+			  if(i == orows_idx && args[orows_idx] > 1 && (args[ocols_idx] <= DIM || (args[in_channels_idx] <= DIM * MAX_BLOCK_LEN && args[out_channels_idx] == MAX_BLOCK_LEN*DIM))){// && (args[orows_idx] >= args[ocols_idx] || args[ocols_idx] <= DIM)){ //decrease orows as much as possible 
 					max_val = args[orows_idx];
 					max_idx = orows_idx;
 					break;
@@ -3154,13 +3155,14 @@ static void tiled_conv_A_stride_auto_loopld(
 					max_val = args[i];
 					max_idx = i;
 				  break;
+				}
 				}else if (!(i == ocols_idx && args[i] <= DIM && args[orows_idx] > 1)
 						  && args[i] > max_val) { // and then move on to channels
 					 max_val = args[i];
 					 max_idx = i;
 				}
 		  }
-			  //printf("max_val: %d, max_idx: %d \n", max_val, max_idx);
+	//		  printf("max_val: %d, max_idx: %d \n", max_val, max_idx);
 	
 		  if (max_idx == out_channels_idx || max_idx == in_channels_idx) {
 				if(max_val > MAX_BLOCK_LEN * DIM){
@@ -3267,7 +3269,6 @@ static void tiled_conv_A_stride_auto_loopld(
 				//else if(i == in_channels_idx) args_candidate[i] += MAX_BLOCK_LEN * DIM;
 				else if(i == ocols_idx && (args[i] % DIM == 0)) args_candidate[i] += DIM;
 				else args_candidate[i]+= !kdim_increase && (i == 4 || i == 5) ? 2 : 1;
-
 				if (args_candidate[i] > max_args[i])
 					 continue;
 
@@ -3292,7 +3293,7 @@ static void tiled_conv_A_stride_auto_loopld(
 	 const int kcols = args[5];
 	 const int kchs = args[6];
 
-/*  
+/*
     spad_rows = tiled_conv_total_spad_rows_A_stride(false,
         stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     acc_rows = tiled_conv_total_spad_rows_A_stride(true,
@@ -5179,6 +5180,109 @@ static void tiled_resadd_auto(const size_t I, const size_t J,
       exit(1);
     }
 }
+static void global_average_cpu(const elem_t * input, elem_t * output,
+    int batches, int channels, int dim) {
+  const int count = dim * dim;
+
+  for (int batch = 0; batch < batches; batch++) {
+    for (int channel = 0; channel < channels; channel++) {
+      acc_t sum = 0;
+      for (int row = 0; row < dim; row++) {
+        for (int col = 0; col < dim; col++) {
+          size_t pixel = batch * dim * dim + row * dim + col;
+
+          sum += input[pixel * channels + channel];
+        }
+      }
+
+      output[batch * channels + channel] = (sum + count/2) / count;
+    }
+  }
+}
+
+static void sp_tiled_global_average(const elem_t * input, elem_t * output,
+    int batches, int channels, int dim, int channel_tile_size) {
+  const uint32_t C_acc_addr_start = ((uint32_t)1 << 31);
+
+  size_t blocks = channel_tile_size/DIM + (channel_tile_size % DIM != 0);
+  if (blocks > MAX_BLOCK_LEN) blocks = MAX_BLOCK_LEN;
+
+  for (int channel = 0; channel < channel_tile_size; channel += blocks*DIM) {
+    for (int row = 0; row < dim; row++) {
+      for (int col = 0; col < dim; col++) {
+        const elem_t * in = input +
+          (row * dim + col) * channels +
+          channel;
+
+        const uint32_t acc_addr_start = C_acc_addr_start |
+          ((row != 0 || col != 0) << 30);
+
+        const uint32_t acc_addr = acc_addr_start + channel / DIM;
+
+        const size_t cols = channel + blocks*DIM <= channel_tile_size ?
+          blocks*DIM : channel_tile_size - channel;
+
+        const size_t rows = 1;
+
+        gemmini_extended_mvin(in, acc_addr, cols, rows);
+      }
+    }
+  }
+
+  for (int channel = 0; channel < channel_tile_size; channel += DIM) {
+    elem_t * out = output + channel;
+
+    const uint32_t acc_addr = C_acc_addr_start + channel / DIM;
+
+    const size_t cols = channel + DIM <= channel_tile_size ?
+      DIM : channel_tile_size - channel;
+
+    const size_t rows = 1; // TODO we should move out more than just one row here
+
+    gemmini_extended_mvout(out, acc_addr, cols, rows);
+  }
+}
+
+static void tiled_global_average(const elem_t * input, elem_t * output,
+    int batches, int channels, int dim,
+    int channel_tile_size) {
+
+  gemmini_extended4_config_ld(DIM*sizeof(elem_t), MVIN_SCALE_IDENTITY, true, 1, 0);
+  gemmini_config_ex(0, NO_ACTIVATION, 0, 1.0 / (dim*dim), 0);
+  gemmini_config_st(0);
+
+  for (int batch = 0; batch < batches; batch++) {
+    for (int channel = 0; channel < channels; channel += channel_tile_size) {
+      const int tile_size = channel + channel_tile_size <= channels ?
+        channel_tile_size : channels - channel;
+
+      sp_tiled_global_average(input + batch * dim * dim * channels + channel,
+          output + batch * channels + channel,
+          batches, channels, dim, tile_size);
+    }
+  }
+}
+
+static void tiled_global_average_auto(const elem_t * input, elem_t * output,
+    int batches, int channels, int dim,
+    enum tiled_matmul_type_t type) {
+  if (type == CPU) {
+    return global_average_cpu(input, output, batches, channels, dim);
+  }
+
+  int channel_tile_size = channels;
+
+  int acc_rows = channel_tile_size / DIM + (channel_tile_size % DIM != 0);
+  while (acc_rows > ACC_ROWS) {
+    channel_tile_size--;
+    acc_rows = channel_tile_size / DIM + (channel_tile_size % DIM != 0);
+  }
+
+  tiled_global_average(input, output, batches, channels, dim,
+      channel_tile_size);
+}
+
+
 #undef abs
 
 #endif // SRC_MAIN_C_GEMMINI_H
