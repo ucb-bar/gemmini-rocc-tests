@@ -3241,15 +3241,15 @@ static void tiled_conv_A_stride_auto_loopld(
 	 bool kdim_increase = true;
 	 while (!nothing_increased) {
 		  nothing_increased = true;
-		  kdim_increase = true;
+		  //kdim_increase = true;
 
 		  for (size_t j = 0; j < sizeof(args)/sizeof(args[0]); j++) {
 			   //size_t i =j;//  down_sample ? j : 6-j;
 				size_t i = j;
 			   if(!down_sample){
-					if(j == 0) i = in_channels_idx;
-					else if (j == 1) i = 4;
-					else if(j == 2) i = 5;
+					if(j == 0) i = 5;//in_channels_idx;
+					else if (j == 1) i = in_channels_idx;
+					else if(j == 2) i = 4;//in_channels_idx;
 					else if (j == 3) i = out_channels_idx;
 					else if(j == 4) i = ocols_idx;
 					else if(j == 5) i = orows_idx;
@@ -3260,15 +3260,15 @@ static void tiled_conv_A_stride_auto_loopld(
 					else if (j == 1) i = orows_idx;//5;
 					else if (j == 2) i = ocols_idx;//4;
 					else if (j == 3) i = in_channels_idx;
-					else if(j == 4) i = 4;//orows_idx;//ocols_idx;
-					else if(j == 5) i = 5;//ocols_idx;//orows_idx;
+					else if(j == 4) i = 5;//orows_idx;//ocols_idx;
+					else if(j == 5) i = 4;//ocols_idx;//orows_idx;
 					else if(j == 6) i = 0;
 				}
 				int args_candidate[] = {args[0], args[1], args[2], args[3], args[4], args[5], args[6]};
 				if(i == out_channels_idx || i == in_channels_idx) args_candidate[i] *= 2;//+= MAX_BLOCK_LEN * DIM;//!down_sample ? MAX_BLOCK_LEN * DIM : DIM;
 				//else if(i == in_channels_idx) args_candidate[i] += MAX_BLOCK_LEN * DIM;
 				else if(i == ocols_idx && (args[i] % DIM == 0)) args_candidate[i] += DIM;
-				else args_candidate[i]+= !kdim_increase && (i == 4 || i == 5) ? 2 : 1;
+				else args_candidate[i]+= kdim_increase && (i == 4 || i == 5) ? 2 : 1;
 				if (args_candidate[i] > max_args[i])
 					 continue;
 
@@ -3314,7 +3314,7 @@ static void tiled_conv_A_stride_auto_loopld(
     printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
 
     printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
-*/  
+  */
 	 tiled_conv_A_stride_loopld(
 		  batch_size, in_dim, in_channels,
 		  out_channels, out_dim,
@@ -5104,26 +5104,28 @@ static void tiled_resadd(const size_t I, const size_t J,
         const elem_t * B,
         elem_t * C,
         bool relu,
-        enum tiled_matmul_type_t matadd_type) {
+        enum tiled_matmul_type_t matadd_type,
+        bool padding_B, size_t och_divide) {
 
-    gemmini_config_st(J * sizeof(elem_t));
+    size_t J_stride = (padding_B) ? och_divide * J + 64 : och_divide * J;
+    gemmini_config_st(J_stride * sizeof(elem_t));
     gemmini_config_ex(WS, relu ? RELU : NO_ACTIVATION, 0, C_scale, 0);
 
-    gemmini_extended4_config_ld(J * sizeof(elem_t), A_scale, true, DIM, 0);
-    gemmini_extended4_config_ld(J * sizeof(elem_t), B_scale, true, DIM, 1);
+    gemmini_extended4_config_ld(J_stride * sizeof(elem_t), A_scale, true, DIM, 0);
+    gemmini_extended4_config_ld(J_stride * sizeof(elem_t), B_scale, true, DIM, 1);
 
     for (size_t i = 0; i < I; i += tile_I) {
         for (size_t j = 0; j < J; j += tile_J) {
             const size_t I_tile = i + tile_I <= I ? tile_I : I - i;
             const size_t J_tile = j + tile_J <= J ? tile_J : J - j;
 
-            const elem_t * a = A + i * J + j;
-            const elem_t * b = B + i * J + j;
+            const elem_t * a = A + i * J_stride + j;
+            const elem_t * b = B + i * J_stride + j;
             elem_t * c = C + i * J + j;
 
             sp_tiled_resadd(I_tile, J_tile,
                     A_scale, B_scale, a, b, c,
-                    J, J, J,
+                    J_stride, J_stride, J_stride,
                     relu);
         }
     }
@@ -5170,7 +5172,7 @@ static void tiled_resadd_auto(const size_t I, const size_t J,
     if (matadd_type == WS) {
       tiled_resadd(I, J, tile_I, tile_J,
             A_scale, B_scale, C_scale, A, B, C,
-            relu, matadd_type);
+            relu, matadd_type, false, 1);
     } else if(matadd_type == CPU){
 	  resadd_cpu(I, J, A_scale, B_scale, C_scale,
 		A, B, C, relu);
@@ -5180,6 +5182,57 @@ static void tiled_resadd_auto(const size_t I, const size_t J,
       exit(1);
     }
 }
+// Compute (A >> A_shift) + B = C
+static void tiled_resadd_auto_loopld(const size_t I, const size_t J,
+        const scale_t A_scale,
+        const scale_t B_scale,
+        const acc_scale_t C_scale,
+        const elem_t * A,
+        const elem_t * B,
+        elem_t * C,
+        bool relu,
+        enum tiled_matmul_type_t matadd_type,
+        bool skip_A, bool skip_B, bool padding_A, bool padding_B, size_t och_divide) {
+
+    if (matadd_type == CPU) {
+        resadd_cpu(I, J,
+            A_scale, B_scale, C_scale, A, B, C,
+            relu);
+        return;
+    }
+
+    size_t tile_I = I, tile_J = J;
+
+    // size_t total_spad_rows = 2 * (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
+    size_t total_acc_rows = (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
+
+    // TODO this is a very inefficient way of doing this...
+    while (total_acc_rows > ACC_ROWS) {
+        if (tile_I >= tile_J)
+            tile_I--;
+        else
+            tile_J--;
+
+        total_acc_rows = (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
+    }
+
+    // printf("tile_I: %llu\n", tile_I);
+    // printf("tile_J: %llu\n", tile_J);
+
+    if (matadd_type == WS) {
+      tiled_resadd(I, J, tile_I, tile_J,
+            A_scale, B_scale, C_scale, A, B, C,
+            relu, matadd_type, padding_B && ((J*och_divide) % 128 != 0) , och_divide);
+    } else if(matadd_type == CPU){
+          resadd_cpu(I, J, A_scale, B_scale, C_scale,
+                A, B, C, relu);
+    }
+    else {
+      printf("Unsupported type\n");
+      exit(1);
+    }
+}
+
 static void global_average_cpu(const elem_t * input, elem_t * output,
     int batches, int channels, int dim) {
   const int count = dim * dim;
