@@ -244,8 +244,11 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define gemmini_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift) \
     gemmini_extended_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift, 1, 0, 0)
 
+#define gemmini_extended5_config_ld(stride, scale, shrunk, block_mvin_stride, pixel_repeats, id) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale_t_to_scale_t_bits(scale)) << 32) | ((uint64_t)(block_mvin_stride) << 16) | ((uint64_t)(pixel_repeats) << 8) | ((id) << 3) | ((shrunk) << 2) | CONFIG_LD, stride, k_CONFIG)
+
 #define gemmini_extended4_config_ld(stride, scale, shrunk, block_mvin_stride, id) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale_t_to_scale_t_bits(scale)) << 32) | ((uint64_t)(block_mvin_stride) << 16) | ((id) << 3) | ((shrunk) << 2) | CONFIG_LD, stride, k_CONFIG)
+  gemmini_extended5_config_ld(stride, scale, shrunk, block_mvin_stride, 1, id) \
 
 #define gemmini_extended3_config_ld(stride, scale, shrunk, id) \
   gemmini_extended4_config_ld(stride, scale, shrunk, DIM, id)
@@ -1081,6 +1084,9 @@ static void sp_tiled_conv_A_stride(
   const int icols_unpadded = icols - lpad - rpad;
   const int ichs = kchs;
 
+  int max_pixels_per_row = downsample || ichs > DIM ? 1 : DIM/ichs;
+  if (max_pixels_per_row > kcols) max_pixels_per_row = kcols;
+
   // Calculate spad address offsets
   const int out_channels_per_bank = ochs / DIM + (ochs % DIM != 0);
   const int B_rows = out_channels_per_bank * kcols * krows * kchs;
@@ -1135,7 +1141,7 @@ static void sp_tiled_conv_A_stride(
       const int max_ichs_per_mvin = ichs < MAX_BLOCK_LEN * DIM ? ichs :
           MAX_BLOCK_LEN * DIM;
 
-      gemmini_extended4_config_ld((in_channels * sizeof(elem_t)) << downsample, MVIN_SCALE_IDENTITY, false, batches * (irows >> downsample) * (icols >> downsample), 0);
+      gemmini_extended5_config_ld((in_channels * sizeof(elem_t)) << downsample, MVIN_SCALE_IDENTITY, false, batches * (irows >> downsample) * (icols >> downsample), max_pixels_per_row, 0);
 
       for (int b = 0; b < batches; b++)
           for (int irow = -upad; irow < irows_unpadded + dpad; irow += 1 + downsample) {
@@ -1206,7 +1212,7 @@ static void sp_tiled_conv_A_stride(
   // Compute
   for (int och = 0; och < ochs; och += DIM) {
     for (int krow = 0; krow < krows; krow++) {
-      for (int kcol = 0; kcol < kcols; kcol++) {
+      for (int kcol = 0; kcol < kcols; kcol += max_pixels_per_row) {
         for (int kch = 0; kch < kchs; kch += DIM) {
           for (int b = 0; b < batches; b++) {
             for (int orow = 0; orow < orows; orow++) {
@@ -1227,13 +1233,16 @@ static void sp_tiled_conv_A_stride(
                 //     - J = ochs
                 //     - K = kchs
 
+                const int pixels = kcols - kcol > max_pixels_per_row ?
+                  max_pixels_per_row : kcols - kcol;
+
                 const int I = ocols - ocol > DIM ? DIM : ocols - ocol;
                 const int J = ochs - och > DIM ? DIM : ochs - och;
-                const int K = (kchs - kch > DIM ? DIM : kchs - kch);
-
-                const bool new_weights = b == 0 && orow == 0 && ocol == 0;
+                const int K = pixels * (kchs - kch > DIM ? DIM : kchs - kch);
 
                 const uint32_t A_sp_addr = A_sp_addr_start + (kch / DIM) * batches * DS(irows) * DS(icols) + b * DS(irows) * DS(icols) + DS(irow) * DS(icols) + DS(icol);
+
+                const bool new_weights = b == 0 && orow == 0 && ocol == 0;
                 const uint32_t B_sp_addr = new_weights ?
                   (B_sp_addr_start + (och / DIM) * krows * kcols * kchs + krow * kcols * kchs + kcol * kchs + kch)
                   : GARBAGE_ADDR;
