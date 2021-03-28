@@ -183,13 +183,18 @@ static void tiled_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
 {
 	bool row_divisible = (dim_I % orow_divide == 0);
 	size_t och_divide = (row_divisible) ? 1 : orow_divide; // if row can't be divided, then divide channel instead
-   dim_I = dim_I / och_divide;
+   dim_I = row_divisible ? dim_I / orow_divide : dim_I;
+	dim_J = dim_J / och_divide
 	int out_offset = (row_divisible) ? 0 : dim_I * cid; // no need to apply offset if we divided row
 
 	size_t stride_A = (A_padding && (dim_K % 128 == 0)) ? dim_K + 64 : dim_K;
 	size_t stride_B = (B_padding && ((dim_J * och_divide) % 128 == 0)) ? dim_J*och_divide + 64 : dim_J*och_divide;
+   int A_orow_offset = (row_divisible) ? stride_A * cid * dim_I : 0; // if row is divided, need offset it I dimension
+   int C_orow_offset = (row_divisible) ? stride_C * cid * dim_I : 0; // if row is divided, need offset it I dimension
+
+
 	tiled_matmul_auto_loopld(dim_I, dim_J, dim_K,
-		A, B + out_offset, D + out_offset, C + out_offset, 
+		A + A_orow_offset, B + out_offset, D + out_offset, C + C_orow_offset + out_offset, 
 		stride_A, stride_B, stride_B, stride_B,
 		MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
 		act, scale, relu6_shift, repeating_bias,

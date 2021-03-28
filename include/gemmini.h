@@ -3829,6 +3829,58 @@ static void tiled_conv_downsample(
     }
 }
 
+static void tiled_conv_downsample_cid(
+        int batch_size, int in_dim, int in_channels,
+        int out_channels, int out_dim,
+
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
+        elem_t * output,
+
+        int act, acc_scale_t scale, size_t relu6_shift,
+
+        enum tiled_matmul_type_t tiled_conv_type,
+        bool ich_padding, bool och_padding, size_t orow_divide, size_t cid, bool skip_weight) {
+
+    const int stride = 2;
+	 const int A_stride = ich_padding ? (in_channels + 64) * 2 : in_channels * 2;
+	 const int B_stride = och_padding ? (out_channels + 64) : out_channels;
+	 const int D_stride = och_padding ? (out_channels + 64) : out_channels;
+	 const int C_stride = och_padding ? (out_channels + 64) : out_channels;
+
+	 bool row_divisible = (out_dim % orow_divide == 0);
+	 in_dim = (row_divisible) ? in_dim / orow_divide : in_dim; // divide if it is divisible
+    out_dim = (row_divisible) ? out_dim / orow_divide : out_dim;
+	 out_channels = (row_divisible) ? out_channels : out_channels / orow_divide; // divide if row can't be divided
+	 int ocol_offset = (row_divisible) ? 0 : out_channels * cid; // need offset if channel is divided
+	 int A_orow_offset = (row_divisible) ? A_stride * cid * in_dim : 0; // need offset if row is divided
+	 int C_orow_offset = (row_divisible) ? C_stride * cid * out_dim : 0; // need offset if row is divided
+
+    for (int b = 0; b < batch_size; b++) {
+        for (int irow = 0; irow < in_dim; irow += stride) {
+            const int orow = irow / stride;
+
+            const int I = in_dim / stride; // number of columns in row
+            const int J = out_channels;
+            const int K = in_channels;
+
+            const elem_t * A = input + (b*in_dim + irow)*in_dim*in_channels + A_orow_offset;
+            const elem_t * B = weights + ocol_offset;
+            const acc_t * D = bias + ocol_offset;
+            elem_t * C = output + (b*out_dim + orow)*out_dim*out_channels + ocol_offset + C_orow_offset;
+
+            tiled_matmul_auto_loopld(I, J, K, A, B, (void*)D, (void*)C,
+                    A_stride, B_stride, D_stride, C_stride,
+                    MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+                    MVIN_SCALE_IDENTITY, act, scale, relu6_shift,
+                    true, false, false, false, false, tiled_conv_type,
+                    false, skip_weight);
+        }
+    }
+}
+
+
 static void tiled_conv_downsample_loopld(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
@@ -5705,10 +5757,15 @@ static void tiled_resadd_auto_cid(const size_t I, const size_t J,
 
 	 bool row_divisible = (I % orow_divide == 0);
 	 size_t och_divide = (row_divisible) ? 1 : orow_divide; // if row is divisible, no need to divide channel
-    size_t tile_I = (row_divisible) ? I / orow_divide : I; // divide when it is divisible
-	 size_t tile_J = J / och_divide;
-	 int out_offset = (row_divisible) ? 0 : tile_J * cid; // no offset if divided in row dimension
+	 I = (row_divisible) ? I / orow_divide : I;
+    size_t tile_I = I; // divide when it is divisible
+	 J = J / och_divide;
+	 size_t tile_J = J;
 
+    size_t J_stride = (padding_B) ? och_divide * J + 64 : och_divide * J;
+ 
+	 int out_offset = (row_divisible) ? 0 : tile_J * cid; // no offset if divided in row dimension
+    int orow_offset = (row_divisible) ? J_stride * cid * I;
     // size_t total_spad_rows = 2 * (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
     size_t total_acc_rows = (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
 
@@ -5727,7 +5784,7 @@ static void tiled_resadd_auto_cid(const size_t I, const size_t J,
 
     if (matadd_type == WS) {
       tiled_resadd(I, J, tile_I, tile_J,
-            A_scale, B_scale, C_scale, A + out_offset, B + out_offset, C + out_offset,
+            A_scale, B_scale, C_scale, A + out_offset + orow_offset, B + orow_offset + out_offset, C + orow_offset + out_offset,
             relu, matadd_type, padding_B && ((J*och_divide) % 128 != 0) , och_divide);
     } else if(matadd_type == CPU){
           resadd_cpu(I, J, A_scale, B_scale, C_scale,
