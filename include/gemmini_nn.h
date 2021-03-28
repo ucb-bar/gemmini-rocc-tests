@@ -116,7 +116,7 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
 // This function runs a tiled matrix multiplication, with automatically
 // calculated tiling factors
 static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
-        const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
+        elem_t A[dim_I][dim_K], elem_t B[dim_K][dim_J],
         const void * D, elem_t C[dim_I][dim_J],
         int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         enum tiled_matmul_type_t tiled_matmul_type,
@@ -154,25 +154,51 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 }
 
 static void tiled_matmul_nn_auto_loopld(size_t dim_I, size_t dim_J, size_t dim_K,
-        const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
-        const void * D, elem_t C[dim_I][dim_J],
+        elem_t* A, elem_t* B,
+        const void * D, elem_t* C,
         int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         enum tiled_matmul_type_t tiled_matmul_type,
-		  bool skip_A, bool skip_B, bool A_padding, bool B_padding)
+		  bool skip_A, bool skip_B, bool A_padding, bool B_padding, size_t och_divide)
 {
-
-	size_t stride_A = (A_padding) ? dim_K + 64 : dim_K;
-	size_t stride_B = (B_padding) ? dim_J + 64 : dim_J;
+	
+	size_t stride_A = (A_padding && (dim_K % 128 == 0)) ? dim_K + 64 : dim_K;
+	size_t stride_B = (B_padding && ((dim_J * och_divide) % 128 == 0)) ? dim_J*och_divide + 64 : dim_J*och_divide;
 	tiled_matmul_auto_loopld(dim_I, dim_J, dim_K,
-        (elem_t*)A, (elem_t*)B, D, (elem_t*)C, 
-        stride_A, stride_B, stride_B, stride_B,
-        MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-        act, scale, relu6_shift, repeating_bias,
-        false, false,
-        false, false,
-        tiled_matmul_type, skip_A, skip_B);
+		A, B, D, C, 
+		stride_A, stride_B, stride_B, stride_B,
+		MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+		act, scale, relu6_shift, repeating_bias,
+		false, false,
+		false, false,
+		tiled_matmul_type, skip_A, skip_B);
 
 }
+
+static void tiled_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
+        elem_t* A, elem_t* B,
+        const void * D, elem_t* C,
+        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
+        enum tiled_matmul_type_t tiled_matmul_type,
+		  bool skip_A, bool skip_B, bool A_padding, bool B_padding, size_t orow_divide, size_t cid)
+{
+	bool row_divisible = (dim_I % orow_divide == 0);
+	size_t och_divide = (row_divisible) ? 1 : orow_divide; // if row can't be divided, then divide channel instead
+   dim_I = dim_I / och_divide;
+	int out_offset = (row_divisible) ? 0 : dim_I * cid; // no need to apply offset if we divided row
+
+	size_t stride_A = (A_padding && (dim_K % 128 == 0)) ? dim_K + 64 : dim_K;
+	size_t stride_B = (B_padding && ((dim_J * och_divide) % 128 == 0)) ? dim_J*och_divide + 64 : dim_J*och_divide;
+	tiled_matmul_auto_loopld(dim_I, dim_J, dim_K,
+		A, B + out_offset, D + out_offset, C + out_offset, 
+		stride_A, stride_B, stride_B, stride_B,
+		MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+		act, scale, relu6_shift, repeating_bias,
+		false, false,
+		false, false,
+		tiled_matmul_type, skip_A, skip_B);
+
+}
+
 static void conv_dw(size_t I, size_t J,
     const size_t batch_size, const size_t channels, const size_t in_dim, const size_t out_dim, const size_t kernel_size,
     const elem_t input[batch_size][in_dim][in_dim][channels],
