@@ -45,6 +45,9 @@
 #define k_LOOP_CONV_WS_CONFIG_5 20
 #define k_LOOP_CONV_WS_CONFIG_6 21
 
+#define k_MVIN_NO_PIXEL_REPEAT 22
+#define k_MVIN_TAIL 23
+
 #define CONFIG_EX 0
 #define CONFIG_LD 1
 #define CONFIG_ST 2
@@ -194,6 +197,12 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 
 #define gemmini_extended_mvin3(dram_addr, spad_addr, cols, rows) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)(rows) << (ADDR_LEN + 16)) | ((uint64_t)(cols) << ADDR_LEN) | (spad_addr), k_MVIN3)
+
+#define gemmini_extended_mvin_no_pixel_repeat(dram_addr, spad_addr, cols, rows) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)(rows) << (ADDR_LEN + 16)) | ((uint64_t)(cols) << ADDR_LEN) | (spad_addr), k_MVIN_NO_PIXEL_REPEAT)
+
+#define gemmini_extended_mvin_tail(dram_addr, spad_addr, cols, rows) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)(rows) << (ADDR_LEN + 16)) | ((uint64_t)(cols) << ADDR_LEN) | (spad_addr), k_MVIN_TAIL)
 
 #define gemmini_block_mvin(dram_addr, spad_addr, len) \
   gemmini_extended_mvin(dram_addr, spad_addr, (len) * DIM, DIM)
@@ -1107,9 +1116,8 @@ static void sp_tiled_conv_A_stride(
     C_sp_addr_row = (C_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
   }
 
-  gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, max_pixels_per_row);
+  // gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, max_pixels_per_row);
 
-  /*
   // mvin bias
   if (!no_bias && bias != NULL) {
       // TODO we probably don't need quite this many nested loops for this part
@@ -1171,12 +1179,25 @@ static void sp_tiled_conv_A_stride(
 
                       const bool is_zeros = irow < 0 || irow >= irows_unpadded || icol < 0 || icol >= icols_unpadded;
 
+                      const bool overlaps_with_zeros = icol - max_pixels_per_row < 0;
+                      const bool is_tail = icol + I >= icols_unpadded;
+
                       const elem_t * in = is_zeros ? NULL :
                           input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels + ich;
 
-                      gemmini_extended_mvin(in,
-                              A_sp_addr,
-                              K, I >> downsample);
+                      if (overlaps_with_zeros) {
+                          gemmini_extended_mvin_no_pixel_repeat(in,
+                                  A_sp_addr,
+                                  K, I >> downsample);
+                      } else if (is_tail) {
+                          gemmini_extended_mvin_tail(in,
+                                  A_sp_addr,
+                                  K, I >> downsample);
+                      } else {
+                          gemmini_extended_mvin(in,
+                                  A_sp_addr,
+                                  K, I >> downsample);
+                      }
                   }
 
                   icol += I;
@@ -1309,7 +1330,6 @@ static void sp_tiled_conv_A_stride(
           gemmini_fence();
       }
   }
-  */
 }
 
 //resnet downsampling layer (no padding, kernel size 1, stride 2)
