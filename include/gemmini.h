@@ -273,14 +273,14 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define gemmini_fence() asm volatile("fence")
 
 // weight-stationary matmul loop
-#define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, A_transpose, B_transpose, full_C, low_D, ex_accumulate) \
+#define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, A_transpose, B_transpose, full_C, low_D, ex_accumulate, weightA) \
   { \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(pad_K) << 32) | ((uint64_t)(pad_J) << 16) | (uint64_t)(pad_I), ((uint64_t)(K) << 32) | ((uint64_t)(J) << 16) | (uint64_t)(I), k_LOOP_WS_CONFIG_BOUNDS) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_LOOP_WS_CONFIG_ADDRS_AB) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D, C, k_LOOP_WS_CONFIG_ADDRS_DC) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A_stride, B_stride, k_LOOP_WS_CONFIG_STRIDES_AB) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D_stride, C_stride, k_LOOP_WS_CONFIG_STRIDES_DC) \
-    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((B_transpose) << 1) | (A_transpose), k_LOOP_WS) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(weightA) << 8) | ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((B_transpose) << 1) | (A_transpose), k_LOOP_WS) \
   }
 
 // weight-stationary matmul loop
@@ -309,7 +309,8 @@ static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const void * 
         size_t A_row_stride, size_t B_row_stride, size_t D_row_stride, size_t C_row_stride,
         bool a_transpose, bool b_transpose,
         bool full_C, bool low_D,
-        bool no_bias, bool repeating_bias) {
+        bool no_bias, bool repeating_bias,
+        uint8_t weightA) {
 
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
@@ -429,7 +430,8 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         size_t A_row_stride, size_t B_row_stride, size_t D_row_stride, size_t C_row_stride,
         bool a_transpose, bool b_transpose,
         bool full_C, bool low_D,
-        bool no_bias, bool repeating_bias) {
+        bool no_bias, bool repeating_bias,
+        uint8_t weightA) {
 
   /*
   const uint32_t A_sp_addr_start = 0;
@@ -561,7 +563,8 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
     A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
     a_transpose, b_transpose,
-    full_C, low_D, !no_bias || D == NULL);
+    full_C, low_D, !no_bias || D == NULL,
+    weightA);
 }
 
 static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
@@ -573,6 +576,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         bool a_transpose, bool b_transpose,
         bool full_C, bool low_D,
+        uint8_t weightA,
         int dataflow) {
 
   const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
@@ -616,7 +620,8 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         size_t, size_t, size_t, size_t,
         bool, bool,
         bool, bool,
-        bool, bool);
+        bool, bool,
+        uint8_t);
 
   if (dataflow == OUTPUT_STATIONARY) {
     inner = &sp_tiled_matmul_os;
@@ -660,7 +665,8 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
             stride_A, stride_B, stride_D, stride_C,
             a_transpose, b_transpose,
             full_C, low_D,
-            no_bias, repeating_bias);
+            no_bias, repeating_bias,
+            weightA);
       }
 
   gemmini_fence();
@@ -838,6 +844,7 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         size_t tile_I, size_t tile_J, size_t tile_K,
         bool transpose_A, bool transpose_B,
         bool full_C, bool low_D,
+        uint8_t weightA,
         enum tiled_matmul_type_t tiled_matmul_type) {
 
 #ifdef GEMMINI_ASSERTIONS
@@ -922,6 +929,7 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         act, scale, relu6_shift, repeating_bias,
         transpose_A, transpose_B,
         full_C, low_D,
+        weightA,
         (int)tiled_matmul_type);
   } else /*if (tiled_matmul_type == CPU)*/ {
     matmul_cpu(transpose_A, transpose_B, dim_I, dim_J, dim_K,
@@ -950,6 +958,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         bool transpose_A, bool transpose_B,
         bool full_C, bool low_D,
+        uint8_t weightA,
         enum tiled_matmul_type_t tiled_matmul_type) {
 
 #define partition_rows (BANK_NUM * BANK_ROWS / 2)
@@ -1038,6 +1047,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         tile_I, tile_J, tile_K,
         transpose_A, transpose_B,
         full_C, low_D,
+        weightA,
         tiled_matmul_type);
 
 #undef partition_rows
@@ -2807,7 +2817,7 @@ static void tiled_conv_downsample(
                     A_stride, B_stride, D_stride, C_stride,
                     MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
                     MVIN_SCALE_IDENTITY, act, scale, relu6_shift,
-                    true, false, false, false, false, tiled_conv_type);
+                    true, false, false, false, false, 3, tiled_conv_type);
         }
     }
 }
