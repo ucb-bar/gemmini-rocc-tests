@@ -387,6 +387,7 @@ int main() {
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
         STRIDE, 1, PADDING, KERNEL_DIM,
+        false,
 
         // 1,
         // 1, 1, 1,

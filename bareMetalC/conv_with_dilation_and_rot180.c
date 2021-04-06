@@ -45,6 +45,8 @@
 
 #define NO_BIAS false
 
+#define WROT180 true
+
 #define IN_DIM_DILATED (IN_DIM + (DILATION - 1)*(IN_DIM - 1))
 #define OUT_DIM ((IN_DIM_DILATED + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
@@ -53,7 +55,7 @@
 void conv(int batch_size, int in_channels, int in_dim,
         int out_channels, int kernel_dim,
         int out_dim,
-        int stride, int dilation, int padding,
+        int stride, int dilation, int padding, bool wrot180,
         elem_t input[batch_size][in_dim][in_dim][in_channels],
         elem_t weights[out_channels][kernel_dim][kernel_dim][in_channels],
         acc_t bias[out_channels],
@@ -61,6 +63,8 @@ void conv(int batch_size, int in_channels, int in_dim,
 
     const size_t in_dim_dilated = in_dim + (dilation - 1)*(in_dim - 1);
     elem_t dilated[batch_size][in_dim_dilated][in_dim_dilated][in_channels];
+
+    elem_t weights_rot180[out_channels][kernel_dim][kernel_dim][in_channels];
 
 #ifdef GEMMINI_ASSERTIONS
     if (out_dim != (in_dim_dilated + 2*padding - kernel_dim) / stride + 1) {
@@ -70,6 +74,7 @@ void conv(int batch_size, int in_channels, int in_dim,
     }
 #endif
 
+    // Populate dilated
     for (int b = 0; b < batch_size; b++)
         for (int irow = 0; irow < in_dim_dilated; irow++)
             for (int icol = 0; icol < in_dim_dilated; icol++)
@@ -84,6 +89,14 @@ void conv(int batch_size, int in_channels, int in_dim,
                     dilated[b][irow][icol][ich] = *((elem_t*)input + idx);
                     idx++;
                 }
+
+    // Populate weights_rot180
+    for (int och = 0; och < out_channels; och++)
+        for (int krow = 0; krow < kernel_dim; krow++)
+            for (int kcol = 0; kcol < kernel_dim; kcol++)
+                for (int kch = 0; kch < in_channels; kch++)
+                    weights_rot180[och][krow][kcol][kch] =
+                        weights[och][kernel_dim-krow-1][kernel_dim-kcol-1][kch];
 
     for (int b = 0; b < batch_size; b++) {
         for (int orow = 0; orow < out_dim; orow++) {
@@ -101,9 +114,11 @@ void conv(int batch_size, int in_channels, int in_dim,
                                     icol < 0 || icol >= in_dim_dilated ?
                                     0 : dilated[b][irow][icol][kch];
 
-                                result +=
-                                    weights[och][krow][kcol][kch] *
-                                    pixel;
+                                elem_t w = wrot180 ?
+                                    weights_rot180[och][krow][kcol][kch] :
+                                    weights[och][krow][kcol][kch];
+
+                                result += w * pixel;
                             }
                         }
                     }
@@ -215,7 +230,7 @@ int main() {
     conv(BATCH_SIZE, IN_CHANNELS, IN_DIM,
             OUT_CHANNELS, KERNEL_DIM,
             OUT_DIM,
-            STRIDE, DILATION, PADDING,
+            STRIDE, DILATION, PADDING, WROT180,
             input,
             weights,
             bias,
@@ -239,7 +254,7 @@ int main() {
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
         STRIDE, DILATION, PADDING, KERNEL_DIM,
-        false,
+        WROT180,
 
         (elem_t*)input,
         (elem_t*)weights_mat,

@@ -217,6 +217,7 @@ int main() {
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
         STRIDE, 1, PADDING, KERNEL_DIM,
+        false,
 
         (elem_t*)input,
         (elem_t*)weights_mat,
