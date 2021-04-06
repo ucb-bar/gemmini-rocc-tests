@@ -2269,8 +2269,8 @@ static int tiled_conv_total_spad_rows_A_stride(bool acc,
     const int orows = porows * pool_stride + pool_size - 1;
     const int ocols = pocols * pool_stride + pool_size - 1;
 
-    const int irows = orows * stride + dilation * (krows - 1); // - 2 * padding;
-    const int icols = ocols * stride + dilation * (kcols - 1); // - 2 * padding;
+    const int irows = orows * stride + krows - 1; // - 2 * padding;
+    const int icols = ocols * stride + kcols - 1; // - 2 * padding;
     const int ichs = kchs;
 
     const int in_channels_per_bank = ichs / DIM + (ichs % DIM != 0);
@@ -2298,6 +2298,10 @@ static void conv_cpu_without_pool(
 
   bool no_bias = bias == NULL;
 
+  int kdim_start = 0;
+  while ((kdim_start - padding) % dilation != 0)
+    kdim_start++;
+
   for (int b = 0; b < batch_size; b++) {
     for (int orow = 0; orow < out_dim; orow++) {
       for (int ocol = 0; ocol < out_dim; ocol++) {
@@ -2305,11 +2309,15 @@ static void conv_cpu_without_pool(
 
           acc_t opixel = no_bias ? 0 : bias[och];
 
-          for (int krow = 0; krow < kernel_dim; krow++) {
-            const int irow = orow * stride + krow * dilation - padding;
+          const int krow_start = (kdim_start + orow * stride) % dilation;
 
-            for (int kcol = 0; kcol < kernel_dim; kcol++) {
-              const int icol = ocol * stride + kcol * dilation - padding;
+          for (int krow = krow_start; krow < kernel_dim; krow += dilation) {
+            const int irow = (orow * stride + krow - padding) / dilation;
+
+            const int kcol_start = (kdim_start + ocol * stride) % dilation;
+
+            for (int kcol = kcol_start; kcol < kernel_dim; kcol += dilation) {
+              const int icol = (ocol * stride + kcol - padding) / dilation;
 
               for (int kch = 0; kch < in_channels; kch++) {
                 elem_t ipixel = irow < 0 || irow >= in_dim || icol < 0 || icol >= in_dim ?
@@ -2318,7 +2326,10 @@ static void conv_cpu_without_pool(
 
                 elem_t weight = *(weights + (krow * kernel_dim * in_channels + kcol * in_channels + kch) * out_channels + och);
 
-                //acc_t past_opixel = opixel;
+                // if (orow == 0 && ocol == 1) {
+                //   printf("krow = %d | kcol = %d | ipixel = %d | weight = %d\n", krow, kcol, ipixel, weight);
+                // }
+
                 opixel += weight * ipixel;
               }
             }
@@ -2359,6 +2370,10 @@ static void conv_cpu(
   const bool no_bias = bias == NULL;
   const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
+  int kdim_start = 0;
+  while ((kdim_start - padding) % dilation != 0)
+    kdim_start++;
+
   for (int b = 0; b < batch_size; b++) {
     for (int porow = 0; porow < pool_out_dim; porow++) {
       for (int pocol = 0; pocol < pool_out_dim; pocol++) {
@@ -2382,11 +2397,15 @@ static void conv_cpu(
 
                 acc_t opixel = no_bias ? 0 : bias[poch];
 
-                for (int krow = 0; krow < kernel_dim; krow++) {
-                  const int irow = orow * stride + krow * dilation - padding;
+                const int krow_start = (kdim_start + orow * stride) % dilation;
 
-                  for (int kcol = 0; kcol < kernel_dim; kcol++) {
-                    const int icol = ocol * stride + kcol * dilation - padding;
+                for (int krow = krow_start; krow < kernel_dim; krow += dilation) {
+                  const int irow = (orow * stride + krow - padding) / dilation;
+
+                  const int kcol_start = (kdim_start + ocol * stride) % dilation;
+
+                  for (int kcol = kcol_start; kcol < kernel_dim; kcol += dilation) {
+                      const int icol = (ocol * stride + kcol - padding) / dilation;
 
                     for (int kch = 0; kch < in_channels; kch++) {
                       elem_t ipixel = irow < 0 || irow >= in_dim || icol < 0 || icol >= in_dim ?

@@ -17,7 +17,6 @@
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 2
-#define DILATION 1
 
 #else
 
@@ -39,27 +38,26 @@
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 2
-#define DILATION 1
 
 #endif
 
 #define NO_BIAS false
 
-#define OUT_DIM ((IN_DIM + 2*PADDING - DILATION * (KERNEL_DIM - 1) - 1) / STRIDE + 1)
+#define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
 #define N_PATCHES (BATCH_SIZE * OUT_DIM * OUT_DIM)
 
 void conv(int batch_size, int in_channels, int in_dim,
         int out_channels, int kernel_dim,
         int out_dim,
-        int stride, int dilation, int padding,
+        int stride, int padding,
         elem_t input[batch_size][in_dim][in_dim][in_channels],
         elem_t weights[out_channels][kernel_dim][kernel_dim][in_channels],
         acc_t bias[out_channels],
         elem_t output[batch_size][out_dim][out_dim][out_channels]) {
 
 #ifdef GEMMINI_ASSERTIONS
-    if (out_dim != (in_dim + 2*padding - dilation * (kernel_dim - 1) - 1) / stride + 1) {
+    if (out_dim != (in_dim + 2*padding - kernel_dim) / stride + 1) {
         printf("conv out_dim is not correct\n");
         exit(1);
     }
@@ -74,8 +72,8 @@ void conv(int batch_size, int in_channels, int in_dim,
                     for (int krow = 0; krow < kernel_dim; krow++) {
                         for (int kcol = 0; kcol < kernel_dim; kcol++) {
                             for (int kch = 0; kch < in_channels; kch++) {
-                                int irow = orow * stride + krow * dilation - padding;
-                                int icol = ocol * stride + kcol * dilation - padding;
+                                int irow = orow * stride + krow - padding;
+                                int icol = ocol * stride + kcol - padding;
 
                                 elem_t pixel = irow < 0 || irow >= in_dim ||
                                     icol < 0 || icol >= in_dim ?
@@ -195,7 +193,7 @@ int main() {
     conv(BATCH_SIZE, IN_CHANNELS, IN_DIM,
             OUT_CHANNELS, KERNEL_DIM,
             OUT_DIM,
-            STRIDE, DILATION, PADDING,
+            STRIDE, PADDING,
             input,
             weights,
             bias,
@@ -218,7 +216,7 @@ int main() {
     tiled_conv_A_stride_auto(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
-        STRIDE, DILATION, PADDING, KERNEL_DIM,
+        STRIDE, 1, PADDING, KERNEL_DIM,
 
         (elem_t*)input,
         (elem_t*)weights_mat,
