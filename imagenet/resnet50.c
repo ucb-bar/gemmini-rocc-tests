@@ -42,7 +42,7 @@ int main (int argc, char * argv[]) {
     bool conv = true;
     
     if (argc < 3) {
-        conv = false;
+        conv = true;
     } else if (strcmp(argv[2], "conv") == 0) {
         conv = true;
     } else if (strcmp(argv[2], "matmul") == 0) {
@@ -101,10 +101,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_first(
+        tiled_conv_A_stride_auto(
             conv_1_params.batch_size, conv_1_params.in_dim, conv_1_params.in_channels,
             conv_1_params.out_channels, conv_1_params.out_dim,
-            conv_1_params.stride, conv_1_params.padding, conv_1_params.kernel_size,
+            conv_1_params.stride, 1, conv_1_params.padding, conv_1_params.kernel_size,
 
             (elem_t*)images, (elem_t*)conv_1_w, (acc_t*)conv_1_b, (elem_t*)conv_1_out_pooled,
 
@@ -115,8 +115,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-	printf("conv 1 cycles: %llu \n", end - start);
-
+        printf("conv 1 cycles: %llu \n", end - start);
     }
 
     // conv_2
@@ -150,8 +149,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-	printf("matmul 2 cycles: %llu \n", end - start);
-
+        printf("matmul 2 cycles: %llu \n", end - start);
     }
 
     // conv_3
@@ -178,10 +176,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_A_stride_auto(
             conv_3_params.batch_size, conv_3_params.in_dim, conv_3_params.in_channels,
             conv_3_params.out_channels, conv_3_params.out_dim,
-            conv_3_params.stride, conv_3_params.padding, conv_3_params.kernel_size,
+            conv_3_params.stride, 1, conv_3_params.padding, conv_3_params.kernel_size,
 
             (elem_t*)conv_2_out, (elem_t*)conv_3_w, (acc_t*)conv_3_b, (elem_t*)conv_3_out,
 
@@ -192,9 +190,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 3 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 3 cycles: %llu \n", end - start);
+    }
 
     // conv_4
     if (!conv) {
@@ -218,8 +215,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-	printf("matmul 4 cycles: %llu \n", end - start);
-
+        printf("matmul 4 cycles: %llu \n", end - start);
     }
 
     // Downsampling conv_1_out_pooled
@@ -254,9 +250,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 5 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 5 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -296,9 +291,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 6 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 6 cycles: %llu \n", end - start);
+    }
 
     // conv_7
     if (!conv) {
@@ -324,10 +318,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_A_stride_auto(
             conv_7_params.batch_size, conv_7_params.in_dim, conv_7_params.in_channels,
             conv_7_params.out_channels, conv_7_params.out_dim,
-            conv_7_params.stride, conv_7_params.padding, conv_7_params.kernel_size,
+            conv_7_params.stride, 1, conv_7_params.padding, conv_7_params.kernel_size,
 
             (elem_t*)conv_6_out, (elem_t*)conv_7_w, (acc_t*)conv_7_b, (elem_t*)conv_7_out,
 
@@ -338,9 +332,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 7 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 7 cycles: %llu \n", end - start);
+    }
 
     // conv_8
     if (!conv) {
@@ -364,9 +357,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 8 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 8 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -406,9 +398,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 9 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 9 cycles: %llu \n", end - start);
+    }
 
     // conv_10
     if (!conv) {
@@ -434,10 +425,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto(
+        tiled_conv_A_stride_auto(
             conv_10_params.batch_size, conv_10_params.in_dim, conv_10_params.in_channels,
             conv_10_params.out_channels, conv_10_params.out_dim,
-            conv_10_params.stride, conv_10_params.padding, conv_10_params.kernel_size,
+            conv_10_params.stride, 1, conv_10_params.padding, conv_10_params.kernel_size,
 
             (elem_t*)conv_9_out, (elem_t*)conv_10_w, (acc_t*)conv_10_b, (elem_t*)conv_10_out,
 
@@ -448,9 +439,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 10 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 10 cycles: %llu \n", end - start);
+    }
 
     // conv_11
     if (!conv) {
@@ -474,9 +464,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 11 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 11 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -516,9 +505,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 12 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 12 cycles: %llu \n", end - start);
+    }
 
     // conv_13
     if (!conv) {
@@ -544,10 +532,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_largeC(
+        tiled_conv_A_stride_auto(
             conv_13_params.batch_size, conv_13_params.in_dim, conv_13_params.in_channels,
             conv_13_params.out_channels, conv_13_params.out_dim,
-            conv_13_params.stride, conv_13_params.padding, conv_13_params.kernel_size,
+            conv_13_params.stride, 1, conv_13_params.padding, conv_13_params.kernel_size,
 
             (elem_t*)conv_12_out, (elem_t*)conv_13_w, (acc_t*)conv_13_b, (elem_t*)conv_13_out,
 
@@ -558,9 +546,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 13 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 13 cycles: %llu \n", end - start);
+    }
 
     // conv_14
     if (!conv) {
@@ -584,9 +571,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 14 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 14 cycles: %llu \n", end - start);
+    }
 
     // Downsampling conv_11_out
     // conv_15
@@ -613,23 +599,23 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_largeC(
+        // tiled_conv_A_stride_auto(
+        tiled_conv_downsample(
             conv_15_params.batch_size, conv_15_params.in_dim, conv_15_params.in_channels,
             conv_15_params.out_channels, conv_15_params.out_dim,
-            conv_15_params.stride, conv_15_params.padding, conv_15_params.kernel_size,
+            // conv_15_params.stride, 1, conv_15_params.padding, conv_15_params.kernel_size,
 
             (elem_t*)conv_11_out, (elem_t*)conv_15_w, (acc_t*)conv_15_b, (elem_t*)conv_15_out,
 
             NO_ACTIVATION, conv_15_params.output_scale, 0,
-            conv_15_params.pool_size, 0, conv_15_params.pool_padding,
+            // conv_15_params.pool_size, 0, conv_15_params.pool_padding,
 
             tiled_matmul_type);
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 15 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 15 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -669,9 +655,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 16 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 16 cycles: %llu \n", end - start);
+    }
 
     // conv_17
     if (!conv) {
@@ -697,10 +682,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_largeC(
+        tiled_conv_A_stride_auto(
             conv_17_params.batch_size, conv_17_params.in_dim, conv_17_params.in_channels,
             conv_17_params.out_channels, conv_17_params.out_dim,
-            conv_17_params.stride, conv_17_params.padding, conv_17_params.kernel_size,
+            conv_17_params.stride, 1, conv_17_params.padding, conv_17_params.kernel_size,
 
             (elem_t*)conv_16_out, (elem_t*)conv_17_w, (acc_t*)conv_17_b, (elem_t*)conv_17_out,
 
@@ -711,9 +696,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 17 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 17 cycles: %llu \n", end - start);
+    }
 
     // conv_18
     if (!conv) {
@@ -737,9 +721,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 18 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 18 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -779,9 +762,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 19 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 19 cycles: %llu \n", end - start);
+    }
 
     // conv_20
     if (!conv) {
@@ -807,10 +789,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_largeC(
+        tiled_conv_A_stride_auto(
             conv_20_params.batch_size, conv_20_params.in_dim, conv_20_params.in_channels,
             conv_20_params.out_channels, conv_20_params.out_dim,
-            conv_20_params.stride, conv_20_params.padding, conv_20_params.kernel_size,
+            conv_20_params.stride, 1, conv_20_params.padding, conv_20_params.kernel_size,
 
             (elem_t*)conv_19_out, (elem_t*)conv_20_w, (acc_t*)conv_20_b, (elem_t*)conv_20_out,
 
@@ -821,9 +803,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 20 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 20 cycles: %llu \n", end - start);
+    }
 
     // conv_21
     if (!conv) {
@@ -847,9 +828,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 21 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 21 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -889,9 +869,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 22 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 22 cycles: %llu \n", end - start);
+    }
 
     // conv_23
     if (!conv) {
@@ -917,10 +896,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_largeC(
+        tiled_conv_A_stride_auto(
             conv_23_params.batch_size, conv_23_params.in_dim, conv_23_params.in_channels,
             conv_23_params.out_channels, conv_23_params.out_dim,
-            conv_23_params.stride, conv_23_params.padding, conv_23_params.kernel_size,
+            conv_23_params.stride, 1, conv_23_params.padding, conv_23_params.kernel_size,
 
             (elem_t*)conv_22_out, (elem_t*)conv_23_w, (acc_t*)conv_23_b, (elem_t*)conv_23_out,
 
@@ -931,9 +910,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 23 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 23 cycles: %llu \n", end - start);
+    }
 
     // conv_24
     if (!conv) {
@@ -957,9 +935,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 24 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 24 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -999,9 +976,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 25 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 25 cycles: %llu \n", end - start);
+    }
 
     // conv_26
     if (!conv) {
@@ -1027,10 +1003,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_largeC(
+        tiled_conv_A_stride_auto(
             conv_26_params.batch_size, conv_26_params.in_dim, conv_26_params.in_channels,
             conv_26_params.out_channels, conv_26_params.out_dim,
-            conv_26_params.stride, conv_26_params.padding, conv_26_params.kernel_size,
+            conv_26_params.stride, 1, conv_26_params.padding, conv_26_params.kernel_size,
 
             (elem_t*)conv_25_out, (elem_t*)conv_26_w, (acc_t*)conv_26_b, (elem_t*)conv_26_out,
 
@@ -1041,9 +1017,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 26 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 26 cycles: %llu \n", end - start);
+    }
 
     // conv_27
     if (!conv) {
@@ -1067,9 +1042,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 27 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 27 cycles: %llu \n", end - start);
+    }
 
     // Downsampling conv_24_out
     // conv_28
@@ -1096,23 +1070,23 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_original(
+        // tiled_conv_A_stride_auto(
+        tiled_conv_downsample(
             conv_28_params.batch_size, conv_28_params.in_dim, conv_28_params.in_channels,
             conv_28_params.out_channels, conv_28_params.out_dim,
-            conv_28_params.stride, conv_28_params.padding, conv_28_params.kernel_size,
+            // conv_28_params.stride, 1, conv_28_params.padding, conv_28_params.kernel_size,
 
             (elem_t*)conv_24_out, (elem_t*)conv_28_w, (acc_t*)conv_28_b, (elem_t*)conv_28_out,
 
             NO_ACTIVATION, conv_28_params.output_scale, 0,
-            conv_28_params.pool_size, 0, conv_28_params.pool_padding,
+            // conv_28_params.pool_size, 0, conv_28_params.pool_padding,
 
             tiled_matmul_type);
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 28 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 28 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -1152,9 +1126,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 29 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 29 cycles: %llu \n", end - start);
+    }
 
     // conv_30
     if (!conv) {
@@ -1180,10 +1153,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_largeC(
+        tiled_conv_A_stride_auto(
             conv_30_params.batch_size, conv_30_params.in_dim, conv_30_params.in_channels,
             conv_30_params.out_channels, conv_30_params.out_dim,
-            conv_30_params.stride, conv_30_params.padding, conv_30_params.kernel_size,
+            conv_30_params.stride, 1, conv_30_params.padding, conv_30_params.kernel_size,
 
             (elem_t*)conv_29_out, (elem_t*)conv_30_w, (acc_t*)conv_30_b, (elem_t*)conv_30_out,
 
@@ -1194,9 +1167,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 30 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 30 cycles: %llu \n", end - start);
+    }
 
     // conv_31
     if (!conv) {
@@ -1220,9 +1192,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 31 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 31 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -1262,9 +1233,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 32 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 32 cycles: %llu \n", end - start);
+    }
 
     // conv_33
     if (!conv) {
@@ -1290,10 +1260,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_largeC(
+        tiled_conv_A_stride_auto(
             conv_33_params.batch_size, conv_33_params.in_dim, conv_33_params.in_channels,
             conv_33_params.out_channels, conv_33_params.out_dim,
-            conv_33_params.stride, conv_33_params.padding, conv_33_params.kernel_size,
+            conv_33_params.stride, 1, conv_33_params.padding, conv_33_params.kernel_size,
 
             (elem_t*)conv_32_out, (elem_t*)conv_33_w, (acc_t*)conv_33_b, (elem_t*)conv_33_out,
 
@@ -1304,8 +1274,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
-	printf("conv 33 cycles: %llu \n", end - start);
-
+        printf("conv 33 cycles: %llu \n", end - start);
     }
 
     // conv_34
@@ -1330,9 +1299,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 34 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 34 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -1372,9 +1340,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 35 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 35 cycles: %llu \n", end - start);
+    }
 
     // conv_36
     if (!conv) {
@@ -1400,10 +1367,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_largeC(
+        tiled_conv_A_stride_auto(
             conv_36_params.batch_size, conv_36_params.in_dim, conv_36_params.in_channels,
             conv_36_params.out_channels, conv_36_params.out_dim,
-            conv_36_params.stride, conv_36_params.padding, conv_36_params.kernel_size,
+            conv_36_params.stride, 1, conv_36_params.padding, conv_36_params.kernel_size,
 
             (elem_t*)conv_35_out, (elem_t*)conv_36_w, (acc_t*)conv_36_b, (elem_t*)conv_36_out,
 
@@ -1414,9 +1381,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 36 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 36 cycles: %llu \n", end - start);
+    }
 
     // conv_37
     if (!conv) {
@@ -1440,9 +1406,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 37 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 37 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -1482,9 +1447,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-	printf("matmul 39 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 38 cycles: %llu \n", end - start);
+    }
 
     // conv_39
     if (!conv) {
@@ -1510,10 +1474,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_largeC(
+        tiled_conv_A_stride_auto(
             conv_39_params.batch_size, conv_39_params.in_dim, conv_39_params.in_channels,
             conv_39_params.out_channels, conv_39_params.out_dim,
-            conv_39_params.stride, conv_39_params.padding, conv_39_params.kernel_size,
+            conv_39_params.stride, 1, conv_39_params.padding, conv_39_params.kernel_size,
 
             (elem_t*)conv_38_out, (elem_t*)conv_39_w, (acc_t*)conv_39_b, (elem_t*)conv_39_out,
 
@@ -1524,9 +1488,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 39 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 39 cycles: %llu \n", end - start);
+    }
 
     // conv_40
     if (!conv) {
@@ -1550,9 +1513,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 40 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 40 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -1592,9 +1554,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 41 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 41 cycles: %llu \n", end - start);
+    }
 
     // conv_42
     if (!conv) {
@@ -1620,10 +1581,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_largeC(
+        tiled_conv_A_stride_auto(
             conv_42_params.batch_size, conv_42_params.in_dim, conv_42_params.in_channels,
             conv_42_params.out_channels, conv_42_params.out_dim,
-            conv_42_params.stride, conv_42_params.padding, conv_42_params.kernel_size,
+            conv_42_params.stride, 1, conv_42_params.padding, conv_42_params.kernel_size,
 
             (elem_t*)conv_41_out, (elem_t*)conv_42_w, (acc_t*)conv_42_b, (elem_t*)conv_42_out,
 
@@ -1634,9 +1595,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 42 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 42 cycles: %llu \n", end - start);
+    }
 
     // conv_43
     if (!conv) {
@@ -1660,9 +1620,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 43 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 43 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -1702,9 +1661,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 44 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 44 cycles: %llu \n", end - start);
+    }
 
     // conv_45
     if (!conv) {
@@ -1730,10 +1688,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_original(
+        tiled_conv_A_stride_auto(
             conv_45_params.batch_size, conv_45_params.in_dim, conv_45_params.in_channels,
             conv_45_params.out_channels, conv_45_params.out_dim,
-            conv_45_params.stride, conv_45_params.padding, conv_45_params.kernel_size,
+            conv_45_params.stride, 1, conv_45_params.padding, conv_45_params.kernel_size,
 
             (elem_t*)conv_44_out, (elem_t*)conv_45_w, (acc_t*)conv_45_b, (elem_t*)conv_45_out,
 
@@ -1744,9 +1702,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 45 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 45 cycles: %llu \n", end - start);
+    }
 
     // conv_46
     if (!conv) {
@@ -1770,9 +1727,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 46 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 46 cycles: %llu \n", end - start);
+    }
 
     // Downsampling conv_43_out
     // conv_47
@@ -1799,10 +1755,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_original(
+        tiled_conv_A_stride_auto(
             conv_47_params.batch_size, conv_47_params.in_dim, conv_47_params.in_channels,
             conv_47_params.out_channels, conv_47_params.out_dim,
-            conv_47_params.stride, conv_47_params.padding, conv_47_params.kernel_size,
+            conv_47_params.stride, 1, conv_47_params.padding, conv_47_params.kernel_size,
 
             (elem_t*)conv_43_out, (elem_t*)conv_47_w, (acc_t*)conv_47_b, (elem_t*)conv_47_out,
 
@@ -1813,9 +1769,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 47 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 47 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -1855,9 +1810,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 48 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 48 cycles: %llu \n", end - start);
+    }
 
     // conv_49
     if (!conv) {
@@ -1883,10 +1837,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_original(
+        tiled_conv_A_stride_auto(
             conv_49_params.batch_size, conv_49_params.in_dim, conv_49_params.in_channels,
             conv_49_params.out_channels, conv_49_params.out_dim,
-            conv_49_params.stride, conv_49_params.padding, conv_49_params.kernel_size,
+            conv_49_params.stride, 1, conv_49_params.padding, conv_49_params.kernel_size,
 
             (elem_t*)conv_48_out, (elem_t*)conv_49_w, (acc_t*)conv_49_b, (elem_t*)conv_49_out,
 
@@ -1897,9 +1851,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 49 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 49 cycles: %llu \n", end - start);
+    }
 
     // conv_50
     if (!conv) {
@@ -1923,9 +1876,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 50 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 50 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -1965,9 +1917,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 51 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 51 cycles: %llu \n", end - start);
+    }
 
     // conv_52
     if (!conv) {
@@ -1993,10 +1944,10 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_original(
+        tiled_conv_A_stride_auto(
             conv_52_params.batch_size, conv_52_params.in_dim, conv_52_params.in_channels,
             conv_52_params.out_channels, conv_52_params.out_dim,
-            conv_52_params.stride, conv_52_params.padding, conv_52_params.kernel_size,
+            conv_52_params.stride, 1, conv_52_params.padding, conv_52_params.kernel_size,
 
             (elem_t*)conv_51_out, (elem_t*)conv_52_w, (acc_t*)conv_52_b, (elem_t*)conv_52_out,
 
@@ -2007,9 +1958,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
- 	printf("conv 52 cycles: %llu \n", end - start);
-
-   }
+        printf("conv 52 cycles: %llu \n", end - start);
+    }
 
     // conv_53
     if (!conv) {
@@ -2033,9 +1983,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
- 	printf("matmul 53 cycles: %llu \n", end - start);
-
-   }
+        printf("matmul 53 cycles: %llu \n", end - start);
+    }
 
     // Add residuals
     start = read_cycles();
@@ -2054,25 +2003,12 @@ int main (int argc, char * argv[]) {
     res_add_cycles += end - start;
     
     // Global averaging
-    static elem_t average[2048][4] row_align(1);
+    static elem_t average[4][2048] row_align(1);
 
     start = read_cycles();
 
-    for (int batch = 0; batch < conv_53_params.batch_size; batch++) {
-        for (int channel = 0; channel < conv_53_params.out_channels; channel++) {
-            int sum = 0;
-            for (int row = 0; row < conv_53_params.out_dim; row++) {
-                for (int col = 0; col < conv_53_params.out_dim; col++) {
-                    size_t r = batch * conv_53_params.out_dim * conv_53_params.out_dim + row * conv_53_params.out_dim + col;
-
-                    sum += conv_53_out[r][channel];
-                }
-            }
-            const int count = conv_53_params.out_dim * conv_53_params.out_dim;
-
-            average[channel][batch] = (sum + count/2) / count;
-        }
-    }
+    tiled_global_average_auto(conv_53_out, average, conv_53_params.batch_size,
+        conv_53_params.out_channels, conv_53_params.out_dim, WS);
 
     end = read_cycles();
     other_cycles += end - start;
@@ -2081,7 +2017,7 @@ int main (int argc, char * argv[]) {
     start = read_cycles();
 
     tiled_matmul_nn_auto(fc_54_params.I, fc_54_params.J, fc_54_params.K,
-        fc_54_w, average, fc_54_b, fc_54_out,
+        average, fc_54_w, fc_54_b, fc_54_out,
         NO_ACTIVATION, fc_54_params.output_scale, 0, false,
         tiled_matmul_type, check, "fc_54");
 
@@ -2089,16 +2025,15 @@ int main (int argc, char * argv[]) {
     matmul_cycles += end - start;
     printf("matmul 54 cycles: %llu \n", end - start);
 
-
     // Find highest probs
     int preds[fc_54_params.batch_size];
     for (int batch = 0; batch < fc_54_params.batch_size; batch++) {
-        elem_t max_prob = fc_54_out[0][batch];
+        elem_t max_prob = fc_54_out[batch][0];
         size_t max_idx = 0;
 
         for (int i = 1; i < fc_54_params.out_features; i++) {
-            if (fc_54_out[i][batch] > max_prob) {
-                max_prob = fc_54_out[i][batch];
+            if (fc_54_out[batch][i] > max_prob) {
+                max_prob = fc_54_out[batch][i];
                 max_idx = i;
             }
         }
@@ -2120,7 +2055,7 @@ int main (int argc, char * argv[]) {
 
     int correct[] = {75, 900, 641, 897};
     for (int i = 0; i < fc_54_params.batch_size; i++) {
-        if (preds[i] != correct[i] && fc_54_out[preds[i]][i] != fc_54_out[correct[i]][i]) {
+        if (preds[i] != correct[i] && fc_54_out[i][preds[i]] != fc_54_out[i][correct[i]]) {
             printf("Prediction %d is incorrect!\nFAIL\n", i+1);
             exit(1);
         }

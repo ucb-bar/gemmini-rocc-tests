@@ -92,6 +92,7 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
         tile_I, tile_J, tile_K,
         false, false,
         false, false,
+        3,
         tiled_matmul_type);
 
     if (check) {
@@ -104,6 +105,7 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
             act, scale, relu6_shift, repeating_bias,
             false, false,
             false, false,
+            3,
             CPU);
 
         if (!MAT_IS_EQUAL(dim_I, dim_J, C, gold)) {
@@ -132,6 +134,7 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         act, scale, relu6_shift, repeating_bias,
         false, false,
         false, false,
+        3,
         tiled_matmul_type);
 
     if (check) {
@@ -144,6 +147,7 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
             act, scale, relu6_shift, repeating_bias,
             false, false,
             false, false,
+            3,
             CPU);
 
         if (!MAT_IS_EQUAL(dim_I, dim_J, C, gold)) {

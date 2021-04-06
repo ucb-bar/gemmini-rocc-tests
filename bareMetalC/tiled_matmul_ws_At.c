@@ -171,6 +171,7 @@ int main() {
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
             true, false,
             false, !FULL_BIAS_WIDTH,
+            3,
             WS);
 
     unsigned long end = read_cycles();

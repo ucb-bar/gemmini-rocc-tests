@@ -20,6 +20,7 @@ tests = \
 	mvin_scale \
 	conv \
 	conv_with_pool \
+	conv_with_dilation \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_ws_At \
@@ -33,6 +34,7 @@ tests = \
 	fp_acc \
 	matrix_add \
 	resadd \
+	global_average \
 	template
 
 tests_baremetal = $(tests:=-baremetal)
