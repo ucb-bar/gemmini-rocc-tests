@@ -18,6 +18,7 @@ tests = \
 	padded \
 	mvin_scale \
 	conv \
+	conv_dw \
 	conv_with_pool \
 	conv_with_dilation \
 	conv_with_dilation_and_rot180 \
