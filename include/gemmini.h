@@ -3103,7 +3103,7 @@ static void tiled_conv_A_stride_dw_auto(
 	 const int kcols = args[5];
 	 const int kchs = args[6];
 
-
+/*
 //    spad_rows = tiled_conv_total_spad_rows_A_stride(false,
 //        stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
 //    acc_rows = tiled_conv_total_spad_rows_A_stride(true,
@@ -3120,7 +3120,7 @@ static void tiled_conv_A_stride_dw_auto(
 //    printf("scratchpad row utilization: %d%%\n", (spad_rows*100) / max_spad_rows);
 //    printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
     printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
-  
+*/  
 	 tiled_conv_A_stride_dw(
 		  batch_size, in_dim, in_channels,
 		  out_channels, out_dim,
