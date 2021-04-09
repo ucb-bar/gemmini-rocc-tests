@@ -158,14 +158,14 @@ static void tiled_matmul_nn_auto_loopld(size_t dim_I, size_t dim_J, size_t dim_K
         const void * D, elem_t* C,
         int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         enum tiled_matmul_type_t tiled_matmul_type,
-		  bool skip_A, bool skip_B, bool A_padding, bool B_padding, size_t och_divide)
+		  bool skip_A, bool skip_B, bool A_padding, bool B_padding, size_t och_divide, bool och_split)
 {
 	
 	size_t stride_A = (A_padding && (dim_K % 128 == 0)) ? dim_K + 64 : dim_K;
 	size_t stride_B = (B_padding && ((dim_J * och_divide) % 128 == 0)) ? dim_J*och_divide + 64 : dim_J*och_divide;
 	tiled_matmul_auto_loopld(dim_I, dim_J, dim_K,
 		A, B, D, C, 
-		stride_A, stride_B, stride_B, stride_B,
+		stride_A, stride_B, stride_B, och_split ? stride_B * 2 : stride_B, //for now ignore padding
 		MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
 		act, scale, relu6_shift, repeating_bias,
 		false, false,
@@ -179,23 +179,29 @@ static void tiled_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
         const void * D, elem_t* C,
         int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         enum tiled_matmul_type_t tiled_matmul_type,
-		  bool skip_A, bool skip_B, bool A_padding, bool B_padding, size_t orow_divide, size_t cid)
+	bool skip_A, bool skip_B, bool A_padding, bool B_padding, size_t orow_divide, size_t batch_divide, size_t cid, bool och_split)
 {
-	bool row_divisible = (dim_I % orow_divide == 0);
+	bool row_divisible = (orow_divide > 1) && (dim_I % orow_divide == 0);
 	size_t och_divide = (row_divisible) ? 1 : orow_divide; // if row can't be divided, then divide channel instead
-   dim_I = row_divisible ? dim_I / orow_divide : dim_I;
-	dim_J = dim_J / och_divide
-	int out_offset = (row_divisible) ? 0 : dim_I * cid; // no need to apply offset if we divided row
+        dim_I = row_divisible ? dim_I / orow_divide : dim_I;
+	dim_I = dim_I / batch_divide; //batch dimension: I
+	dim_J = dim_J / och_divide;
+	int out_offset = (row_divisible || (orow_divide == 1)) ? 0 : dim_J * cid; // no need to apply offset if we divided row
 
 	size_t stride_A = (A_padding && (dim_K % 128 == 0)) ? dim_K + 64 : dim_K;
 	size_t stride_B = (B_padding && ((dim_J * och_divide) % 128 == 0)) ? dim_J*och_divide + 64 : dim_J*och_divide;
    int A_orow_offset = (row_divisible) ? stride_A * cid * dim_I : 0; // if row is divided, need offset it I dimension
-   int C_orow_offset = (row_divisible) ? stride_C * cid * dim_I : 0; // if row is divided, need offset it I dimension
-
+   int C_orow_offset = (row_divisible) ? stride_B * cid * dim_I : 0; // if row is divided, need offset it I dimension
+	int A_batch_offset = 0;
+	int C_batch_offset = 0; 
+	if (batch_divide > 1){
+	   A_batch_offset = stride_A * cid * dim_I;
+	   C_batch_offset = stride_B * cid * dim_I;
+	}
 
 	tiled_matmul_auto_loopld(dim_I, dim_J, dim_K,
-		A + A_orow_offset, B + out_offset, D + out_offset, C + C_orow_offset + out_offset, 
-		stride_A, stride_B, stride_B, stride_B,
+		A + A_orow_offset + A_batch_offset, B + out_offset, D + out_offset, C + C_orow_offset + out_offset + C_batch_offset, 
+		stride_A, stride_B, stride_B, och_split ? stride_B * 2 : stride_B,
 		MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
 		act, scale, relu6_shift, repeating_bias,
 		false, false,

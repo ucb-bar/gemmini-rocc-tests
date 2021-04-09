@@ -293,7 +293,7 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, row_stride, k_LOOP_LD_CONFIG_ADDRS) 
 
 // weight-stationary matmul loop
-#define gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, och_padding, ich_padding, och_divide) \
+#define gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, och_padding, ich_padding, och_divide, och_split, depthwise) \
   { \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(out_channels) << 48) | ((uint64_t)(in_channels) << 32) | ((uint64_t)(in_dim) << 16) | (uint64_t)(batch_size), \
       ((uint64_t)(padding) << 48) | ((uint64_t)(stride) << 32) | ((uint64_t)(pool_out_dim) << 16) | (uint64_t)(out_dim), k_LOOP_CONV_WS_CONFIG_1) \
@@ -308,12 +308,12 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, bias, \
       input, k_LOOP_CONV_WS_CONFIG_6) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, no_bias, \
-      ((uint64_t)(och_divide) << 3) | ((uint64_t)(och_padding << 2)) | ((uint64_t)(ich_padding) << 1) | ((uint64_t) no_pool), k_LOOP_CONV_WS) \
+      ((uint64_t)(depthwise) << 63) | ((uint64_t)(och_split) << 12) | ((uint64_t)(och_divide) << 3) | ((uint64_t)(och_padding << 2)) | ((uint64_t)(ich_padding) << 1) | ((uint64_t) no_pool), k_LOOP_CONV_WS) \
   }
 
-#define gemmini_loop_ld_conv(dram_addr, och_divide, padding, in_channels, out_channels, kernel_dim, pochs, krows, kcols, kchs, latency, alert_cycle, unlock_cycle, pause_turn)\
+#define gemmini_loop_ld_conv(dram_addr, och_divide, padding, in_channels, out_channels, kernel_dim, pochs, krows, kcols, kchs, latency, alert_cycle, unlock_cycle, pause_turn, depthwise)\
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(krows) << 48) | ((uint64_t)(kcols) << 32) | ((uint64_t)(kchs) << 16) | ((uint64_t)(pochs)), ((uint64_t)(pause_turn) << 58) | ((uint64_t)(unlock_cycle) << 54) | ((uint64_t)(alert_cycle) << 48) | ((uint64_t)(latency) << 32) | ((uint64_t)(kernel_dim)), k_LOOP_CONV_LD_CONFIG_BOUNDS) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)(och_divide) << 33) | ((uint64_t)(padding) << 32) | ((uint64_t)(out_channels) << 16) | ((uint64_t)(in_channels)), k_LOOP_CONV_LD_CONFIG_ADDRS)
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)(depthwise) << 63) | ((uint64_t)(och_divide) << 33) | ((uint64_t)(padding) << 32) | ((uint64_t)(out_channels) << 16) | ((uint64_t)(in_channels)), k_LOOP_CONV_LD_CONFIG_ADDRS)
  
 
 
@@ -1279,7 +1279,7 @@ static void sp_tiled_conv_A_stride(
 
         bool no_bias, bool no_pool,
 		  bool skip_weight, 
-		  bool ich_padding, bool och_padding, size_t och_divide, bool detect_conflict) {
+		  bool ich_padding, bool och_padding, size_t och_divide, bool och_split, bool detect_conflict) {
 
     const int orows = porows * pool_stride + pool_size - 1 - pupad - pdpad;
     const int ocols = pocols * pool_stride + pool_size - 1 - plpad - prpad;
@@ -1313,15 +1313,16 @@ static void sp_tiled_conv_A_stride(
       C_sp_addr_row = (C_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
     }
 
-	int latency = detect_conflict ? 2500 : 0;//priority*1500 + 1000 : 0;
+	int latency = 0;//detect_conflict ? 2500 : 0;//priority*1500 + 1000 : 0;
 	int alert_cycle = 60;
-	int unlock_cycle = 6;//4 + priority*2;
+	int unlock_cycle = detect_conflict ? 6 : 0;//4 + priority*2;
 	int pause_turn = 2;
+	bool depthwise = (kchs == 1) && (in_channels != 1);
 	if(skip_weight){
-		gemmini_loop_ld_conv(weights, och_divide, ich_padding, in_channels, out_channels, kernel_dim, pochs, krows, kcols, kchs, latency, alert_cycle, unlock_cycle, pause_turn)
+		gemmini_loop_ld_conv(weights, och_divide, ich_padding, in_channels, out_channels, kernel_dim, pochs, krows, kcols, kchs, latency, alert_cycle, unlock_cycle, pause_turn, depthwise);
 	}
 
-	gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, och_padding, ich_padding, och_divide);
+	gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, och_padding, ich_padding, och_divide, och_split, depthwise);
 
     /*
     // mvin bias
@@ -2775,7 +2776,7 @@ static void tiled_conv_A_stride(
                                     bias_,
 
                                     no_bias, no_pool,
-												skip_weight, false, false, 1, false);
+												skip_weight, false, false, 1, false, false);
                             }
                         }
                     }
@@ -2803,7 +2804,7 @@ static void tiled_conv_A_stride_cid(
         int pool_size, int pool_stride, int pool_padding,
 
         enum tiled_matmul_type_t tiled_conv_type, 
-		  bool ich_padding, bool och_padding, size_t och_divide, size_t orow_divide, size_t cid, bool skip_weight) {
+		  bool ich_padding, bool och_padding, size_t och_divide, size_t orow_divide, size_t cid, bool och_split, bool skip_weight) {
 
     if (tiled_conv_type == CPU) {
       if (pool_size == 1 && pool_stride == 1 && pool_padding == 0) {
@@ -2870,7 +2871,8 @@ static void tiled_conv_A_stride_cid(
 
 	 int och_stride = (och_padding) ? out_channels * och_divide + MAX_BLOCK_LEN * DIM : out_channels * och_divide;
 	 int ich_stride = (ich_padding) ? in_channels + MAX_BLOCK_LEN * DIM : in_channels;
-	 gemmini_config_st(och_stride * sizeof(elem_t));
+	 int out_stride = (och_split) ? och_stride * 2 : och_stride; //for now, ignore padding(ToDo)
+	 gemmini_config_st(out_stride * sizeof(elem_t));
     gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, stride, false, false);
 
     const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
@@ -2885,7 +2887,7 @@ static void tiled_conv_A_stride_cid(
 				   const int orow = porow * pool_stride - pool_padding;
                for (int pocol = 0; pocol < pool_out_dim; pocol += pocols) {
                    const int ocol = pocol * pool_stride - pool_padding;
-						 bool detect_conflict = (porow == 0 && pocol == 0 && b == 0) ? false : true;
+						 bool detect_conflict = true;// (porow == 0 && pocol == 0 && b == 0) ? false : true;
 				//printf("detect_conflict: %d \n", detect_conflict);
 						 for (int krow = 0; krow < kernel_dim; krow += krows) {
                         const int orow_floored = orow < 0 ? 0 : orow;
@@ -2895,7 +2897,7 @@ static void tiled_conv_A_stride_cid(
                             const int icol = ocol_floored * stride + kcol - padding;
 
                             for (int kch = 0; kch < in_channels; kch += kchs) {
-                                elem_t * out = output + (b*pool_out_dim*pool_out_dim + porow*pool_out_dim + pocol) * och_stride + poch;
+                                elem_t * out = output + (b*pool_out_dim*pool_out_dim + porow*pool_out_dim + pocol) * out_stride + poch;
 
                                 if (krow + krows < kernel_dim ||
                                         kcol + kcols < kernel_dim ||
@@ -2955,7 +2957,7 @@ static void tiled_conv_A_stride_cid(
                                     bias_,
 
                                     no_bias, no_pool,
-												skip_weight, ich_padding, och_padding, och_divide, detect_conflict);
+												skip_weight, ich_padding, och_padding, och_divide, och_split, detect_conflict);
                             }
                         }
                     }
@@ -2983,7 +2985,7 @@ static void tiled_conv_A_stride_loopld(
         int pool_size, int pool_stride, int pool_padding,
 
         enum tiled_matmul_type_t tiled_conv_type, 
-		  bool ich_padding, bool och_padding, size_t och_divide, bool skip_weight) {
+		  bool ich_padding, bool och_padding, size_t och_divide, bool och_split, bool skip_weight) {
 
     if (tiled_conv_type == CPU) {
       if (pool_size == 1 && pool_stride == 1 && pool_padding == 0) {
@@ -3050,7 +3052,8 @@ static void tiled_conv_A_stride_loopld(
 
 	 int och_stride = (och_padding) ? out_channels * och_divide + MAX_BLOCK_LEN * DIM : out_channels * och_divide;
 	 int ich_stride = (ich_padding) ? in_channels + MAX_BLOCK_LEN * DIM : in_channels;
-	 gemmini_config_st(och_stride * sizeof(elem_t));
+	 int out_stride = (och_split) ? och_stride * 2 : och_stride; //for now, let's ignore padding (ToDo)
+	 gemmini_config_st(out_stride * sizeof(elem_t));
     gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, stride, false, false);
 
     const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
@@ -3071,7 +3074,7 @@ static void tiled_conv_A_stride_loopld(
                             const int icol = ocol_floored * stride + kcol - padding;
 
                             for (int kch = 0; kch < in_channels; kch += kchs) {
-                                elem_t * out = output + (b*pool_out_dim*pool_out_dim + porow*pool_out_dim + pocol) * och_stride + poch;
+                                elem_t * out = output + (b*pool_out_dim*pool_out_dim + porow*pool_out_dim + pocol) * out_stride + poch;
 
                                 if (krow + krows < kernel_dim ||
                                         kcol + kcols < kernel_dim ||
@@ -3131,7 +3134,7 @@ static void tiled_conv_A_stride_loopld(
                                     bias_,
 
                                     no_bias, no_pool,
-												skip_weight, ich_padding, och_padding, och_divide, detect_conflict);
+												skip_weight, ich_padding, och_padding, och_divide, och_split, detect_conflict);
                             }
                         }
                     }
@@ -3161,25 +3164,7 @@ static void tiled_conv_A_stride_dw(
         enum tiled_matmul_type_t tiled_conv_type, 
 		  bool ich_padding, bool och_padding, size_t och_divide, bool skip_weight) {
 
-    if (tiled_conv_type == CPU) {
-      if (pool_size == 1 && pool_stride == 1 && pool_padding == 0) {
-        pool_stride = 0;
-      }
-
-      conv_cpu(
-        batch_size, in_dim, in_channels,
-        out_channels, out_dim,
-        stride, dilation, padding, kernel_dim,
-        input, weights, bias, output,
-        act, scale, relu6_shift,
-        pool_size, pool_stride, pool_padding);
-      return;
-    } else if (tiled_conv_type == OS) {
-      printf("Gemmini convs do not currently support OS\n");
-      exit(1);
-    }
-
-    // TODO move everything below this into a tiled_conv_outer function to match the tiled_matmul function
+	// TODO move everything below this into a tiled_conv_outer function to match the tiled_matmul function
 
     bool no_bias = false;
     if (bias == NULL) {
@@ -3225,7 +3210,7 @@ static void tiled_conv_A_stride_dw(
 #endif
 
 	 int och_stride = (och_padding) ? out_channels * och_divide + MAX_BLOCK_LEN * DIM : out_channels * och_divide;
-	 int ich_stride = (ich_padding) ? in_channels + MAX_BLOCK_LEN * DIM : in_channels;
+	 int ich_stride = (ich_padding) ? in_channels * och_divide + MAX_BLOCK_LEN * DIM : in_channels * och_divide;
 	 gemmini_config_st(och_stride * sizeof(elem_t));
     gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, stride, false, false);
 
@@ -3237,7 +3222,7 @@ static void tiled_conv_A_stride_dw(
            const int orow = porow * pool_stride - pool_padding;
            for (int pocol = 0; pocol < pool_out_dim; pocol += pocols) {
                const int ocol = pocol * pool_stride - pool_padding;
-			   	bool detect_conflict = false;//(porow == 0 && pocol == 0 && b == 0) ? false : true;
+			   	bool detect_conflict = (porow == 0 && pocol == 0 && b == 0) ? false : true;
 				//printf("detect_conflict: %d \n", detect_conflict);
 					for (int poch = 0; poch < out_channels; poch += pochs) {
 						 for (int krow = 0; krow < kernel_dim; krow += krows) {
@@ -3303,7 +3288,7 @@ static void tiled_conv_A_stride_dw(
                                     bias_,
 
                                     no_bias, no_pool,
-												skip_weight, ich_padding, och_padding, och_divide, detect_conflict);
+												skip_weight, ich_padding, och_padding, och_divide, false, detect_conflict);
                      
                         }
                     }
@@ -3505,7 +3490,7 @@ static void tiled_conv_A_stride_auto_cid(
 	  int pool_size, int pool_stride, int pool_padding,
 
 	  enum tiled_matmul_type_t tiled_conv_type, 
-	  bool ich_padding, bool och_padding, size_t orow_divide, size_t batch_divide, size_t cid, bool skip_weight) {
+	  bool ich_padding, bool och_padding, size_t orow_divide, size_t batch_divide, size_t cid, bool skip_weight, bool och_split) {
 
 	 const bool no_pool = pool_stride == 0;
 	 if (no_pool) {
@@ -3746,7 +3731,7 @@ static void tiled_conv_A_stride_auto_cid(
 		  act, scale, relu6_shift,
 		  pool_size, no_pool ? 0 : pool_stride, pool_padding,
 
-		  tiled_conv_type, ich_padding, och_padding, och_divide, orow_divide, cid, skip_weight);
+		  tiled_conv_type, ich_padding, och_padding, och_divide, orow_divide, cid, och_split, skip_weight);
   }else{
 	 tiled_conv_A_stride_loopld(
 		  batch_size, in_dim, in_channels,
@@ -3765,7 +3750,7 @@ static void tiled_conv_A_stride_auto_cid(
 		  act, scale, relu6_shift,
 		  pool_size, no_pool ? 0 : pool_stride, pool_padding,
 
-		  tiled_conv_type, ich_padding, och_padding, och_divide, skip_weight);
+		  tiled_conv_type, ich_padding, och_padding, och_divide, och_split, skip_weight);
   }
 }
 
@@ -3784,7 +3769,7 @@ static void tiled_conv_A_stride_auto_loopld(
 		  int pool_size, int pool_stride, int pool_padding,
 
 		  enum tiled_matmul_type_t tiled_conv_type, 
-		  bool ich_padding, bool och_padding, size_t och_divide, bool skip_weight) {
+		  bool ich_padding, bool och_padding, size_t och_divide, bool skip_weight, bool och_split) {
 
 	 const bool no_pool = pool_stride == 0;
 	 if (no_pool) {
@@ -4034,11 +4019,10 @@ static void tiled_conv_A_stride_auto_loopld(
 		  act, scale, relu6_shift,
 		  pool_size, no_pool ? 0 : pool_stride, pool_padding,
 
-		  tiled_conv_type, ich_padding, och_padding, och_divide, skip_weight);
+		  tiled_conv_type, ich_padding, och_padding, och_divide, och_split, skip_weight);
 }
 
-// with bubble insertion functionality
-static void tiled_conv_A_stride_dw_auto_loopld(
+static void tiled_conv_A_stride_dw_auto(
 		  int batch_size, int in_dim, int in_channels,
 		  int out_channels, int out_dim,
 		  int stride, int dilation, int padding, int kernel_dim,
@@ -4068,7 +4052,7 @@ static void tiled_conv_A_stride_dw_auto_loopld(
 	 // int args[] = {batch_size, porows, pocols, pochs, krows, kcols, kchs};
 	 int args[] = {batch_size, pool_out_dim, pool_out_dim, 1, kernel_dim, kernel_dim, 1};
 	 const int max_args[] = {batch_size, pool_out_dim, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
-    //input, output channel the same
+
 	 const int orows_idx = 1;
 	 const int ocols_idx = 2;
 	 const int out_channels_idx = 3;
@@ -4083,16 +4067,13 @@ static void tiled_conv_A_stride_dw_auto_loopld(
 	 int acc_rows = tiled_conv_total_spad_rows_A_stride(true,
 		  stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
 
-	 bool down_sample = (in_dim > out_dim);
 	 while (spad_rows > max_spad_rows || acc_rows > max_acc_rows) {
 		  int max_val = -1;
 		  int max_idx = -1;
 
-		  //don't need to tile channels
 		  for (size_t j = 0; j < sizeof(args)/sizeof(args[0]) - 2; j++) {
 				// We avoid reducing ocols when possible to keep the spatial array fully utilized
 			  size_t i = 0;
-	//		  if(!down_sample){
 			  if(j == 0) i = 0;
 			  else if (j == 4) i = orows_idx;
 			  else if(j == 1) i = ocols_idx;
@@ -4109,7 +4090,6 @@ static void tiled_conv_A_stride_dw_auto_loopld(
 					 max_idx = i;
 				}
 		  }
-	//		  printf("max_val: %d, max_idx: %d \n", max_val, max_idx);
 
 			  if(max_idx == ocols_idx){
 				  if(args[max_idx] % DIM != 0) args[max_idx] = (args[max_idx]/DIM)*DIM;
@@ -4118,7 +4098,6 @@ static void tiled_conv_A_stride_dw_auto_loopld(
 				  if(max_idx == 4 || max_idx == 5) args[max_idx] = 1;
 				  else args[max_idx]--;
 			  }
-		  
 
 		  spad_rows = tiled_conv_total_spad_rows_A_stride(false,
 				stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
@@ -4137,30 +4116,7 @@ static void tiled_conv_A_stride_dw_auto_loopld(
 
 	 // Check if we can increase ocols
 	 bool not_increased = false;
-	/* 
-	 while (!not_increased) {
-		  not_increased = true;
 
-		  int args_candidate[] = {args[0], args[1], args[2], args[3], args[4], args[5], args[6]};
-		  if(args[ocols_idx] >= DIM) args_candidate[ocols_idx] += DIM;
-		  else args_candidate[ocols_idx]++;
-
-		  if (args_candidate[ocols_idx] > max_args[ocols_idx])
-				continue;
-
-		  spad_rows = tiled_conv_total_spad_rows_A_stride(false,
-				stride, dilation, args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
-		  acc_rows = tiled_conv_total_spad_rows_A_stride(true,
-				stride, dilation, args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
-
-		  if (spad_rows <= max_spad_rows && acc_rows <= max_acc_rows) {
-				args[ocols_idx] = args_candidate[ocols_idx];
-				not_increased = false;
-		  }
-	 }
-	 
-    printf("ocols   = %d\n", args[2]);
- */
 	 // Check if there are any parameters that we can currently still increase
 	 bool nothing_increased = false;
 	 bool kdim_increase = true;
@@ -4171,11 +4127,11 @@ static void tiled_conv_A_stride_dw_auto_loopld(
 		  for (size_t j = 0; j < sizeof(args)/sizeof(args[0]) - 2; j++) {
 			   //size_t i =j;//  down_sample ? j : 6-j;
 				size_t i = j;
-					if(j == 0) i = 5;//in_channels_idx;
-					else if (j == 1) i = 4;
-					else if(j == 2) i = ocols_idx;
-					else if (j == 3) i = orows_idx;
-					else if(j == 4) i =  0;
+				if(j == 0) i = 5;//in_channels_idx;
+				else if (j == 1) i = 4;
+				else if(j == 2) i = ocols_idx;
+				else if (j == 3) i = orows_idx;
+				else if(j == 4) i = 0;
 				int args_candidate[] = {args[0], args[1], args[2], args[3], args[4], args[5], args[6]};
 				if(i == ocols_idx && (args[i] % DIM == 0)) args_candidate[i] += DIM;
 				else args_candidate[i]+= kdim_increase && (i == 4 || i == 5) ? 2 : 1;
@@ -4244,6 +4200,9 @@ static void tiled_conv_A_stride_dw_auto_loopld(
 
 		  tiled_conv_type, ich_padding, och_padding, och_divide, skip_weight);
 }
+
+
+
 // This function is for a convolution with kernel_dim=1, stride==2, padding=0, and no pooling
 static void tiled_conv_downsample(
         int batch_size, int in_dim, int in_channels,
