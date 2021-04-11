@@ -17,7 +17,6 @@
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 2
-#define DILATION 1
 
 #define POOL_SIZE 3
 #define POOL_STRIDE 2
@@ -39,7 +38,6 @@
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 2
-#define DILATION 1
 
 #define POOL_SIZE 3
 #define POOL_STRIDE 2
@@ -64,7 +62,7 @@
 void conv(int batch_size, int in_channels, int in_dim,
         int out_channels, int kernel_dim,
         int out_dim,
-        int stride, int dilation, int padding,
+        int stride, int padding,
         elem_t input[batch_size][in_dim][in_dim][in_channels],
         elem_t weights[out_channels][kernel_dim][kernel_dim][in_channels],
         acc_t bias[out_channels],
@@ -86,8 +84,8 @@ void conv(int batch_size, int in_channels, int in_dim,
                     for (int krow = 0; krow < kernel_dim; krow++) {
                         for (int kcol = 0; kcol < kernel_dim; kcol++) {
                             for (int kch = 0; kch < in_channels; kch++) {
-                                int irow = orow * stride + krow * dilation - padding;
-                                int icol = ocol * stride + kcol * dilation - padding;
+                                int irow = orow * stride + krow - padding;
+                                int icol = ocol * stride + kcol - padding;
 
                                 elem_t pixel = irow < 0 || irow >= in_dim ||
                                     icol < 0 || icol >= in_dim ?
@@ -352,7 +350,7 @@ int main() {
     conv(BATCH_SIZE, IN_CHANNELS, IN_DIM,
             OUT_CHANNELS, KERNEL_DIM,
             OUT_DIM,
-            STRIDE, DILATION, PADDING,
+            STRIDE, PADDING,
             input,
             weights,
             bias,
@@ -388,7 +386,8 @@ int main() {
     tiled_conv_A_stride_auto(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
-        STRIDE, DILATION, PADDING, KERNEL_DIM,
+        STRIDE, 1, PADDING, KERNEL_DIM,
+        false,
 
         // 1,
         // 1, 1, 1,

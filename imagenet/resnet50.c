@@ -105,6 +105,7 @@ int main (int argc, char * argv[]) {
             conv_1_params.batch_size, conv_1_params.in_dim, conv_1_params.in_channels,
             conv_1_params.out_channels, conv_1_params.out_dim,
             conv_1_params.stride, 1, conv_1_params.padding, conv_1_params.kernel_size,
+            false,
 
             (elem_t*)images, (elem_t*)conv_1_w, (acc_t*)conv_1_b, (elem_t*)conv_1_out_pooled,
 
@@ -180,6 +181,7 @@ int main (int argc, char * argv[]) {
             conv_3_params.batch_size, conv_3_params.in_dim, conv_3_params.in_channels,
             conv_3_params.out_channels, conv_3_params.out_dim,
             conv_3_params.stride, 1, conv_3_params.padding, conv_3_params.kernel_size,
+            false,
 
             (elem_t*)conv_2_out, (elem_t*)conv_3_w, (acc_t*)conv_3_b, (elem_t*)conv_3_out,
 
@@ -322,6 +324,7 @@ int main (int argc, char * argv[]) {
             conv_7_params.batch_size, conv_7_params.in_dim, conv_7_params.in_channels,
             conv_7_params.out_channels, conv_7_params.out_dim,
             conv_7_params.stride, 1, conv_7_params.padding, conv_7_params.kernel_size,
+            false,
 
             (elem_t*)conv_6_out, (elem_t*)conv_7_w, (acc_t*)conv_7_b, (elem_t*)conv_7_out,
 
@@ -429,6 +432,7 @@ int main (int argc, char * argv[]) {
             conv_10_params.batch_size, conv_10_params.in_dim, conv_10_params.in_channels,
             conv_10_params.out_channels, conv_10_params.out_dim,
             conv_10_params.stride, 1, conv_10_params.padding, conv_10_params.kernel_size,
+            false,
 
             (elem_t*)conv_9_out, (elem_t*)conv_10_w, (acc_t*)conv_10_b, (elem_t*)conv_10_out,
 
@@ -536,6 +540,7 @@ int main (int argc, char * argv[]) {
             conv_13_params.batch_size, conv_13_params.in_dim, conv_13_params.in_channels,
             conv_13_params.out_channels, conv_13_params.out_dim,
             conv_13_params.stride, 1, conv_13_params.padding, conv_13_params.kernel_size,
+            false,
 
             (elem_t*)conv_12_out, (elem_t*)conv_13_w, (acc_t*)conv_13_b, (elem_t*)conv_13_out,
 
@@ -604,6 +609,7 @@ int main (int argc, char * argv[]) {
             conv_15_params.batch_size, conv_15_params.in_dim, conv_15_params.in_channels,
             conv_15_params.out_channels, conv_15_params.out_dim,
             // conv_15_params.stride, 1, conv_15_params.padding, conv_15_params.kernel_size,
+            // false,
 
             (elem_t*)conv_11_out, (elem_t*)conv_15_w, (acc_t*)conv_15_b, (elem_t*)conv_15_out,
 
@@ -686,6 +692,7 @@ int main (int argc, char * argv[]) {
             conv_17_params.batch_size, conv_17_params.in_dim, conv_17_params.in_channels,
             conv_17_params.out_channels, conv_17_params.out_dim,
             conv_17_params.stride, 1, conv_17_params.padding, conv_17_params.kernel_size,
+            false,
 
             (elem_t*)conv_16_out, (elem_t*)conv_17_w, (acc_t*)conv_17_b, (elem_t*)conv_17_out,
 
@@ -793,6 +800,7 @@ int main (int argc, char * argv[]) {
             conv_20_params.batch_size, conv_20_params.in_dim, conv_20_params.in_channels,
             conv_20_params.out_channels, conv_20_params.out_dim,
             conv_20_params.stride, 1, conv_20_params.padding, conv_20_params.kernel_size,
+            false,
 
             (elem_t*)conv_19_out, (elem_t*)conv_20_w, (acc_t*)conv_20_b, (elem_t*)conv_20_out,
 
@@ -900,6 +908,7 @@ int main (int argc, char * argv[]) {
             conv_23_params.batch_size, conv_23_params.in_dim, conv_23_params.in_channels,
             conv_23_params.out_channels, conv_23_params.out_dim,
             conv_23_params.stride, 1, conv_23_params.padding, conv_23_params.kernel_size,
+            false,
 
             (elem_t*)conv_22_out, (elem_t*)conv_23_w, (acc_t*)conv_23_b, (elem_t*)conv_23_out,
 
@@ -1007,6 +1016,7 @@ int main (int argc, char * argv[]) {
             conv_26_params.batch_size, conv_26_params.in_dim, conv_26_params.in_channels,
             conv_26_params.out_channels, conv_26_params.out_dim,
             conv_26_params.stride, 1, conv_26_params.padding, conv_26_params.kernel_size,
+            false,
 
             (elem_t*)conv_25_out, (elem_t*)conv_26_w, (acc_t*)conv_26_b, (elem_t*)conv_26_out,
 
@@ -1075,6 +1085,7 @@ int main (int argc, char * argv[]) {
             conv_28_params.batch_size, conv_28_params.in_dim, conv_28_params.in_channels,
             conv_28_params.out_channels, conv_28_params.out_dim,
             // conv_28_params.stride, 1, conv_28_params.padding, conv_28_params.kernel_size,
+            // false,
 
             (elem_t*)conv_24_out, (elem_t*)conv_28_w, (acc_t*)conv_28_b, (elem_t*)conv_28_out,
 
@@ -1157,6 +1168,7 @@ int main (int argc, char * argv[]) {
             conv_30_params.batch_size, conv_30_params.in_dim, conv_30_params.in_channels,
             conv_30_params.out_channels, conv_30_params.out_dim,
             conv_30_params.stride, 1, conv_30_params.padding, conv_30_params.kernel_size,
+            false,
 
             (elem_t*)conv_29_out, (elem_t*)conv_30_w, (acc_t*)conv_30_b, (elem_t*)conv_30_out,
 
@@ -1264,6 +1276,7 @@ int main (int argc, char * argv[]) {
             conv_33_params.batch_size, conv_33_params.in_dim, conv_33_params.in_channels,
             conv_33_params.out_channels, conv_33_params.out_dim,
             conv_33_params.stride, 1, conv_33_params.padding, conv_33_params.kernel_size,
+            false,
 
             (elem_t*)conv_32_out, (elem_t*)conv_33_w, (acc_t*)conv_33_b, (elem_t*)conv_33_out,
 
@@ -1371,6 +1384,7 @@ int main (int argc, char * argv[]) {
             conv_36_params.batch_size, conv_36_params.in_dim, conv_36_params.in_channels,
             conv_36_params.out_channels, conv_36_params.out_dim,
             conv_36_params.stride, 1, conv_36_params.padding, conv_36_params.kernel_size,
+            false,
 
             (elem_t*)conv_35_out, (elem_t*)conv_36_w, (acc_t*)conv_36_b, (elem_t*)conv_36_out,
 
@@ -1478,6 +1492,7 @@ int main (int argc, char * argv[]) {
             conv_39_params.batch_size, conv_39_params.in_dim, conv_39_params.in_channels,
             conv_39_params.out_channels, conv_39_params.out_dim,
             conv_39_params.stride, 1, conv_39_params.padding, conv_39_params.kernel_size,
+            false,
 
             (elem_t*)conv_38_out, (elem_t*)conv_39_w, (acc_t*)conv_39_b, (elem_t*)conv_39_out,
 
@@ -1585,6 +1600,7 @@ int main (int argc, char * argv[]) {
             conv_42_params.batch_size, conv_42_params.in_dim, conv_42_params.in_channels,
             conv_42_params.out_channels, conv_42_params.out_dim,
             conv_42_params.stride, 1, conv_42_params.padding, conv_42_params.kernel_size,
+            false,
 
             (elem_t*)conv_41_out, (elem_t*)conv_42_w, (acc_t*)conv_42_b, (elem_t*)conv_42_out,
 
@@ -1692,6 +1708,7 @@ int main (int argc, char * argv[]) {
             conv_45_params.batch_size, conv_45_params.in_dim, conv_45_params.in_channels,
             conv_45_params.out_channels, conv_45_params.out_dim,
             conv_45_params.stride, 1, conv_45_params.padding, conv_45_params.kernel_size,
+            false,
 
             (elem_t*)conv_44_out, (elem_t*)conv_45_w, (acc_t*)conv_45_b, (elem_t*)conv_45_out,
 
@@ -1759,6 +1776,7 @@ int main (int argc, char * argv[]) {
             conv_47_params.batch_size, conv_47_params.in_dim, conv_47_params.in_channels,
             conv_47_params.out_channels, conv_47_params.out_dim,
             conv_47_params.stride, 1, conv_47_params.padding, conv_47_params.kernel_size,
+            false,
 
             (elem_t*)conv_43_out, (elem_t*)conv_47_w, (acc_t*)conv_47_b, (elem_t*)conv_47_out,
 
@@ -1841,6 +1859,7 @@ int main (int argc, char * argv[]) {
             conv_49_params.batch_size, conv_49_params.in_dim, conv_49_params.in_channels,
             conv_49_params.out_channels, conv_49_params.out_dim,
             conv_49_params.stride, 1, conv_49_params.padding, conv_49_params.kernel_size,
+            false,
 
             (elem_t*)conv_48_out, (elem_t*)conv_49_w, (acc_t*)conv_49_b, (elem_t*)conv_49_out,
 
@@ -1948,6 +1967,7 @@ int main (int argc, char * argv[]) {
             conv_52_params.batch_size, conv_52_params.in_dim, conv_52_params.in_channels,
             conv_52_params.out_channels, conv_52_params.out_dim,
             conv_52_params.stride, 1, conv_52_params.padding, conv_52_params.kernel_size,
+            false,
 
             (elem_t*)conv_51_out, (elem_t*)conv_52_w, (acc_t*)conv_52_b, (elem_t*)conv_52_out,
 

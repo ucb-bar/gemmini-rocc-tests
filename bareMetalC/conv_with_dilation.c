@@ -13,10 +13,10 @@
 #define BATCH_SIZE 4
 #define IN_DIM 224
 #define IN_CHANNELS 3
-#define OUT_CHANNELS 32
+#define OUT_CHANNELS 17
 #define KERNEL_DIM 3
 #define PADDING 1
-#define STRIDE 2
+#define STRIDE 1
 #define DILATION 2
 
 #else
@@ -38,14 +38,15 @@
 #define BATCH_SIZE 2
 #define KERNEL_DIM 3
 #define PADDING 1
-#define STRIDE 2
+#define STRIDE 1
 #define DILATION 2
 
 #endif
 
 #define NO_BIAS false
 
-#define OUT_DIM ((IN_DIM + 2*PADDING - DILATION * (KERNEL_DIM - 1) - 1) / STRIDE + 1)
+#define IN_DIM_DILATED (IN_DIM + (DILATION - 1)*(IN_DIM - 1))
+#define OUT_DIM ((IN_DIM_DILATED + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
 #define N_PATCHES (BATCH_SIZE * OUT_DIM * OUT_DIM)
 
@@ -58,12 +59,31 @@ void conv(int batch_size, int in_channels, int in_dim,
         acc_t bias[out_channels],
         elem_t output[batch_size][out_dim][out_dim][out_channels]) {
 
+    const size_t in_dim_dilated = in_dim + (dilation - 1)*(in_dim - 1);
+    elem_t dilated[batch_size][in_dim_dilated][in_dim_dilated][in_channels];
+
 #ifdef GEMMINI_ASSERTIONS
-    if (out_dim != (in_dim + 2*padding - dilation * (kernel_dim - 1) - 1) / stride + 1) {
+    if (out_dim != (in_dim_dilated + 2*padding - kernel_dim) / stride + 1) {
         printf("conv out_dim is not correct\n");
+        printf("out_dim\n");
         exit(1);
     }
 #endif
+
+    for (int b = 0; b < batch_size; b++)
+        for (int irow = 0; irow < in_dim_dilated; irow++)
+            for (int icol = 0; icol < in_dim_dilated; icol++)
+                for (int ich = 0; ich < in_channels; ich++)
+                    dilated[b][irow][icol][ich] = 0;
+
+    size_t idx = 0;
+    for (int b = 0; b < batch_size; b++)
+        for (int irow = 0; irow < in_dim_dilated; irow += dilation)
+            for (int icol = 0; icol < in_dim_dilated; icol += dilation)
+                for (int ich = 0; ich < in_channels; ich++) {
+                    dilated[b][irow][icol][ich] = *((elem_t*)input + idx);
+                    idx++;
+                }
 
     for (int b = 0; b < batch_size; b++) {
         for (int orow = 0; orow < out_dim; orow++) {
@@ -74,12 +94,12 @@ void conv(int batch_size, int in_channels, int in_dim,
                     for (int krow = 0; krow < kernel_dim; krow++) {
                         for (int kcol = 0; kcol < kernel_dim; kcol++) {
                             for (int kch = 0; kch < in_channels; kch++) {
-                                int irow = orow * stride + krow * dilation - padding;
-                                int icol = ocol * stride + kcol * dilation - padding;
+                                int irow = orow * stride + krow - padding;
+                                int icol = ocol * stride + kcol - padding;
 
-                                elem_t pixel = irow < 0 || irow >= in_dim ||
-                                    icol < 0 || icol >= in_dim ?
-                                    0 : input[b][irow][icol][kch];
+                                elem_t pixel = irow < 0 || irow >= in_dim_dilated ||
+                                    icol < 0 || icol >= in_dim_dilated ?
+                                    0 : dilated[b][irow][icol][kch];
 
                                 result +=
                                     weights[och][krow][kcol][kch] *
@@ -219,6 +239,7 @@ int main() {
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
         STRIDE, DILATION, PADDING, KERNEL_DIM,
+        false,
 
         (elem_t*)input,
         (elem_t*)weights_mat,
@@ -239,7 +260,7 @@ int main() {
     for (int orow = 0; orow < BATCH_SIZE * OUT_DIM * OUT_DIM; orow++) {
       for (int ocol = 0; ocol < OUT_CHANNELS; ocol++) {
 	elem_t v = output_mat[orow][ocol];
-	if (v != 21 && v != 31 && v != 46) {
+	if (v != 6 && v != 11 && v != 21) {
 	  success = false;
 	  break;
 	}

@@ -21,6 +21,7 @@ tests = \
 	conv \
 	conv_with_pool \
 	conv_with_dilation \
+	conv_with_dilation_and_rot180 \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_ws_At \
