@@ -2462,7 +2462,7 @@ static void tiled_conv_A_stride(
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift,
-        int pool_size, int pool_stride, int pool_padding,
+        int pool_size, int pool_stride, int pool_padding, int pool_ceil_dim,
 
         enum tiled_matmul_type_t tiled_conv_type) {
 
@@ -2537,7 +2537,9 @@ static void tiled_conv_A_stride(
     gemmini_config_st(out_channels * sizeof(elem_t));
     gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, stride >> downsample, false, false);
 
-    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    if (pool_ceil_dim)
+      pool_out_dim += (out_dim + 2*pool_padding - pool_size) % pool_stride != 0;
 
     for (int b = 0; b < batch_size; b += batches) {
         for (int porow = 0; porow < pool_out_dim; porow += porows) {
@@ -2637,7 +2639,7 @@ static void tiled_conv_A_stride_auto(
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift,
-        int pool_size, int pool_stride, int pool_padding,
+        int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
         enum tiled_matmul_type_t tiled_conv_type) {
 
@@ -2648,7 +2650,9 @@ static void tiled_conv_A_stride_auto(
         pool_padding = 0;
     }
 
-    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    if (pool_ceil_dim)
+      pool_out_dim += (out_dim + 2*pool_padding - pool_size) % pool_stride != 0;
 
     const bool downsample = stride == 2 && kernel_dim == 1 && padding == 0 && no_pool && in_dim % 2 == 0;
 
@@ -2806,7 +2810,7 @@ static void tiled_conv_A_stride_auto(
         output,
 
         act, scale, relu6_shift,
-        pool_size, no_pool ? 0 : pool_stride, pool_padding,
+        pool_size, no_pool ? 0 : pool_stride, pool_padding, pool_ceil_dim,
 
         tiled_conv_type);
 }
