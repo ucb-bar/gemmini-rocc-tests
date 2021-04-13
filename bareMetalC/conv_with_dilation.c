@@ -241,12 +241,14 @@ int main() {
         STRIDE, DILATION, PADDING, KERNEL_DIM,
         false,
 
+        OUT_CHANNELS,
+
         (elem_t*)input,
         (elem_t*)weights_mat,
         NO_BIAS ? NULL : (acc_t*)bias,
         (elem_t*)output_mat,
 
-        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, 0,
+        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, 0, false,
 
         CPU);
         // WS); // TODO add support for WS conv with dilation

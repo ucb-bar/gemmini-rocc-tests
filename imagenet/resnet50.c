@@ -107,10 +107,12 @@ int main (int argc, char * argv[]) {
             conv_1_params.stride, 1, conv_1_params.padding, conv_1_params.kernel_size,
             false,
 
+            conv_1_params.out_channels,
+
             (elem_t*)images, (elem_t*)conv_1_w, (acc_t*)conv_1_b, (elem_t*)conv_1_out_pooled,
 
             RELU, conv_1_params.output_scale, 0,
-            conv_1_params.pool_size, conv_1_params.pool_stride, conv_1_params.pool_padding, true,
+            conv_1_params.pool_size, conv_1_params.pool_stride, conv_1_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -183,10 +185,12 @@ int main (int argc, char * argv[]) {
             conv_3_params.stride, 1, conv_3_params.padding, conv_3_params.kernel_size,
             false,
 
+            conv_3_params.out_channels,
+
             (elem_t*)conv_2_out, (elem_t*)conv_3_w, (acc_t*)conv_3_b, (elem_t*)conv_3_out,
 
             RELU, conv_3_params.output_scale, 0,
-            conv_3_params.pool_size, 0, conv_3_params.pool_padding, true,
+            conv_3_params.pool_size, 0, conv_3_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -326,10 +330,12 @@ int main (int argc, char * argv[]) {
             conv_7_params.stride, 1, conv_7_params.padding, conv_7_params.kernel_size,
             false,
 
+            conv_7_params.out_channels,
+
             (elem_t*)conv_6_out, (elem_t*)conv_7_w, (acc_t*)conv_7_b, (elem_t*)conv_7_out,
 
             RELU, conv_7_params.output_scale, 0,
-            conv_7_params.pool_size, 0, conv_7_params.pool_padding, true,
+            conv_7_params.pool_size, 0, conv_7_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -434,10 +440,12 @@ int main (int argc, char * argv[]) {
             conv_10_params.stride, 1, conv_10_params.padding, conv_10_params.kernel_size,
             false,
 
+            conv_10_params.out_channels,
+
             (elem_t*)conv_9_out, (elem_t*)conv_10_w, (acc_t*)conv_10_b, (elem_t*)conv_10_out,
 
             RELU, conv_10_params.output_scale, 0,
-            conv_10_params.pool_size, 0, conv_10_params.pool_padding, true,
+            conv_10_params.pool_size, 0, conv_10_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -542,10 +550,12 @@ int main (int argc, char * argv[]) {
             conv_13_params.stride, 1, conv_13_params.padding, conv_13_params.kernel_size,
             false,
 
+            conv_13_params.out_channels,
+
             (elem_t*)conv_12_out, (elem_t*)conv_13_w, (acc_t*)conv_13_b, (elem_t*)conv_13_out,
 
             RELU, conv_13_params.output_scale, 0,
-            conv_13_params.pool_size, 0, conv_13_params.pool_padding, true,
+            conv_13_params.pool_size, 0, conv_13_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -614,7 +624,7 @@ int main (int argc, char * argv[]) {
             (elem_t*)conv_11_out, (elem_t*)conv_15_w, (acc_t*)conv_15_b, (elem_t*)conv_15_out,
 
             NO_ACTIVATION, conv_15_params.output_scale, 0,
-            // conv_15_params.pool_size, 0, conv_15_params.pool_padding, true,
+            // conv_15_params.pool_size, 0, conv_15_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -694,10 +704,12 @@ int main (int argc, char * argv[]) {
             conv_17_params.stride, 1, conv_17_params.padding, conv_17_params.kernel_size,
             false,
 
+            conv_17_params.out_channels,
+
             (elem_t*)conv_16_out, (elem_t*)conv_17_w, (acc_t*)conv_17_b, (elem_t*)conv_17_out,
 
             RELU, conv_17_params.output_scale, 0,
-            conv_17_params.pool_size, 0, conv_17_params.pool_padding, true,
+            conv_17_params.pool_size, 0, conv_17_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -802,10 +814,12 @@ int main (int argc, char * argv[]) {
             conv_20_params.stride, 1, conv_20_params.padding, conv_20_params.kernel_size,
             false,
 
+            conv_20_params.out_channels,
+
             (elem_t*)conv_19_out, (elem_t*)conv_20_w, (acc_t*)conv_20_b, (elem_t*)conv_20_out,
 
             RELU, conv_20_params.output_scale, 0,
-            conv_20_params.pool_size, 0, conv_20_params.pool_padding, true,
+            conv_20_params.pool_size, 0, conv_20_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -910,10 +924,12 @@ int main (int argc, char * argv[]) {
             conv_23_params.stride, 1, conv_23_params.padding, conv_23_params.kernel_size,
             false,
 
+            conv_23_params.out_channels,
+
             (elem_t*)conv_22_out, (elem_t*)conv_23_w, (acc_t*)conv_23_b, (elem_t*)conv_23_out,
 
             RELU, conv_23_params.output_scale, 0,
-            conv_23_params.pool_size, 0, conv_23_params.pool_padding, true,
+            conv_23_params.pool_size, 0, conv_23_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -1018,10 +1034,12 @@ int main (int argc, char * argv[]) {
             conv_26_params.stride, 1, conv_26_params.padding, conv_26_params.kernel_size,
             false,
 
+            conv_26_params.out_channels,
+
             (elem_t*)conv_25_out, (elem_t*)conv_26_w, (acc_t*)conv_26_b, (elem_t*)conv_26_out,
 
             RELU, conv_26_params.output_scale, 0,
-            conv_26_params.pool_size, 0, conv_26_params.pool_padding, true,
+            conv_26_params.pool_size, 0, conv_26_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -1090,7 +1108,7 @@ int main (int argc, char * argv[]) {
             (elem_t*)conv_24_out, (elem_t*)conv_28_w, (acc_t*)conv_28_b, (elem_t*)conv_28_out,
 
             NO_ACTIVATION, conv_28_params.output_scale, 0,
-            // conv_28_params.pool_size, 0, conv_28_params.pool_padding, true,
+            // conv_28_params.pool_size, 0, conv_28_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -1170,10 +1188,12 @@ int main (int argc, char * argv[]) {
             conv_30_params.stride, 1, conv_30_params.padding, conv_30_params.kernel_size,
             false,
 
+            conv_30_params.out_channels,
+
             (elem_t*)conv_29_out, (elem_t*)conv_30_w, (acc_t*)conv_30_b, (elem_t*)conv_30_out,
 
             RELU, conv_30_params.output_scale, 0,
-            conv_30_params.pool_size, 0, conv_30_params.pool_padding, true,
+            conv_30_params.pool_size, 0, conv_30_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -1278,10 +1298,12 @@ int main (int argc, char * argv[]) {
             conv_33_params.stride, 1, conv_33_params.padding, conv_33_params.kernel_size,
             false,
 
+            conv_33_params.out_channels,
+
             (elem_t*)conv_32_out, (elem_t*)conv_33_w, (acc_t*)conv_33_b, (elem_t*)conv_33_out,
 
             RELU, conv_33_params.output_scale, 0,
-            conv_33_params.pool_size, 0, conv_33_params.pool_padding, true,
+            conv_33_params.pool_size, 0, conv_33_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -1386,10 +1408,12 @@ int main (int argc, char * argv[]) {
             conv_36_params.stride, 1, conv_36_params.padding, conv_36_params.kernel_size,
             false,
 
+            conv_36_params.out_channels,
+
             (elem_t*)conv_35_out, (elem_t*)conv_36_w, (acc_t*)conv_36_b, (elem_t*)conv_36_out,
 
             RELU, conv_36_params.output_scale, 0,
-            conv_36_params.pool_size, 0, conv_36_params.pool_padding, true,
+            conv_36_params.pool_size, 0, conv_36_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -1494,10 +1518,12 @@ int main (int argc, char * argv[]) {
             conv_39_params.stride, 1, conv_39_params.padding, conv_39_params.kernel_size,
             false,
 
+            conv_39_params.out_channels,
+
             (elem_t*)conv_38_out, (elem_t*)conv_39_w, (acc_t*)conv_39_b, (elem_t*)conv_39_out,
 
             RELU, conv_39_params.output_scale, 0,
-            conv_39_params.pool_size, 0, conv_39_params.pool_padding, true,
+            conv_39_params.pool_size, 0, conv_39_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -1602,10 +1628,12 @@ int main (int argc, char * argv[]) {
             conv_42_params.stride, 1, conv_42_params.padding, conv_42_params.kernel_size,
             false,
 
+            conv_42_params.out_channels,
+
             (elem_t*)conv_41_out, (elem_t*)conv_42_w, (acc_t*)conv_42_b, (elem_t*)conv_42_out,
 
             RELU, conv_42_params.output_scale, 0,
-            conv_42_params.pool_size, 0, conv_42_params.pool_padding, true,
+            conv_42_params.pool_size, 0, conv_42_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -1710,10 +1738,12 @@ int main (int argc, char * argv[]) {
             conv_45_params.stride, 1, conv_45_params.padding, conv_45_params.kernel_size,
             false,
 
+            conv_45_params.out_channels,
+
             (elem_t*)conv_44_out, (elem_t*)conv_45_w, (acc_t*)conv_45_b, (elem_t*)conv_45_out,
 
             RELU, conv_45_params.output_scale, 0,
-            conv_45_params.pool_size, 0, conv_45_params.pool_padding, true,
+            conv_45_params.pool_size, 0, conv_45_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -1778,10 +1808,12 @@ int main (int argc, char * argv[]) {
             conv_47_params.stride, 1, conv_47_params.padding, conv_47_params.kernel_size,
             false,
 
+            conv_47_params.out_channels,
+
             (elem_t*)conv_43_out, (elem_t*)conv_47_w, (acc_t*)conv_47_b, (elem_t*)conv_47_out,
 
             NO_ACTIVATION, conv_47_params.output_scale, 0,
-            conv_47_params.pool_size, 0, conv_47_params.pool_padding, true,
+            conv_47_params.pool_size, 0, conv_47_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -1861,10 +1893,12 @@ int main (int argc, char * argv[]) {
             conv_49_params.stride, 1, conv_49_params.padding, conv_49_params.kernel_size,
             false,
 
+            conv_49_params.out_channels,
+
             (elem_t*)conv_48_out, (elem_t*)conv_49_w, (acc_t*)conv_49_b, (elem_t*)conv_49_out,
 
             RELU, conv_49_params.output_scale, 0,
-            conv_49_params.pool_size, 0, conv_49_params.pool_padding, true,
+            conv_49_params.pool_size, 0, conv_49_params.pool_padding, false,
 
             tiled_matmul_type);
 
@@ -1969,10 +2003,12 @@ int main (int argc, char * argv[]) {
             conv_52_params.stride, 1, conv_52_params.padding, conv_52_params.kernel_size,
             false,
 
+            conv_52_params.out_channels,
+
             (elem_t*)conv_51_out, (elem_t*)conv_52_w, (acc_t*)conv_52_b, (elem_t*)conv_52_out,
 
             RELU, conv_52_params.output_scale, 0,
-            conv_52_params.pool_size, 0, conv_52_params.pool_padding, true,
+            conv_52_params.pool_size, 0, conv_52_params.pool_padding, false,
 
             tiled_matmul_type);
 

@@ -393,13 +393,15 @@ int main() {
         // 1, 1, 1,
         // 1, 1, 1,
 
+        OUT_CHANNELS,
+
         (elem_t*)input,
         (elem_t*)weights_mat,
         NO_BIAS ? NULL : (acc_t*)bias,
         (elem_t*)pool_output_mat,
 
         NO_ACTIVATION, ACC_SCALE_IDENTITY, 0,
-        POOL_SIZE, NO_POOL ? 0 : POOL_STRIDE, POOL_PADDING,
+        POOL_SIZE, NO_POOL ? 0 : POOL_STRIDE, POOL_PADDING, false,
 
         WS);
     uint64_t end_gemmini = read_cycles();
