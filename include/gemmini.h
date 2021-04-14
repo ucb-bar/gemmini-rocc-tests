@@ -2288,7 +2288,8 @@ static void conv_cpu_without_pool(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int dilation, int padding, int kernel_dim,
-        bool wrot180,
+        bool wrot180, bool trans_output_1203, bool trans_input_3120,
+        bool trans_weight_1203,
 
         const elem_t * input,
         const elem_t * weights,
@@ -2321,26 +2322,36 @@ static void conv_cpu_without_pool(
               const int icol = (ocol * stride + kcol - padding) / dilation;
 
               for (int kch = 0; kch < in_channels; kch++) {
+                const elem_t * in = input + (b * in_dim * in_dim + irow * in_dim + icol) * in_channels + kch;
+                if (trans_input_3120) {
+                  // NHWC to CHWN
+                  in = input + (kch * in_dim * in_dim + irow * in_dim + icol) * batch_size + b;
+                }
+
                 elem_t ipixel = irow < 0 || irow >= in_dim || icol < 0 || icol >= in_dim ?
-                    0 :
-                    *(input + (b * in_dim * in_dim + irow * in_dim + icol) * in_channels + kch);
+                    0 : *in;
 
                 const int krow_ = wrot180 ? kernel_dim - krow - 1 : krow;
                 const int kcol_ = wrot180 ? kernel_dim - kcol - 1 : kcol;
 
                 elem_t weight = *(weights + (krow_ * kernel_dim * in_channels + kcol_ * in_channels + kch) * out_channels + och);
-
-                // if (orow == 0 && ocol == 1) {
-                //   printf("krow = %d | kcol = %d | ipixel = %d | weight = %d\n", krow, kcol, ipixel, weight);
-                // }
+                if (trans_weight_1203) {
+                  // HWIO to WIHO
+                  weight = *(weights + (kcol_ * in_channels * kernel_dim + kch * kernel_dim + krow_) * out_channels + och);
+                }
 
                 opixel += weight * ipixel;
               }
             }
           }
 
-          *(output+(b*out_dim*out_dim+orow*out_dim+ocol)*out_channels + och) =
-            scale_and_sat(opixel, act, scale, relu6_shift);
+          elem_t * out = output+(b*out_dim*out_dim+orow*out_dim+ocol)*out_channels + och;
+          if (trans_output_1203) {
+            // NHWC to HWNC
+            out = output+(orow*out_dim*batch_size+ocol*batch_size+b)*out_channels + och;
+          }
+
+          *out = scale_and_sat(opixel, act, scale, relu6_shift);
         }
       }
     }
@@ -2351,7 +2362,8 @@ static void conv_cpu(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int dilation, int padding, int kernel_dim,
-        bool wrot180,
+        bool wrot180, bool trans_output_1203, bool trans_input_3120,
+        bool trans_weight_1203,
 
         const elem_t * input,
         const elem_t * weights,
@@ -2367,7 +2379,7 @@ static void conv_cpu(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
         stride, dilation, padding, kernel_dim,
-        wrot180,
+        wrot180, trans_output_1203, trans_input_3120, trans_weight_1203,
         input, weights, bias, output,
         act, scale, relu6_shift);
     return;
@@ -2414,14 +2426,23 @@ static void conv_cpu(
                       const int icol = (ocol * stride + kcol - padding) / dilation;
 
                     for (int kch = 0; kch < in_channels; kch++) {
+                      const elem_t * in = input + (b * in_dim * in_dim + irow * in_dim + icol) * in_channels + kch;
+                      if (trans_input_3120) {
+                        // NHWC to CHWN
+                        in = input + (kch * in_dim * in_dim + irow * in_dim + icol) * batch_size + b;
+                      }
+
                       elem_t ipixel = irow < 0 || irow >= in_dim || icol < 0 || icol >= in_dim ?
-                          0 :
-                          *(input + (b * in_dim * in_dim + irow * in_dim + icol) * in_channels + kch);
+                          0 : *in;
 
                       const int krow_ = wrot180 ? kernel_dim - krow - 1 : krow;
                       const int kcol_ = wrot180 ? kernel_dim - kcol - 1 : kcol;
 
                       elem_t weight = *(weights + (krow_ * kernel_dim * in_channels + kcol_ * in_channels + kch) * out_channels + poch);
+                      if (trans_weight_1203) {
+                        // HWIO to WIHO
+                        weight = *(weights + (kcol_ * in_channels * kernel_dim + kch * kernel_dim + krow_) * out_channels + poch);
+                      }
 
                       opixel += weight * ipixel;
                     }
@@ -2436,7 +2457,13 @@ static void conv_cpu(
               }
 
               if (pwrow == pool_size - 1 && pwcol == pool_size - 1) {
-                *(output + (b*pool_out_dim*pool_out_dim + porow*pool_out_dim + pocol)*out_channels + poch) = running_max;
+                elem_t * out = output + (b*pool_out_dim*pool_out_dim + porow*pool_out_dim + pocol)*out_channels + poch;
+                if (trans_output_1203) {
+                  // NHWC to HWNC
+                  out = output + (porow*pool_out_dim*batch_size + pocol*batch_size + b)*out_channels + poch;
+                }
+
+                *out = running_max;
               }
             }
           }
@@ -2450,7 +2477,8 @@ static void tiled_conv_A_stride(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int dilation, int padding, int kernel_dim,
-        bool wrot180,
+        bool wrot180, bool trans_output_1203, bool trans_input_3120,
+        bool trans_weight_1203,
 
         int batches,
         int porows, int pocols, int pochs,
@@ -2475,7 +2503,7 @@ static void tiled_conv_A_stride(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
         stride, dilation, padding, kernel_dim,
-        wrot180,
+        wrot180, trans_output_1203, trans_input_3120, trans_weight_1203,
         input, weights, bias, output,
         act, scale, relu6_shift,
         pool_size, pool_stride, pool_padding);
@@ -2529,6 +2557,10 @@ static void tiled_conv_A_stride(
         }
         if (dilation != 1) {
             printf("dilation is only supported on CPU\n");
+            exit(1);
+        }
+        if (wrot180 || trans_output_1203 || trans_input_3120 || trans_weight_1203) {
+            printf("data transformations are only supported on CPU\n");
             exit(1);
         }
     }
@@ -2629,7 +2661,8 @@ static void tiled_conv_A_stride_auto(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int dilation, int padding, int kernel_dim,
-        bool wrot180,
+        bool wrot180, bool trans_output_1203, bool trans_input_3120,
+        bool trans_weight_1203,
 
         const elem_t * input,
         const elem_t * weights,
@@ -2794,7 +2827,7 @@ static void tiled_conv_A_stride_auto(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
         stride, dilation, padding, kernel_dim,
-        wrot180,
+        wrot180, trans_output_1203, trans_input_3120, trans_weight_1203,
 
         batches,
         orows, ocols, ochs,
@@ -3024,7 +3057,7 @@ static void tiled_conv_first(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
         stride, 1, padding, kcols,//kernel_dim,
-        false,
+        false, false, false, false,
         input, weights, bias, output,
         act, scale, relu6_shift,
         pool_size, pool_stride, pool_padding);
@@ -3546,7 +3579,7 @@ static void tiled_conv_original(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
         stride, 1, padding, kernel_dim,
-        false,
+        false, false, false, false,
         input, weights, bias, output,
         act, scale, relu6_shift,
         pool_size, pool_stride, pool_padding);
@@ -3736,7 +3769,7 @@ static void tiled_conv(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
         stride, 1, padding, kernel_dim,
-        false,
+        false, false, false, false,
         input, weights, bias, output,
         act, scale, relu6_shift,
         pool_size, pool_stride, pool_padding);
