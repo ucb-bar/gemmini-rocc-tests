@@ -34,7 +34,8 @@ tests = \
 	matrix_add \
 	resadd \
 	global_average \
-	template
+	template \
+	multicore
 
 tests_baremetal = $(tests:=-baremetal)
 
@@ -98,4 +99,3 @@ run-baremetal: $(runs_baremetal)
 	$(RUNNER)$(abs_top_srcdir)/build/bareMetalC/$^
 
 junk += $(tests_baremetal) $(tests_linux)
-

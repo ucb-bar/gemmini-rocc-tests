@@ -18,6 +18,14 @@ To run the tests yourself on a Gemmini ISA simulator, follow these steps:
     spike --extension=gemmini mvin_mvout-baremetal
     ```
 
+# Running with multicore on baremetal
+
+Suppose you want to run with 4 cores.
+
+1. Add `#define MULTITHREAD 4` to `riscv-tests/benchmarks/common/crt.S`.
+1. Change `li a1, 1` to `li a1, 4` in `riscv-tests/benchmarks/common/crt.S`.
+1. When running with Spike, use this command: `spike -p4 --extension=gemmini`.
+
 # Writing Your Own Gemmini Tests
 `bareMetalC/template.c` is a template Gemmini test that you can base your own Gemmini tests off of. To write your own Gemmini test, run:
 
