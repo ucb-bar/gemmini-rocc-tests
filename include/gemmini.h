@@ -1077,6 +1077,8 @@ static void sp_tiled_conv_A_stride(
         elem_t * output,
         const acc_t * bias,
 
+        bool wrot180,
+
         bool no_bias, bool no_pool, bool downsample) {
 
   const int orows = porows * pool_stride + pool_size - 1 - pupad - pdpad;
@@ -1111,9 +1113,8 @@ static void sp_tiled_conv_A_stride(
     C_sp_addr_row = (C_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
   }
 
-  gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample);
+  // gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample);
 
-  /*
   // mvin bias
   if (!no_bias && bias != NULL) {
       // TODO we probably don't need quite this many nested loops for this part
@@ -1244,8 +1245,12 @@ static void sp_tiled_conv_A_stride(
                 const bool new_weights = b == 0 && orow == 0 && ocol == 0;
 
                 const uint32_t A_sp_addr = A_sp_addr_start + (kch / DIM) * batches * DS(irows) * DS(icols) + b * DS(irows) * DS(icols) + DS(irow) * DS(icols) + DS(icol);
+
+                const int krow_ = wrot180 ? krows - krow - 1 : krow;
+                const int kcol_ = wrot180 ? kcols - kcol - 1 : kcol;
+
                 const uint32_t B_sp_addr = new_weights ?
-                  (B_sp_addr_start + (och / DIM) * krows * kcols * kchs + krow * kcols * kchs + kcol * kchs + kch)
+                  (B_sp_addr_start + (och / DIM) * krows * kcols * kchs + krow_ * kcols * kchs + kcol_ * kchs + kch)
                   : GARBAGE_ADDR;
 
                 // perform matmul
@@ -1293,7 +1298,6 @@ static void sp_tiled_conv_A_stride(
       } else {
           gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
 
-          gemmini_fence(); // TODO remove this when the ROB can accurately handle these
           for (int b = 0; b < batches; b++) {
               for (int poch = 0; poch < pochs; poch += DIM) {
                   const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
@@ -1307,10 +1311,10 @@ static void sp_tiled_conv_A_stride(
                           channels, 0);
               }
           }
-          gemmini_fence();
+
+          gemmini_config_st(out_channels * sizeof(elem_t));
       }
   }
-  */
 }
 
 //resnet downsampling layer (no padding, kernel size 1, stride 2)
@@ -2595,6 +2599,13 @@ static void tiled_conv_A_stride(
                                 const int upad = irow < 0 ? -irow : 0;
                                 const int dpad = irow + irows_ > in_dim ? irow + irows_ - in_dim : 0;
 
+                                const elem_t * weights_slice = weights + (krow*kernel_dim*in_channels + kcol*in_channels + kch) * out_channels + poch;
+                                if (wrot180) {
+                                    const int krow_ = kernel_dim - krow - krows_;
+                                    const int kcol_ = kernel_dim - kcol - kcols_;
+                                    weights_slice = weights + (krow_*kernel_dim*in_channels + kcol_*in_channels + kch) * out_channels + poch;
+                                }
+
                                 sp_tiled_conv_A_stride(
                                     batch_size, in_dim, in_channels,
                                     out_channels, out_dim, pool_out_dim,
@@ -2611,7 +2622,7 @@ static void tiled_conv_A_stride(
                                     plpad, prpad, pupad, pdpad,
 
                                     input + (b*in_dim*in_dim + (irow+upad)*in_dim + (icol+lpad)) * in_channels + kch,
-                                    weights + (krow*kernel_dim*in_channels + kcol*in_channels + kch) * out_channels + poch,
+                                    weights_slice,
                                     out,
                                     bias_,
 
