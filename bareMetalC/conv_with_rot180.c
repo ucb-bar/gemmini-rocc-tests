@@ -275,7 +275,7 @@ int main() {
     for (int orow = 0; orow < BATCH_SIZE * OUT_DIM * OUT_DIM; orow++) {
       for (int ocol = 0; ocol < OUT_CHANNELS; ocol++) {
 	elem_t v = output_mat[orow][ocol];
-	if (v != 6 && v != 11 && v != 21) {
+	if (v != 21 && v != 31 && v != 46) {
 	  success = false;
 	  break;
 	}
