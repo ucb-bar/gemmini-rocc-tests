@@ -2626,6 +2626,8 @@ static void tiled_conv_A_stride(
                                     out,
                                     bias_,
 
+                                    wrot180,
+
                                     no_bias, no_pool, downsample);
                             }
                         }
