@@ -190,8 +190,9 @@ static void tiled_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
 	dim_I = dim_I / batch_divide; //batch dimension: I
 	dim_J = dim_J / och_divide;
 
-	int out_offset = (row_divisible || (orow_divide == 1)) ? 0 : dim_J * cid; // no need to apply offset if we divided row
-   int A_orow_offset = (row_divisible) ? stride_A * cid * dim_I : 0; // if row is divided, need offset it I dimension
+	if(!row_divisible) orow_divide = 1;
+	int out_offset = (row_divisible || (batch_divide != 1)) ? 0 : dim_J * cid; // no need to apply offset if we divided row
+	int A_orow_offset = (row_divisible) ? stride_A * cid * dim_I : 0; // if row is divided, need offset it I dimension
    int C_orow_offset = (row_divisible) ? stride_C * cid * dim_I : 0; // if row is divided, need offset it I dimension
 	int A_batch_offset = 0;
 	int C_batch_offset = 0; 
@@ -202,7 +203,7 @@ static void tiled_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
 
 	bool no_bias = (D==NULL);
 	tiled_matmul_auto_loopld(dim_I, dim_J, dim_K,
-		A + A_orow_offset + A_batch_offset, B + out_offset, no_bias ? NULL : D + out_offset, C + C_orow_offset + out_offset + C_batch_offset, 
+		A + A_orow_offset + A_batch_offset, B + out_offset, no_bias ? NULL : D + out_offset*sizeof(acc_t), C + C_orow_offset + out_offset + C_batch_offset, 
 		stride_A, stride_B, stride_B, stride_C,
 		MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
 		act, scale, relu6_shift, repeating_bias,
