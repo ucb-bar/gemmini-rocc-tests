@@ -3597,8 +3597,9 @@ static void tiled_conv_A_stride_auto_cid(
 					max_val = args[0];
 					max_idx = 0;
 					break;
-				}else if(args[in_channels_idx] == MAX_BLOCK_LEN * DIM && args[out_channels_idx] <= MAX_BLOCK_LEN * DIM){
-			  if(i == orows_idx && args[orows_idx] > 1 && (args[ocols_idx] <= DIM || (args[in_channels_idx] <= DIM * MAX_BLOCK_LEN && args[out_channels_idx] == MAX_BLOCK_LEN*DIM))){// && (args[orows_idx] >= args[ocols_idx] || args[ocols_idx] <= DIM)){ //decrease orows as much as possible 
+				//}else if(args[in_channels_idx] == MAX_BLOCK_LEN * DIM && args[out_channels_idx] <= MAX_BLOCK_LEN * DIM){
+				}else if(args[in_channels_idx] >= DIM && args[out_channels_idx] <= MAX_BLOCK_LEN * DIM){	
+					if(i == orows_idx && args[orows_idx] > 1 && (args[ocols_idx] <= DIM || (args[in_channels_idx] <= DIM * MAX_BLOCK_LEN && args[out_channels_idx] == MAX_BLOCK_LEN*DIM))){// && (args[orows_idx] >= args[ocols_idx] || args[ocols_idx] <= DIM)){ //decrease orows as much as possible 
 					max_val = args[orows_idx];
 					max_idx = orows_idx;
 					break;
@@ -3617,7 +3618,7 @@ static void tiled_conv_A_stride_auto_cid(
 					 max_idx = i;
 				}
 		  }
-	//		  printf("max_val: %d, max_idx: %d \n", max_val, max_idx);
+			  //printf("max_val: %d, max_idx: %d \n", max_val, max_idx);
 	
 		  if (max_idx == out_channels_idx || max_idx == in_channels_idx) {
 				if(max_val > MAX_BLOCK_LEN * DIM){
@@ -3746,7 +3747,7 @@ static void tiled_conv_A_stride_auto_cid(
     printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
 
     printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
-*/  
+  */
   if(row_divisible){
 	 tiled_conv_A_stride_cid(
 		  batch_size, in_dim, in_channels,
