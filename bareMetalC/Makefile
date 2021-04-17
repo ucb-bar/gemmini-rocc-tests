@@ -31,6 +31,7 @@ tests = \
 	tiled_matmul_cpu \
 	tiled_matmul_option \
 	tiled_matmul_ws_perf \
+	tiled_matmul_ws_perf_evict \
 	transpose \
 	fp_acc \
 	matrix_add \
