@@ -666,7 +666,6 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
           // pre = &(((acc_t*)D)[bias_row * stride_D + j0 * tile_J * DIM]);
           pre = (int8_t*)D + (bias_row * stride_D + j0 * tile_J * DIM)*sizeof_D;
         }
-
         void * out = k0 == K0-1 ? (int8_t*)C + (i0*tile_I*DIM*stride_C + j0*tile_J*DIM)*sizeof_C : NULL;
 
         const size_t I = i0 < I0-1 ? tile_I : last_I;
@@ -2923,7 +2922,6 @@ static void tiled_conv_A_stride_cid(
                                         kch > 0) {
                                     bias_ = NULL;
                                 }
-
                                 const int batches_ = batch_size - b > batches ? batches : batch_size - b;
                                 const int porows_ = porow_end - porow > porows ? porows : porow_end - porow;
                                 const int pocols_ = pool_out_dim - pocol > pocols ? pocols : pool_out_dim - pocol;
@@ -3103,6 +3101,7 @@ static void tiled_conv_A_stride_loopld(
                                     bias_ = NULL;
                                 }
 
+//printf("batch: %d, poch: %d, porow: %d, pocol: %d, krow: %d, kcol: %d, kch: %d \n", b, poch, porow, pocol, krow, kcol, kch);
                                 const int batches_ = batch_size - b > batches ? batches : batch_size - b;
                                 const int porows_ = pool_out_dim - porow > porows ? porows : pool_out_dim - porow;
                                 const int pocols_ = pool_out_dim - pocol > pocols ? pocols : pool_out_dim - pocol;
@@ -3561,6 +3560,15 @@ static void tiled_conv_A_stride_auto_cid(
 	 // int args[] = {batch_size, porows, pocols, pochs, krows, kcols, kchs};
 	 int args[] = {batch_size, pool_out_row, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
 	 const int max_args[] = {batch_size, pool_out_row, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
+/*
+    printf("batches = %d\n", args[0]);
+    printf("orows   = %d\n", args[1]);
+    printf("ocols   = %d\n", args[2]);
+    printf("ochs    = %d\n", args[3]);
+    printf("krows   = %d\n", args[4]);
+    printf("kcols   = %d\n", args[5]);
+    printf("kchs    = %d\n\n", args[6]);
+*/
 
 	 const int orows_idx = 1;
 	 const int ocols_idx = 2;
@@ -3593,35 +3601,37 @@ static void tiled_conv_A_stride_auto_cid(
 				else if(j == 5) i = down_sample ? in_channels_idx : out_channels_idx;
 				else if(j == 6) i = down_sample ? out_channels_idx : in_channels_idx;
 		
-			  if(i == 0 && args[0] > 1){ // batch first
-					max_val = args[0];
-					max_idx = 0;
-					break;
-				//}else if(args[in_channels_idx] == MAX_BLOCK_LEN * DIM && args[out_channels_idx] <= MAX_BLOCK_LEN * DIM){
-				}else if(args[in_channels_idx] >= DIM && args[out_channels_idx] <= MAX_BLOCK_LEN * DIM){	
-					if(i == orows_idx && args[orows_idx] > 1 && (args[ocols_idx] <= DIM || (args[in_channels_idx] <= DIM * MAX_BLOCK_LEN && args[out_channels_idx] == MAX_BLOCK_LEN*DIM))){// && (args[orows_idx] >= args[ocols_idx] || args[ocols_idx] <= DIM)){ //decrease orows as much as possible 
-					max_val = args[orows_idx];
-					max_idx = orows_idx;
-					break;
-				}else if(i == ocols_idx && args[i] > DIM){
-					max_val = args[ocols_idx];
-					max_idx = ocols_idx;
-					break;
-				}else if((i==4 || i == 5) && args[i] > 1){
-					max_val = args[i];
-					max_idx = i;
-				  break;
+				  if(i == 0 && args[0] > 1){ // batch first
+						max_val = args[0];
+						max_idx = 0;
+						break;
+					//}else if(args[in_channels_idx] == MAX_BLOCK_LEN * DIM && args[out_channels_idx] <= MAX_BLOCK_LEN * DIM){
+					}else if(args[in_channels_idx] >= DIM && args[out_channels_idx] <= MAX_BLOCK_LEN * DIM){	
+						if(i == orows_idx && args[orows_idx] > 1 && (args[ocols_idx] <= DIM || (args[in_channels_idx] <= DIM * MAX_BLOCK_LEN && args[out_channels_idx] == MAX_BLOCK_LEN*DIM))){// && (args[orows_idx] >= args[ocols_idx] || args[ocols_idx] <= DIM)){ //decrease orows as much as possible 
+							max_val = args[orows_idx];
+							max_idx = orows_idx;
+							break;
+						}else if(i == ocols_idx && (args[i]) > DIM){
+							max_val = args[ocols_idx];
+							max_idx = ocols_idx;
+							break;
+						}else if((i==4 || i == 5) && args[i] > 1){
+							max_val = args[i];
+							max_idx = i;
+						  break;
+						}else if(pool_stride > 1 && i == out_channels_idx){
+							max_val = args[out_channels_idx];
+							max_idx = out_channels_idx;
+						}
+					}else if (!(i == ocols_idx && args[i] <= DIM && args[orows_idx] > 1)
+							  && args[i] > max_val) { // and then move on to channels
+						 max_val = args[i];
+						 max_idx = i;
+					}
 				}
-				}else if (!(i == ocols_idx && args[i] <= DIM && args[orows_idx] > 1)
-						  && args[i] > max_val) { // and then move on to channels
-					 max_val = args[i];
-					 max_idx = i;
-				}
-		  }
-			  //printf("max_val: %d, max_idx: %d \n", max_val, max_idx);
-	
+
 		  if (max_idx == out_channels_idx || max_idx == in_channels_idx) {
-				if(max_val > MAX_BLOCK_LEN * DIM){
+				if(max_val > MAX_BLOCK_LEN * DIM || pool_stride > 1){
 			   // For input and output channels, there's no point in subtracting by just one
 					if (args[max_idx] % (MAX_BLOCK_LEN * DIM) != 0) {
 						 args[max_idx] = (args[max_idx] / (MAX_BLOCK_LEN * DIM)) * (MAX_BLOCK_LEN * DIM);
@@ -3644,13 +3654,15 @@ static void tiled_conv_A_stride_auto_cid(
 		  } else {
 			  if(max_idx == ocols_idx){
 				  if(args[max_idx] % DIM != 0) args[max_idx] = (args[max_idx]/DIM)*DIM;
-				  else args[max_idx] -= DIM;
+				  else args[max_idx] -= (DIM/pool_stride);
 			  }else{
 				  if(max_idx == 4 || max_idx == 5) args[max_idx] = 1;
 				  else args[max_idx]--;
 			  }
 		  }
 
+//			  printf("max_val: %d, max_idx: %d \n", max_val, max_idx);
+	
 		  spad_rows = tiled_conv_total_spad_rows_A_stride(false,
 				stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
 		  acc_rows = tiled_conv_total_spad_rows_A_stride(true,
