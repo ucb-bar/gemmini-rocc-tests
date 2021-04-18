@@ -3605,8 +3605,8 @@ static void tiled_conv_A_stride_auto_cid(
 						max_val = args[0];
 						max_idx = 0;
 						break;
-					//}else if(args[in_channels_idx] == MAX_BLOCK_LEN * DIM && args[out_channels_idx] <= MAX_BLOCK_LEN * DIM){
-					}else if(args[in_channels_idx] >= DIM && args[out_channels_idx] <= MAX_BLOCK_LEN * DIM){	
+					}else if(((pool_stride > 1 && args[in_channels_idx] >= DIM) || args[in_channels_idx] == MAX_BLOCK_LEN * DIM) && args[out_channels_idx] <= MAX_BLOCK_LEN * DIM){
+					//}else if(args[in_channels_idx] >= DIM && args[out_channels_idx] <= MAX_BLOCK_LEN * DIM){	
 						if(i == orows_idx && args[orows_idx] > 1 && (args[ocols_idx] <= DIM || (args[in_channels_idx] <= DIM * MAX_BLOCK_LEN && args[out_channels_idx] == MAX_BLOCK_LEN*DIM))){// && (args[orows_idx] >= args[ocols_idx] || args[ocols_idx] <= DIM)){ //decrease orows as much as possible 
 							max_val = args[orows_idx];
 							max_idx = orows_idx;
@@ -3619,25 +3619,28 @@ static void tiled_conv_A_stride_auto_cid(
 							max_val = args[i];
 							max_idx = i;
 						  break;
-						}else if(pool_stride > 1 && i == out_channels_idx){
-							max_val = args[out_channels_idx];
-							max_idx = out_channels_idx;
+						}else if(args[i] > DIM && pool_stride > 1 && (i == in_channels_idx || i == out_channels_idx)){
+							max_val = args[i];
+							max_idx = i;
 						}
 					}else if (!(i == ocols_idx && args[i] <= DIM && args[orows_idx] > 1)
 							  && args[i] > max_val) { // and then move on to channels
-						 max_val = args[i];
-						 max_idx = i;
+						 if(!((i==out_channels_idx || i==in_channels_idx) && args[i] <= DIM)){
+						    max_val = args[i];
+						    max_idx = i;
+						 }
 					}
 				}
 
 		  if (max_idx == out_channels_idx || max_idx == in_channels_idx) {
 				if(max_val > MAX_BLOCK_LEN * DIM || pool_stride > 1){
 			   // For input and output channels, there's no point in subtracting by just one
-					if (args[max_idx] % (MAX_BLOCK_LEN * DIM) != 0) {
+					if (args[max_idx] > MAX_BLOCK_LEN*DIM && args[max_idx] % (MAX_BLOCK_LEN * DIM) != 0) {
 						 args[max_idx] = (args[max_idx] / (MAX_BLOCK_LEN * DIM)) * (MAX_BLOCK_LEN * DIM);
 					} else {
 						 //args[max_idx] -= (MAX_BLOCK_LEN * DIM);
-						args[max_idx] = args[max_idx] / 2;
+						if(args[max_idx] % (2*DIM) == 0) args[max_idx] = args[max_idx] / 2;
+						else args[max_idx] = ((args[max_idx]-1) / DIM) * DIM;
 					}
 					args[max_idx] = args[max_idx] == 0 ? 1 : args[max_idx];
 				}
@@ -3651,6 +3654,13 @@ static void tiled_conv_A_stride_auto_cid(
 				else if(args[in_channels_idx] < DIM){//for first layer
 					args[max_idx] = args[max_idx] / 2;
 				}
+				else if (args[orows_idx] > 4){
+					args[orows_idx] = args[orows_idx] / 2;
+				}
+				else if(args[ocols_idx] > DIM){
+					args[ocols_idx] = DIM;
+				}
+
 		  } else {
 			  if(max_idx == ocols_idx){
 				  if(args[max_idx] % DIM != 0) args[max_idx] = (args[max_idx]/DIM)*DIM;
@@ -3661,7 +3671,7 @@ static void tiled_conv_A_stride_auto_cid(
 			  }
 		  }
 
-//			  printf("max_val: %d, max_idx: %d \n", max_val, max_idx);
+			  //printf("max_val: %d, max_idx: %d \n", max_val, max_idx);
 	
 		  spad_rows = tiled_conv_total_spad_rows_A_stride(false,
 				stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
@@ -3737,8 +3747,8 @@ static void tiled_conv_A_stride_auto_cid(
 	 const int krows = args[4];
 	 const int kcols = args[5];
 	 const int kchs = args[6];
-
 /*
+
     spad_rows = tiled_conv_total_spad_rows_A_stride(false,
         stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     acc_rows = tiled_conv_total_spad_rows_A_stride(true,
@@ -4129,10 +4139,6 @@ static void tiled_conv_A_stride_dw_auto_cid(
 	 in_channels = in_channels / och_divide; //divide input channel as well
   	 const int out_offset = ((row_divisible && (orow_divide > 1)) || (batch_divide > 1)) ? 0 : out_channels * cid;
 	 const int in_offset = (out_offset == 0) ? 0 : in_channels * cid;
-
-	 printf("out_offset: %d, in_offset: %d, batch_in_offset: %d, batch_out_offset: %d \n", out_offset, in_offset, batch_in_offset, batch_out_offset);
-	 printf("out_channels: %d, in_channels: %d, pool_out_row: %d \n", out_channels, in_channels, pool_out_row);
-	 // Tile convolution params
 
 	 // int args[] = {batch_size, porows, pocols, pochs, krows, kcols, kchs};
 	 int args[] = {batch_size, pool_out_dim, pool_out_dim, 1, kernel_dim, kernel_dim, 1};
