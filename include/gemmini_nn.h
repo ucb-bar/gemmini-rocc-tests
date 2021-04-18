@@ -185,15 +185,27 @@ static void tiled_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
 	size_t stride_A = dim_K;
 	size_t stride_B = dim_J;
 	bool row_divisible = (orow_divide > 1) && (dim_I % orow_divide == 0);
+	size_t orow_offset_floor = 0;
+	if(!row_divisible && orow_divide > 1 && dim_J < DIM * orow_divide * 2) {
+		row_divisible = true;
+		size_t dim_I_floor = dim_I / orow_divide;
+		orow_offset_floor = dim_I - dim_I_floor * orow_divide;
+		if(cid != 0) dim_I = dim_I_floor;
+		else dim_I = dim_I - dim_I_floor * (orow_divide - 1);
+	}
+	else if(row_divisible){
+		dim_I = dim_I / orow_divide;
+	}
 	size_t och_divide = (row_divisible) ? 1 : orow_divide; // if row can't be divided, then divide channel instead
-   dim_I = row_divisible ? dim_I / orow_divide : dim_I;
+   //dim_I = row_divisible ? dim_I / orow_divide : dim_I;
 	dim_I = dim_I / batch_divide; //batch dimension: I
 	dim_J = dim_J / och_divide;
 
 	if(!row_divisible) orow_divide = 1;
 	int out_offset = (row_divisible || (batch_divide != 1)) ? 0 : dim_J * cid; // no need to apply offset if we divided row
-	int A_orow_offset = (row_divisible) ? stride_A * cid * dim_I : 0; // if row is divided, need offset it I dimension
-   int C_orow_offset = (row_divisible) ? stride_C * cid * dim_I : 0; // if row is divided, need offset it I dimension
+	int A_orow_offset = (row_divisible && cid != 0) ? stride_A * cid * dim_I + stride_A * orow_offset_floor : 0; // if row is divided, need offset it I dimension
+   int C_orow_offset = (row_divisible && cid != 0) ? stride_C * cid * dim_I + stride_C * orow_offset_floor : 0; // if row is divided, need offset it I dimension
+//	printf("dim_I: %d, orow_offset_floor: %d, A_row_offset: %d \n", dim_I, orow_offset_floor, A_orow_offset);
 	int A_batch_offset = 0;
 	int C_batch_offset = 0; 
 	if (batch_divide > 1){
