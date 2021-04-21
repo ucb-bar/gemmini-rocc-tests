@@ -65,6 +65,26 @@ int main (int argc, char * argv[]) {
     uint64_t start, end;
     uint64_t im2col_cycles = 0, matmul_cycles = 0, conv_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, res_add_cycles = 0, other_cycles = 0;
 
+    uint64_t conv_1_cycles, matmul_2_cycles, conv_3_cycles, matmul_4_cycles,
+             matmul_5_cycles, conv_6_cycles, matmul_7_cycles, conv_8_cycles,
+             pool_9_cycles, matmul_10_cycles, matmul_11_cycles,
+             matmul_12_cycles, conv_13_cycles, matmul_14_cycles, conv_15_cycles,
+             pool_16_cyles, matmul_17_cycles, pool_18_cycles, matmul_19_cycles,
+             matmul_20_cycles, conv_21_cycles, matmul_22_cycles, conv_23_cycles,
+             pool_24_cycles, matmul_25_cycles, matmul_26_cycles,
+             matmul_27_cycles, conv_28_cycles, matmul_29_cycles, conv_30_cycles,
+             pool_31_cycles, matmul_32_cycles, matmul_33_cycles,
+             matmul_34_cycles, conv_35_cycles, matmul_36_cycles, conv_37_cycles,
+             pool_38_cycles, matmul_39_cycles, matmul_40_cycles,
+             matmul_41_cycles, conv_42_cycles, matmul_43_cycles, conv_44_cycles,
+             pool_45_cycles, matmul_46_cycles, matmul_47_cycles,
+             matmul_48_cycles, conv_49_cycles, matmul_50_cycles, conv_51_cycles,
+             pool_52_cycles, matmul_53_cycles, pool_54_cycles, matmul_55_cycles,
+             matmul_56_cycles, conv_57_cycles, matmul_58_cycles, conv_59_cycles,
+             pool_60_cycles, matmul_60_cycles, matmul_62_cycles,
+             matmul_63_cycles, conv_64_cycles, matmul_65_cycles, conv_66_cycles,
+             pool_67_cycles, matmul_67_cycles, fc_69_cycles;
+
     // conv_1
     if (!conv) {
       start = read_cycles();
@@ -116,6 +136,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+
+        conv_1_cycles = end - start;
     }
 
     // conv_2
@@ -151,6 +173,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+
+        matmul_2_cycles = end - start;
     }
 
     // conv_3
@@ -204,6 +228,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+
+        conv_3_cycles = end - start;
     }
 
     // Inception 3a
@@ -241,6 +267,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+
+        matmul_4_cycles = end - start;
     }
 
     // Branch 2
@@ -277,6 +305,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+
+        matmul_5_cycles = end - start;
     }
 
     // conv_6
@@ -321,6 +351,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+
+        conv_6_cycles = end - start;
     }
 
     // Branch 3
@@ -357,6 +389,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+
+        matmul_7_cycles = end - start;
     }
 
     // conv_8
@@ -401,6 +435,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+
+        conv_8_cycles = end - start;
     }
 
     // pool_9
@@ -412,6 +448,7 @@ int main (int argc, char * argv[]) {
         tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
+    pool_9_cycles = end - start;
 
     // Branch 4
     // conv_10
@@ -438,6 +475,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_10_cycles = end - start;
     }
 
     // Inception 3b
@@ -466,6 +504,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_11_cycles = end - start;
     }
 
     // Branch 2
@@ -493,6 +532,8 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+
+        matmul_12_cycles = end - start;
     }
 
     // conv_13
@@ -537,6 +578,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_13_cycles = end - start;
     }
 
     // Branch 3
@@ -564,6 +606,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_14_cycles = end - start;
     }
 
     // conv_15
@@ -608,6 +651,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_15_cycles = end - start;
     }
 
     // pool_16
@@ -620,6 +664,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     pool_cycles += end - start;
+    pool_16_cyles = end - start;
 
     // Branch 4
     // conv_17
@@ -646,6 +691,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_17_cycles = end - start;
     }
 
     // pool_18
@@ -657,6 +703,7 @@ int main (int argc, char * argv[]) {
         tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
+    pool_18_cycles = end - start;
 
     // Inception 4a
     // Branch 1
@@ -684,6 +731,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_19_cycles = end - start;
     }
 
     // Branch 2
@@ -711,6 +759,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_20_cycles = end - start;
     }
 
     // conv_21
@@ -755,6 +804,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_21_cycles = end - start;
     }
 
     // Branch 3
@@ -782,6 +832,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_22_cycles = end - start;
     }
 
     // conv_23
@@ -826,6 +877,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_23_cycles = end - start;
     }
 
     // pool_24
@@ -837,6 +889,7 @@ int main (int argc, char * argv[]) {
         tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
+    pool_24_cycles = end - start;
 
     // Branch 4
     // conv_25
@@ -863,6 +916,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_25_cycles = end - start;
     }
 
     // Inception 4b
@@ -891,6 +945,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_26_cycles = end - start;
     }
 
     // Branch 2
@@ -918,6 +973,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_27_cycles = end - start;
     }
 
     // conv_28
@@ -962,6 +1018,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_28_cycles = end - start;
     }
 
     // Branch 3
@@ -989,6 +1046,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_29_cycles = end - start;
     }
 
     // conv_30
@@ -1033,6 +1091,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_30_cycles = end - start;
     }
 
     // pool_31
@@ -1044,6 +1103,7 @@ int main (int argc, char * argv[]) {
         tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
+    pool_31_cycles = end - start;
 
     // Branch 4
     // conv_32
@@ -1070,6 +1130,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_32_cycles = end - start;
     }
 
     // Inception 4c
@@ -1098,6 +1159,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_33_cycles = end - start;
     }
 
     // Branch 2
@@ -1125,11 +1187,12 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_34_cycles = end - start;
     }
 
     // conv_35
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_34_params.I, conv_34_params.J,
             conv_35_params.I, conv_35_params.K,
@@ -1169,6 +1232,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_35_cycles = end - start;
     }
 
     // Branch 3
@@ -1196,6 +1260,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_36_cycles = end - start;
     }
 
     // conv_37
@@ -1240,6 +1305,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_37_cycles = end - start;
     }
 
     // pool_38
@@ -1251,6 +1317,7 @@ int main (int argc, char * argv[]) {
         tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
+    pool_38_cycles = end - start;
 
     // Branch 4
     // conv_39
@@ -1277,6 +1344,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_39_cycles = end - start;
     }
 
     // Inception 4d
@@ -1305,6 +1373,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_40_cycles = end - start;
     }
 
     // Branch 2
@@ -1332,11 +1401,12 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_41_cycles = end - start;
     }
 
     // conv_42
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_41_params.I, conv_41_params.J,
             conv_42_params.I, conv_42_params.K,
@@ -1376,6 +1446,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_42_cycles = end - start;
     }
 
     // Branch 3
@@ -1403,6 +1474,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_43_cycles = end - start;
     }
 
     // conv_44
@@ -1447,6 +1519,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_44_cycles = end - start;
     }
 
     // pool_45
@@ -1458,6 +1531,7 @@ int main (int argc, char * argv[]) {
         tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
+    pool_45_cycles = end - start;
 
     // Branch 4
     // conv_46
@@ -1484,6 +1558,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_46_cycles = end - start;
     }
 
     // Inception 4e
@@ -1512,6 +1587,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_47_cycles = end - start;
     }
 
     // Branch 2
@@ -1539,6 +1615,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_48_cycles = end - start;
     }
 
     // conv_49
@@ -1583,6 +1660,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_49_cycles = end - start;
     }
 
     // Branch 3
@@ -1610,6 +1688,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_50_cycles = end - start;
     }
 
     // conv_51
@@ -1654,6 +1733,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_51_cycles = end - start;
     }
 
     // pool_52
@@ -1665,6 +1745,7 @@ int main (int argc, char * argv[]) {
         tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
+    pool_52_cycles = end - start;
 
     // Branch 4
     // conv_53
@@ -1691,6 +1772,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_53_cycles = end - start;
     }
 
     // pool_54
@@ -1702,6 +1784,7 @@ int main (int argc, char * argv[]) {
         tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
+    pool_54_cycles = end - start;
 
     // Inception 5a
     // Branch 1
@@ -1729,6 +1812,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_55_cycles = end - start;
     }
 
     // Branch 2
@@ -1756,6 +1840,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_56_cycles = end - start;
     }
 
     // conv_57
@@ -1800,6 +1885,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_57_cycles = end - start;
     }
 
     // Branch 3
@@ -1827,6 +1913,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_58_cycles = end - start;
     }
 
     // conv_59
@@ -1871,6 +1958,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_59_cycles = end - start;
     }
 
     // pool_60
@@ -1882,6 +1970,7 @@ int main (int argc, char * argv[]) {
         tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
+    pool_60_cycles = end - start;
 
     // Branch 4
     // conv_61
@@ -1908,6 +1997,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_60_cycles = end - start;
     }
 
     // Inception 5b
@@ -1936,6 +2026,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_62_cycles = end - start;
     }
 
     // Branch 2
@@ -1963,6 +2054,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_63_cycles = end - start;
     }
 
     // conv_64
@@ -1986,7 +2078,6 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-
     } else {
         start = read_cycles();
 
@@ -2007,6 +2098,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_64_cycles = end - start;
     }
 
     // Branch 3
@@ -2022,7 +2114,6 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-
     } else {
         start = read_cycles();
 
@@ -2034,6 +2125,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_65_cycles = end - start;
     }
 
     // conv_66
@@ -2057,7 +2149,6 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-
     } else {
         start = read_cycles();
 
@@ -2078,6 +2169,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         conv_cycles += end - start;
+        conv_66_cycles = end - start;
     }
 
     // pool_67
@@ -2089,6 +2181,7 @@ int main (int argc, char * argv[]) {
         tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
+    pool_67_cycles = end - start;
 
     // Branch 4
     // conv_68
@@ -2103,7 +2196,6 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
-
     } else {
         start = read_cycles();
 
@@ -2115,6 +2207,7 @@ int main (int argc, char * argv[]) {
 
         end = read_cycles();
         matmul_cycles += end - start;
+        matmul_67_cycles = end - start;
     }
 
     // Global averaging
@@ -2140,6 +2233,77 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     matmul_cycles += end - start;
+    fc_69_cycles = end - start;
+
+    printf("conv_1_cycles: %llu\n", conv_1_cycles);
+    printf("matmul_2_cycles: %llu\n", matmul_2_cycles);
+    printf("conv_3_cycles: %llu\n", conv_3_cycles);
+    printf("matmul_4_cycles: %llu\n", matmul_4_cycles);
+    printf("matmul_5_cycles: %llu\n", matmul_5_cycles);
+    printf("conv_6_cycles: %llu\n", conv_6_cycles);
+    printf("matmul_7_cycles: %llu\n", matmul_7_cycles);
+    printf("conv_8_cycles: %llu\n", conv_8_cycles);
+    printf("pool_9_cycles: %llu\n", pool_9_cycles);
+    printf("matmul_10_cycles: %llu\n", matmul_10_cycles);
+    printf("matmul_11_cycles: %llu\n", matmul_11_cycles);
+    printf("matmul_12_cycles: %llu\n", matmul_12_cycles);
+    printf("conv_13_cycles: %llu\n", conv_13_cycles);
+    printf("matmul_14_cycles: %llu\n", matmul_14_cycles);
+    printf("conv_15_cycles: %llu\n", conv_15_cycles);
+    printf("pool_16_cyles: %llu\n", pool_16_cyles);
+    printf("matmul_17_cycles: %llu\n", matmul_17_cycles);
+    printf("pool_18_cycles: %llu\n", pool_18_cycles);
+    printf("matmul_19_cycles: %llu\n", matmul_19_cycles);
+    printf("matmul_20_cycles: %llu\n", matmul_20_cycles);
+    printf("conv_21_cycles: %llu\n", conv_21_cycles);
+    printf("matmul_22_cycles: %llu\n", matmul_22_cycles);
+    printf("conv_23_cycles: %llu\n", conv_23_cycles);
+    printf("pool_24_cycles: %llu\n", pool_24_cycles);
+    printf("matmul_25_cycles: %llu\n", matmul_25_cycles);
+    printf("matmul_26_cycles: %llu\n", matmul_26_cycles);
+    printf("matmul_27_cycles: %llu\n", matmul_27_cycles);
+    printf("conv_28_cycles: %llu\n", conv_28_cycles);
+    printf("matmul_29_cycles: %llu\n", matmul_29_cycles);
+    printf("conv_30_cycles: %llu\n", conv_30_cycles);
+    printf("pool_31_cycles: %llu\n", pool_31_cycles);
+    printf("matmul_32_cycles: %llu\n", matmul_32_cycles);
+    printf("matmul_33_cycles: %llu\n", matmul_33_cycles);
+    printf("matmul_34_cycles: %llu\n", matmul_34_cycles);
+    printf("conv_35_cycles: %llu\n", conv_35_cycles);
+    printf("matmul_36_cycles: %llu\n", matmul_36_cycles);
+    printf("conv_37_cycles: %llu\n", conv_37_cycles);
+    printf("pool_38_cycles: %llu\n", pool_38_cycles);
+    printf("matmul_39_cycles: %llu\n", matmul_39_cycles);
+    printf("matmul_40_cycles: %llu\n", matmul_40_cycles);
+    printf("matmul_41_cycles: %llu\n", matmul_41_cycles);
+    printf("conv_42_cycles: %llu\n", conv_42_cycles);
+    printf("matmul_43_cycles: %llu\n", matmul_43_cycles);
+    printf("conv_44_cycles: %llu\n", conv_44_cycles);
+    printf("pool_45_cycles: %llu\n", pool_45_cycles);
+    printf("matmul_46_cycles: %llu\n", matmul_46_cycles);
+    printf("matmul_47_cycles: %llu\n", matmul_47_cycles);
+    printf("matmul_48_cycles: %llu\n", matmul_48_cycles);
+    printf("conv_49_cycles: %llu\n", conv_49_cycles);
+    printf("matmul_50_cycles: %llu\n", matmul_50_cycles);
+    printf("conv_51_cycles: %llu\n", conv_51_cycles);
+    printf("pool_52_cycles: %llu\n", pool_52_cycles);
+    printf("matmul_53_cycles: %llu\n", matmul_53_cycles);
+    printf("pool_54_cycles: %llu\n", pool_54_cycles);
+    printf("matmul_55_cycles: %llu\n", matmul_55_cycles);
+    printf("matmul_56_cycles: %llu\n", matmul_56_cycles);
+    printf("conv_57_cycles: %llu\n", conv_57_cycles);
+    printf("matmul_58_cycles: %llu\n", matmul_58_cycles);
+    printf("conv_59_cycles: %llu\n", conv_59_cycles);
+    printf("pool_60_cycles: %llu\n", pool_60_cycles);
+    printf("matmul_60_cycles: %llu\n", matmul_60_cycles);
+    printf("matmul_62_cycles: %llu\n", matmul_62_cycles);
+    printf("matmul_63_cycles: %llu\n", matmul_63_cycles);
+    printf("conv_64_cycles: %llu\n", conv_64_cycles);
+    printf("matmul_65_cycles: %llu\n", matmul_65_cycles);
+    printf("conv_66_cycles: %llu\n", conv_66_cycles);
+    printf("pool_67_cycles: %llu\n", pool_67_cycles);
+    printf("matmul_67_cycles: %llu\n", matmul_67_cycles);
+    printf("fc_69_cycles: %llu\n\n", fc_69_cycles);
 
     // Find highest probs
     int preds[fc_69_params.batch_size];
