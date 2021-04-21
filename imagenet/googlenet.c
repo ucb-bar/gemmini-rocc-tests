@@ -405,8 +405,11 @@ int main (int argc, char * argv[]) {
 
     // pool_9
     start = read_cycles();
-    pool(pool_9_params.batch_size, pool_9_params.out_channels, pool_9_params.out_dim, pool_9_params.out_dim_pooled,
-        conv_3_out_pooled, pool_9_out, &pool_9_params);
+    tiled_pool_auto(pool_9_params.batch_size, pool_9_params.out_dim, pool_9_params.out_channels,
+        pool_9_params.pool_size, pool_9_params.pool_stride, pool_9_params.pool_padding,
+        conv_3_out_pooled, pool_9_out,
+        true,
+        tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
 
@@ -609,8 +612,12 @@ int main (int argc, char * argv[]) {
 
     // pool_16
     start = read_cycles();
-    pool(pool_16_params.batch_size, pool_16_params.out_channels, pool_16_params.out_dim, pool_16_params.out_dim_pooled,
-        ((elem_t*)inception3a_out), pool_16_out, &pool_16_params);
+    tiled_pool_auto(pool_16_params.batch_size, pool_16_params.out_dim, pool_16_params.out_channels,
+        pool_16_params.pool_size, pool_16_params.pool_stride, pool_16_params.pool_padding,
+        ((elem_t*)inception3a_out), pool_16_out,
+        true,
+        tiled_matmul_type);
+
     end = read_cycles();
     pool_cycles += end - start;
 
@@ -643,8 +650,11 @@ int main (int argc, char * argv[]) {
 
     // pool_18
     start = read_cycles();
-    pool(pool_18_params.batch_size, pool_18_params.out_channels, pool_18_params.out_dim, pool_18_params.out_dim_pooled,
-        ((elem_t*)inception3b_out), pool_18_out, &pool_18_params);
+    tiled_pool_auto(pool_18_params.batch_size, pool_18_params.out_dim, pool_18_params.out_channels,
+        pool_18_params.pool_size, pool_18_params.pool_stride, pool_18_params.pool_padding,
+        ((elem_t*)inception3b_out), pool_18_out,
+        true,
+        tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
 
@@ -820,8 +830,11 @@ int main (int argc, char * argv[]) {
 
     // pool_24
     start = read_cycles();
-    pool(pool_24_params.batch_size, pool_24_params.out_channels, pool_24_params.out_dim, pool_24_params.out_dim_pooled,
-        pool_18_out, pool_24_out, &pool_24_params);
+    tiled_pool_auto(pool_24_params.batch_size, pool_24_params.out_dim, pool_24_params.out_channels,
+        pool_24_params.pool_size, pool_24_params.pool_stride, pool_24_params.pool_padding,
+        pool_18_out, pool_24_out,
+        true,
+        tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
 
@@ -1024,8 +1037,11 @@ int main (int argc, char * argv[]) {
 
     // pool_31
     start = read_cycles();
-    pool(pool_31_params.batch_size, pool_31_params.out_channels, pool_31_params.out_dim, pool_31_params.out_dim_pooled,
-        ((elem_t*)inception4a_out), pool_31_out, &pool_31_params);
+    tiled_pool_auto(pool_31_params.batch_size, pool_31_params.out_dim, pool_31_params.out_channels,
+        pool_31_params.pool_size, pool_31_params.pool_stride, pool_31_params.pool_padding,
+        ((elem_t*)inception4a_out), pool_31_out,
+        true,
+        tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
 
@@ -1228,8 +1244,11 @@ int main (int argc, char * argv[]) {
 
     // pool_38
     start = read_cycles();
-    pool(pool_38_params.batch_size, pool_38_params.out_channels, pool_38_params.out_dim, pool_38_params.out_dim_pooled,
-        ((elem_t*)inception4b_out), pool_38_out, &pool_38_params);
+    tiled_pool_auto(pool_38_params.batch_size, pool_38_params.out_dim, pool_38_params.out_channels,
+        pool_38_params.pool_size, pool_38_params.pool_stride, pool_38_params.pool_padding,
+        ((elem_t*)inception4b_out), pool_38_out,
+        true,
+        tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
 
@@ -1432,8 +1451,11 @@ int main (int argc, char * argv[]) {
 
     // pool_45
     start = read_cycles();
-    pool(pool_45_params.batch_size, pool_45_params.out_channels, pool_45_params.out_dim, pool_45_params.out_dim_pooled,
-        ((elem_t*)inception4c_out), pool_45_out, &pool_45_params);
+    tiled_pool_auto(pool_45_params.batch_size, pool_45_params.out_dim, pool_45_params.out_channels,
+        pool_45_params.pool_size, pool_45_params.pool_stride, pool_45_params.pool_padding,
+        ((elem_t*)inception4c_out), pool_45_out,
+        true,
+        tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
 
@@ -1636,8 +1658,11 @@ int main (int argc, char * argv[]) {
 
     // pool_52
     start = read_cycles();
-    pool(pool_52_params.batch_size, pool_52_params.out_channels, pool_52_params.out_dim, pool_52_params.out_dim_pooled,
-        ((elem_t*)inception4d_out), pool_52_out, &pool_52_params);
+    tiled_pool_auto(pool_52_params.batch_size, pool_52_params.out_dim, pool_52_params.out_channels,
+        pool_52_params.pool_size, pool_52_params.pool_stride, pool_52_params.pool_padding,
+        ((elem_t*)inception4d_out), pool_52_out,
+        true,
+        tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
 
@@ -1670,8 +1695,11 @@ int main (int argc, char * argv[]) {
 
     // pool_54
     start = read_cycles();
-    pool(pool_54_params.batch_size, pool_54_params.out_channels, pool_54_params.out_dim, pool_54_params.out_dim_pooled,
-        ((elem_t*)inception4e_out), pool_54_out, &pool_54_params);
+    tiled_pool_auto(pool_54_params.batch_size, pool_54_params.out_dim, pool_54_params.out_channels,
+        pool_54_params.pool_size, pool_54_params.pool_stride, pool_54_params.pool_padding,
+        ((elem_t*)inception4e_out), pool_54_out,
+        true,
+        tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
 
@@ -1847,8 +1875,11 @@ int main (int argc, char * argv[]) {
 
     // pool_60
     start = read_cycles();
-    pool(pool_60_params.batch_size, pool_60_params.out_channels, pool_60_params.out_dim, pool_60_params.out_dim_pooled,
-        pool_54_out, pool_60_out, &pool_60_params);
+    tiled_pool_auto(pool_60_params.batch_size, pool_60_params.out_dim, pool_60_params.out_channels,
+        pool_60_params.pool_size, pool_60_params.pool_stride, pool_60_params.pool_padding,
+        pool_54_out, pool_60_out,
+        true,
+        tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
 
@@ -2051,8 +2082,11 @@ int main (int argc, char * argv[]) {
 
     // pool_67
     start = read_cycles();
-    pool(pool_67_params.batch_size, pool_67_params.out_channels, pool_67_params.out_dim, pool_67_params.out_dim_pooled,
-        ((elem_t*)inception5a_out), pool_67_out, &pool_67_params);
+    tiled_pool_auto(pool_67_params.batch_size, pool_67_params.out_dim, pool_67_params.out_channels,
+        pool_67_params.pool_size, pool_67_params.pool_stride, pool_67_params.pool_padding,
+        ((elem_t*)inception5a_out), pool_67_out,
+        true,
+        tiled_matmul_type);
     end = read_cycles();
     pool_cycles += end - start;
 
@@ -2108,6 +2142,7 @@ int main (int argc, char * argv[]) {
     matmul_cycles += end - start;
 
     // Find highest probs
+    int preds[fc_69_params.batch_size];
     for (int batch = 0; batch < fc_69_params.batch_size; batch++) {
         elem_t max_prob = fc_69_out[batch][0];
         size_t max_idx = 0;
@@ -2119,6 +2154,7 @@ int main (int argc, char * argv[]) {
             }
         }
 
+        preds[batch] = max_idx;
         printf("Prediction: %u (score: %d)\n", max_idx, max_prob);
     }
 
@@ -2133,6 +2169,15 @@ int main (int argc, char * argv[]) {
     printf("Res add cycles: %llu (%d%%)\n", res_add_cycles, (res_add_cycles * 100) / total_cycles);
     printf("Other cycles: %llu (%d%%)\n", other_cycles, (other_cycles * 100) / total_cycles);
 
+    int correct[] = {375, 770, 249, 891};
+    for (int i = 0; i < fc_69_params.batch_size; i++) {
+        if (preds[i] != correct[i] && fc_69_out[i][preds[i]] != fc_69_out[i][correct[i]]) {
+            printf("Prediction %d is incorrect!\nFAIL\n", i+1);
+            exit(1);
+        }
+    }
+
+    printf("PASS\n");
     exit(0);
 }
 

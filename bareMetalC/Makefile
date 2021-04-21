@@ -35,6 +35,7 @@ tests = \
 	resadd \
 	global_average \
 	template \
+  pool \
 	multicore \
 	tiled_matmul_multi_cpu
 
