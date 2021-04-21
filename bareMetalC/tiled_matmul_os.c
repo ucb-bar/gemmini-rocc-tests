@@ -68,7 +68,7 @@ int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]
 }
 
 void full_matshift(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_DIM_J], int shift) {
-  for (size_t r = 0; r < MAT_DIM_I; r++)                             
+  for (size_t r = 0; r < MAT_DIM_I; r++)
     for (size_t c = 0; c < MAT_DIM_J; c++) {
       // Bitshift and round element
       full_t shifted = ROUNDING_RIGHT_SHIFT(full[r][c], shift);
@@ -81,7 +81,7 @@ void full_matshift(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_
       out[r][c] = shifted; // TODO should we also saturate when using floats?
 #endif
     }
-} 
+}
 
 int main() {
 #ifndef BAREMETAL
@@ -175,4 +175,3 @@ int main() {
 
   exit(0);
 }
-

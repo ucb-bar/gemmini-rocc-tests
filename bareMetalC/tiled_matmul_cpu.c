@@ -68,7 +68,7 @@ int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]
 }
 
 void full_matscale(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_DIM_J], acc_scale_t scale) {
-  for (size_t r = 0; r < MAT_DIM_I; r++)                             
+  for (size_t r = 0; r < MAT_DIM_I; r++)
     for (size_t c = 0; c < MAT_DIM_J; c++) {
       // Scale element
       full_t scaled = ACC_SCALE(full[r][c], scale);
@@ -81,7 +81,7 @@ void full_matscale(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_
       out[r][c] = scaled; // TODO should we also saturate when using floats?
 #endif
     }
-} 
+}
 
 int main() {
 #ifndef BAREMETAL
@@ -161,4 +161,3 @@ int main() {
 
   exit(0);
 }
-

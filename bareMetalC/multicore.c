@@ -18,4 +18,3 @@ int thread_entry(int cid, int nc) {
 
 int main() {
 }
-

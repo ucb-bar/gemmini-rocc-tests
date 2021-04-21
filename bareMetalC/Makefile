@@ -35,7 +35,8 @@ tests = \
 	resadd \
 	global_average \
 	template \
-	multicore
+	multicore \
+	tiled_matmul_multi_cpu
 
 tests_baremetal = $(tests:=-baremetal)
 
