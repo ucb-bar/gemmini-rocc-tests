@@ -4741,6 +4741,246 @@ static void tiled_global_average_auto(const elem_t * input, elem_t * output,
       channel_tile_size);
 }
 
+static void cpu_pool(int batches, int in_dim, int channels,
+    int pool_size, int pool_stride, int pool_padding,
+
+    const elem_t * input,
+    elem_t * output,
+
+    bool ceil_dim) {
+  int out_dim = (in_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+  if (ceil_dim)
+    out_dim += (in_dim + 2*pool_padding - pool_size) % pool_stride != 0;
+
+  for (int b = 0; b < batches; b++) {
+    for (int orow = 0; orow < out_dim; orow++) {
+      for (int ocol = 0; ocol < out_dim; ocol++) {
+        for (int ch = 0; ch < channels; ch++) {
+          elem_t * out = output + (b*out_dim*out_dim + orow*out_dim + ocol) * channels + ch;
+
+          *out = elem_t_min;
+
+          for (int wrow = 0; wrow < pool_size; wrow++) {
+            for (int wcol = 0; wcol < pool_size; wcol++) {
+              int irow = orow * pool_stride + wrow - pool_padding;
+              int icol = ocol * pool_stride + wcol - pool_padding;
+
+              elem_t pixel = irow < 0 || irow >= in_dim ||
+                icol < 0 || icol >= in_dim ?
+                0 :
+                *(input + (b*in_dim*in_dim + irow*in_dim + icol)*channels + ch);
+
+              if (pixel > *out) {
+                *out = pixel;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+static void sp_tiled_pool(int batches, int in_dim, int channels,
+    int batches_tile, int orows_tile, int ocols_tile, int channels_tile,
+    int lpad, int rpad, int upad, int dpad,
+    int pool_size, int pool_stride, int pool_padding,
+    const elem_t * input, elem_t * output,
+    bool ceil_dim) {
+
+  const int irows = orows_tile * pool_stride + pool_size - 1 - upad - dpad;
+  const int icols = ocols_tile * pool_stride + pool_size - 1 - lpad - rpad;
+
+  int out_dim = (in_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+  if (ceil_dim)
+    out_dim += (in_dim + 2*pool_padding - pool_size) % pool_stride != 0;
+
+  // Mvin input
+  {
+    const int max_chs_per_mvin = channels_tile < MAX_BLOCK_LEN * DIM ? channels_tile :
+        MAX_BLOCK_LEN * DIM;
+
+    gemmini_extended4_config_ld(channels * sizeof(elem_t), MVIN_SCALE_IDENTITY, false, batches * irows * icols, 0);
+
+    for (int b = 0; b < batches_tile; b++) {
+      for (int irow = 0; irow < irows; irow++) {
+        for (int icol = 0; icol < icols; icol += DIM) {
+          const int I = icols - icol > DIM ? DIM : icols - icol;
+
+          for (int ich = 0; ich < channels_tile; ich += max_chs_per_mvin) {
+            const int J = channels_tile - ich > max_chs_per_mvin ? max_chs_per_mvin : channels_tile - ich;
+
+            const uint32_t sp_addr = (ich / DIM) * batches_tile * irows * icols + b * irows * icols + irow * icols + icol;
+
+            const elem_t * in = input + (b*in_dim*in_dim + irow*in_dim + icol) * channels + ich;
+
+            gemmini_extended_mvin(in,
+                    sp_addr,
+                    J, I);
+          }
+        }
+      }
+    }
+  }
+
+  // Mvout output
+  {
+    const int max_chs_per_mvout = DIM;
+
+    gemmini_extended_config_st(channels * sizeof(elem_t), pool_stride, pool_size, out_dim, orows_tile, ocols_tile, irows, icols, upad, lpad);
+
+    for (int b = 0; b < batches_tile; b++) {
+      for (int och = 0; och < channels_tile; och += DIM) {
+        const int chs = och + DIM >= channels_tile ? channels_tile - och : DIM;
+
+        elem_t * out = output + (b * out_dim * out_dim)*channels + och;
+
+        const uint32_t sp_addr = (och / DIM) * batches_tile * irows * icols + b * irows * icols;
+
+        gemmini_extended_mvout(out,
+                sp_addr,
+                chs, 0);
+      }
+    }
+  }
+}
+
+static void tiled_pool(int batches, int in_dim, int channels,
+    int batches_tile, int channels_tile, int orows_tile, int ocols_tile,
+
+    int pool_size, int pool_stride, int pool_padding,
+
+    const elem_t * input,
+    elem_t * output,
+
+    bool ceil_dim,
+
+    enum tiled_matmul_type_t tiled_matmul_type) {
+
+  if (tiled_matmul_type == CPU) {
+    return cpu_pool(batches, in_dim, channels,
+        pool_size, pool_stride, pool_padding,
+        input, output, ceil_dim);
+  }
+
+  int out_dim = (in_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+  if (ceil_dim)
+    out_dim += (in_dim + 2*pool_padding - pool_size) % pool_stride != 0;
+
+  for (int b = 0; b < batches; b += batches_tile) {
+    for (int orow = 0; orow < out_dim; orow += orows_tile) {
+      const int irow = orow * pool_stride - pool_padding;
+
+      for (int ocol = 0; ocol < out_dim; ocol += ocols_tile) {
+        const int icol = ocol * pool_stride - pool_padding;
+
+        for (int ch = 0; ch < channels; ch += channels_tile) {
+          const int batches_ = batches - b > batches_tile ? batches_tile : batches - b;
+          const int orows_ = out_dim - orow > orows_tile ? orows_tile : out_dim - orow;
+          const int ocols_ = out_dim - ocol > ocols_tile ? ocols_tile : out_dim - ocol;
+          const int channels_ = channels - ch > channels_tile ? channels_tile : channels - ch;
+
+          const int irows_ = orows_ * pool_stride + pool_size - 1;
+          const int icols_ = ocols_ * pool_stride + pool_size - 1;
+
+          const int lpad = icol < 0 ? -icol : 0;
+          const int rpad = icol + icols_ > in_dim ? icol + icols_ - in_dim : 0;
+          const int upad = irow < 0 ? -irow : 0;
+          const int dpad = irow + irows_ > in_dim ? irow + irows_ - in_dim : 0;
+
+          sp_tiled_pool(batches, in_dim, channels,
+              batches_, orows_, ocols_, channels_,
+              lpad, rpad, upad, dpad,
+              pool_size, pool_stride, pool_padding,
+              input + (b*in_dim*in_dim + (irow+upad)*in_dim + (icol+lpad))*channels + ch,
+              output + (b*out_dim*out_dim + orow*out_dim + ocol)*channels + ch,
+              ceil_dim);
+        }
+      }
+    }
+  }
+}
+
+static int tiled_pool_rows(int pool_size, int pool_stride, int batches, int channels, int orows, int ocols) {
+  const int channels_per_bank = channels / DIM + (channels % DIM != 0);
+
+  const int irows = orows * pool_stride + pool_size - 1;
+  const int icols = ocols * pool_stride + pool_size - 1;
+
+  const int spad_rows = channels_per_bank * batches * irows * icols;
+  return spad_rows;
+}
+
+static void tiled_pool_auto(int batches, int in_dim, int channels,
+    int pool_size, int pool_stride, int pool_padding,
+
+    const elem_t * input,
+    elem_t * output,
+
+    bool ceil_dim,
+
+    enum tiled_matmul_type_t tiled_matmul_type) {
+  if (tiled_matmul_type == CPU) {
+    return cpu_pool(batches, in_dim, channels,
+        pool_size, pool_stride, pool_padding,
+        input, output, ceil_dim);
+  }
+
+  int out_dim = (in_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+  if (ceil_dim)
+    out_dim += (in_dim + 2*pool_padding - pool_size) % pool_stride != 0;
+
+  // batches, channels, orows, ocols
+  int args[] = {batches, channels, out_dim, out_dim};
+  const int channels_idx = 1;
+
+  const int max_spad_rows = BANK_NUM*BANK_ROWS;
+
+  int spad_rows = tiled_pool_rows(pool_size, pool_stride, args[0], args[1], args[2], args[3]);
+
+  while (spad_rows > max_spad_rows) {
+    int max_val = -1;
+    int max_idx = -1;
+
+    for (size_t i = 0; i < sizeof(args)/sizeof(args[0]); i++) {
+      // We avoid reducing ocols when possible to keep the spatial array fully utilized
+      if (args[i] > max_val) {
+        max_val = args[i];
+        max_idx = i;
+      }
+    }
+
+    if (max_idx == channels_idx) {
+      // For input and output channels, there's no point in subtracting by just one
+      if (args[max_idx] % DIM != 0) {
+        args[max_idx] = (args[max_idx] / DIM) * DIM;
+      } else {
+        args[max_idx] -= DIM;
+      }
+      args[max_idx] = args[max_idx] == 0 ? 1 : args[max_idx];
+    } else {
+      args[max_idx]--;
+    }
+
+    spad_rows = tiled_pool_rows(pool_size, pool_stride, args[0], args[1], args[2], args[3]);
+  }
+
+  const int batches_tile = args[0];
+  const int channels_tile = args[1];
+  const int orows_tile = args[2];
+  const int ocols_tile = args[3];
+
+  tiled_pool(batches, in_dim, channels,
+      batches_tile, channels_tile, orows_tile, ocols_tile,
+      pool_size, pool_stride, pool_padding,
+
+      input, output,
+
+      ceil_dim,
+
+      tiled_matmul_type);
+}
+
 #undef abs
 
 #endif // SRC_MAIN_C_GEMMINI_H
