@@ -2807,7 +2807,7 @@ static void tiled_conv_A_stride_cid(
 		  elem_t * pool_output,
 
         int act, acc_scale_t scale, size_t relu6_shift,
-        int pool_size, int pool_stride, int pool_padding,
+        int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
         enum tiled_matmul_type_t tiled_conv_type, 
 		  size_t och_divide, size_t orow_divide, size_t cid, bool skip_weight, bool both_out) {
@@ -2885,6 +2885,10 @@ static void tiled_conv_A_stride_cid(
     gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, stride, false, false);
 
     const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+	 if (pool_ceil_dim)
+      pool_out_dim += (out_dim + 2*pool_padding - pool_size) % pool_stride != 0;
+
+
 	 const int pool_out_row = pool_out_dim / orow_divide;
 	 const int porow_start = pool_out_row * cid;
 	 const int porow_end = pool_out_row * (cid + 1);
@@ -3002,7 +3006,7 @@ static void tiled_conv_A_stride_loopld(
 		  elem_t * pool_output,
 		  
         int act, acc_scale_t scale, size_t relu6_shift,
-        int pool_size, int pool_stride, int pool_padding,
+        int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
         enum tiled_matmul_type_t tiled_conv_type, 
 		  size_t och_divide, bool skip_weight, bool both_out) {
@@ -3077,6 +3081,9 @@ static void tiled_conv_A_stride_loopld(
     gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, stride, false, false);
 
     const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+	 if (pool_ceil_dim)
+      pool_out_dim += (out_dim + 2*pool_padding - pool_size) % pool_stride != 0;
+
 
 	 for (int poch = 0; poch < out_channels; poch += pochs) {
        for (int b = 0; b < batch_size; b += batches) {
@@ -3523,7 +3530,7 @@ static void tiled_conv_A_stride_auto_cid(
 	  elem_t * output,
 
 	  int act, acc_scale_t scale, size_t relu6_shift,
-	  int pool_size, int pool_stride, int pool_padding,
+	  int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
 	  enum tiled_matmul_type_t tiled_conv_type, 
 	  size_t orow_divide, size_t batch_divide, size_t cid, bool skip_weight) {
@@ -3549,6 +3556,9 @@ static void tiled_conv_A_stride_auto_cid(
 	 int weight_stride = out_channels;
 	
 	 const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+	 if (pool_ceil_dim)
+      pool_out_dim += (out_dim + 2*pool_padding - pool_size) % pool_stride != 0;
+	 
 	 // divide in batch dimension
 	 batch_size = batch_size / batch_divide;
 	 int batch_in_offset = (batch_divide > 1) ? batch_size*in_dim*in_dim*in_stride*cid : 0;
@@ -3799,7 +3809,7 @@ static void tiled_conv_A_stride_auto_cid(
 		  NULL,
 
 		  act, scale, relu6_shift,
-		  pool_size, no_pool ? 0 : pool_stride, pool_padding,
+		  pool_size, no_pool ? 0 : pool_stride, pool_padding, pool_ceil_dim,
 
 		  tiled_conv_type, och_divide, orow_divide, cid, skip_weight, false);
   }else{
@@ -3821,7 +3831,7 @@ static void tiled_conv_A_stride_auto_cid(
 		  NULL,
 
 		  act, scale, relu6_shift,
-		  pool_size, no_pool ? 0 : pool_stride, pool_padding,
+		  pool_size, no_pool ? 0 : pool_stride, pool_padding, pool_ceil_dim,
 
 		  tiled_conv_type, och_divide, skip_weight, false);
   }
@@ -3841,11 +3851,11 @@ static void tiled_conv_A_stride_auto_double_out(
 	  elem_t * pool_output,
 
 	  int act, acc_scale_t scale, size_t relu6_shift,
-	  int pool_size, int pool_stride, int pool_padding,
+	  int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim, 
 
 	  enum tiled_matmul_type_t tiled_conv_type, 
-	  size_t orow_divide, size_t batch_divide, size_t cid, bool skip_weight, bool both_out) {
-
+	  size_t orow_divide, size_t batch_divide, size_t cid, bool skip_weight) {
+	 const bool both_out = true;
 	 const bool no_pool = pool_stride == 0;
 	 if (no_pool) {
 		  pool_size = 1;
@@ -3873,6 +3883,9 @@ static void tiled_conv_A_stride_auto_double_out(
 	 int weight_stride = out_channels;
 	
 	 const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+	 if (pool_ceil_dim)
+      pool_out_dim += (out_dim + 2*pool_padding - pool_size) % pool_stride != 0;
+
 	 // divide in batch dimension
 	 batch_size = batch_size / batch_divide;
 	 int batch_in_offset = (batch_divide > 1) ? batch_size*in_dim*in_dim*in_stride*cid : 0;
@@ -4123,7 +4136,7 @@ static void tiled_conv_A_stride_auto_double_out(
 		  both_out ? pool_output + batch_out_offset : NULL,
 
 		  act, scale, relu6_shift,
-		  pool_size, no_pool ? 0 : pool_stride, pool_padding,
+		  pool_size, no_pool ? 0 : pool_stride, pool_padding, pool_ceil_dim,
 
 		  tiled_conv_type, och_divide, orow_divide, cid, skip_weight, both_out);
   }else{
@@ -4145,7 +4158,7 @@ static void tiled_conv_A_stride_auto_double_out(
 		  both_out ? pool_output + out_offset + batch_out_offset : NULL,
 
 		  act, scale, relu6_shift,
-		  pool_size, no_pool ? 0 : pool_stride, pool_padding,
+		  pool_size, no_pool ? 0 : pool_stride, pool_padding, pool_ceil_dim,
 
 		  tiled_conv_type, och_divide, skip_weight, both_out);
   }
@@ -6456,6 +6469,7 @@ static void sp_tiled_pool(
 
 static void tiled_pool(
         int batch_size, int in_dim, int channels,
+		  int pool_out_dim,
 		  int batches,
         int porows, int pocols, int pochs,
        
@@ -6463,7 +6477,7 @@ static void tiled_pool(
         elem_t * pool_output,
 		  
         int act, acc_scale_t scale, size_t relu6_shift,
-        int pool_size, int pool_stride, int pool_padding,
+        int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
 		  size_t och_divide) {
 
@@ -6471,7 +6485,6 @@ static void tiled_pool(
 	 gemmini_config_st(out_stride * sizeof(elem_t));
     gemmini_extended_config_ex(WEIGHT_STATIONARY, RELU, 0, MVIN_SCALE_IDENTITY, 0, 1, false, false);
 //	 int stride = channels*och_divide;
-    const int pool_out_dim = (in_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 //    gemmini_extended4_config_ld(stride * sizeof(elem_t), MVIN_SCALE_IDENTITY, true, DIM, 0);
  
 	 for (int poch = 0; poch < channels; poch += pochs) {
@@ -6518,16 +6531,17 @@ static void tiled_pool(
 }
 // pooling using Gemmini DMA
 static void tiled_pool_auto_cid(size_t batch_size, size_t channels, size_t in_dim,
+		size_t pool_out_dim, size_t stride,
 		size_t pool_size, size_t pool_stride, size_t pool_padding,
 		const elem_t * A,
       elem_t * C,
       size_t och_divide, size_t batch_divide, size_t cid) {
 
 	 bool relu = true;
-	 int stride = channels;
+	 //int stride = channels;
     batch_size = batch_size/batch_divide;
     channels = channels / och_divide;
-    const int pool_out_dim = (in_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    //const int pool_out_dim = (in_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 	 int batch_in_offset = (batch_divide > 1) ? batch_size*in_dim*in_dim*stride*cid : 0;
 	 int batch_out_offset = (batch_divide > 1) ? batch_size*pool_out_dim*pool_out_dim*stride*cid : 0; // not dividing in out_channel dimension
  	 const int out_offset = (och_divide > 1) ? channels * cid : 0;
@@ -6573,7 +6587,7 @@ static void tiled_pool_auto_cid(size_t batch_size, size_t channels, size_t in_di
     // printf("tile_I: %llu\n", tile_I);
     // printf("tile_J: %llu\n", tile_J);
 
-      tiled_pool(batch_size, in_dim, channels,
+      tiled_pool(batch_size, in_dim, channels, pool_out_dim,
 				args[0], args[1], args[2], args[3],
             A + batch_in_offset + out_offset, C + batch_out_offset + out_offset,	
 				RELU, MVIN_SCALE_IDENTITY, 0,
