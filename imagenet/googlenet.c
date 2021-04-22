@@ -2322,7 +2322,7 @@ int main (int argc, char * argv[]) {
         printf("Prediction: %u (score: %d)\n", max_idx, max_prob);
     }
 
-    uint64_t total_cycles = im2col_cycles + matmul_cycles + pool_cycles + conv_dw_cycles + res_add_cycles + other_cycles;
+    uint64_t total_cycles = im2col_cycles + matmul_cycles + conv_cycles + pool_cycles + conv_dw_cycles + res_add_cycles + other_cycles;
 
     printf("\nTotal cycles: %llu (100%%)\n", total_cycles);
     printf("Matmul cycles: %llu (%d%%)\n", matmul_cycles, (matmul_cycles * 100) / total_cycles);
