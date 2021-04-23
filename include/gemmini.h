@@ -2550,7 +2550,7 @@ static void conv_cpu(
   }
 
   const bool no_bias = bias == NULL;
-  const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+  int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
   for (int b = 0; b < batch_size; b++) {
     for (int porow = 0; porow < pool_out_dim; porow++) {
@@ -2696,7 +2696,7 @@ static void tiled_conv_A_stride(
     gemmini_config_st(out_channels * sizeof(elem_t));
     gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, stride, false, false);
 
-    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 	 //default dram_stride
 	 const int out_stride = out_channels;
 	 const int in_stride = in_channels;
@@ -2884,12 +2884,12 @@ static void tiled_conv_A_stride_cid(
 	 gemmini_config_st(out_stride * sizeof(elem_t));
     gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, stride, false, false);
 
-    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 	 if (pool_ceil_dim)
       pool_out_dim += (out_dim + 2*pool_padding - pool_size) % pool_stride != 0;
 
 
-	 const int pool_out_row = pool_out_dim / orow_divide;
+	 int pool_out_row = pool_out_dim / orow_divide;
 	 const int porow_start = pool_out_row * cid;
 	 const int porow_end = pool_out_row * (cid + 1);
 #ifdef GEMMINI_ASSERTIONS
@@ -3080,7 +3080,7 @@ static void tiled_conv_A_stride_loopld(
 	 gemmini_config_st(out_stride * sizeof(elem_t));
     gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, stride, false, false);
 
-    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 	 if (pool_ceil_dim)
       pool_out_dim += (out_dim + 2*pool_padding - pool_size) % pool_stride != 0;
 
@@ -3248,8 +3248,8 @@ static void tiled_conv_A_stride_dw(
 	 gemmini_config_st(och_stride * sizeof(elem_t));
     gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, stride, false, false);
 
-	 const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
-	 const int pool_out_row = pool_out_dim / orow_divide;
+	 int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+	 int pool_out_row = pool_out_dim / orow_divide;
 	 const int porow_start = (orow_divide == 1) ? 0 : pool_out_row * cid;
 	 const int porow_end = (orow_divide == 1) ? pool_out_dim : pool_out_row * (cid + 1);
 #ifdef GEMMINI_ASSERTIONS
@@ -3361,7 +3361,7 @@ static void tiled_conv_A_stride_auto(
         pool_padding = 0;
     }
 
-    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
     // Tile convolution params
 
@@ -3555,7 +3555,7 @@ static void tiled_conv_A_stride_auto_cid(
 	 int in_stride = in_channels;
 	 int weight_stride = out_channels;
 	
-	 const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+	 int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 	 if (pool_ceil_dim)
       pool_out_dim += (out_dim + 2*pool_padding - pool_size) % pool_stride != 0;
 	 
@@ -3571,7 +3571,7 @@ static void tiled_conv_A_stride_auto_cid(
 */
 	 // divide in row dimension (single batch)
 	 bool row_divisible = (orow_divide > 1) && (pool_out_dim % orow_divide == 0);
-	 const int pool_out_row = (row_divisible) ? (pool_out_dim / orow_divide) : pool_out_dim;
+	 int pool_out_row = (row_divisible) ? (pool_out_dim / orow_divide) : pool_out_dim;
 	 const size_t och_divide = (row_divisible) ? 1 : orow_divide; //if row isn't divisible, divide channel instead
   	 out_channels = out_channels / och_divide;
   	 const int out_offset = (och_divide > 1) ? out_channels * cid : 0;
@@ -3768,8 +3768,8 @@ static void tiled_conv_A_stride_auto_cid(
 	 const int krows = args[4];
 	 const int kcols = args[5];
 	 const int kchs = args[6];
-/*
 
+/*
     spad_rows = tiled_conv_total_spad_rows_A_stride(false,
         stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     acc_rows = tiled_conv_total_spad_rows_A_stride(true,
@@ -3882,7 +3882,7 @@ static void tiled_conv_A_stride_auto_double_out(
 	 int in_stride = in_channels;
 	 int weight_stride = out_channels;
 	
-	 const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+	 int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 	 if (pool_ceil_dim)
       pool_out_dim += (out_dim + 2*pool_padding - pool_size) % pool_stride != 0;
 
@@ -3898,7 +3898,7 @@ static void tiled_conv_A_stride_auto_double_out(
 */
 	 // divide in row dimension (single batch)
 	 bool row_divisible = (orow_divide > 1) && (pool_out_dim % orow_divide == 0);
-	 const int pool_out_row = (row_divisible) ? (pool_out_dim / orow_divide) : pool_out_dim;
+	 int pool_out_row = (row_divisible) ? (pool_out_dim / orow_divide) : pool_out_dim;
 	 const size_t och_divide = (row_divisible) ? 1 : orow_divide; //if row isn't divisible, divide channel instead
   	 out_channels = out_channels / och_divide;
   	 const int out_offset = (och_divide > 1) ? out_channels * cid : 0;
@@ -4008,6 +4008,9 @@ static void tiled_conv_A_stride_auto_double_out(
 				else if(args[ocols_idx] > DIM){
 					args[ocols_idx] = DIM;
 				}
+				else if(max_val == MAX_BLOCK_LEN * DIM){
+					args[max_idx] /= 2;
+				}
 
 		  } else {
 			  if(max_idx == ocols_idx){
@@ -4019,7 +4022,7 @@ static void tiled_conv_A_stride_auto_double_out(
 			  }
 		  }
 
-			  //printf("max_val: %d, max_idx: %d \n", max_val, max_idx);
+//			  printf("max_val: %d, max_idx: %d \n", max_val, max_idx);
 	
 		  spad_rows = tiled_conv_total_spad_rows_A_stride(false,
 				stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
@@ -4095,8 +4098,8 @@ static void tiled_conv_A_stride_auto_double_out(
 	 const int krows = args[4];
 	 const int kcols = args[5];
 	 const int kchs = args[6];
-/*
 
+/*
     spad_rows = tiled_conv_total_spad_rows_A_stride(false,
         stride, dilation, args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     acc_rows = tiled_conv_total_spad_rows_A_stride(true,
@@ -4199,7 +4202,7 @@ static void tiled_conv_A_stride_dw_auto_cid(
 	 int out_stride = out_channels;
 	 int in_stride = in_channels;
 	 int weight_stride = out_stride;
-	 const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+	 int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
 	 // divide in batch dimension
 	 batch_size = batch_size / batch_divide;
@@ -4208,7 +4211,7 @@ static void tiled_conv_A_stride_dw_auto_cid(
 
 	 // divide in row dimension (single batch)
 	 bool row_divisible = false;//(orow_divide > 1) && (pool_out_dim % orow_divide == 0);
-	 const int pool_out_row = (row_divisible) ? (pool_out_dim / orow_divide) : pool_out_dim;
+	 int pool_out_row = (row_divisible) ? (pool_out_dim / orow_divide) : pool_out_dim;
 	 const size_t och_divide = orow_divide;//(row_divisible) ? 1 : orow_divide; //if row isn't divisible, divide channel instead
 	 orow_divide = 1;
 	 //if(!row_divisible)	orow_divide = 1;
@@ -4593,7 +4596,7 @@ static void tiled_conv_dw(
     }
 #endif
 
-    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
     if (no_pool) {
         gemmini_config_st(out_channels * sizeof(elem_t));
     }
@@ -4757,7 +4760,7 @@ static void tiled_conv_first(
     }
 #endif
 
-    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
     if (no_pool && no_1d) {
         gemmini_config_st(out_channels * sizeof(elem_t));
@@ -5274,7 +5277,7 @@ static void tiled_conv_original(
     }
 #endif
 
-    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
     if (no_pool) {
         gemmini_config_st(out_channels * sizeof(elem_t));
@@ -5465,7 +5468,7 @@ static void tiled_conv(
     int kdims = kcols*kcols;
     const uint32_t B_sp_addr_start = (BANK_NUM - weight_bank) * BANK_ROWS;
  
-    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
       for (int poch = 0; poch < out_channels; poch += pochs) {
            const int pochs_ = out_channels - poch > pochs ? pochs : out_channels - poch;
@@ -5619,7 +5622,7 @@ static void tiled_conv_auto_first(
         pool_stride = 1;
         pool_padding = 0;
     }
-    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
     // int args[] = {batch_size, porows, pocols, pochs, krows, kcols, kchs};
     int args[] = {batch_size, pool_out_dim, pool_out_dim, out_channels, in_channels};
@@ -5716,7 +5719,7 @@ static void tiled_conv_auto_dw(
         pool_padding = 0;
     }
 
-    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
     const int weight_bank = 1;//((int)(kernel_dim*kernel_dim*in_channels)/BANK_ROWS)+1;
     // int args[] = {batch_size, porows, pocols, pochs, krows, kcols, kchs};
@@ -5801,7 +5804,7 @@ static void tiled_conv_auto_original(
         pool_stride = 1;
         pool_padding = 0;
     }
-    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
     int args[] = {batch_size, pool_out_dim, pool_out_dim, out_channels, in_channels};
 
@@ -5941,7 +5944,7 @@ static void tiled_conv_auto_largeC(
     }
     const int weight_bank = 2; //hard-coded number of weight banks to use
 
-    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
     // int args[] = {batch_size, porows, pocols, pochs, krows, kcols, kchs};
     int args[] = {batch_size, pool_out_dim, pool_out_dim, out_channels, in_channels};
@@ -6055,7 +6058,7 @@ static void tiled_conv_auto(
         pool_padding = 0;
     }
 
-    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
     const int weight_bank = 1;
     int args[] = {batch_size, pool_out_dim, pool_out_dim, out_channels, in_channels};
 
@@ -6477,7 +6480,7 @@ static void tiled_pool(
         elem_t * pool_output,
 		  
         int act, acc_scale_t scale, size_t relu6_shift,
-        int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
+        int pool_size, int pool_stride, int pool_padding,
 
 		  size_t och_divide) {
 
@@ -6487,44 +6490,44 @@ static void tiled_pool(
 //	 int stride = channels*och_divide;
 //    gemmini_extended4_config_ld(stride * sizeof(elem_t), MVIN_SCALE_IDENTITY, true, DIM, 0);
  
-	 for (int poch = 0; poch < channels; poch += pochs) {
+    for (int poch = 0; poch < channels; poch += pochs) {
        for (int b = 0; b < batch_size; b += batches) {
            for (int porow = 0; porow < pool_out_dim; porow += porows) {
                const int orow = porow * pool_stride - pool_padding;
-	            const int orow_floored = orow < 0 ? 0 : orow;          
-					for (int pocol = 0; pocol < pool_out_dim; pocol += pocols) {
+	       const int orow_floored = orow < 0 ? 0 : orow;          
+	       for (int pocol = 0; pocol < pool_out_dim; pocol += pocols) {
                    const int ocol = pocol * pool_stride - pool_padding;
-		             const int ocol_floored = ocol < 0 ? 0 : ocol;
+		   const int ocol_floored = ocol < 0 ? 0 : ocol;
            
                    elem_t * out = pool_output + (b*pool_out_dim*pool_out_dim + porow*pool_out_dim + pocol) * out_stride + poch;
-				       const elem_t * in = input + (b*in_dim*in_dim + orow_floored*in_dim + ocol_floored) * out_stride + poch;
+		   const elem_t * in = input + (b*in_dim*in_dim + orow_floored*in_dim + ocol_floored) * out_stride + poch;
 
-						 //printf("batch: %d, poch: %d, porow: %d, pocol: %d, krow: %d, kcol: %d, kch: %d \n", b, poch, porow, pocol, krow, kcol, kch);
-						  const int batches_ = batch_size - b > batches ? batches : batch_size - b;
-						  const int porows_ = pool_out_dim - porow > porows ? porows : pool_out_dim - porow;
-						  const int pocols_ = pool_out_dim - pocol > pocols ? pocols : pool_out_dim - pocol;
-						  const int pochs_ = channels - poch > pochs ? pochs : channels - poch;
-						  const int ocols_ = pocols_ * pool_stride + pool_size - 1;
-						  const int orows_ = porows_ * pool_stride + pool_size - 1;
+		 //printf("batch: %d, poch: %d, porow: %d, pocol: %d, krow: %d, kcol: %d, kch: %d \n", b, poch, porow, pocol, krow, kcol, kch);
+		  const int batches_ = batch_size - b > batches ? batches : batch_size - b;
+		  const int porows_ = pool_out_dim - porow > porows ? porows : pool_out_dim - porow;
+		  const int pocols_ = pool_out_dim - pocol > pocols ? pocols : pool_out_dim - pocol;
+		  const int pochs_ = channels - poch > pochs ? pochs : channels - poch;
+		  const int ocols_ = pocols_ * pool_stride + pool_size - 1;
+		  const int orows_ = porows_ * pool_stride + pool_size - 1;
 
-						  const int plpad = ocol < 0 ? -ocol : 0;
-						  const int prpad = ocol + ocols_ > in_dim ? ocol + ocols_ - in_dim : 0;
-						  const int pupad = orow < 0 ? -orow : 0;
-						  const int pdpad = orow + orows_ > in_dim ? orow + orows_ - in_dim : 0;
+		  const int plpad = ocol < 0 ? -ocol : 0;
+		  const int prpad = ocol + ocols_ > in_dim ? ocol + ocols_ - in_dim : 0;
+		  const int pupad = orow < 0 ? -orow : 0;
+		  const int pdpad = orow + orows_ > in_dim ? orow + orows_ - in_dim : 0;
 
-	                 sp_tiled_pool(
-									batch_size, in_dim, channels,
-									pool_out_dim,
-									pool_size, pool_stride, pool_padding,
-									out_stride,
+		 sp_tiled_pool(
+			batch_size, in_dim, channels,
+			pool_out_dim,
+			pool_size, pool_stride, pool_padding,
+			out_stride,
 
-									batches_,
-									porows_, pocols_, pochs_,
-									plpad, prpad, pupad, pdpad,
+			batches_,
+			porows_, pocols_, pochs_,
+			plpad, prpad, pupad, pdpad,
 
-									in,
-									out);
-					} 
+			in,
+			out);
+		} 
             }
         }
     }
@@ -6541,7 +6544,7 @@ static void tiled_pool_auto_cid(size_t batch_size, size_t channels, size_t in_di
 	 //int stride = channels;
     batch_size = batch_size/batch_divide;
     channels = channels / och_divide;
-    //const int pool_out_dim = (in_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    //int pool_out_dim = (in_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 	 int batch_in_offset = (batch_divide > 1) ? batch_size*in_dim*in_dim*stride*cid : 0;
 	 int batch_out_offset = (batch_divide > 1) ? batch_size*pool_out_dim*pool_out_dim*stride*cid : 0; // not dividing in out_channel dimension
  	 const int out_offset = (och_divide > 1) ? channels * cid : 0;
