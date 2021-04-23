@@ -35,7 +35,7 @@ tests = \
 	resadd \
 	global_average \
 	template \
-  pool \
+	pool \
 	multicore \
 	tiled_matmul_multi_cpu
 
@@ -93,7 +93,7 @@ vpath %.c $(src_dir)
 		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
 
 %-linux: %.c $(GEMMINI_HEADERS)
-	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@
+	$(CC_LINUX) -pthread $(CFLAGS) $< $(LFLAGS) -o $@
 
 run-baremetal: $(runs_baremetal)
 
