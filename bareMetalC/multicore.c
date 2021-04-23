@@ -1,72 +1,46 @@
 // See LICENSE for license details.
 
+#include "include/threadpool.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-#ifndef BAREMETAL
-#include <sys/mman.h>
-#endif
-#include "include/gemmini_testutils.h"
-#include "include/threadpool.h"
 
-int t1, t2, t3, t4;
+typedef struct task_args_t {
+  int i;
+  int cid;
+} task_args_t;
 
-void t1_task() {
-  printf("t1: %d\n", t1);
+void task1(void * args_ptr) {
+  task_args_t * args = args_ptr;
+  printf("Task 1, Thread %d output: %d\n", args->cid, args->i);
 }
 
-void t2_task() {
-  printf("t2: %d\n", t2);
-}
-
-void t3_task() {
-  printf("t3: %d\n", t3);
-}
-
-void t4_task() {
-  printf("t4: %d\n", t4);
-}
-
-void t1_task_2() {
-  printf("t1: %d\n", -t1);
-}
-
-void t2_task_2() {
-  printf("t2: %d\n", -t2);
-}
-
-void t3_task_2() {
-  printf("t3: %d\n", -t3);
-}
-
-void t4_task_2() {
-  printf("t4: %d\n", -t4);
+void task2(void * args_ptr) {
+  task_args_t * args = args_ptr;
+  printf("Task 2, Thread %d output: %d\n", args->cid, args->i * 10);
 }
 
 void * thread_main() {
-  t1 = 10;
-  t2 = 20;
-  t3 = 30;
-  t4 = 40;
+  task_args_t task_args[THREADS];
 
-  thread_tasks[0] = t1_task;
-  thread_tasks[1] = t2_task;
-  thread_tasks[2] = t3_task;
-  thread_tasks[3] = t4_task;
-
+  for (int t = 0; t < THREADS; t++) {
+    task_args[t].i = t;
+    task_args[t].cid = t;
+    SET_TASK(t, task1, &task_args[t]);
+  }
   RUN_TASKS();
 
-  thread_tasks[0] = t1_task_2;
-  thread_tasks[1] = t2_task_2;
-  thread_tasks[2] = t3_task_2;
-  thread_tasks[3] = t4_task_2;
-
+  for (int t = 0; t < THREADS; t++) {
+    task_args[t].i = t;
+    task_args[t].cid = t;
+    SET_TASK(t, task2, &task_args[t]);
+  }
   RUN_TASKS();
 
-  end_threads = 1;
-  RUN_TASKS();
+  END_THREADS();
 }
 
-MAIN()
+START_THREADPOOL()
+
