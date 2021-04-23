@@ -4,6 +4,7 @@ tests = \
 	resnet50 \
 	mobilenet \
 	googlenet \
+	googlenet_1batch \
 	# alexnet \
 
 tests_baremetal = $(tests:=-baremetal)

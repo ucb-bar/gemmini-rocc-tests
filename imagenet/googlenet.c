@@ -7,7 +7,7 @@
 #include "include/gemmini.h"
 #include "include/gemmini_nn.h"
 
-#include "googlenet_params.h"
+#include "googlenet_params_1batch.h"
 #include "googlenet_images.h"
 
 int main (int argc, char * argv[]) {
@@ -20,45 +20,21 @@ int main (int argc, char * argv[]) {
 
     gemmini_flush(0);
 
-    enum tiled_matmul_type_t tiled_matmul_type;
+    const enum tiled_matmul_type_t tiled_matmul_type = WS;
+    const bool conv = true;
+    const bool check = false;
+
+    bool quiet;
     if (argc < 2) {
-        tiled_matmul_type = WS;
-    } else if (strcmp(argv[1], "cpu") == 0) {
-        tiled_matmul_type = CPU;
-    } else if (strcmp(argv[1], "os") == 0) {
-        tiled_matmul_type = OS;
-    } else if (strcmp(argv[1], "ws") == 0) {
-        tiled_matmul_type = WS;
+        quiet = false;
+    } else if (strcmp(argv[1], "quiet") == 0) {
+        quiet = true;
     } else if (strcmp(argv[1], "-h") == 0) {
-        printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
+        printf("usage: %s [-h] [quiet]\n'\n", argv[0]);
         exit(0);
     } else {
         printf("Unknown command-line argument\n");
-        printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
-        exit(1);
-    }
-
-    bool check;
-    if (argc < 3) {
-        check = false;
-    } else if (strcmp(argv[2], "check") == 0) {
-        check = true;
-    } else {
-        printf("Unknown command-line argument\n");
-        printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
-        exit(1);
-    }
-
-    bool conv;
-    if (argc < 4) {
-        conv = true;
-    } else if (strcmp(argv[3], "conv") == 0) {
-        conv = true;
-    } else if (strcmp(argv[3], "matmul") == 0) {
-        conv = false;
-    } else {
-        printf("Unknown command-line argument\n");
-        printf("usage: %s [-h] matmul_option [check] [conv]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
+        printf("usage: %s [-h] [quiet]\n'\n", argv[0]);
         exit(1);
     }
 
@@ -87,7 +63,7 @@ int main (int argc, char * argv[]) {
 
     // conv_1
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col(conv_1_params.batch_size, conv_1_params.in_channels, conv_1_params.in_dim,
             conv_1_params.I, conv_1_params.K,
@@ -142,7 +118,7 @@ int main (int argc, char * argv[]) {
 
     // conv_2
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col(conv_2_params.batch_size, conv_2_params.in_channels, conv_2_params.in_dim,
             conv_2_params.I, conv_2_params.K,
@@ -179,7 +155,7 @@ int main (int argc, char * argv[]) {
 
     // conv_3
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_2_params.I, conv_2_params.J,
             conv_3_params.I, conv_3_params.K,
@@ -236,7 +212,7 @@ int main (int argc, char * argv[]) {
     // Branch 1
     // conv_4
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col(conv_4_params.batch_size, conv_4_params.in_channels, conv_4_params.in_dim,
             conv_4_params.I, conv_4_params.K,
@@ -274,7 +250,7 @@ int main (int argc, char * argv[]) {
     // Branch 2
     // conv_5
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col(conv_5_params.batch_size, conv_5_params.in_channels, conv_5_params.in_dim,
             conv_5_params.I, conv_5_params.K,
@@ -311,7 +287,7 @@ int main (int argc, char * argv[]) {
 
     // conv_6
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_5_params.I, conv_5_params.J,
             conv_6_params.I, conv_6_params.K,
@@ -358,7 +334,7 @@ int main (int argc, char * argv[]) {
     // Branch 3
     // conv_7
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col(conv_7_params.batch_size, conv_7_params.in_channels, conv_7_params.in_dim,
             conv_7_params.I, conv_7_params.K,
@@ -395,7 +371,7 @@ int main (int argc, char * argv[]) {
 
     // conv_8
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_7_params.I, conv_7_params.J,
             conv_8_params.I, conv_8_params.K,
@@ -538,7 +514,7 @@ int main (int argc, char * argv[]) {
 
     // conv_13
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_12_params.I, conv_12_params.J,
             conv_13_params.I, conv_13_params.K,
@@ -611,7 +587,7 @@ int main (int argc, char * argv[]) {
 
     // conv_15
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_14_params.I, conv_14_params.J,
             conv_15_params.I, conv_15_params.K,
@@ -764,7 +740,7 @@ int main (int argc, char * argv[]) {
 
     // conv_21
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_20_params.I, conv_20_params.J,
             conv_21_params.I, conv_21_params.K,
@@ -837,7 +813,7 @@ int main (int argc, char * argv[]) {
 
     // conv_23
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_22_params.I, conv_22_params.J,
             conv_23_params.I, conv_23_params.K,
@@ -978,7 +954,7 @@ int main (int argc, char * argv[]) {
 
     // conv_28
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_27_params.I, conv_27_params.J,
             conv_28_params.I, conv_28_params.K,
@@ -1051,7 +1027,7 @@ int main (int argc, char * argv[]) {
 
     // conv_30
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_29_params.I, conv_29_params.J,
             conv_30_params.I, conv_30_params.K,
@@ -1265,7 +1241,7 @@ int main (int argc, char * argv[]) {
 
     // conv_37
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_36_params.I, conv_36_params.J,
             conv_37_params.I, conv_37_params.K,
@@ -1479,7 +1455,7 @@ int main (int argc, char * argv[]) {
 
     // conv_44
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_43_params.I, conv_43_params.J,
             conv_44_params.I, conv_44_params.K,
@@ -1620,7 +1596,7 @@ int main (int argc, char * argv[]) {
 
     // conv_49
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_48_params.I, conv_48_params.J,
             conv_49_params.I, conv_49_params.K,
@@ -1693,7 +1669,7 @@ int main (int argc, char * argv[]) {
 
     // conv_51
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_50_params.I, conv_50_params.J,
             conv_51_params.I, conv_51_params.K,
@@ -1845,7 +1821,7 @@ int main (int argc, char * argv[]) {
 
     // conv_57
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_56_params.I, conv_56_params.J,
             conv_57_params.I, conv_57_params.K,
@@ -1918,7 +1894,7 @@ int main (int argc, char * argv[]) {
 
     // conv_59
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_58_params.I, conv_58_params.J,
             conv_59_params.I, conv_59_params.K,
@@ -2059,7 +2035,7 @@ int main (int argc, char * argv[]) {
 
     // conv_64
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_63_params.I, conv_63_params.J,
             conv_64_params.I, conv_64_params.K,
@@ -2130,7 +2106,7 @@ int main (int argc, char * argv[]) {
 
     // conv_66
     if (!conv) {
-      start = read_cycles();
+        start = read_cycles();
 
         im2col_with_col2im(conv_65_params.I, conv_65_params.J,
             conv_66_params.I, conv_66_params.K,
@@ -2235,75 +2211,77 @@ int main (int argc, char * argv[]) {
     matmul_cycles += end - start;
     fc_69_cycles = end - start;
 
-    printf("conv_1_cycles: %llu\n", conv_1_cycles);
-    printf("matmul_2_cycles: %llu\n", matmul_2_cycles);
-    printf("conv_3_cycles: %llu\n", conv_3_cycles);
-    printf("matmul_4_cycles: %llu\n", matmul_4_cycles);
-    printf("matmul_5_cycles: %llu\n", matmul_5_cycles);
-    printf("conv_6_cycles: %llu\n", conv_6_cycles);
-    printf("matmul_7_cycles: %llu\n", matmul_7_cycles);
-    printf("conv_8_cycles: %llu\n", conv_8_cycles);
-    printf("pool_9_cycles: %llu\n", pool_9_cycles);
-    printf("matmul_10_cycles: %llu\n", matmul_10_cycles);
-    printf("matmul_11_cycles: %llu\n", matmul_11_cycles);
-    printf("matmul_12_cycles: %llu\n", matmul_12_cycles);
-    printf("conv_13_cycles: %llu\n", conv_13_cycles);
-    printf("matmul_14_cycles: %llu\n", matmul_14_cycles);
-    printf("conv_15_cycles: %llu\n", conv_15_cycles);
-    printf("pool_16_cyles: %llu\n", pool_16_cyles);
-    printf("matmul_17_cycles: %llu\n", matmul_17_cycles);
-    printf("pool_18_cycles: %llu\n", pool_18_cycles);
-    printf("matmul_19_cycles: %llu\n", matmul_19_cycles);
-    printf("matmul_20_cycles: %llu\n", matmul_20_cycles);
-    printf("conv_21_cycles: %llu\n", conv_21_cycles);
-    printf("matmul_22_cycles: %llu\n", matmul_22_cycles);
-    printf("conv_23_cycles: %llu\n", conv_23_cycles);
-    printf("pool_24_cycles: %llu\n", pool_24_cycles);
-    printf("matmul_25_cycles: %llu\n", matmul_25_cycles);
-    printf("matmul_26_cycles: %llu\n", matmul_26_cycles);
-    printf("matmul_27_cycles: %llu\n", matmul_27_cycles);
-    printf("conv_28_cycles: %llu\n", conv_28_cycles);
-    printf("matmul_29_cycles: %llu\n", matmul_29_cycles);
-    printf("conv_30_cycles: %llu\n", conv_30_cycles);
-    printf("pool_31_cycles: %llu\n", pool_31_cycles);
-    printf("matmul_32_cycles: %llu\n", matmul_32_cycles);
-    printf("matmul_33_cycles: %llu\n", matmul_33_cycles);
-    printf("matmul_34_cycles: %llu\n", matmul_34_cycles);
-    printf("conv_35_cycles: %llu\n", conv_35_cycles);
-    printf("matmul_36_cycles: %llu\n", matmul_36_cycles);
-    printf("conv_37_cycles: %llu\n", conv_37_cycles);
-    printf("pool_38_cycles: %llu\n", pool_38_cycles);
-    printf("matmul_39_cycles: %llu\n", matmul_39_cycles);
-    printf("matmul_40_cycles: %llu\n", matmul_40_cycles);
-    printf("matmul_41_cycles: %llu\n", matmul_41_cycles);
-    printf("conv_42_cycles: %llu\n", conv_42_cycles);
-    printf("matmul_43_cycles: %llu\n", matmul_43_cycles);
-    printf("conv_44_cycles: %llu\n", conv_44_cycles);
-    printf("pool_45_cycles: %llu\n", pool_45_cycles);
-    printf("matmul_46_cycles: %llu\n", matmul_46_cycles);
-    printf("matmul_47_cycles: %llu\n", matmul_47_cycles);
-    printf("matmul_48_cycles: %llu\n", matmul_48_cycles);
-    printf("conv_49_cycles: %llu\n", conv_49_cycles);
-    printf("matmul_50_cycles: %llu\n", matmul_50_cycles);
-    printf("conv_51_cycles: %llu\n", conv_51_cycles);
-    printf("pool_52_cycles: %llu\n", pool_52_cycles);
-    printf("matmul_53_cycles: %llu\n", matmul_53_cycles);
-    printf("pool_54_cycles: %llu\n", pool_54_cycles);
-    printf("matmul_55_cycles: %llu\n", matmul_55_cycles);
-    printf("matmul_56_cycles: %llu\n", matmul_56_cycles);
-    printf("conv_57_cycles: %llu\n", conv_57_cycles);
-    printf("matmul_58_cycles: %llu\n", matmul_58_cycles);
-    printf("conv_59_cycles: %llu\n", conv_59_cycles);
-    printf("pool_60_cycles: %llu\n", pool_60_cycles);
-    printf("matmul_60_cycles: %llu\n", matmul_60_cycles);
-    printf("matmul_62_cycles: %llu\n", matmul_62_cycles);
-    printf("matmul_63_cycles: %llu\n", matmul_63_cycles);
-    printf("conv_64_cycles: %llu\n", conv_64_cycles);
-    printf("matmul_65_cycles: %llu\n", matmul_65_cycles);
-    printf("conv_66_cycles: %llu\n", conv_66_cycles);
-    printf("pool_67_cycles: %llu\n", pool_67_cycles);
-    printf("matmul_67_cycles: %llu\n", matmul_67_cycles);
-    printf("fc_69_cycles: %llu\n\n", fc_69_cycles);
+    if (!quiet) {
+      printf("conv_1_cycles: %llu\n", conv_1_cycles);
+      printf("matmul_2_cycles: %llu\n", matmul_2_cycles);
+      printf("conv_3_cycles: %llu\n", conv_3_cycles);
+      printf("matmul_4_cycles: %llu\n", matmul_4_cycles);
+      printf("matmul_5_cycles: %llu\n", matmul_5_cycles);
+      printf("conv_6_cycles: %llu\n", conv_6_cycles);
+      printf("matmul_7_cycles: %llu\n", matmul_7_cycles);
+      printf("conv_8_cycles: %llu\n", conv_8_cycles);
+      printf("pool_9_cycles: %llu\n", pool_9_cycles);
+      printf("matmul_10_cycles: %llu\n", matmul_10_cycles);
+      printf("matmul_11_cycles: %llu\n", matmul_11_cycles);
+      printf("matmul_12_cycles: %llu\n", matmul_12_cycles);
+      printf("conv_13_cycles: %llu\n", conv_13_cycles);
+      printf("matmul_14_cycles: %llu\n", matmul_14_cycles);
+      printf("conv_15_cycles: %llu\n", conv_15_cycles);
+      printf("pool_16_cyles: %llu\n", pool_16_cyles);
+      printf("matmul_17_cycles: %llu\n", matmul_17_cycles);
+      printf("pool_18_cycles: %llu\n", pool_18_cycles);
+      printf("matmul_19_cycles: %llu\n", matmul_19_cycles);
+      printf("matmul_20_cycles: %llu\n", matmul_20_cycles);
+      printf("conv_21_cycles: %llu\n", conv_21_cycles);
+      printf("matmul_22_cycles: %llu\n", matmul_22_cycles);
+      printf("conv_23_cycles: %llu\n", conv_23_cycles);
+      printf("pool_24_cycles: %llu\n", pool_24_cycles);
+      printf("matmul_25_cycles: %llu\n", matmul_25_cycles);
+      printf("matmul_26_cycles: %llu\n", matmul_26_cycles);
+      printf("matmul_27_cycles: %llu\n", matmul_27_cycles);
+      printf("conv_28_cycles: %llu\n", conv_28_cycles);
+      printf("matmul_29_cycles: %llu\n", matmul_29_cycles);
+      printf("conv_30_cycles: %llu\n", conv_30_cycles);
+      printf("pool_31_cycles: %llu\n", pool_31_cycles);
+      printf("matmul_32_cycles: %llu\n", matmul_32_cycles);
+      printf("matmul_33_cycles: %llu\n", matmul_33_cycles);
+      printf("matmul_34_cycles: %llu\n", matmul_34_cycles);
+      printf("conv_35_cycles: %llu\n", conv_35_cycles);
+      printf("matmul_36_cycles: %llu\n", matmul_36_cycles);
+      printf("conv_37_cycles: %llu\n", conv_37_cycles);
+      printf("pool_38_cycles: %llu\n", pool_38_cycles);
+      printf("matmul_39_cycles: %llu\n", matmul_39_cycles);
+      printf("matmul_40_cycles: %llu\n", matmul_40_cycles);
+      printf("matmul_41_cycles: %llu\n", matmul_41_cycles);
+      printf("conv_42_cycles: %llu\n", conv_42_cycles);
+      printf("matmul_43_cycles: %llu\n", matmul_43_cycles);
+      printf("conv_44_cycles: %llu\n", conv_44_cycles);
+      printf("pool_45_cycles: %llu\n", pool_45_cycles);
+      printf("matmul_46_cycles: %llu\n", matmul_46_cycles);
+      printf("matmul_47_cycles: %llu\n", matmul_47_cycles);
+      printf("matmul_48_cycles: %llu\n", matmul_48_cycles);
+      printf("conv_49_cycles: %llu\n", conv_49_cycles);
+      printf("matmul_50_cycles: %llu\n", matmul_50_cycles);
+      printf("conv_51_cycles: %llu\n", conv_51_cycles);
+      printf("pool_52_cycles: %llu\n", pool_52_cycles);
+      printf("matmul_53_cycles: %llu\n", matmul_53_cycles);
+      printf("pool_54_cycles: %llu\n", pool_54_cycles);
+      printf("matmul_55_cycles: %llu\n", matmul_55_cycles);
+      printf("matmul_56_cycles: %llu\n", matmul_56_cycles);
+      printf("conv_57_cycles: %llu\n", conv_57_cycles);
+      printf("matmul_58_cycles: %llu\n", matmul_58_cycles);
+      printf("conv_59_cycles: %llu\n", conv_59_cycles);
+      printf("pool_60_cycles: %llu\n", pool_60_cycles);
+      printf("matmul_60_cycles: %llu\n", matmul_60_cycles);
+      printf("matmul_62_cycles: %llu\n", matmul_62_cycles);
+      printf("matmul_63_cycles: %llu\n", matmul_63_cycles);
+      printf("conv_64_cycles: %llu\n", conv_64_cycles);
+      printf("matmul_65_cycles: %llu\n", matmul_65_cycles);
+      printf("conv_66_cycles: %llu\n", conv_66_cycles);
+      printf("pool_67_cycles: %llu\n", pool_67_cycles);
+      printf("matmul_67_cycles: %llu\n", matmul_67_cycles);
+      printf("fc_69_cycles: %llu\n\n", fc_69_cycles);
+    }
 
     // Find highest probs
     int preds[fc_69_params.batch_size];
@@ -2319,19 +2297,24 @@ int main (int argc, char * argv[]) {
         }
 
         preds[batch] = max_idx;
-        printf("Prediction: %u (score: %d)\n", max_idx, max_prob);
+
+        if (!quiet) {
+          printf("Prediction: %u (score: %d)\n", max_idx, max_prob);
+        }
     }
 
     uint64_t total_cycles = im2col_cycles + matmul_cycles + conv_cycles + pool_cycles + conv_dw_cycles + res_add_cycles + other_cycles;
 
-    printf("\nTotal cycles: %llu (100%%)\n", total_cycles);
-    printf("Matmul cycles: %llu (%d%%)\n", matmul_cycles, (matmul_cycles * 100) / total_cycles);
-    printf("Im2col cycles: %llu (%d%%)\n", im2col_cycles, (im2col_cycles * 100) / total_cycles);
-    printf("Conv cycles: %llu (%d%%)\n", conv_cycles, (conv_cycles * 100) / total_cycles);
-    printf("Pooling cycles: %llu (%d%%)\n", pool_cycles, (pool_cycles * 100) / total_cycles);
-    printf("Depthwise convolution cycles: %llu (%d%%)\n", conv_dw_cycles, (conv_dw_cycles * 100) / total_cycles);
-    printf("Res add cycles: %llu (%d%%)\n", res_add_cycles, (res_add_cycles * 100) / total_cycles);
-    printf("Other cycles: %llu (%d%%)\n", other_cycles, (other_cycles * 100) / total_cycles);
+    if (!quiet) {
+      printf("\nTotal cycles: %llu (100%%)\n", total_cycles);
+      printf("Matmul cycles: %llu (%d%%)\n", matmul_cycles, (matmul_cycles * 100) / total_cycles);
+      printf("Im2col cycles: %llu (%d%%)\n", im2col_cycles, (im2col_cycles * 100) / total_cycles);
+      printf("Conv cycles: %llu (%d%%)\n", conv_cycles, (conv_cycles * 100) / total_cycles);
+      printf("Pooling cycles: %llu (%d%%)\n", pool_cycles, (pool_cycles * 100) / total_cycles);
+      printf("Depthwise convolution cycles: %llu (%d%%)\n", conv_dw_cycles, (conv_dw_cycles * 100) / total_cycles);
+      printf("Res add cycles: %llu (%d%%)\n", res_add_cycles, (res_add_cycles * 100) / total_cycles);
+      printf("Other cycles: %llu (%d%%)\n", other_cycles, (other_cycles * 100) / total_cycles);
+    }
 
     int correct[] = {375, 770, 249, 891};
     for (int i = 0; i < fc_69_params.batch_size; i++) {
@@ -2341,7 +2324,10 @@ int main (int argc, char * argv[]) {
         }
     }
 
-    printf("PASS\n");
+    if (!quiet) {
+      printf("PASS\n");
+    }
+
     exit(0);
 }
 
