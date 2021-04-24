@@ -5,6 +5,7 @@ tests = \
 	mobilenet \
 	googlenet \
 	googlenet_1batch \
+	googlenet_batch_parallel \
 	# alexnet \
 
 tests_baremetal = $(tests:=-baremetal)
@@ -54,7 +55,7 @@ vpath %.c $(src_dir)
 		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
 
 %-linux: %.c $(src_dir)/images.h $(GEMMINI_HEADERS)
-	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@
+	$(CC_LINUX) -pthread $(CFLAGS) $< $(LFLAGS) -o $@
 
 run-baremetal: $(runs_baremetal)
 
