@@ -6,6 +6,7 @@ tests = \
 	googlenet \
 	googlenet_1batch \
 	googlenet_batch_parallel \
+	googlenet_outchannel_parallel \
 	# alexnet \
 
 tests_baremetal = $(tests:=-baremetal)
