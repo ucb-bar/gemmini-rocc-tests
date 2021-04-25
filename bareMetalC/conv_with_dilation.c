@@ -248,8 +248,7 @@ int main() {
 
         NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, 0,
 
-        CPU);
-        // WS); // TODO add support for WS conv with dilation
+        WS);
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 
@@ -259,11 +258,11 @@ int main() {
     bool success = true;
     for (int orow = 0; orow < BATCH_SIZE * OUT_DIM * OUT_DIM; orow++) {
       for (int ocol = 0; ocol < OUT_CHANNELS; ocol++) {
-	elem_t v = output_mat[orow][ocol];
-	if (v != 6 && v != 11 && v != 21) {
-	  success = false;
-	  break;
-	}
+        elem_t v = output_mat[orow][ocol];
+        if (v != 6 && v != 11 && v != 21) {
+          success = false;
+          break;
+        }
       }
     }
 #else

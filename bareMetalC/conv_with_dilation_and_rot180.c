@@ -263,8 +263,7 @@ int main() {
 
         NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, 0,
 
-        CPU);
-        // WS); // TODO add support for WS conv with dilation
+        WS);
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 
