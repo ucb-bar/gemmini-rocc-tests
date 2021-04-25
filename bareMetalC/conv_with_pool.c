@@ -393,7 +393,7 @@ int main() {
         // 1, 1, 1,
         // 1, 1, 1,
 
-        OUT_CHANNELS,
+        OUT_CHANNELS, OUT_CHANNELS,
 
         (elem_t*)input,
         (elem_t*)weights_mat,

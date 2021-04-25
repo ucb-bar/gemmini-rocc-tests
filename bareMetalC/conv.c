@@ -219,7 +219,7 @@ int main() {
         STRIDE, 1, PADDING, KERNEL_DIM,
         false,
 
-        OUT_CHANNELS,
+        OUT_CHANNELS, OUT_CHANNELS,
 
         (elem_t*)input,
         (elem_t*)weights_mat,

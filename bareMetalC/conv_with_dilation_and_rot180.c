@@ -256,7 +256,7 @@ int main() {
         STRIDE, DILATION, PADDING, KERNEL_DIM,
         WROT180,
 
-        OUT_CHANNELS,
+        OUT_CHANNELS, OUT_CHANNELS,
 
         (elem_t*)input,
         (elem_t*)weights_mat,

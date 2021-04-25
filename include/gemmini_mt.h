@@ -12,7 +12,7 @@ typedef struct args_tiled_conv_auto_t {
   int stride; int dilation; int padding; int kernel_dim;
   bool wrot180;
 
-  int out_channels_stride;
+  int out_channels_stride; int weight_out_channels_stride;
 
   const elem_t * input;
   const elem_t * weights;
@@ -34,7 +34,7 @@ static void worker_tiled_conv_auto(void * args_ptr) {
     args->stride, args->dilation, args->padding, args->kernel_dim,
     args->wrot180,
 
-    args->out_channels_stride,
+    args->out_channels_stride, args->weight_out_channels_stride,
 
     args->input,
     args->weights,
@@ -56,7 +56,7 @@ static void tiled_conv_batch_parallel_auto(
         int stride, int dilation, int padding, int kernel_dim,
         bool wrot180,
 
-        int out_channels_stride,
+        int out_channels_stride, int weight_out_channels_stride,
 
         const elem_t * input,
         const elem_t * weights,
@@ -102,6 +102,7 @@ static void tiled_conv_batch_parallel_auto(
     args[t].wrot180 = wrot180;
 
     args[t].out_channels_stride = out_channels_stride;
+    args[t].weight_out_channels_stride = weight_out_channels_stride;
 
     args[t].input = (elem_t*)input + batch*in_dim*in_dim*in_channels;
     args[t].weights = weights;
@@ -131,7 +132,7 @@ static void tiled_conv_outchannel_parallel_auto(
         int stride, int dilation, int padding, int kernel_dim,
         bool wrot180,
 
-        int out_channels_stride,
+        int out_channels_stride, int weight_out_channels_stride,
 
         const elem_t * input,
         const elem_t * weights,
@@ -166,6 +167,7 @@ static void tiled_conv_outchannel_parallel_auto(
     args[t].wrot180 = wrot180;
 
     args[t].out_channels_stride = out_channels_stride;
+    args[t].weight_out_channels_stride = weight_out_channels_stride;
 
     args[t].input = input;
     args[t].weights = (elem_t*)weights + outchannel;

@@ -2459,7 +2459,7 @@ static void tiled_conv_A_stride(
         int stride, int dilation, int padding, int kernel_dim,
         bool wrot180,
 
-        int out_channels_stride,
+        int out_channels_stride, int weight_out_channels_stride,
 
         int batches,
         int porows, int pocols, int pochs,
@@ -2609,7 +2609,8 @@ static void tiled_conv_A_stride(
 
                                 sp_tiled_conv_A_stride(
                                     batch_size, in_dim, in_channels,
-                                    out_channels, out_dim, pool_out_dim,
+                                    // out_channels, out_dim, pool_out_dim,
+                                    weight_out_channels_stride, out_dim, pool_out_dim,
 
                                     out_channels_stride,
 
@@ -2645,7 +2646,7 @@ static void tiled_conv_A_stride_auto(
         int stride, int dilation, int padding, int kernel_dim,
         bool wrot180,
 
-        int out_channels_stride,
+        int out_channels_stride, int weight_out_channels_stride,
 
         const elem_t * input,
         const elem_t * weights,
@@ -2814,7 +2815,7 @@ static void tiled_conv_A_stride_auto(
         stride, dilation, padding, kernel_dim,
         wrot180,
 
-        out_channels_stride,
+        out_channels_stride, weight_out_channels_stride,
 
         batches,
         orows, ocols, ochs,
