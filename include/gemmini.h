@@ -1129,7 +1129,6 @@ static void sp_tiled_conv_A_stride(
   // gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180);
 
   // mvin bias
-  // printf("Mvin bias\n");
   if (bias != NULL) {
     // TODO we probably don't need quite this many nested loops for this part
 
@@ -1158,7 +1157,6 @@ static void sp_tiled_conv_A_stride(
   }
 
   // mvin input
-  // printf("Mvin input\n");
   {
     const int max_ichs_per_mvin = ichs < MAX_BLOCK_LEN * DIM ? ichs :
       MAX_BLOCK_LEN * DIM;
@@ -1207,7 +1205,6 @@ static void sp_tiled_conv_A_stride(
   }
 
   // mvin weights
-  // printf("Mvin weights\n");
   {
     const int max_ochs_per_mvin = ochs < MAX_BLOCK_LEN * DIM ? ochs :
         MAX_BLOCK_LEN * DIM;
@@ -1233,7 +1230,6 @@ static void sp_tiled_conv_A_stride(
   }
 
   // Compute
-  // printf("Compute %d\n", input_dilated);
   for (int och = 0; och < ochs; och += DIM) {
     for (int krow = 0; krow < krows; krow++) {
       for (int kcol = 0; kcol < kcols; kcol++) {
@@ -1319,7 +1315,6 @@ static void sp_tiled_conv_A_stride(
 #undef UNDILATED
 
   // mvout output
-  // printf("Mvout output\n");
   if (output != NULL) {
       if (no_pool) {
           for (int b = 0; b < batches; b++)
@@ -2654,9 +2649,6 @@ static void tiled_conv_A_stride(
                                   rpad += rpad == 0 && (icol + icols_) % 2 != 1;
                                   upad += upad == 0 && irow % 2 != 0;
                                   dpad += dpad == 0 && (irow + irows_) % 2 != 1;
-
-                                  icol = icol/2;
-                                  irow = irow/2;
                                 }
 
                                 const elem_t * weights_slice = weights + (krow*kernel_dim*in_channels + kcol*in_channels + kch) * out_channels + poch;
@@ -2665,8 +2657,6 @@ static void tiled_conv_A_stride(
                                     const int kcol_ = kernel_dim - kcol - kcols_;
                                     weights_slice = weights + (krow_*kernel_dim*in_channels + kcol_*in_channels + kch) * out_channels + poch;
                                 }
-
-                                // printf("OUTER orow: %d, ocol: %d, orows: %d, ocols: %d\n", orow, ocol, porows_, pocols_);
 
                                 sp_tiled_conv_A_stride(
                                     batch_size, in_dim, in_channels,
@@ -2683,7 +2673,7 @@ static void tiled_conv_A_stride(
                                     lpad, rpad, upad, dpad,
                                     plpad, prpad, pupad, pdpad,
 
-                                    input + (b*in_dim*in_dim + (irow+upad)*in_dim + (icol+lpad)) * in_channels + kch,
+                                    input + (b*in_dim*in_dim + ((irow+upad)>>input_dilated)*in_dim + ((icol+lpad)>>input_dilated)) * in_channels + kch,
                                     weights_slice,
                                     out,
                                     bias_,
