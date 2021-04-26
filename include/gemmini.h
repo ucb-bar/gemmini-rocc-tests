@@ -287,7 +287,7 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
   }
 
 // weight-stationary matmul loop
-#define gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180) \
+#define gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated) \
   { \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(out_channels) << 48) | ((uint64_t)(in_channels) << 32) | ((uint64_t)(in_dim) << 16) | (uint64_t)(batch_size), \
       ((uint64_t)(padding) << 48) | ((uint64_t)(stride) << 32) | ((uint64_t)(pool_out_dim) << 16) | (uint64_t)(out_dim), k_LOOP_CONV_WS_CONFIG_1) \
@@ -302,7 +302,7 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, bias, \
       input, k_LOOP_CONV_WS_CONFIG_6) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((wrot180) << 1) | (no_bias), \
-      ((downsample) << 1) | (no_pool), k_LOOP_CONV_WS) \
+      ((input_dilated) << 2) | ((downsample) << 1) | (no_pool), k_LOOP_CONV_WS) \
   }
 
 // Tiling functions
@@ -1126,8 +1126,9 @@ static void sp_tiled_conv_A_stride(
     C_sp_addr_row = (C_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
   }
 
-  // gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180);
+  gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated);
 
+  /*
   // mvin bias
   if (bias != NULL) {
     // TODO we probably don't need quite this many nested loops for this part
@@ -1229,11 +1230,15 @@ static void sp_tiled_conv_A_stride(
     }
   }
 
+#undef UNDILATED
+
   // Compute
   for (int och = 0; och < ochs; och += DIM) {
     for (int krow = 0; krow < krows; krow++) {
       for (int kcol = 0; kcol < kcols; kcol++) {
         for (int kch = 0; kch < kchs; kch += DIM) {
+          bool new_weights = true;
+
           for (int b = 0; b < batches; b++) {
             for (int orow = 0; orow < orows; orow++) {
               // Skip some kernel rows due to input-dilation
@@ -1279,9 +1284,6 @@ static void sp_tiled_conv_A_stride(
                   I = (I+1)/2;
                 }
 
-                // const bool new_weights = b == 0 && orow == 0 && ocol == 0;
-                const bool new_weights = true;
-
                 const uint32_t A_sp_addr = A_sp_addr_start + (kch / DIM) * batches * DS(irows) * DS(icols) + b * DS(irows) * DS(icols) + DS(irow) * DS(icols) + DS(icol);
 
                 const int krow_ = wrot180 ? krows - krow - 1 : krow;
@@ -1302,6 +1304,7 @@ static void sp_tiled_conv_A_stride(
                 }
 
                 ocol += DIM << input_dilated;
+                new_weights = false;
               }
             }
           }
@@ -1311,8 +1314,6 @@ static void sp_tiled_conv_A_stride(
   }
 
 #undef DS
-
-#undef UNDILATED
 
   // mvout output
   if (output != NULL) {
@@ -1352,6 +1353,7 @@ static void sp_tiled_conv_A_stride(
           gemmini_config_st(out_channels * sizeof(elem_t));
       }
   }
+  */
 }
 
 //resnet downsampling layer (no padding, kernel size 1, stride 2)
