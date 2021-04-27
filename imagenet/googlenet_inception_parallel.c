@@ -479,6 +479,8 @@ void * thread_main() {
 
     RUN_TASKS();
 
+    printf("Finished with 3a\n" );
+
     //END OF 3A
 
     // Inception 3b

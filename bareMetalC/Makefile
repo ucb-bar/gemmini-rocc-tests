@@ -37,7 +37,6 @@ tests = \
 	template \
 	pool \
 	multicore \
-	tiled_matmul_multi_cpu
 
 tests_baremetal = $(tests:=-baremetal)
 
