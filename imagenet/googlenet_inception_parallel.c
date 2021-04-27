@@ -49,6 +49,16 @@ void * thread_main() {
              matmul_63_cycles, conv_64_cycles, matmul_65_cycles, conv_66_cycles,
              pool_67_cycles, matmul_67_cycles, fc_69_cycles;
 
+    uint64_t incep_3a_1_cycles, incep_3a_2_cycles,
+             incep_3b_1_cycles,incep_3b_2_cycles,
+             incep_4a_1_cycles, incep_4a_2_cycles,
+             incep_4b_1_cycles,incep_4b_2_cycles,
+             incep_4c_1_cycles,incep_4c_2_cycles,
+             incep_4d_1_cycles,incep_4d_2_cycles,
+             incep_4e_1_cycles,incep_4e_2_cycles,
+             incep_5a_1_cycles,incep_5a_2_cycles,
+             incep_5b_1_cycles,incep_5b_2_cycles;
+
     // conv_1
     if (!conv) {
         start = read_cycles();
@@ -345,8 +355,12 @@ void * thread_main() {
 
         matmul_4_cycles = end - start;
     }
+    start = read_cycles();
 
     RUN_TASKS();
+
+    end = read_cycles();
+    incep_3a_1_cycles = end-start;
 
     //SECOND PASS of 3a
 
@@ -443,7 +457,12 @@ void * thread_main() {
         conv_8_cycles = end - start;
     }
 
+    start = read_cycles();
+
     RUN_TASKS();
+
+    end = read_cycles();
+    incep_3a_2_cycles = end-start;
 
     //THIRD PASS of 3a
 
@@ -580,7 +599,12 @@ void * thread_main() {
         matmul_17_cycles = end - start;
     }
 
+    start = read_cycles();
+
     RUN_TASKS();
+
+    end = read_cycles();
+    incep_3b_1_cycles = end-start;
 
     //3b round 2
 
@@ -678,7 +702,12 @@ void * thread_main() {
 
 
 
+    start = read_cycles();
+
     RUN_TASKS();
+
+    end = read_cycles();
+    incep_3a_2_cycles = end-start;
     //3b round 3
 
     // pool_16
@@ -713,11 +742,11 @@ void * thread_main() {
     if (!conv) {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_19_params.I, conv_19_params.J, conv_19_params.K,
+        matmul_extended_auto_norun(conv_19_params.I, conv_19_params.J, conv_19_params.K,
             512,
             pool_18_out, conv_19_w, conv_19_b, ((elem_t*)inception4a_out + 0),
             RELU, conv_19_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_19");
+            tiled_matmul_type, check, "conv_19",0);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -725,11 +754,11 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_19_params.I, conv_19_params.J, conv_19_params.K,
+        matmul_extended_auto_norun(conv_19_params.I, conv_19_params.J, conv_19_params.K,
             512,
             pool_18_out, conv_19_w, conv_19_b, ((elem_t*)inception4a_out + 0),
             RELU, conv_19_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_19");
+            tiled_matmul_type, check, "conv_19",0);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -741,11 +770,11 @@ void * thread_main() {
     if (!conv) {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_20_params.I, conv_20_params.J, conv_20_params.K,
+        matmul_extended_auto_norun(conv_20_params.I, conv_20_params.J, conv_20_params.K,
             conv_20_params.J,
             pool_18_out, conv_20_w, conv_20_b, conv_20_out,
             RELU, conv_20_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_20");
+            tiled_matmul_type, check, "conv_20",1);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -753,16 +782,84 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_20_params.I, conv_20_params.J, conv_20_params.K,
+         matmul_extended_auto_norun(conv_20_params.I, conv_20_params.J, conv_20_params.K,
             conv_20_params.J,
             pool_18_out, conv_20_w, conv_20_b, conv_20_out,
             RELU, conv_20_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_20");
+            tiled_matmul_type, check, "conv_20",1);
 
         end = read_cycles();
         matmul_cycles += end - start;
         matmul_20_cycles = end - start;
     }
+
+
+    // Branch 3
+    // conv_22
+    if (!conv) {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_22_params.I, conv_22_params.J, conv_22_params.K,
+            conv_22_params.J,
+            pool_18_out, conv_22_w, conv_22_b, conv_22_out,
+            RELU, conv_22_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_22",2);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+
+    } else {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_22_params.I, conv_22_params.J, conv_22_params.K,
+            conv_22_params.J,
+            pool_18_out, conv_22_w, conv_22_b, conv_22_out,
+            RELU, conv_22_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_22",2);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+        matmul_22_cycles = end - start;
+    }
+
+
+
+    // Branch 4
+    // conv_25
+    if (!conv) {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_25_params.I, conv_25_params.J, conv_25_params.K,
+            512,
+            pool_24_out, conv_25_w, conv_25_b, ((elem_t*)inception4a_out + 448),
+            RELU, conv_25_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_25",3);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+
+    } else {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_25_params.I, conv_25_params.J, conv_25_params.K,
+            512,
+            pool_24_out, conv_25_w, conv_25_b, ((elem_t*)inception4a_out + 448),
+            RELU, conv_25_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_25",3);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+        matmul_25_cycles = end - start;
+    }
+
+
+    start = read_cycles();
+
+    RUN_TASKS();
+
+    end = read_cycles();
+    incep_4a_1_cycles = end-start;
+    //4a PASS 2
 
     // conv_21
     if (!conv) {
@@ -777,11 +874,11 @@ void * thread_main() {
 
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_21_params.I, conv_21_params.J, conv_21_params.K,
+        matmul_extended_auto_norun(conv_21_params.I, conv_21_params.J, conv_21_params.K,
             512,
             conv_21_in, conv_21_w, conv_21_b, ((elem_t*)inception4a_out + 192),
             RELU, conv_21_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_21");
+            tiled_matmul_type, check, "conv_21",1);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -789,7 +886,7 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_conv_outchannel_parallel_auto(
+        tiled_conv_outchannel_norun(
             conv_21_params.batch_size, conv_21_params.in_dim, conv_21_params.in_channels,
             conv_21_params.out_channels, conv_21_params.out_dim,
             conv_21_params.stride, 1, conv_21_params.padding, conv_21_params.kernel_size,
@@ -802,39 +899,11 @@ void * thread_main() {
             RELU, conv_21_params.output_scale, 0,
             conv_21_params.pool_size, 0, conv_21_params.pool_padding, true,
 
-            tiled_matmul_type);
+            tiled_matmul_type,1);
 
         end = read_cycles();
         conv_cycles += end - start;
         conv_21_cycles = end - start;
-    }
-
-    // Branch 3
-    // conv_22
-    if (!conv) {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_22_params.I, conv_22_params.J, conv_22_params.K,
-            conv_22_params.J,
-            pool_18_out, conv_22_w, conv_22_b, conv_22_out,
-            RELU, conv_22_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_22");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-
-    } else {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_22_params.I, conv_22_params.J, conv_22_params.K,
-            conv_22_params.J,
-            pool_18_out, conv_22_w, conv_22_b, conv_22_out,
-            RELU, conv_22_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_22");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-        matmul_22_cycles = end - start;
     }
 
     // conv_23
@@ -850,11 +919,11 @@ void * thread_main() {
 
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_23_params.I, conv_23_params.J, conv_23_params.K,
+        matmul_extended_auto_norun(conv_23_params.I, conv_23_params.J, conv_23_params.K,
             512,
             conv_23_in, conv_23_w, conv_23_b, ((elem_t*)inception4a_out + 400),
             RELU, conv_23_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_23");
+            tiled_matmul_type, check, "conv_23",2);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -862,7 +931,7 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_conv_outchannel_parallel_auto(
+        tiled_conv_outchannel_norun(
             conv_23_params.batch_size, conv_23_params.in_dim, conv_23_params.in_channels,
             conv_23_params.out_channels, conv_23_params.out_dim,
             conv_23_params.stride, 1, conv_23_params.padding, conv_23_params.kernel_size,
@@ -875,12 +944,23 @@ void * thread_main() {
             RELU, conv_23_params.output_scale, 0,
             conv_23_params.pool_size, 0, conv_23_params.pool_padding, true,
 
-            tiled_matmul_type);
+            tiled_matmul_type,2);
 
         end = read_cycles();
         conv_cycles += end - start;
         conv_23_cycles = end - start;
     }
+
+
+
+    start = read_cycles();
+
+    RUN_TASKS();
+
+    end = read_cycles();
+    incep_4a_2_cycles = end-start;
+    //4a Pass 3
+
 
     // pool_24
     start = read_cycles();
@@ -893,33 +973,7 @@ void * thread_main() {
     pool_cycles += end - start;
     pool_24_cycles = end - start;
 
-    // Branch 4
-    // conv_25
-    if (!conv) {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_25_params.I, conv_25_params.J, conv_25_params.K,
-            512,
-            pool_24_out, conv_25_w, conv_25_b, ((elem_t*)inception4a_out + 448),
-            RELU, conv_25_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_25");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-
-    } else {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_25_params.I, conv_25_params.J, conv_25_params.K,
-            512,
-            pool_24_out, conv_25_w, conv_25_b, ((elem_t*)inception4a_out + 448),
-            RELU, conv_25_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_25");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-        matmul_25_cycles = end - start;
-    }
+    RUN_TASKS();
 
     // Inception 4b
     // Branch 1
@@ -927,11 +981,11 @@ void * thread_main() {
     if (!conv) {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_26_params.I, conv_26_params.J, conv_26_params.K,
+        matmul_extended_auto_norun(conv_26_params.I, conv_26_params.J, conv_26_params.K,
             512,
             ((elem_t*)inception4a_out), conv_26_w, conv_26_b, ((elem_t*)inception4b_out + 0),
             RELU, conv_26_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_26");
+            tiled_matmul_type, check, "conv_26",0);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -939,11 +993,11 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_26_params.I, conv_26_params.J, conv_26_params.K,
+        matmul_extended_auto_norun(conv_26_params.I, conv_26_params.J, conv_26_params.K,
             512,
             ((elem_t*)inception4a_out), conv_26_w, conv_26_b, ((elem_t*)inception4b_out + 0),
             RELU, conv_26_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_26");
+            tiled_matmul_type, check, "conv_26",0);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -955,11 +1009,11 @@ void * thread_main() {
     if (!conv) {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_27_params.I, conv_27_params.J, conv_27_params.K,
+        matmul_extended_auto_norun(conv_27_params.I, conv_27_params.J, conv_27_params.K,
             conv_27_params.J,
             ((elem_t*)inception4a_out), conv_27_w, conv_27_b, conv_27_out,
             RELU, conv_27_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_27");
+            tiled_matmul_type, check, "conv_27",1);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -967,16 +1021,82 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_27_params.I, conv_27_params.J, conv_27_params.K,
+        matmul_extended_auto_norun(conv_27_params.I, conv_27_params.J, conv_27_params.K,
             conv_27_params.J,
             ((elem_t*)inception4a_out), conv_27_w, conv_27_b, conv_27_out,
             RELU, conv_27_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_27");
+            tiled_matmul_type, check, "conv_27",1);
 
         end = read_cycles();
         matmul_cycles += end - start;
         matmul_27_cycles = end - start;
     }
+
+
+    // Branch 3
+    // conv_29
+    if (!conv) {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_29_params.I, conv_29_params.J, conv_29_params.K,
+            conv_29_params.J,
+            ((elem_t*)inception4a_out), conv_29_w, conv_29_b, conv_29_out,
+            RELU, conv_29_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_29",2);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+
+    } else {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_29_params.I, conv_29_params.J, conv_29_params.K,
+            conv_29_params.J,
+            ((elem_t*)inception4a_out), conv_29_w, conv_29_b, conv_29_out,
+            RELU, conv_29_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_29",2);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+        matmul_29_cycles = end - start;
+    }
+
+    // Branch 4
+    // conv_32
+    if (!conv) {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_32_params.I, conv_32_params.J, conv_32_params.K,
+            512,
+            pool_31_out, conv_32_w, conv_32_b, ((elem_t*)inception4b_out + 448),
+            RELU, conv_32_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_32",3);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+
+    } else {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_32_params.I, conv_32_params.J, conv_32_params.K,
+            512,
+            pool_31_out, conv_32_w, conv_32_b, ((elem_t*)inception4b_out + 448),
+            RELU, conv_32_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_32",3);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+        matmul_32_cycles = end - start;
+    }
+
+
+    start = read_cycles();
+
+    RUN_TASKS();
+
+    end = read_cycles();
+    incep_4b_1_cycles = end-start;
+    //Pass 2
 
     // conv_28
     if (!conv) {
@@ -991,11 +1111,11 @@ void * thread_main() {
 
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_28_params.I, conv_28_params.J, conv_28_params.K,
+        matmul_extended_auto_norun(conv_28_params.I, conv_28_params.J, conv_28_params.K,
             512,
             conv_28_in, conv_28_w, conv_28_b, ((elem_t*)inception4b_out + 160),
             RELU, conv_28_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_28");
+            tiled_matmul_type, check, "conv_28",1);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1003,7 +1123,7 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_conv_outchannel_parallel_auto(
+        tiled_conv_outchannel_norun(
             conv_28_params.batch_size, conv_28_params.in_dim, conv_28_params.in_channels,
             conv_28_params.out_channels, conv_28_params.out_dim,
             conv_28_params.stride, 1, conv_28_params.padding, conv_28_params.kernel_size,
@@ -1016,40 +1136,13 @@ void * thread_main() {
             RELU, conv_28_params.output_scale, 0,
             conv_28_params.pool_size, 0, conv_28_params.pool_padding, true,
 
-            tiled_matmul_type);
+            tiled_matmul_type,1);
 
         end = read_cycles();
         conv_cycles += end - start;
         conv_28_cycles = end - start;
     }
 
-    // Branch 3
-    // conv_29
-    if (!conv) {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_29_params.I, conv_29_params.J, conv_29_params.K,
-            conv_29_params.J,
-            ((elem_t*)inception4a_out), conv_29_w, conv_29_b, conv_29_out,
-            RELU, conv_29_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_29");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-
-    } else {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_29_params.I, conv_29_params.J, conv_29_params.K,
-            conv_29_params.J,
-            ((elem_t*)inception4a_out), conv_29_w, conv_29_b, conv_29_out,
-            RELU, conv_29_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_29");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-        matmul_29_cycles = end - start;
-    }
 
     // conv_30
     if (!conv) {
@@ -1064,11 +1157,11 @@ void * thread_main() {
 
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_30_params.I, conv_30_params.J, conv_30_params.K,
+        matmul_extended_auto_norun(conv_30_params.I, conv_30_params.J, conv_30_params.K,
             512,
             conv_30_in, conv_30_w, conv_30_b, ((elem_t*)inception4b_out + 384),
             RELU, conv_30_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_30");
+            tiled_matmul_type, check, "conv_30",2);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1076,7 +1169,7 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_conv_outchannel_parallel_auto(
+        tiled_conv_outchannel_norun(
             conv_30_params.batch_size, conv_30_params.in_dim, conv_30_params.in_channels,
             conv_30_params.out_channels, conv_30_params.out_dim,
             conv_30_params.stride, 1, conv_30_params.padding, conv_30_params.kernel_size,
@@ -1089,12 +1182,22 @@ void * thread_main() {
             RELU, conv_30_params.output_scale, 0,
             conv_30_params.pool_size, 0, conv_30_params.pool_padding, true,
 
-            tiled_matmul_type);
+            tiled_matmul_type,2);
 
         end = read_cycles();
         conv_cycles += end - start;
         conv_30_cycles = end - start;
     }
+
+
+
+    start = read_cycles();
+
+    RUN_TASKS();
+
+    end = read_cycles();
+    incep_4b_2_cycles = end-start;
+    //Pass 3
 
     // pool_31
     start = read_cycles();
@@ -1107,45 +1210,19 @@ void * thread_main() {
     pool_cycles += end - start;
     pool_31_cycles = end - start;
 
-    // Branch 4
-    // conv_32
-    if (!conv) {
-        start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_32_params.I, conv_32_params.J, conv_32_params.K,
-            512,
-            pool_31_out, conv_32_w, conv_32_b, ((elem_t*)inception4b_out + 448),
-            RELU, conv_32_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_32");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-
-    } else {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_32_params.I, conv_32_params.J, conv_32_params.K,
-            512,
-            pool_31_out, conv_32_w, conv_32_b, ((elem_t*)inception4b_out + 448),
-            RELU, conv_32_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_32");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-        matmul_32_cycles = end - start;
-    }
-
+    RUN_TASKS();
     // Inception 4c
     // Branch 1
     // conv_33
     if (!conv) {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_33_params.I, conv_33_params.J, conv_33_params.K,
+        matmul_extended_auto_norun(conv_33_params.I, conv_33_params.J, conv_33_params.K,
             512,
             ((elem_t*)inception4b_out), conv_33_w, conv_33_b, ((elem_t*)inception4c_out + 0),
             RELU, conv_33_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_33");
+            tiled_matmul_type, check, "conv_33", 0);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1153,11 +1230,11 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_33_params.I, conv_33_params.J, conv_33_params.K,
+        matmul_extended_auto_norun(conv_33_params.I, conv_33_params.J, conv_33_params.K,
             512,
             ((elem_t*)inception4b_out), conv_33_w, conv_33_b, ((elem_t*)inception4c_out + 0),
             RELU, conv_33_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_33");
+            tiled_matmul_type, check, "conv_33", 0);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1169,11 +1246,11 @@ void * thread_main() {
     if (!conv) {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_34_params.I, conv_34_params.J, conv_34_params.K,
+        matmul_extended_auto_norun(conv_34_params.I, conv_34_params.J, conv_34_params.K,
             conv_34_params.J,
             ((elem_t*)inception4b_out), conv_34_w, conv_34_b, conv_34_out,
             RELU, conv_34_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_34");
+            tiled_matmul_type, check, "conv_34", 1);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1181,16 +1258,83 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_34_params.I, conv_34_params.J, conv_34_params.K,
+        matmul_extended_auto_norun(conv_34_params.I, conv_34_params.J, conv_34_params.K,
             conv_34_params.J,
             ((elem_t*)inception4b_out), conv_34_w, conv_34_b, conv_34_out,
             RELU, conv_34_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_34");
+            tiled_matmul_type, check, "conv_34", 1);
 
         end = read_cycles();
         matmul_cycles += end - start;
         matmul_34_cycles = end - start;
     }
+
+
+
+    // Branch 3
+    // conv_36
+    if (!conv) {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_36_params.I, conv_36_params.J, conv_36_params.K,
+            conv_36_params.J,
+            ((elem_t*)inception4b_out), conv_36_w, conv_36_b, conv_36_out,
+            RELU, conv_36_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_36", 2);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+
+    } else {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_36_params.I, conv_36_params.J, conv_36_params.K,
+            conv_36_params.J,
+            ((elem_t*)inception4b_out), conv_36_w, conv_36_b, conv_36_out,
+            RELU, conv_36_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_36", 2);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+        matmul_36_cycles = end - start;
+    }
+
+    // Branch 4
+    // conv_39
+    if (!conv) {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_39_params.I, conv_39_params.J, conv_39_params.K,
+            512,
+            pool_38_out, conv_39_w, conv_39_b, ((elem_t*)inception4c_out + 448),
+            RELU, conv_39_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_39",3);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+
+    } else {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_39_params.I, conv_39_params.J, conv_39_params.K,
+            512,
+            pool_38_out, conv_39_w, conv_39_b, ((elem_t*)inception4c_out + 448),
+            RELU, conv_39_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_39",3);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+        matmul_39_cycles = end - start;
+    }
+
+    start = read_cycles();
+
+    RUN_TASKS();
+
+    end = read_cycles();
+    incep_4c_1_cycles = end-start;
+
+    //pass 2
 
     // conv_35
     if (!conv) {
@@ -1205,11 +1349,11 @@ void * thread_main() {
 
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_35_params.I, conv_35_params.J, conv_35_params.K,
+        matmul_extended_auto_norun(conv_35_params.I, conv_35_params.J, conv_35_params.K,
             512,
             conv_35_in, conv_35_w, conv_35_b, ((elem_t*)inception4c_out + 128),
             RELU, conv_35_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_35");
+            tiled_matmul_type, check, "conv_35", 1);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1217,7 +1361,7 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_conv_outchannel_parallel_auto(
+        tiled_conv_outchannel_norun(
             conv_35_params.batch_size, conv_35_params.in_dim, conv_35_params.in_channels,
             conv_35_params.out_channels, conv_35_params.out_dim,
             conv_35_params.stride, 1, conv_35_params.padding, conv_35_params.kernel_size,
@@ -1230,85 +1374,70 @@ void * thread_main() {
             RELU, conv_35_params.output_scale, 0,
             conv_35_params.pool_size, 0, conv_35_params.pool_padding, true,
 
-            tiled_matmul_type);
+            tiled_matmul_type, 1);
 
         end = read_cycles();
         conv_cycles += end - start;
         conv_35_cycles = end - start;
     }
 
-    // Branch 3
-    // conv_36
-    if (!conv) {
+
+        // conv_37
+        if (!conv) {
+            start = read_cycles();
+
+            im2col_with_col2im(conv_36_params.I, conv_36_params.J,
+                conv_37_params.I, conv_37_params.K,
+                conv_36_out, conv_37_in, &conv_37_params);
+
+            end = read_cycles();
+            im2col_cycles += end - start;
+
+            start = read_cycles();
+
+            matmul_extended_auto_norun(conv_37_params.I, conv_37_params.J, conv_37_params.K,
+                512,
+                conv_37_in, conv_37_w, conv_37_b, ((elem_t*)inception4c_out + 384),
+                RELU, conv_37_params.output_scale, 0, true,
+                tiled_matmul_type, check, "conv_37",2);
+
+            end = read_cycles();
+            matmul_cycles += end - start;
+
+        } else {
+            start = read_cycles();
+
+            tiled_conv_outchannel_norun(
+                conv_37_params.batch_size, conv_37_params.in_dim, conv_37_params.in_channels,
+                conv_37_params.out_channels, conv_37_params.out_dim,
+                conv_37_params.stride, 1, conv_37_params.padding, conv_37_params.kernel_size,
+                false,
+
+                512,
+
+                (elem_t*)conv_36_out, (elem_t*)conv_37_w, (acc_t*)conv_37_b, (elem_t*)((elem_t*)inception4c_out + 384),
+
+                RELU, conv_37_params.output_scale, 0,
+                conv_37_params.pool_size, 0, conv_37_params.pool_padding, true,
+
+                tiled_matmul_type, 2);
+
+            end = read_cycles();
+            conv_cycles += end - start;
+            conv_37_cycles = end - start;
+        }
+
+
+
+
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_36_params.I, conv_36_params.J, conv_36_params.K,
-            conv_36_params.J,
-            ((elem_t*)inception4b_out), conv_36_w, conv_36_b, conv_36_out,
-            RELU, conv_36_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_36");
+        RUN_TASKS();
 
         end = read_cycles();
-        matmul_cycles += end - start;
+        incep_4c_2_cycles = end-start;
 
-    } else {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_36_params.I, conv_36_params.J, conv_36_params.K,
-            conv_36_params.J,
-            ((elem_t*)inception4b_out), conv_36_w, conv_36_b, conv_36_out,
-            RELU, conv_36_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_36");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-        matmul_36_cycles = end - start;
-    }
-
-    // conv_37
-    if (!conv) {
-        start = read_cycles();
-
-        im2col_with_col2im(conv_36_params.I, conv_36_params.J,
-            conv_37_params.I, conv_37_params.K,
-            conv_36_out, conv_37_in, &conv_37_params);
-
-        end = read_cycles();
-        im2col_cycles += end - start;
-
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_37_params.I, conv_37_params.J, conv_37_params.K,
-            512,
-            conv_37_in, conv_37_w, conv_37_b, ((elem_t*)inception4c_out + 384),
-            RELU, conv_37_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_37");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-
-    } else {
-        start = read_cycles();
-
-        tiled_conv_outchannel_parallel_auto(
-            conv_37_params.batch_size, conv_37_params.in_dim, conv_37_params.in_channels,
-            conv_37_params.out_channels, conv_37_params.out_dim,
-            conv_37_params.stride, 1, conv_37_params.padding, conv_37_params.kernel_size,
-            false,
-
-            512,
-
-            (elem_t*)conv_36_out, (elem_t*)conv_37_w, (acc_t*)conv_37_b, (elem_t*)((elem_t*)inception4c_out + 384),
-
-            RELU, conv_37_params.output_scale, 0,
-            conv_37_params.pool_size, 0, conv_37_params.pool_padding, true,
-
-            tiled_matmul_type);
-
-        end = read_cycles();
-        conv_cycles += end - start;
-        conv_37_cycles = end - start;
-    }
+    //pass 3
 
     // pool_38
     start = read_cycles();
@@ -1321,33 +1450,9 @@ void * thread_main() {
     pool_cycles += end - start;
     pool_38_cycles = end - start;
 
-    // Branch 4
-    // conv_39
-    if (!conv) {
-        start = read_cycles();
+    RUN_TASKS();
 
-        tiled_matmul_nn_auto_extended(conv_39_params.I, conv_39_params.J, conv_39_params.K,
-            512,
-            pool_38_out, conv_39_w, conv_39_b, ((elem_t*)inception4c_out + 448),
-            RELU, conv_39_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_39");
 
-        end = read_cycles();
-        matmul_cycles += end - start;
-
-    } else {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_39_params.I, conv_39_params.J, conv_39_params.K,
-            512,
-            pool_38_out, conv_39_w, conv_39_b, ((elem_t*)inception4c_out + 448),
-            RELU, conv_39_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_39");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-        matmul_39_cycles = end - start;
-    }
 
     // Inception 4d
     // Branch 1
@@ -1355,11 +1460,11 @@ void * thread_main() {
     if (!conv) {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_40_params.I, conv_40_params.J, conv_40_params.K,
+        matmul_extended_auto_norun(conv_40_params.I, conv_40_params.J, conv_40_params.K,
             528,
             ((elem_t*)inception4c_out), conv_40_w, conv_40_b, ((elem_t*)inception4d_out + 0),
             RELU, conv_40_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_40");
+            tiled_matmul_type, check, "conv_40", 0);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1367,11 +1472,11 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_40_params.I, conv_40_params.J, conv_40_params.K,
+        matmul_extended_auto_norun(conv_40_params.I, conv_40_params.J, conv_40_params.K,
             528,
             ((elem_t*)inception4c_out), conv_40_w, conv_40_b, ((elem_t*)inception4d_out + 0),
             RELU, conv_40_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_40");
+            tiled_matmul_type, check, "conv_40", 0);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1383,11 +1488,11 @@ void * thread_main() {
     if (!conv) {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_41_params.I, conv_41_params.J, conv_41_params.K,
+        matmul_extended_auto_norun(conv_41_params.I, conv_41_params.J, conv_41_params.K,
             conv_41_params.J,
             ((elem_t*)inception4c_out), conv_41_w, conv_41_b, conv_41_out,
             RELU, conv_41_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_41");
+            tiled_matmul_type, check, "conv_41", 1);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1395,16 +1500,85 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_41_params.I, conv_41_params.J, conv_41_params.K,
+        matmul_extended_auto_norun(conv_41_params.I, conv_41_params.J, conv_41_params.K,
             conv_41_params.J,
             ((elem_t*)inception4c_out), conv_41_w, conv_41_b, conv_41_out,
             RELU, conv_41_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_41");
+            tiled_matmul_type, check, "conv_41", 1);
 
         end = read_cycles();
         matmul_cycles += end - start;
         matmul_41_cycles = end - start;
     }
+
+
+    // Branch 3
+    // conv_43
+    if (!conv) {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_43_params.I, conv_43_params.J, conv_43_params.K,
+            conv_43_params.J,
+            ((elem_t*)inception4c_out), conv_43_w, conv_43_b, conv_43_out,
+            RELU, conv_43_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_43",2);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+
+    } else {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_43_params.I, conv_43_params.J, conv_43_params.K,
+            conv_43_params.J,
+            ((elem_t*)inception4c_out), conv_43_w, conv_43_b, conv_43_out,
+            RELU, conv_43_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_43",2);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+        matmul_43_cycles = end - start;
+    }
+
+
+
+    // Branch 4
+    // conv_46
+    if (!conv) {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_46_params.I, conv_46_params.J, conv_46_params.K,
+            528,
+            pool_45_out, conv_46_w, conv_46_b, ((elem_t*)inception4d_out + 464),
+            RELU, conv_46_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_46",3);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+
+    } else {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_46_params.I, conv_46_params.J, conv_46_params.K,
+            528,
+            pool_45_out, conv_46_w, conv_46_b, ((elem_t*)inception4d_out + 464),
+            RELU, conv_46_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_46",3);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+        matmul_46_cycles = end - start;
+    }
+
+    start = read_cycles();
+
+    RUN_TASKS();
+
+    end = read_cycles();
+    incep_4d_1_cycles = end-start;
+
+    //Pass 2
+
 
     // conv_42
     if (!conv) {
@@ -1419,11 +1593,11 @@ void * thread_main() {
 
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_42_params.I, conv_42_params.J, conv_42_params.K,
+        matmul_extended_auto_norun(conv_42_params.I, conv_42_params.J, conv_42_params.K,
             528,
             conv_42_in, conv_42_w, conv_42_b, ((elem_t*)inception4d_out + 112),
             RELU, conv_42_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_42");
+            tiled_matmul_type, check, "conv_42",1);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1431,7 +1605,7 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_conv_outchannel_parallel_auto(
+        tiled_conv_outchannel_norun(
             conv_42_params.batch_size, conv_42_params.in_dim, conv_42_params.in_channels,
             conv_42_params.out_channels, conv_42_params.out_dim,
             conv_42_params.stride, 1, conv_42_params.padding, conv_42_params.kernel_size,
@@ -1444,40 +1618,13 @@ void * thread_main() {
             RELU, conv_42_params.output_scale, 0,
             conv_42_params.pool_size, 0, conv_42_params.pool_padding, true,
 
-            tiled_matmul_type);
+            tiled_matmul_type,1);
 
         end = read_cycles();
         conv_cycles += end - start;
         conv_42_cycles = end - start;
     }
 
-    // Branch 3
-    // conv_43
-    if (!conv) {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_43_params.I, conv_43_params.J, conv_43_params.K,
-            conv_43_params.J,
-            ((elem_t*)inception4c_out), conv_43_w, conv_43_b, conv_43_out,
-            RELU, conv_43_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_43");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-
-    } else {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_43_params.I, conv_43_params.J, conv_43_params.K,
-            conv_43_params.J,
-            ((elem_t*)inception4c_out), conv_43_w, conv_43_b, conv_43_out,
-            RELU, conv_43_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_43");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-        matmul_43_cycles = end - start;
-    }
 
     // conv_44
     if (!conv) {
@@ -1492,11 +1639,11 @@ void * thread_main() {
 
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_44_params.I, conv_44_params.J, conv_44_params.K,
+        matmul_extended_auto_norun(conv_44_params.I, conv_44_params.J, conv_44_params.K,
             528,
             conv_44_in, conv_44_w, conv_44_b, ((elem_t*)inception4d_out + 400),
             RELU, conv_44_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_44");
+            tiled_matmul_type, check, "conv_44",2);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1504,7 +1651,7 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_conv_outchannel_parallel_auto(
+        tiled_conv_outchannel_norun(
             conv_44_params.batch_size, conv_44_params.in_dim, conv_44_params.in_channels,
             conv_44_params.out_channels, conv_44_params.out_dim,
             conv_44_params.stride, 1, conv_44_params.padding, conv_44_params.kernel_size,
@@ -1517,12 +1664,23 @@ void * thread_main() {
             RELU, conv_44_params.output_scale, 0,
             conv_44_params.pool_size, 0, conv_44_params.pool_padding, true,
 
-            tiled_matmul_type);
+            tiled_matmul_type,2);
 
         end = read_cycles();
         conv_cycles += end - start;
         conv_44_cycles = end - start;
     }
+
+
+    start = read_cycles();
+
+    RUN_TASKS();
+
+    end = read_cycles();
+    incep_4d_2_cycles = end-start;
+
+
+
 
     // pool_45
     start = read_cycles();
@@ -1535,33 +1693,12 @@ void * thread_main() {
     pool_cycles += end - start;
     pool_45_cycles = end - start;
 
-    // Branch 4
-    // conv_46
-    if (!conv) {
-        start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_46_params.I, conv_46_params.J, conv_46_params.K,
-            528,
-            pool_45_out, conv_46_w, conv_46_b, ((elem_t*)inception4d_out + 464),
-            RELU, conv_46_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_46");
+    //pass 3
 
-        end = read_cycles();
-        matmul_cycles += end - start;
+    RUN_TASKS();
 
-    } else {
-        start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_46_params.I, conv_46_params.J, conv_46_params.K,
-            528,
-            pool_45_out, conv_46_w, conv_46_b, ((elem_t*)inception4d_out + 464),
-            RELU, conv_46_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_46");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-        matmul_46_cycles = end - start;
-    }
 
     // Inception 4e
     // Branch 1
@@ -1569,11 +1706,11 @@ void * thread_main() {
     if (!conv) {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_47_params.I, conv_47_params.J, conv_47_params.K,
+        matmul_extended_auto_norun(conv_47_params.I, conv_47_params.J, conv_47_params.K,
             832,
             ((elem_t*)inception4d_out), conv_47_w, conv_47_b, ((elem_t*)inception4e_out + 0),
             RELU, conv_47_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_47");
+            tiled_matmul_type, check, "conv_47", 0);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1581,11 +1718,11 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_47_params.I, conv_47_params.J, conv_47_params.K,
+        matmul_extended_auto_norun(conv_47_params.I, conv_47_params.J, conv_47_params.K,
             832,
             ((elem_t*)inception4d_out), conv_47_w, conv_47_b, ((elem_t*)inception4e_out + 0),
             RELU, conv_47_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_47");
+            tiled_matmul_type, check, "conv_47", 0);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1597,11 +1734,11 @@ void * thread_main() {
     if (!conv) {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_48_params.I, conv_48_params.J, conv_48_params.K,
+        matmul_extended_auto_norun(conv_48_params.I, conv_48_params.J, conv_48_params.K,
             conv_48_params.J,
             ((elem_t*)inception4d_out), conv_48_w, conv_48_b, conv_48_out,
             RELU, conv_48_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_48");
+            tiled_matmul_type, check, "conv_48", 1);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1609,16 +1746,83 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_48_params.I, conv_48_params.J, conv_48_params.K,
+        matmul_extended_auto_norun(conv_48_params.I, conv_48_params.J, conv_48_params.K,
             conv_48_params.J,
             ((elem_t*)inception4d_out), conv_48_w, conv_48_b, conv_48_out,
             RELU, conv_48_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_48");
+            tiled_matmul_type, check, "conv_48", 1);
 
         end = read_cycles();
         matmul_cycles += end - start;
         matmul_48_cycles = end - start;
     }
+
+
+    // Branch 3
+    // conv_50
+    if (!conv) {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_50_params.I, conv_50_params.J, conv_50_params.K,
+            conv_50_params.J,
+            ((elem_t*)inception4d_out), conv_50_w, conv_50_b, conv_50_out,
+            RELU, conv_50_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_50",2);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+
+    } else {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_50_params.I, conv_50_params.J, conv_50_params.K,
+            conv_50_params.J,
+            ((elem_t*)inception4d_out), conv_50_w, conv_50_b, conv_50_out,
+            RELU, conv_50_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_50",2);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+        matmul_50_cycles = end - start;
+    }
+
+
+    // Branch 4
+    // conv_53
+    if (!conv) {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_53_params.I, conv_53_params.J, conv_53_params.K,
+            832,
+            pool_52_out, conv_53_w, conv_53_b, ((elem_t*)inception4e_out + 704),
+            RELU, conv_53_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_53", 3);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+
+    } else {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_53_params.I, conv_53_params.J, conv_53_params.K,
+            832,
+            pool_52_out, conv_53_w, conv_53_b, ((elem_t*)inception4e_out + 704),
+            RELU, conv_53_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_53", 3);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+        matmul_53_cycles = end - start;
+    }
+
+    start = read_cycles();
+
+    RUN_TASKS();
+
+    end = read_cycles();
+    incep_4e_1_cycles = end-start;
+    //Pass 2
+
 
     // conv_49
     if (!conv) {
@@ -1633,11 +1837,11 @@ void * thread_main() {
 
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_49_params.I, conv_49_params.J, conv_49_params.K,
+        matmul_extended_auto_norun(conv_49_params.I, conv_49_params.J, conv_49_params.K,
             832,
             conv_49_in, conv_49_w, conv_49_b, ((elem_t*)inception4e_out + 256),
             RELU, conv_49_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_49");
+            tiled_matmul_type, check, "conv_49", 1);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1645,7 +1849,7 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_conv_outchannel_parallel_auto(
+        tiled_conv_outchannel_norun(
             conv_49_params.batch_size, conv_49_params.in_dim, conv_49_params.in_channels,
             conv_49_params.out_channels, conv_49_params.out_dim,
             conv_49_params.stride, 1, conv_49_params.padding, conv_49_params.kernel_size,
@@ -1658,85 +1862,69 @@ void * thread_main() {
             RELU, conv_49_params.output_scale, 0,
             conv_49_params.pool_size, 0, conv_49_params.pool_padding, true,
 
-            tiled_matmul_type);
+            tiled_matmul_type, 1);
 
         end = read_cycles();
         conv_cycles += end - start;
         conv_49_cycles = end - start;
     }
 
-    // Branch 3
-    // conv_50
-    if (!conv) {
-        start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_50_params.I, conv_50_params.J, conv_50_params.K,
-            conv_50_params.J,
-            ((elem_t*)inception4d_out), conv_50_w, conv_50_b, conv_50_out,
-            RELU, conv_50_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_50");
+        // conv_51
+        if (!conv) {
+            start = read_cycles();
 
-        end = read_cycles();
-        matmul_cycles += end - start;
+            im2col_with_col2im(conv_50_params.I, conv_50_params.J,
+                conv_51_params.I, conv_51_params.K,
+                conv_50_out, conv_51_in, &conv_51_params);
 
-    } else {
-        start = read_cycles();
+            end = read_cycles();
+            im2col_cycles += end - start;
 
-        tiled_matmul_nn_auto_extended(conv_50_params.I, conv_50_params.J, conv_50_params.K,
-            conv_50_params.J,
-            ((elem_t*)inception4d_out), conv_50_w, conv_50_b, conv_50_out,
-            RELU, conv_50_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_50");
+            start = read_cycles();
 
-        end = read_cycles();
-        matmul_cycles += end - start;
-        matmul_50_cycles = end - start;
-    }
+            matmul_extended_auto_norun(conv_51_params.I, conv_51_params.J, conv_51_params.K,
+                832,
+                conv_51_in, conv_51_w, conv_51_b, ((elem_t*)inception4e_out + 576),
+                RELU, conv_51_params.output_scale, 0, true,
+                tiled_matmul_type, check, "conv_51",2);
 
-    // conv_51
-    if (!conv) {
-        start = read_cycles();
+            end = read_cycles();
+            matmul_cycles += end - start;
 
-        im2col_with_col2im(conv_50_params.I, conv_50_params.J,
-            conv_51_params.I, conv_51_params.K,
-            conv_50_out, conv_51_in, &conv_51_params);
+        } else {
+            start = read_cycles();
 
-        end = read_cycles();
-        im2col_cycles += end - start;
+            tiled_conv_outchannel_norun(
+                conv_51_params.batch_size, conv_51_params.in_dim, conv_51_params.in_channels,
+                conv_51_params.out_channels, conv_51_params.out_dim,
+                conv_51_params.stride, 1, conv_51_params.padding, conv_51_params.kernel_size,
+                false,
 
-        start = read_cycles();
+                832,
 
-        tiled_matmul_nn_auto_extended(conv_51_params.I, conv_51_params.J, conv_51_params.K,
-            832,
-            conv_51_in, conv_51_w, conv_51_b, ((elem_t*)inception4e_out + 576),
-            RELU, conv_51_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_51");
+                (elem_t*)conv_50_out, (elem_t*)conv_51_w, (acc_t*)conv_51_b, (elem_t*)((elem_t*)inception4e_out + 576),
 
-        end = read_cycles();
-        matmul_cycles += end - start;
+                RELU, conv_51_params.output_scale, 0,
+                conv_51_params.pool_size, 0, conv_51_params.pool_padding, true,
 
-    } else {
-        start = read_cycles();
+                tiled_matmul_type,2);
 
-        tiled_conv_outchannel_parallel_auto(
-            conv_51_params.batch_size, conv_51_params.in_dim, conv_51_params.in_channels,
-            conv_51_params.out_channels, conv_51_params.out_dim,
-            conv_51_params.stride, 1, conv_51_params.padding, conv_51_params.kernel_size,
-            false,
+            end = read_cycles();
+            conv_cycles += end - start;
+            conv_51_cycles = end - start;
+        }
 
-            832,
 
-            (elem_t*)conv_50_out, (elem_t*)conv_51_w, (acc_t*)conv_51_b, (elem_t*)((elem_t*)inception4e_out + 576),
 
-            RELU, conv_51_params.output_scale, 0,
-            conv_51_params.pool_size, 0, conv_51_params.pool_padding, true,
 
-            tiled_matmul_type);
+    start = read_cycles();
 
-        end = read_cycles();
-        conv_cycles += end - start;
-        conv_51_cycles = end - start;
-    }
+    RUN_TASKS();
+
+    end = read_cycles();
+    incep_4e_2_cycles = end-start;
+    //pass 3
 
     // pool_52
     start = read_cycles();
@@ -1749,33 +1937,7 @@ void * thread_main() {
     pool_cycles += end - start;
     pool_52_cycles = end - start;
 
-    // Branch 4
-    // conv_53
-    if (!conv) {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_53_params.I, conv_53_params.J, conv_53_params.K,
-            832,
-            pool_52_out, conv_53_w, conv_53_b, ((elem_t*)inception4e_out + 704),
-            RELU, conv_53_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_53");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-
-    } else {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_53_params.I, conv_53_params.J, conv_53_params.K,
-            832,
-            pool_52_out, conv_53_w, conv_53_b, ((elem_t*)inception4e_out + 704),
-            RELU, conv_53_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_53");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-        matmul_53_cycles = end - start;
-    }
+    RUN_TASKS();
 
     // pool_54
     start = read_cycles();
@@ -1788,17 +1950,19 @@ void * thread_main() {
     pool_cycles += end - start;
     pool_54_cycles = end - start;
 
+
+
     // Inception 5a
     // Branch 1
     // conv_55
     if (!conv) {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_55_params.I, conv_55_params.J, conv_55_params.K,
+        matmul_extended_auto_norun(conv_55_params.I, conv_55_params.J, conv_55_params.K,
             832,
             pool_54_out, conv_55_w, conv_55_b, ((elem_t*)inception5a_out + 0),
             RELU, conv_55_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_55");
+            tiled_matmul_type, check, "conv_55",0);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1806,11 +1970,11 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_55_params.I, conv_55_params.J, conv_55_params.K,
+        matmul_extended_auto_norun(conv_55_params.I, conv_55_params.J, conv_55_params.K,
             832,
             pool_54_out, conv_55_w, conv_55_b, ((elem_t*)inception5a_out + 0),
             RELU, conv_55_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_55");
+            tiled_matmul_type, check, "conv_55",0);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1822,11 +1986,11 @@ void * thread_main() {
     if (!conv) {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_56_params.I, conv_56_params.J, conv_56_params.K,
+        matmul_extended_auto_norun(conv_56_params.I, conv_56_params.J, conv_56_params.K,
             conv_56_params.J,
             pool_54_out, conv_56_w, conv_56_b, conv_56_out,
             RELU, conv_56_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_56");
+            tiled_matmul_type, check, "conv_56",1);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1834,16 +1998,83 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_56_params.I, conv_56_params.J, conv_56_params.K,
+        matmul_extended_auto_norun(conv_56_params.I, conv_56_params.J, conv_56_params.K,
             conv_56_params.J,
             pool_54_out, conv_56_w, conv_56_b, conv_56_out,
             RELU, conv_56_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_56");
+            tiled_matmul_type, check, "conv_56",1);
 
         end = read_cycles();
         matmul_cycles += end - start;
         matmul_56_cycles = end - start;
     }
+
+
+    // Branch 3
+    // conv_58
+    if (!conv) {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_58_params.I, conv_58_params.J, conv_58_params.K,
+            conv_58_params.J,
+            pool_54_out, conv_58_w, conv_58_b, conv_58_out,
+            RELU, conv_58_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_58",2);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+
+    } else {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_58_params.I, conv_58_params.J, conv_58_params.K,
+            conv_58_params.J,
+            pool_54_out, conv_58_w, conv_58_b, conv_58_out,
+            RELU, conv_58_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_58",2);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+        matmul_58_cycles = end - start;
+    }
+
+
+
+    // Branch 4
+    // conv_61
+    if (!conv) {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_61_params.I, conv_61_params.J, conv_61_params.K,
+            832,
+            pool_60_out, conv_61_w, conv_61_b, ((elem_t*)inception5a_out + 704),
+            RELU, conv_61_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_61",3);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+
+    } else {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_61_params.I, conv_61_params.J, conv_61_params.K,
+            832,
+            pool_60_out, conv_61_w, conv_61_b, ((elem_t*)inception5a_out + 704),
+            RELU, conv_61_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_61",3);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+        matmul_60_cycles = end - start;
+    }
+
+    start = read_cycles();
+
+    RUN_TASKS();
+
+    end = read_cycles();
+    incep_5a_1_cycles = end-start;
+    //p2
 
     // conv_57
     if (!conv) {
@@ -1858,11 +2089,11 @@ void * thread_main() {
 
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_57_params.I, conv_57_params.J, conv_57_params.K,
+        matmul_extended_auto_norun(conv_57_params.I, conv_57_params.J, conv_57_params.K,
             832,
             conv_57_in, conv_57_w, conv_57_b, ((elem_t*)inception5a_out + 256),
             RELU, conv_57_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_57");
+            tiled_matmul_type, check, "conv_57",1);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1870,7 +2101,7 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_conv_outchannel_parallel_auto(
+        tiled_conv_outchannel_norun(
             conv_57_params.batch_size, conv_57_params.in_dim, conv_57_params.in_channels,
             conv_57_params.out_channels, conv_57_params.out_dim,
             conv_57_params.stride, 1, conv_57_params.padding, conv_57_params.kernel_size,
@@ -1883,39 +2114,11 @@ void * thread_main() {
             RELU, conv_57_params.output_scale, 0,
             conv_57_params.pool_size, 0, conv_57_params.pool_padding, true,
 
-            tiled_matmul_type);
+            tiled_matmul_type,1);
 
         end = read_cycles();
         conv_cycles += end - start;
         conv_57_cycles = end - start;
-    }
-
-    // Branch 3
-    // conv_58
-    if (!conv) {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_58_params.I, conv_58_params.J, conv_58_params.K,
-            conv_58_params.J,
-            pool_54_out, conv_58_w, conv_58_b, conv_58_out,
-            RELU, conv_58_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_58");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-
-    } else {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_58_params.I, conv_58_params.J, conv_58_params.K,
-            conv_58_params.J,
-            pool_54_out, conv_58_w, conv_58_b, conv_58_out,
-            RELU, conv_58_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_58");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-        matmul_58_cycles = end - start;
     }
 
     // conv_59
@@ -1931,11 +2134,11 @@ void * thread_main() {
 
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_59_params.I, conv_59_params.J, conv_59_params.K,
+        matmul_extended_auto_norun(conv_59_params.I, conv_59_params.J, conv_59_params.K,
             832,
             conv_59_in, conv_59_w, conv_59_b, ((elem_t*)inception5a_out + 576),
             RELU, conv_59_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_59");
+            tiled_matmul_type, check, "conv_59",2);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1943,7 +2146,7 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_conv_outchannel_parallel_auto(
+        tiled_conv_outchannel_norun(
             conv_59_params.batch_size, conv_59_params.in_dim, conv_59_params.in_channels,
             conv_59_params.out_channels, conv_59_params.out_dim,
             conv_59_params.stride, 1, conv_59_params.padding, conv_59_params.kernel_size,
@@ -1956,12 +2159,22 @@ void * thread_main() {
             RELU, conv_59_params.output_scale, 0,
             conv_59_params.pool_size, 0, conv_59_params.pool_padding, true,
 
-            tiled_matmul_type);
+            tiled_matmul_type,2);
 
         end = read_cycles();
         conv_cycles += end - start;
         conv_59_cycles = end - start;
     }
+
+
+
+    start = read_cycles();
+
+    RUN_TASKS();
+
+    end = read_cycles();
+    incep_5a_2_cycles = end-start;
+    //p3
 
     // pool_60
     start = read_cycles();
@@ -1974,33 +2187,7 @@ void * thread_main() {
     pool_cycles += end - start;
     pool_60_cycles = end - start;
 
-    // Branch 4
-    // conv_61
-    if (!conv) {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_61_params.I, conv_61_params.J, conv_61_params.K,
-            832,
-            pool_60_out, conv_61_w, conv_61_b, ((elem_t*)inception5a_out + 704),
-            RELU, conv_61_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_61");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-
-    } else {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_61_params.I, conv_61_params.J, conv_61_params.K,
-            832,
-            pool_60_out, conv_61_w, conv_61_b, ((elem_t*)inception5a_out + 704),
-            RELU, conv_61_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_61");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-        matmul_60_cycles = end - start;
-    }
+    RUN_TASKS();
 
     // Inception 5b
     // Branch 1
@@ -2008,11 +2195,11 @@ void * thread_main() {
     if (!conv) {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_62_params.I, conv_62_params.J, conv_62_params.K,
+        matmul_extended_auto_norun(conv_62_params.I, conv_62_params.J, conv_62_params.K,
             1024,
             ((elem_t*)inception5a_out), conv_62_w, conv_62_b, ((elem_t*)inception5b_out + 0),
             RELU, conv_62_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_62");
+            tiled_matmul_type, check, "conv_62",0);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2020,11 +2207,11 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_62_params.I, conv_62_params.J, conv_62_params.K,
+        matmul_extended_auto_norun(conv_62_params.I, conv_62_params.J, conv_62_params.K,
             1024,
             ((elem_t*)inception5a_out), conv_62_w, conv_62_b, ((elem_t*)inception5b_out + 0),
             RELU, conv_62_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_62");
+            tiled_matmul_type, check, "conv_62",0);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2036,11 +2223,11 @@ void * thread_main() {
     if (!conv) {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_63_params.I, conv_63_params.J, conv_63_params.K,
+        matmul_extended_auto_norun(conv_63_params.I, conv_63_params.J, conv_63_params.K,
             conv_63_params.J,
             ((elem_t*)inception5a_out), conv_63_w, conv_63_b, conv_63_out,
             RELU, conv_63_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_63");
+            tiled_matmul_type, check, "conv_63",1);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2048,16 +2235,81 @@ void * thread_main() {
     } else {
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_63_params.I, conv_63_params.J, conv_63_params.K,
+        matmul_extended_auto_norun(conv_63_params.I, conv_63_params.J, conv_63_params.K,
             conv_63_params.J,
             ((elem_t*)inception5a_out), conv_63_w, conv_63_b, conv_63_out,
             RELU, conv_63_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_63");
+            tiled_matmul_type, check, "conv_63",1);
 
         end = read_cycles();
         matmul_cycles += end - start;
         matmul_63_cycles = end - start;
     }
+
+    // Branch 3
+    // conv_65
+    if (!conv) {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_65_params.I, conv_65_params.J, conv_65_params.K,
+            conv_65_params.J,
+            ((elem_t*)inception5a_out), conv_65_w, conv_65_b, conv_65_out,
+            RELU, conv_65_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_65",2);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+    } else {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_65_params.I, conv_65_params.J, conv_65_params.K,
+            conv_65_params.J,
+            ((elem_t*)inception5a_out), conv_65_w, conv_65_b, conv_65_out,
+            RELU, conv_65_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_65",2);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+        matmul_65_cycles = end - start;
+    }
+
+
+
+    // Branch 4
+    // conv_68
+    if (!conv) {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_68_params.I, conv_68_params.J, conv_68_params.K,
+            1024,
+            pool_67_out, conv_68_w, conv_68_b, ((elem_t*)inception5b_out + 896),
+            RELU, conv_68_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_68",3);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+    } else {
+        start = read_cycles();
+
+        matmul_extended_auto_norun(conv_68_params.I, conv_68_params.J, conv_68_params.K,
+            1024,
+            pool_67_out, conv_68_w, conv_68_b, ((elem_t*)inception5b_out + 896),
+            RELU, conv_68_params.output_scale, 0, true,
+            tiled_matmul_type, check, "conv_68",3);
+
+        end = read_cycles();
+        matmul_cycles += end - start;
+        matmul_67_cycles = end - start;
+    }
+
+    start = read_cycles();
+
+    RUN_TASKS();
+
+    end = read_cycles();
+    incep_5b_1_cycles = end-start;
+    //p2
+
 
     // conv_64
     if (!conv) {
@@ -2072,18 +2324,18 @@ void * thread_main() {
 
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_64_params.I, conv_64_params.J, conv_64_params.K,
+        matmul_extended_auto_norun(conv_64_params.I, conv_64_params.J, conv_64_params.K,
             1024,
             conv_64_in, conv_64_w, conv_64_b, ((elem_t*)inception5b_out + 384),
             RELU, conv_64_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_64");
+            tiled_matmul_type, check, "conv_64",1);
 
         end = read_cycles();
         matmul_cycles += end - start;
     } else {
         start = read_cycles();
 
-        tiled_conv_outchannel_parallel_auto(
+        tiled_conv_outchannel_norun(
             conv_64_params.batch_size, conv_64_params.in_dim, conv_64_params.in_channels,
             conv_64_params.out_channels, conv_64_params.out_dim,
             conv_64_params.stride, 1, conv_64_params.padding, conv_64_params.kernel_size,
@@ -2096,38 +2348,11 @@ void * thread_main() {
             RELU, conv_64_params.output_scale, 0,
             conv_64_params.pool_size, 0, conv_64_params.pool_padding, true,
 
-            tiled_matmul_type);
+            tiled_matmul_type,1);
 
         end = read_cycles();
         conv_cycles += end - start;
         conv_64_cycles = end - start;
-    }
-
-    // Branch 3
-    // conv_65
-    if (!conv) {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_65_params.I, conv_65_params.J, conv_65_params.K,
-            conv_65_params.J,
-            ((elem_t*)inception5a_out), conv_65_w, conv_65_b, conv_65_out,
-            RELU, conv_65_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_65");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-    } else {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_65_params.I, conv_65_params.J, conv_65_params.K,
-            conv_65_params.J,
-            ((elem_t*)inception5a_out), conv_65_w, conv_65_b, conv_65_out,
-            RELU, conv_65_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_65");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-        matmul_65_cycles = end - start;
     }
 
     // conv_66
@@ -2143,18 +2368,18 @@ void * thread_main() {
 
         start = read_cycles();
 
-        tiled_matmul_nn_auto_extended(conv_66_params.I, conv_66_params.J, conv_66_params.K,
+        matmul_extended_auto_norun(conv_66_params.I, conv_66_params.J, conv_66_params.K,
             1024,
             conv_66_in, conv_66_w, conv_66_b, ((elem_t*)inception5b_out + 768),
             RELU, conv_66_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_66");
+            tiled_matmul_type, check, "conv_66",2);
 
         end = read_cycles();
         matmul_cycles += end - start;
     } else {
         start = read_cycles();
 
-        tiled_conv_outchannel_parallel_auto(
+        tiled_conv_outchannel_norun(
             conv_66_params.batch_size, conv_66_params.in_dim, conv_66_params.in_channels,
             conv_66_params.out_channels, conv_66_params.out_dim,
             conv_66_params.stride, 1, conv_66_params.padding, conv_66_params.kernel_size,
@@ -2167,12 +2392,22 @@ void * thread_main() {
             RELU, conv_66_params.output_scale, 0,
             conv_66_params.pool_size, 0, conv_66_params.pool_padding, true,
 
-            tiled_matmul_type);
+            tiled_matmul_type,2);
 
         end = read_cycles();
         conv_cycles += end - start;
         conv_66_cycles = end - start;
     }
+
+    start = read_cycles();
+
+    RUN_TASKS();
+
+    end = read_cycles();
+    incep_5b_2_cycles = end-start;
+    //p3
+
+
 
     // pool_67
     start = read_cycles();
@@ -2185,32 +2420,7 @@ void * thread_main() {
     pool_cycles += end - start;
     pool_67_cycles = end - start;
 
-    // Branch 4
-    // conv_68
-    if (!conv) {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_68_params.I, conv_68_params.J, conv_68_params.K,
-            1024,
-            pool_67_out, conv_68_w, conv_68_b, ((elem_t*)inception5b_out + 896),
-            RELU, conv_68_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_68");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-    } else {
-        start = read_cycles();
-
-        tiled_matmul_nn_auto_extended(conv_68_params.I, conv_68_params.J, conv_68_params.K,
-            1024,
-            pool_67_out, conv_68_w, conv_68_b, ((elem_t*)inception5b_out + 896),
-            RELU, conv_68_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_68");
-
-        end = read_cycles();
-        matmul_cycles += end - start;
-        matmul_67_cycles = end - start;
-    }
+    RUN_TASKS();
 
     // Global averaging
     static elem_t average[4][1024] row_align(1);
@@ -2307,6 +2517,16 @@ void * thread_main() {
       printf("pool_67_cycles: %llu\n", pool_67_cycles);
       printf("matmul_67_cycles: %llu\n", matmul_67_cycles);
       printf("fc_69_cycles: %llu\n\n", fc_69_cycles);
+
+      printf("Inception 3a cycles: %llu %llu\n", incep_3a_1_cycles, inception_3a_2_cycles);
+      printf("Inception 3b cycles: %llu %llu\n", incep_3b_1_cycles, inception_3b_2_cycles);
+      printf("Inception 4a cycles: %llu %llu\n", incep_4a_1_cycles, inception_4a_2_cycles);
+      printf("Inception 4b cycles: %llu %llu\n", incep_4b_1_cycles, inception_4b_2_cycles);
+      printf("Inception 4c cycles: %llu %llu\n", incep_4c_1_cycles, inception_4c_2_cycles);
+      printf("Inception 4d cycles: %llu %llu\n", incep_4d_1_cycles, inception_4d_2_cycles);
+      printf("Inception 4e cycles: %llu %llu\n", incep_4e_1_cycles, inception_4e_2_cycles);
+      printf("Inception 5a cycles: %llu %llu\n", incep_5a_1_cycles, inception_5a_2_cycles);
+      printf("Inception 5b cycles: %llu %llu\n", incep_5b_1_cycles, inception_5b_2_cycles);
     }
 
     // Find highest probs

@@ -5,6 +5,7 @@
 
 #include "include/threadpool.h"
 #include "include/gemmini.h"
+#include "gemmini_nn.h"
 
 static void tiled_matmul_nn_auto_extended(size_t dim_I, size_t dim_J, size_t dim_K,
         size_t stride_C,
