@@ -2518,15 +2518,15 @@ void * thread_main() {
       printf("matmul_67_cycles: %llu\n", matmul_67_cycles);
       printf("fc_69_cycles: %llu\n\n", fc_69_cycles);
 
-      printf("Inception 3a cycles: %llu %llu\n", incep_3a_1_cycles, inception_3a_2_cycles);
-      printf("Inception 3b cycles: %llu %llu\n", incep_3b_1_cycles, inception_3b_2_cycles);
-      printf("Inception 4a cycles: %llu %llu\n", incep_4a_1_cycles, inception_4a_2_cycles);
-      printf("Inception 4b cycles: %llu %llu\n", incep_4b_1_cycles, inception_4b_2_cycles);
-      printf("Inception 4c cycles: %llu %llu\n", incep_4c_1_cycles, inception_4c_2_cycles);
-      printf("Inception 4d cycles: %llu %llu\n", incep_4d_1_cycles, inception_4d_2_cycles);
-      printf("Inception 4e cycles: %llu %llu\n", incep_4e_1_cycles, inception_4e_2_cycles);
-      printf("Inception 5a cycles: %llu %llu\n", incep_5a_1_cycles, inception_5a_2_cycles);
-      printf("Inception 5b cycles: %llu %llu\n", incep_5b_1_cycles, inception_5b_2_cycles);
+      printf("Inception 3a cycles: %llu %llu\n", incep_3a_1_cycles, incep_3a_2_cycles);
+      printf("Inception 3b cycles: %llu %llu\n", incep_3b_1_cycles, incep_3b_2_cycles);
+      printf("Inception 4a cycles: %llu %llu\n", incep_4a_1_cycles, incep_4a_2_cycles);
+      printf("Inception 4b cycles: %llu %llu\n", incep_4b_1_cycles, incep_4b_2_cycles);
+      printf("Inception 4c cycles: %llu %llu\n", incep_4c_1_cycles, incep_4c_2_cycles);
+      printf("Inception 4d cycles: %llu %llu\n", incep_4d_1_cycles, incep_4d_2_cycles);
+      printf("Inception 4e cycles: %llu %llu\n", incep_4e_1_cycles, incep_4e_2_cycles);
+      printf("Inception 5a cycles: %llu %llu\n", incep_5a_1_cycles, incep_5a_2_cycles);
+      printf("Inception 5b cycles: %llu %llu\n", incep_5b_1_cycles, incep_5b_2_cycles);
     }
 
     // Find highest probs
