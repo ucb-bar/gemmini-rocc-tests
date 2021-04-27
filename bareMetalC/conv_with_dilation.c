@@ -60,7 +60,8 @@ void conv(int batch_size, int in_channels, int in_dim,
         elem_t output[batch_size][out_dim][out_dim][out_channels]) {
 
     const size_t in_dim_dilated = in_dim + (dilation - 1)*(in_dim - 1);
-    elem_t dilated[batch_size][in_dim_dilated][in_dim_dilated][in_channels];
+    assert(in_dim_dilated == IN_DIM_DILATED);
+    static elem_t dilated[BATCH_SIZE][IN_DIM_DILATED][IN_DIM_DILATED][IN_CHANNELS];
 
 #ifdef GEMMINI_ASSERTIONS
     if (out_dim != (in_dim_dilated + 2*padding - kernel_dim) / stride + 1) {
