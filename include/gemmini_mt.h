@@ -6,13 +6,20 @@
 #include "include/threadpool.h"
 #include "include/gemmini.h"
 
+static void tiled_matmul_nn_auto_extended(size_t dim_I, size_t dim_J, size_t dim_K,
+        size_t stride_C,
+        const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
+        const void * D, elem_t* C,
+        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
+        enum tiled_matmul_type_t tiled_matmul_type,
+        bool check, char * layer_name);
 
 //struct for nn_auto_extended split
 typedef struct args_matmul_auto_t{
   size_t dim_I; size_t dim_J; size_t dim_K;
           size_t stride_C;
-          const elem_t A; const elem_t B;
-          const void * D; elem_t* C;
+          elem_t A; elem_t B;
+          void * D; elem_t* C;
           int act; acc_scale_t scale; size_t relu6_shift; bool repeating_bias;
           enum tiled_matmul_type_t tiled_matmul_type;
           bool check; char * layer_name;
@@ -218,7 +225,7 @@ static void tiled_conv_outchannel_norun(
     args.out_channels_stride = out_channels_stride;
 
     args.input = input;
-    args.weights = (elem_t*)weight;
+    args.weights = (elem_t*)weights;
     args.bias = bias;
     args.output = (elem_t*)output;
 
@@ -230,7 +237,7 @@ static void tiled_conv_outchannel_norun(
     args.pool_padding = pool_padding;
     args.pool_ceil_dim = pool_ceil_dim;
 
-    args[t].tiled_conv_type = tiled_conv_type;
+    args.tiled_conv_type = tiled_conv_type;
 
     SET_TASK(t, worker_tiled_conv_auto, &args);
   }
