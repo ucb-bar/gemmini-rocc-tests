@@ -2332,7 +2332,7 @@ static void conv_cpu_without_pool(
         int out_channels, int out_dim,
         int stride, int dilation, int padding, int kernel_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
-        bool trans_weight_1203,
+        bool trans_weight_1203, bool trans_weight_0132,
 
         const elem_t * input,
         const elem_t * weights,
@@ -2379,6 +2379,9 @@ static void conv_cpu_without_pool(
                 if (trans_weight_1203) {
                   // HWIO to WIHO
                   weight = *(weights + (kch * kernel_dim * kernel_dim  + krow_ * kernel_dim + kcol_) * out_channels + och);
+                } else if (trans_weight_0132) {
+                  // HWIO to HWOI
+                  weight = *(weights + (krow_ * kernel_dim * out_channels + kcol_ * out_channels + och) * in_channels + kch);
                 }
 
                 opixel += weight * ipixel;
@@ -2404,7 +2407,7 @@ static void conv_cpu(
         int out_channels, int out_dim,
         int stride, int dilation, int padding, int kernel_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
-        bool trans_weight_1203,
+        bool trans_weight_1203, bool trans_weight_0132,
 
         const elem_t * input,
         const elem_t * weights,
@@ -2420,7 +2423,8 @@ static void conv_cpu(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
         stride, dilation, padding, kernel_dim,
-        wrot180, trans_output_1203, trans_input_3120, trans_weight_1203,
+        wrot180, trans_output_1203, trans_input_3120,
+        trans_weight_1203, trans_weight_0132,
         input, weights, bias, output,
         act, scale, relu6_shift);
     return;
@@ -2475,6 +2479,9 @@ static void conv_cpu(
                       if (trans_weight_1203) {
                         // HWIO to WIHO
                         weight = *(weights + (kch * kernel_dim * kernel_dim  + krow_ * kernel_dim + kcol_) * out_channels + poch);
+                      } else if (trans_weight_0132) {
+                        // HWIO to HWOI
+                        weight = *(weights + (krow_ * kernel_dim * out_channels + kcol_ * out_channels + poch) * in_channels + kch);
                       }
 
                       opixel += weight * ipixel;
@@ -2511,7 +2518,7 @@ static void tiled_conv_A_stride(
         int out_channels, int out_dim,
         int stride, int dilation, int padding, int kernel_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
-        bool trans_weight_1203,
+        bool trans_weight_1203, bool trans_weight_0132,
 
         int batches,
         int porows, int pocols, int pochs,
@@ -2527,6 +2534,13 @@ static void tiled_conv_A_stride(
 
         enum tiled_matmul_type_t tiled_conv_type) {
 
+#ifdef GEMMINI_ASSERTIONS
+  if (trans_weight_1203 && trans_weight_0132) {
+    printf("Only one weight transformation can be applied at a time\n");
+    exit(1);
+  }
+#endif
+
     if (tiled_conv_type == CPU) {
       if (pool_size == 1 && pool_stride == 1 && pool_padding == 0) {
         pool_stride = 0;
@@ -2536,7 +2550,8 @@ static void tiled_conv_A_stride(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
         stride, dilation, padding, kernel_dim,
-        wrot180, trans_output_1203, trans_input_3120, trans_weight_1203,
+        wrot180, trans_output_1203, trans_input_3120,
+        trans_weight_1203, trans_weight_0132,
         input, weights, bias, output,
         act, scale, relu6_shift,
         pool_size, pool_stride, pool_padding);
@@ -2597,7 +2612,7 @@ static void tiled_conv_A_stride(
             printf("input dilation is only supported when stride == 1\n");
             exit(1);
         }
-        if (trans_output_1203 || trans_input_3120 || trans_weight_1203) {
+        if (trans_output_1203 || trans_input_3120 || trans_weight_1203 || trans_weight_0132) {
             printf("data transformations are only supported on CPU\n");
             exit(1);
         }
@@ -2719,7 +2734,7 @@ static void tiled_conv_A_stride_auto(
         int out_channels, int out_dim,
         int stride, int dilation, int padding, int kernel_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
-        bool trans_weight_1203,
+        bool trans_weight_1203, bool trans_weight_0132,
 
         const elem_t * input,
         const elem_t * weights,
@@ -2884,7 +2899,8 @@ static void tiled_conv_A_stride_auto(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
         stride, dilation, padding, kernel_dim,
-        wrot180, trans_output_1203, trans_input_3120, trans_weight_1203,
+        wrot180, trans_output_1203, trans_input_3120,
+        trans_weight_1203, trans_weight_0132,
 
         batches,
         orows, ocols, ochs,
@@ -3114,7 +3130,7 @@ static void tiled_conv_first(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
         stride, 1, padding, kcols,//kernel_dim,
-        false, false, false, false,
+        false, false, false, false, false,
         input, weights, bias, output,
         act, scale, relu6_shift,
         pool_size, pool_stride, pool_padding);
@@ -3636,7 +3652,7 @@ static void tiled_conv_original(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
         stride, 1, padding, kernel_dim,
-        false, false, false, false,
+        false, false, false, false, false,
         input, weights, bias, output,
         act, scale, relu6_shift,
         pool_size, pool_stride, pool_padding);
@@ -3826,7 +3842,7 @@ static void tiled_conv(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
         stride, 1, padding, kernel_dim,
-        false, false, false, false,
+        false, false, false, false, false,
         input, weights, bias, output,
         act, scale, relu6_shift,
         pool_size, pool_stride, pool_padding);
