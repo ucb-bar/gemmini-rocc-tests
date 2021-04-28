@@ -1324,7 +1324,7 @@ static void sp_tiled_conv_A_stride(
 	int pause_turn = 2;
    bool depthwise = (kchs == 1) && (in_channels != 1);
 	if(skip_weight){
-		gemmini_loop_ld_conv(bubble_enable, weights, weight_stride, in_channels, out_channels, kernel_dim, pochs, krows, kcols, kchs, latency, alert_cycle, unlock_cycle, pause_turn, depthwise);
+		gemmini_loop_ld_conv(bubble_enable, weights, weight_stride, in_channels, out_channels, kernel_dim, pochs, krows, kcols, kchs, latency, alert, unlock_cycle, pause_turn, depthwise);
 	}
 	gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, pool_output, output, bias, input, no_bias, out_both, no_pool, depthwise, in_stride, weight_stride, out_stride);
 

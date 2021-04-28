@@ -186,7 +186,7 @@ static void tiled_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
 	size_t stride_B = dim_J;
 	bool row_divisible = (orow_divide > 1) && (dim_I % orow_divide == 0);
 	size_t orow_offset_floor = 0;
-	if(!row_divisible && orow_divide > 1 && dim_J < DIM * orow_divide * 2) {
+	if(!row_divisible && orow_divide > 1 && dim_I > DIM) { // for FC layers
 		row_divisible = true;
 		size_t dim_I_floor = dim_I / orow_divide;
 		orow_offset_floor = dim_I - dim_I_floor * orow_divide;
