@@ -19,10 +19,11 @@ tests = \
 	mvin_scale \
 	conv \
 	conv_with_pool \
-	conv_with_dilation \
 	conv_with_rot180 \
-	conv_with_dilation_and_rot180 \
-	conv_with_dilation_and_neg_padding \
+	conv_with_kernel_dilation \
+	conv_with_input_dilation \
+	conv_with_input_dilation_and_rot180 \
+	conv_with_input_dilation_and_neg_padding \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_ws_At \

@@ -2303,6 +2303,7 @@ static int tiled_conv_total_spad_rows(bool acc, bool weight,
 static int tiled_conv_total_spad_rows_A_stride(bool acc,
         int stride,
         int input_dilation,
+        int kernel_dilation,
         bool downsample,
         int batches,
         int porows, int pocols, int ochs,
@@ -2312,8 +2313,8 @@ static int tiled_conv_total_spad_rows_A_stride(bool acc,
     const int orows = porows * pool_stride + pool_size - 1;
     const int ocols = pocols * pool_stride + pool_size - 1;
 
-    int irows = orows * stride + krows - 1; // - 2 * padding;
-    int icols = ocols * stride + kcols - 1; // - 2 * padding;
+    int irows = orows * stride + krows * kernel_dilation - 1; // - 2 * padding;
+    int icols = ocols * stride + kcols * kernel_dilation - 1; // - 2 * padding;
     const int ichs = kchs;
 
     irows = irows / input_dilation + (irows % input_dilation != 0);
@@ -2333,7 +2334,7 @@ static int tiled_conv_total_spad_rows_A_stride(bool acc,
 static void conv_cpu_without_pool(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
-        int stride, int input_dilation, int padding, int kernel_dim,
+        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
         bool trans_weight_1203, bool trans_weight_0132,
 
@@ -2354,16 +2355,16 @@ static void conv_cpu_without_pool(
           acc_t opixel = no_bias ? 0 : bias[och];
 
           for (int krow = 0; krow < kernel_dim; krow++) {
-            if ((orow * stride + krow - padding) % input_dilation != 0)
+            if ((orow * stride + krow * kernel_dilation - padding) % input_dilation != 0)
               continue;
 
-            const int irow = (orow * stride + krow - padding) / input_dilation;
+            const int irow = (orow * stride + krow * kernel_dilation - padding) / input_dilation;
 
             for (int kcol = 0; kcol < kernel_dim; kcol++) {
-              if ((ocol * stride + kcol - padding) % input_dilation != 0)
+              if ((ocol * stride + kcol * kernel_dilation - padding) % input_dilation != 0)
                 continue;
 
-              const int icol = (ocol * stride + kcol - padding) / input_dilation;
+              const int icol = (ocol * stride + kcol * kernel_dilation - padding) / input_dilation;
 
               for (int kch = 0; kch < in_channels; kch++) {
                 const elem_t * in = input + (b * in_dim * in_dim + irow * in_dim + icol) * in_channels + kch;
@@ -2408,7 +2409,7 @@ static void conv_cpu_without_pool(
 static void conv_cpu(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
-        int stride, int input_dilation, int padding, int kernel_dim,
+        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
         bool trans_weight_1203, bool trans_weight_0132,
 
@@ -2425,7 +2426,7 @@ static void conv_cpu(
     conv_cpu_without_pool(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
-        stride, input_dilation, padding, kernel_dim,
+        stride, input_dilation, kernel_dilation, padding, kernel_dim,
         wrot180, trans_output_1203, trans_input_3120,
         trans_weight_1203, trans_weight_0132,
         input, weights, bias, output,
@@ -2460,10 +2461,16 @@ static void conv_cpu(
                 acc_t opixel = no_bias ? 0 : bias[poch];
 
                 for (int krow = 0; krow < kernel_dim; krow++) {
-                  const int irow = (orow * stride + krow - padding) / input_dilation;
+                  if ((orow * stride + krow * kernel_dilation - padding) % input_dilation != 0)
+                    continue;
+
+                  const int irow = (orow * stride + krow * kernel_dilation - padding) / input_dilation;
 
                   for (int kcol = 0; kcol < kernel_dim; kcol++) {
-                      const int icol = (ocol * stride + kcol - padding) / input_dilation;
+                    if ((ocol * stride + kcol * kernel_dilation - padding) % input_dilation != 0)
+                      continue;
+
+                    const int icol = (ocol * stride + kcol * kernel_dilation - padding) / input_dilation;
 
                     for (int kch = 0; kch < in_channels; kch++) {
                       const elem_t * in = input + (b * in_dim * in_dim + irow * in_dim + icol) * in_channels + kch;
@@ -2519,7 +2526,7 @@ static void conv_cpu(
 static void tiled_conv_A_stride(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
-        int stride, int input_dilation, int padding, int kernel_dim,
+        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
         bool trans_weight_1203, bool trans_weight_0132,
 
@@ -2552,7 +2559,7 @@ static void tiled_conv_A_stride(
       conv_cpu(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
-        stride, input_dilation, padding, kernel_dim,
+        stride, input_dilation, kernel_dilation, padding, kernel_dim,
         wrot180, trans_output_1203, trans_input_3120,
         trans_weight_1203, trans_weight_0132,
         input, weights, bias, output,
@@ -2589,10 +2596,10 @@ static void tiled_conv_A_stride(
 
         // Check that data will fit in scratchpad
         const int spad_rows = tiled_conv_total_spad_rows_A_stride(false,
-            stride, input_dilation, downsample,
+            stride, input_dilation, kernel_dilation, downsample,
             batches, porows, pocols, pochs, krows, kcols, kchs, pool_size, pool_stride);
         const int acc_rows = tiled_conv_total_spad_rows_A_stride(true,
-            stride, input_dilation, downsample,
+            stride, input_dilation, kernel_dilation, downsample,
             batches, porows, pocols, pochs, krows, kcols, kchs, pool_size, pool_stride);
 
         if (spad_rows > BANK_NUM * BANK_ROWS / 2) {
@@ -2735,7 +2742,7 @@ static void tiled_conv_A_stride(
 static void tiled_conv_A_stride_auto(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
-        int stride, int input_dilation, int padding, int kernel_dim,
+        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
         bool trans_weight_1203, bool trans_weight_0132,
 
@@ -2776,10 +2783,10 @@ static void tiled_conv_A_stride_auto(
     const int max_acc_rows = (ACC_ROWS / 2);
 
     int spad_rows = tiled_conv_total_spad_rows_A_stride(false,
-        stride, input_dilation, downsample,
+        stride, input_dilation, kernel_dilation, downsample,
         args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     int acc_rows = tiled_conv_total_spad_rows_A_stride(true,
-        stride, input_dilation, downsample,
+        stride, input_dilation, kernel_dilation, downsample,
         args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
 
     while (spad_rows > max_spad_rows || acc_rows > max_acc_rows) {
@@ -2808,10 +2815,10 @@ static void tiled_conv_A_stride_auto(
         }
 
         spad_rows = tiled_conv_total_spad_rows_A_stride(false,
-            stride, input_dilation, downsample,
+            stride, input_dilation, kernel_dilation, downsample,
             args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
         acc_rows = tiled_conv_total_spad_rows_A_stride(true,
-            stride, input_dilation, downsample,
+            stride, input_dilation, kernel_dilation, downsample,
             args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     }
 
@@ -2827,10 +2834,10 @@ static void tiled_conv_A_stride_auto(
             continue;
 
         spad_rows = tiled_conv_total_spad_rows_A_stride(false,
-            stride, input_dilation, downsample,
+            stride, input_dilation, kernel_dilation, downsample,
             args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
         acc_rows = tiled_conv_total_spad_rows_A_stride(true,
-            stride, input_dilation, downsample,
+            stride, input_dilation, kernel_dilation, downsample,
             args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
 
         if (spad_rows <= max_spad_rows && acc_rows <= max_acc_rows) {
@@ -2852,10 +2859,10 @@ static void tiled_conv_A_stride_auto(
                 continue;
 
             spad_rows = tiled_conv_total_spad_rows_A_stride(false,
-                stride, input_dilation, downsample,
+                stride, input_dilation, kernel_dilation, downsample,
                 args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
             acc_rows = tiled_conv_total_spad_rows_A_stride(true,
-                stride, input_dilation, downsample,
+                stride, input_dilation, kernel_dilation, downsample,
                 args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
 
             if (spad_rows <= max_spad_rows && acc_rows <= max_acc_rows) {
@@ -2875,10 +2882,10 @@ static void tiled_conv_A_stride_auto(
 
     /*
     spad_rows = tiled_conv_total_spad_rows_A_stride(false,
-        stride, input_dilation, downsample,
+        stride, input_dilation, kernel_dilation, downsample,
         args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     acc_rows = tiled_conv_total_spad_rows_A_stride(true,
-        stride, input_dilation, downsample,
+        stride, input_dilation, kernel_dilation, downsample,
         args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
 
     printf("batches = %d\n", batches);
@@ -2901,7 +2908,7 @@ static void tiled_conv_A_stride_auto(
     tiled_conv_A_stride(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
-        stride, input_dilation, padding, kernel_dim,
+        stride, input_dilation, kernel_dilation, padding, kernel_dim,
         wrot180, trans_output_1203, trans_input_3120,
         trans_weight_1203, trans_weight_0132,
 
@@ -3132,7 +3139,7 @@ static void tiled_conv_first(
       conv_cpu(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
-        stride, 1, padding, kcols,//kernel_dim,
+        stride, 1, 1, padding, kcols,//kernel_dim,
         false, false, false, false, false,
         input, weights, bias, output,
         act, scale, relu6_shift,
@@ -3654,7 +3661,7 @@ static void tiled_conv_original(
       conv_cpu(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
-        stride, 1, padding, kernel_dim,
+        stride, 1, 1, padding, kernel_dim,
         false, false, false, false, false,
         input, weights, bias, output,
         act, scale, relu6_shift,
@@ -3844,7 +3851,7 @@ static void tiled_conv(
       conv_cpu(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
-        stride, 1, padding, kernel_dim,
+        stride, 1, 1, padding, kernel_dim,
         false, false, false, false, false,
         input, weights, bias, output,
         act, scale, relu6_shift,
