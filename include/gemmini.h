@@ -1064,7 +1064,7 @@ static void sp_tiled_conv_A_stride(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
-        int stride, int padding, int kernel_dim,
+        int stride, int padding, int kernel_dim, int kernel_dilation,
 
         int pool_size, int pool_stride, int pool_padding,
 
@@ -1090,8 +1090,10 @@ static void sp_tiled_conv_A_stride(
 
   // Calculate image dimensions
   // Note: "irows" and "icols" includes padding
-  int irows = orows * stride + krows - 1;
-  int icols = ocols * stride + kcols - 1;
+  const int dilated_krows = krows + (kernel_dilation - 1)*(krows - 1);
+  const int dilated_kcols = kcols + (kernel_dilation - 1)*(kcols - 1);
+  int irows = orows * stride + dilated_krows - 1;
+  int icols = ocols * stride + dilated_kcols - 1;
   int irows_unpadded = irows - upad - dpad;
   int icols_unpadded = icols - lpad - rpad;
   const int ichs = kchs;
@@ -1126,9 +1128,8 @@ static void sp_tiled_conv_A_stride(
     C_sp_addr_row = (C_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
   }
 
-  gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated);
+  // gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated);
 
-  /*
   // mvin bias
   if (bias != NULL) {
     // TODO we probably don't need quite this many nested loops for this part
@@ -1242,7 +1243,7 @@ static void sp_tiled_conv_A_stride(
           for (int b = 0; b < batches; b++) {
             for (int orow = 0; orow < orows; orow++) {
               // Skip some kernel rows due to input-dilation
-              if (input_dilated && ((krow + orow * stride - upad) % 2 != 0)) {
+              if (input_dilated && ((krow * kernel_dilation + orow * stride - upad) % 2 != 0)) {
                 continue;
               }
 
@@ -1253,8 +1254,8 @@ static void sp_tiled_conv_A_stride(
                   continue;
                 }
 
-                int irow = orow * stride + krow;
-                int icol = ocol * stride + kcol;
+                int irow = orow * stride + krow * kernel_dilation;
+                int icol = ocol * stride + kcol * kernel_dilation;
 
                 if (input_dilated) {
                   irow = (irow + 1) / 2;
@@ -1353,7 +1354,6 @@ static void sp_tiled_conv_A_stride(
           gemmini_config_st(out_channels * sizeof(elem_t));
       }
   }
-  */
 }
 
 //resnet downsampling layer (no padding, kernel size 1, stride 2)
@@ -2313,8 +2313,11 @@ static int tiled_conv_total_spad_rows_A_stride(bool acc,
     const int orows = porows * pool_stride + pool_size - 1;
     const int ocols = pocols * pool_stride + pool_size - 1;
 
-    int irows = orows * stride + krows * kernel_dilation - 1; // - 2 * padding;
-    int icols = ocols * stride + kcols * kernel_dilation - 1; // - 2 * padding;
+    const int krows_dilated = krows + (kernel_dilation - 1)*(krows - 1);
+    const int kcols_dilated = kcols + (kernel_dilation - 1)*(kcols - 1);
+
+    int irows = orows * stride + krows_dilated - 1; // - 2 * padding;
+    int icols = ocols * stride + kcols_dilated - 1; // - 2 * padding;
     const int ichs = kchs;
 
     irows = irows / input_dilation + (irows % input_dilation != 0);
@@ -2589,6 +2592,8 @@ static void tiled_conv_A_stride(
     const bool downsample = stride == 2 && kernel_dim == 1 && in_dim % 2 == 0
       && padding == 0 && no_pool && input_dilation == 1;
 
+    const int input_dilated = input_dilation == 2;
+
 #ifdef GEMMINI_ASSERTIONS
     {
         // const int orows = porows * pool_stride + pool_size - 1;
@@ -2629,8 +2634,6 @@ static void tiled_conv_A_stride(
     }
 #endif
 
-    const int input_dilated = input_dilation == 2;
-
     gemmini_config_st(out_channels * sizeof(elem_t));
     gemmini_extended3_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, input_dilation, stride >> downsample, false, false, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
@@ -2647,11 +2650,11 @@ static void tiled_conv_A_stride(
                 for (int poch = 0; poch < out_channels; poch += pochs) {
                     for (int krow = 0; krow < kernel_dim; krow += krows) {
                         const int orow_floored = orow < 0 ? 0 : orow;
-                        int irow = orow_floored * stride + krow - padding;
+                        int irow = orow_floored * stride + krow * kernel_dilation - padding;
 
                         for (int kcol = 0; kcol < kernel_dim; kcol += kcols) {
                             const int ocol_floored = ocol < 0 ? 0 : ocol;
-                            int icol = ocol_floored * stride + kcol - padding;
+                            int icol = ocol_floored * stride + kcol * kernel_dilation - padding;
 
                             for (int kch = 0; kch < in_channels; kch += kchs) {
                                 elem_t * out = output + (b*pool_out_dim*pool_out_dim + porow*pool_out_dim + pocol) * out_channels + poch;
@@ -2685,8 +2688,11 @@ static void tiled_conv_A_stride(
                                 const int pupad = orow < 0 ? -orow : 0;
                                 const int pdpad = orow + orows_ > out_dim ? orow + orows_ - out_dim : 0;
 
-                                const int icols_ = (ocols_ - plpad - prpad) * stride + kcols_ - 1;
-                                const int irows_ = (orows_ - pupad - pdpad) * stride + krows_ - 1;
+                                const int dilated_krows_ = krows_ + (kernel_dilation - 1)*(krows_ - 1);
+                                const int dilated_kcols_ = kcols_ + (kernel_dilation - 1)*(kcols_ - 1);
+
+                                const int icols_ = (ocols_ - plpad - prpad) * stride + dilated_kcols_ - 1;
+                                const int irows_ = (orows_ - pupad - pdpad) * stride + dilated_krows_ - 1;
 
                                 int lpad = icol < 0 ? -icol : 0;
                                 int rpad = icol + icols_ > dilated_in_dim ? icol + icols_ - dilated_in_dim : 0;
@@ -2711,7 +2717,7 @@ static void tiled_conv_A_stride(
                                     batch_size, in_dim, in_channels,
                                     out_channels, out_dim, pool_out_dim,
 
-                                    stride, padding, kernel_dim,
+                                    stride, padding, kernel_dim, kernel_dilation,
 
                                     pool_size, pool_stride, pool_padding,
 
