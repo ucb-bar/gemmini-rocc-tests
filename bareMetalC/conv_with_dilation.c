@@ -60,7 +60,8 @@ void conv(int batch_size, int in_channels, int in_dim,
         elem_t output[batch_size][out_dim][out_dim][out_channels]) {
 
     const size_t in_dim_dilated = in_dim + (dilation - 1)*(in_dim - 1);
-    elem_t dilated[batch_size][in_dim_dilated][in_dim_dilated][in_channels];
+    assert(in_dim_dilated == IN_DIM_DILATED);
+    static elem_t dilated[BATCH_SIZE][IN_DIM_DILATED][IN_DIM_DILATED][IN_CHANNELS];
 
 #ifdef GEMMINI_ASSERTIONS
     if (out_dim != (in_dim_dilated + 2*padding - kernel_dim) / stride + 1) {
@@ -248,8 +249,7 @@ int main() {
 
         NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, 0,
 
-        CPU);
-        // WS); // TODO add support for WS conv with dilation
+        WS);
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 
@@ -259,11 +259,11 @@ int main() {
     bool success = true;
     for (int orow = 0; orow < BATCH_SIZE * OUT_DIM * OUT_DIM; orow++) {
       for (int ocol = 0; ocol < OUT_CHANNELS; ocol++) {
-	elem_t v = output_mat[orow][ocol];
-	if (v != 6 && v != 11 && v != 21) {
-	  success = false;
-	  break;
-	}
+        elem_t v = output_mat[orow][ocol];
+        if (v != 6 && v != 11 && v != 21) {
+          success = false;
+          break;
+        }
       }
     }
 #else

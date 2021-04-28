@@ -17,7 +17,7 @@
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 1
-#define DILATION 2
+#define DILATION 1
 
 #else
 
@@ -39,7 +39,7 @@
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 1
-#define DILATION 2
+#define DILATION 1
 
 #endif
 
@@ -255,7 +255,7 @@ int main() {
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
         STRIDE, DILATION, PADDING, KERNEL_DIM,
-        WROT180, false, false, false,
+        WROT180,
 
         (elem_t*)input,
         (elem_t*)weights_mat,
@@ -275,7 +275,7 @@ int main() {
     for (int orow = 0; orow < BATCH_SIZE * OUT_DIM * OUT_DIM; orow++) {
       for (int ocol = 0; ocol < OUT_CHANNELS; ocol++) {
 	elem_t v = output_mat[orow][ocol];
-	if (v != 6 && v != 11 && v != 21) {
+	if (v != 21 && v != 31 && v != 46) {
 	  success = false;
 	  break;
 	}
