@@ -2312,9 +2312,12 @@ static int tiled_conv_total_spad_rows_A_stride(bool acc,
     const int orows = porows * pool_stride + pool_size - 1;
     const int ocols = pocols * pool_stride + pool_size - 1;
 
-    const int irows = orows * stride + krows - 1; // - 2 * padding;
-    const int icols = ocols * stride + kcols - 1; // - 2 * padding;
+    int irows = orows * stride + krows - 1; // - 2 * padding;
+    int icols = ocols * stride + kcols - 1; // - 2 * padding;
     const int ichs = kchs;
+
+    irows = irows / dilation + (irows % dilation != 0);
+    icols = icols / dilation + (icols % dilation != 0);
 
     const int in_channels_per_bank = ichs / DIM + (ichs % DIM != 0);
     const int out_channels_per_bank = ochs / DIM + (ochs % DIM != 0);
