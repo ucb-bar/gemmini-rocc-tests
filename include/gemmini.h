@@ -288,8 +288,8 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((B_transpose) << 1) | (A_transpose), k_LOOP_WS) \
   }
 
-#define gemmini_loop_ld(AB, profile, max_row, max_col, pad_row, pad_col, dram_addr, row_stride, latency, alert_cycle, unlock_cycle, pause_turn) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(AB) << 63) | ((uint64_t)(profile) << 62) | ((uint64_t)(pad_col) << 16) | (uint64_t)(pad_row), ((uint64_t)(pause_turn) << 58) | ((uint64_t)(unlock_cycle) << 54) | ((uint64_t)(alert_cycle) << 48) | ((uint64_t)(latency) << 32) | ((uint64_t)(max_col) << 16) | (uint64_t)(max_row), k_LOOP_LD_CONFIG_BOUNDS) \
+#define gemmini_loop_ld(bubble_enable, AB, profile, max_row, max_col, pad_row, pad_col, dram_addr, row_stride, latency, alert_cycle, unlock_cycle, pause_turn) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(AB) << 63) | ((uint64_t)(profile) << 62) | ((uint64_t)(pad_col) << 16) | (uint64_t)(pad_row), ((uint64_t)(bubble_enable) << 63) | ((uint64_t)(pause_turn) << 58) | ((uint64_t)(unlock_cycle) << 54) | ((uint64_t)(alert_cycle) << 48) | ((uint64_t)(latency) << 32) | ((uint64_t)(max_col) << 16) | (uint64_t)(max_row), k_LOOP_LD_CONFIG_BOUNDS) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, row_stride, k_LOOP_LD_CONFIG_ADDRS) 
 
 // weight-stationary matmul loop
@@ -311,8 +311,8 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
       ((uint64_t)(depthwise) << 63) | ((uint64_t)(out_both) << 62) | ((uint64_t)(no_bias) << 61) | ((uint64_t) no_pool), k_LOOP_CONV_WS) \
   }
 
-#define gemmini_loop_ld_conv(dram_addr, dram_stride, in_channels, out_channels, kernel_dim, pochs, krows, kcols, kchs, latency, alert_cycle, unlock_cycle, pause_turn, depthwise)\
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(krows) << 48) | ((uint64_t)(kcols) << 32) | ((uint64_t)(kchs) << 16) | ((uint64_t)(pochs)), ((uint64_t)(pause_turn) << 58) | ((uint64_t)(unlock_cycle) << 54) | ((uint64_t)(alert_cycle) << 48) | ((uint64_t)(latency) << 32) | ((uint64_t)(kernel_dim)), k_LOOP_CONV_LD_CONFIG_BOUNDS) \
+#define gemmini_loop_ld_conv(bubble_enable, dram_addr, dram_stride, in_channels, out_channels, kernel_dim, pochs, krows, kcols, kchs, latency, alert_cycle, unlock_cycle, pause_turn, depthwise)\
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(krows) << 48) | ((uint64_t)(kcols) << 32) | ((uint64_t)(kchs) << 16) | ((uint64_t)(pochs)), ((uint64_t)(bubble_enable) << 63) | ((uint64_t)(pause_turn) << 58) | ((uint64_t)(unlock_cycle) << 54) | ((uint64_t)(alert_cycle) << 48) | ((uint64_t)(latency) << 32) | ((uint64_t)(kernel_dim)), k_LOOP_CONV_LD_CONFIG_BOUNDS) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)(depthwise) << 63) | ((uint64_t)(dram_stride) << 32) | ((uint64_t)(out_channels) << 16) | ((uint64_t)(in_channels)), k_LOOP_CONV_LD_CONFIG_ADDRS)
  
 
@@ -572,16 +572,18 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
     }
   }
   */
-	// latency = 0 to turn of looploader
-	int latency = detect_conflict ? 4000 : 0;//priority*1500 + 1000 : 0;
-	int alert = 40;
-	int unlock_cycle = 5;//4 + priority*2;
+	bool bubble_enable = true; // if not enabled, loopld+loopws without bubble insertion
+	bool profile = true; // ToDo: add as function variable	
+	// latency and alert 0 -> use profiled ones
+	int latency = profile ? 0 : 3000;//priority*1500 + 1000 : 0;
+	int alert = profile ? 0 : 20;
+	int unlock_cycle = 3;//detect_conflict ? 5 : 0;// 0 to turn off looploader
 	int pause_turn = 2;
 	if(skip_B) { 
-		gemmini_loop_ld(false, false, K, J, pad_K, pad_J, B, B_row_stride, latency, alert, unlock_cycle, pause_turn);
+		gemmini_loop_ld(bubble_enable, false, false, K, J, pad_K, pad_J, B, B_row_stride, latency, alert, unlock_cycle, pause_turn);
 	}
 	else if(skip_A) {
-		gemmini_loop_ld(true, false, I, K, pad_I, pad_K, A, A_row_stride, latency, alert, unlock_cycle, pause_turn);
+		gemmini_loop_ld(bubble_enable, true, false, I, K, pad_I, pad_K, A, A_row_stride, latency, alert, unlock_cycle, pause_turn);
 	}
 
   // Combined loop
@@ -690,7 +692,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
             a_transpose, b_transpose,
             full_C, low_D,
             no_bias, repeating_bias,
-				detect_conflict, skip_A, skip_B);
+				skip_A, skip_B, detect_conflict);
       }
 	 }
   gemmini_fence();
@@ -1241,7 +1243,8 @@ static void tiled_matmul_profile(size_t repeat){
 
   gemmini_extended3_config_ld(stride_A * sizeof(elem_t), MVIN_SCALE_IDENTITY, false, 0);
   for(int i = 0; i < repeat; i++){
-  	   gemmini_loop_ld(true, true, tile_I, tile_K, 0, 0, A, stride_A, 0, 0, 0, (i > 3) ?  3 : 0);
+  	   gemmini_loop_ld(false, true, true, tile_I, tile_K, 0, 0, A, stride_A, 0, 0, 0, (i > 2) ?  1 : 0);
+		// 1: profile average
 		gemmini_fence();
   }
 
@@ -1312,14 +1315,16 @@ static void sp_tiled_conv_A_stride(
     if (output != 0) {
       C_sp_addr_row = (C_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
     }
-
-	int latency = 0;//detect_conflict ? 2500 : 0;//priority*1500 + 1000 : 0;
-	int alert_cycle = 60;
-	int unlock_cycle = detect_conflict ? 6 : 0;//4 + priority*2;
+	bool bubble_enable = true; // if not enabled, loopld+loopws without bubble insertion
+	bool profile = true; // ToDo: add as function variable	
+	// latency and alert 0 -> use profiled ones
+	int latency = profile ? 0 : 3000;//priority*1500 + 1000 : 0;
+	int alert = profile ? 0 : 20;
+	int unlock_cycle = 3;//detect_conflict ? 5 : 0;// 0 to turn off looploader
 	int pause_turn = 2;
-	bool depthwise = (kchs == 1) && (in_channels != 1);
+   bool depthwise = (kchs == 1) && (in_channels != 1);
 	if(skip_weight){
-		gemmini_loop_ld_conv(weights, weight_stride, in_channels, out_channels, kernel_dim, pochs, krows, kcols, kchs, latency, alert_cycle, unlock_cycle, pause_turn, depthwise);
+		gemmini_loop_ld_conv(bubble_enable, weights, weight_stride, in_channels, out_channels, kernel_dim, pochs, krows, kcols, kchs, latency, alert_cycle, unlock_cycle, pause_turn, depthwise);
 	}
 	gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, pool_output, output, bias, input, no_bias, out_both, no_pool, depthwise, in_stride, weight_stride, out_stride);
 
@@ -2875,13 +2880,7 @@ static void tiled_conv_A_stride_cid(
 #endif
 
 
-//	 int och_stride = (och_padding) ? out_channels * och_divide + MAX_BLOCK_LEN * DIM : out_channels * och_divide;
-//	 int ich_stride = (ich_padding) ? in_channels + MAX_BLOCK_LEN * DIM : in_channels;
-//	 int out_stride = (och_concat) ? och_stride * 2 : och_stride; //for now, ignore padding(ToDo)
-//	 int weight_stride = out_channels * och_divide;
-//	 int in_stride = in_channels;
-//	 int out_stride = weight_stride * och_concat;
-	 gemmini_config_st(out_stride * sizeof(elem_t));
+    gemmini_config_st(out_stride * sizeof(elem_t));
     gemmini_extended_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, stride, false, false);
 
     int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
@@ -2889,15 +2888,10 @@ static void tiled_conv_A_stride_cid(
       pool_out_dim += (out_dim + 2*pool_padding - pool_size) % pool_stride != 0;
 
 
-	 int pool_out_row = pool_out_dim / orow_divide;
+	 int pool_out_row = (pool_out_dim % orow_divide == 0) ? pool_out_dim / orow_divide : ((int)(pool_out_dim/orow_divide)) + 1;
 	 const int porow_start = pool_out_row * cid;
-	 const int porow_end = pool_out_row * (cid + 1);
-#ifdef GEMMINI_ASSERTIONS
-	 if(pool_out_dim % orow_divide != 0){
-		 printf("output dimension is not divisible in inner loop \n");
-		 exit(1);
-	 }
-#endif   
+	 const int porow_end = (cid == orow_divide - 1) ? pool_out_dim : pool_out_row * (cid + 1);
+ 
 	 for (int poch = 0; poch < out_channels; poch += pochs) {
        for (int b = 0; b < batch_size; b += batches) {
            for (int porow = porow_start; porow < porow_end; porow += porows) {
@@ -3570,13 +3564,15 @@ static void tiled_conv_A_stride_auto_cid(
 	 } //only need batch level offset when we divide batch dimension
 */
 	 // divide in row dimension (single batch)
-	 bool row_divisible = (orow_divide > 1) && (pool_out_dim % orow_divide == 0);
+	 bool row_divisible = (orow_divide > 1);// && (pool_out_dim % orow_divide == 0);
 	 int pool_out_row = (row_divisible) ? (pool_out_dim / orow_divide) : pool_out_dim;
-	 const size_t och_divide = (row_divisible) ? 1 : orow_divide; //if row isn't divisible, divide channel instead
+	 if(pool_out_dim % orow_divide != 0) {
+		if(cid != orow_divide - 1) pool_out_row += 1;
+		//else pool_out_row -= 1;
+	}
+	 const size_t och_divide = 1;//(row_divisible) ? 1 : orow_divide; //if row isn't divisible, divide channel instead
   	 out_channels = out_channels / och_divide;
   	 const int out_offset = (och_divide > 1) ? out_channels * cid : 0;
-	 //printf("batch_in_offset: %d, batch_out_offset: %d, out_offset: %d, pool_out_row: %d \n", batch_in_offset, batch_out_offset, out_offset, pool_out_row);
-  	 // Tile convolution params
 
 	 // int args[] = {batch_size, porows, pocols, pochs, krows, kcols, kchs};
 	 int args[] = {batch_size, pool_out_row, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
@@ -3981,7 +3977,7 @@ static void tiled_conv_A_stride_auto_double_out(
 				}
 
 		  if (max_idx == out_channels_idx || max_idx == in_channels_idx) {
-				if(max_val > MAX_BLOCK_LEN * DIM || pool_stride > 1){
+				if(max_val > MAX_BLOCK_LEN * DIM || pool_size > 1){
 			   // For input and output channels, there's no point in subtracting by just one
 					if (args[max_idx] > MAX_BLOCK_LEN*DIM && args[max_idx] % (MAX_BLOCK_LEN * DIM) != 0) {
 						 args[max_idx] = (args[max_idx] / (MAX_BLOCK_LEN * DIM)) * (MAX_BLOCK_LEN * DIM);
@@ -6569,7 +6565,7 @@ static void tiled_pool_auto_cid(size_t batch_size, size_t channels, size_t in_di
 
         for (size_t i = 0; i < sizeof(args)/sizeof(args[0]); i++) {
             // We avoid reducing ocols when possible to keep the spatial array fully utilized
-			  if(i == channels_idx && args[i] >= MAX_BLOCK_LEN * DIM){
+			  if(i == channels_idx && args[i] > MAX_BLOCK_LEN * DIM){
 				  args[i] = (args[i] - 1) / (MAX_BLOCK_LEN*DIM) * DIM;
 				  break;
 			  }
