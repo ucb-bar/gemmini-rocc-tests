@@ -2343,10 +2343,6 @@ static void conv_cpu_without_pool(
 
   bool no_bias = bias == NULL;
 
-  int kdim_start = 0;
-  while ((kdim_start - padding) % dilation != 0)
-    kdim_start++;
-
   for (int b = 0; b < batch_size; b++) {
     for (int orow = 0; orow < out_dim; orow++) {
       for (int ocol = 0; ocol < out_dim; ocol++) {
@@ -2354,14 +2350,16 @@ static void conv_cpu_without_pool(
 
           acc_t opixel = no_bias ? 0 : bias[och];
 
-          const int krow_start = (kdim_start + orow * stride) % dilation;
+          for (int krow = 0; krow < kernel_dim; krow++) {
+            if ((orow * stride + krow - padding) % dilation != 0)
+              continue;
 
-          for (int krow = krow_start; krow < kernel_dim; krow += dilation) {
             const int irow = (orow * stride + krow - padding) / dilation;
 
-            const int kcol_start = (kdim_start + ocol * stride) % dilation;
+            for (int kcol = 0; kcol < kernel_dim; kcol++) {
+              if ((ocol * stride + kcol - padding) % dilation != 0)
+                continue;
 
-            for (int kcol = kcol_start; kcol < kernel_dim; kcol += dilation) {
               const int icol = (ocol * stride + kcol - padding) / dilation;
 
               for (int kch = 0; kch < in_channels; kch++) {
@@ -2380,7 +2378,7 @@ static void conv_cpu_without_pool(
                 elem_t weight = *(weights + (krow_ * kernel_dim * in_channels + kcol_ * in_channels + kch) * out_channels + och);
                 if (trans_weight_1203) {
                   // HWIO to WIHO
-                  weight = *(weights + (kcol_ * in_channels * kernel_dim + kch * kernel_dim + krow_) * out_channels + och);
+                  weight = *(weights + (kch * kernel_dim * kernel_dim  + krow_ * kernel_dim + kcol_) * out_channels + och);
                 }
 
                 opixel += weight * ipixel;
@@ -2431,10 +2429,6 @@ static void conv_cpu(
   const bool no_bias = bias == NULL;
   const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
-  int kdim_start = 0;
-  while ((kdim_start - padding) % dilation != 0)
-    kdim_start++;
-
   for (int b = 0; b < batch_size; b++) {
     for (int porow = 0; porow < pool_out_dim; porow++) {
       for (int pocol = 0; pocol < pool_out_dim; pocol++) {
@@ -2458,14 +2452,10 @@ static void conv_cpu(
 
                 acc_t opixel = no_bias ? 0 : bias[poch];
 
-                const int krow_start = (kdim_start + orow * stride) % dilation;
-
-                for (int krow = krow_start; krow < kernel_dim; krow += dilation) {
+                for (int krow = 0; krow < kernel_dim; krow++) {
                   const int irow = (orow * stride + krow - padding) / dilation;
 
-                  const int kcol_start = (kdim_start + ocol * stride) % dilation;
-
-                  for (int kcol = kcol_start; kcol < kernel_dim; kcol += dilation) {
+                  for (int kcol = 0; kcol < kernel_dim; kcol++) {
                       const int icol = (ocol * stride + kcol - padding) / dilation;
 
                     for (int kch = 0; kch < in_channels; kch++) {
@@ -2484,7 +2474,7 @@ static void conv_cpu(
                       elem_t weight = *(weights + (krow_ * kernel_dim * in_channels + kcol_ * in_channels + kch) * out_channels + poch);
                       if (trans_weight_1203) {
                         // HWIO to WIHO
-                        weight = *(weights + (kcol_ * in_channels * kernel_dim + kch * kernel_dim + krow_) * out_channels + poch);
+                        weight = *(weights + (kch * kernel_dim * kernel_dim  + krow_ * kernel_dim + kcol_) * out_channels + poch);
                       }
 
                       opixel += weight * ipixel;
@@ -2607,7 +2597,7 @@ static void tiled_conv_A_stride(
             printf("input dilation is only supported when stride == 1\n");
             exit(1);
         }
-        if (wrot180 || trans_output_1203 || trans_input_3120 || trans_weight_1203) {
+        if (trans_output_1203 || trans_input_3120 || trans_weight_1203) {
             printf("data transformations are only supported on CPU\n");
             exit(1);
         }
