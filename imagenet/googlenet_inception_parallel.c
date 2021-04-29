@@ -229,7 +229,7 @@ void * thread_main() {
             conv_5_params.J,
             conv_5_in, conv_5_w, conv_5_b, conv_5_out,
             RELU, conv_5_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_5",args5);
+            tiled_matmul_type, check, "conv_5",1,args5);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -241,7 +241,7 @@ void * thread_main() {
             conv_5_params.J,
             conv_3_out_pooled, conv_5_w, conv_5_b, conv_5_out,
             RELU, conv_5_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_5",1);
+            tiled_matmul_type, check, "conv_5",1,args5);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1630,7 +1630,7 @@ void * thread_main() {
 
     // conv_42
     args_matmul_auto_t args42;
-    args_tiled_conv_auto_t argsc42
+    args_tiled_conv_auto_t argsc42;
     if (!conv) {
         start = read_cycles();
 
