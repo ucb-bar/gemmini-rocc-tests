@@ -2743,7 +2743,7 @@ static void tiled_conv_A_stride(
 
                                 const elem_t * weights_slice = weights + (krow_*kernel_dim*in_channels + kcol_*in_channels + kch) * out_channels + poch;
                                 if (trans_weight_1203) {
-                                  weights_slice = weights + (kch*kernel_dim*kernel_dim + krow_*kernel_dim+kcol_) * out_channels + och;
+                                  weights_slice = weights + (kch*kernel_dim*kernel_dim + krow_*kernel_dim+kcol_) * out_channels + poch;
                                 }
 
                                 sp_tiled_conv_A_stride(
