@@ -20,7 +20,7 @@ typedef struct args_matmul_auto_t{
   size_t dim_I; size_t dim_J; size_t dim_K;
           size_t stride_C;
           const elem_t * A; const elem_t * B;
-          void * D; elem_t* C;
+          const void * D; elem_t* C;
           int act; acc_scale_t scale; size_t relu6_shift; bool repeating_bias;
           enum tiled_matmul_type_t tiled_matmul_type;
           bool check; char * layer_name;
