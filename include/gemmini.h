@@ -1232,7 +1232,7 @@ static void sp_tiled_conv_A_stride(
 
             const elem_t * w = weights + (krow*kernel_dim*in_channels + kcol*in_channels + kch) * out_channels + och;
             if (trans_weight_1203) {
-              w = weights + (kch * kernel_dim * kernel_dim  + krow * kernel_dim + kcol) * out_channels + och;
+              w = weights + (kch * kernel_dim * kernel_dim + krow * kernel_dim + kcol) * out_channels + och;
             }
 
             gemmini_extended_mvin2(w,
@@ -2734,11 +2734,16 @@ static void tiled_conv_A_stride(
                                   dpad += dpad == 0 && (irow + irows_) % 2 != 1;
                                 }
 
-                                const elem_t * weights_slice = weights + (krow*kernel_dim*in_channels + kcol*in_channels + kch) * out_channels + poch;
+                                int krow_ = krow;
+                                int kcol_ = kcol;
                                 if (wrot180) {
-                                    const int krow_ = kernel_dim - krow - krows_;
-                                    const int kcol_ = kernel_dim - kcol - kcols_;
-                                    weights_slice = weights + (krow_*kernel_dim*in_channels + kcol_*in_channels + kch) * out_channels + poch;
+                                  krow_ = kernel_dim - krow - krows_;
+                                  kcol_ = kernel_dim - kcol - kcols_;
+                                }
+
+                                const elem_t * weights_slice = weights + (krow_*kernel_dim*in_channels + kcol_*in_channels + kch) * out_channels + poch;
+                                if (trans_weight_1203) {
+                                  weights_slice = weights + (kch*kernel_dim*kernel_dim + krow_*kernel_dim+kcol_) * out_channels + och;
                                 }
 
                                 sp_tiled_conv_A_stride(

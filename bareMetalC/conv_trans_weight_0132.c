@@ -12,7 +12,7 @@
 
 #define BATCH_SIZE 4
 #define IN_DIM 224
-#define IN_CHANNELS 3
+#define IN_CHANNELS 17
 #define OUT_CHANNELS 32
 #define KERNEL_DIM 3
 #define PADDING 1
