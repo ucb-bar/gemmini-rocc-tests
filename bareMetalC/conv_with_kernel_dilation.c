@@ -16,7 +16,7 @@
 #define OUT_CHANNELS 17
 #define KERNEL_DIM 3
 #define PADDING 1
-#define STRIDE 1
+#define STRIDE 2
 #define INPUT_DILATION 1
 #define KERNEL_DILATION 2
 
