@@ -160,10 +160,9 @@ static void matmul_extended_auto_norun(size_t dim_I, size_t dim_J, size_t dim_K,
         const void * D, elem_t* C,
         int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         enum tiled_matmul_type_t tiled_matmul_type,
-        bool check, char * layer_name, int thread){
+        bool check, char * layer_name, int thread, args_matmul_auto_t args){
 
     //define args
-    args_matmul_auto_t args;
 
     args.dim_I = dim_I;
     args.dim_J = dim_J;
@@ -207,9 +206,9 @@ static void tiled_conv_outchannel_norun(
         int act, acc_scale_t scale, size_t relu6_shift,
         int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
-        enum tiled_matmul_type_t tiled_conv_type, int t) {
+        enum tiled_matmul_type_t tiled_conv_type, int t, args_tiled_conv_auto_t args;) {
 
-    args_tiled_conv_auto_t args;
+
 
 
     args.batch_size = batch_size;

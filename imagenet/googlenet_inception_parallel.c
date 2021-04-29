@@ -210,6 +210,9 @@ void * thread_main() {
 
     // Branch 2
     // conv_5
+
+    args_matmul_auto_t args5;
+
     if (!conv) {
         start = read_cycles();
 
@@ -226,7 +229,7 @@ void * thread_main() {
             conv_5_params.J,
             conv_5_in, conv_5_w, conv_5_b, conv_5_out,
             RELU, conv_5_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_5",1);
+            tiled_matmul_type, check, "conv_5",args5);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -249,6 +252,7 @@ void * thread_main() {
 
     // Branch 3
     // conv_7
+    args_matmul_auto_t args7;
     if (!conv) {
         start = read_cycles();
 
@@ -265,7 +269,7 @@ void * thread_main() {
             conv_7_params.J,
             conv_7_in, conv_7_w, conv_7_b, conv_7_out,
             RELU, conv_7_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_7",2);
+            tiled_matmul_type, check, "conv_7",2,args7);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -277,7 +281,7 @@ void * thread_main() {
             conv_7_params.J,
             conv_3_out_pooled, conv_7_w, conv_7_b, conv_7_out,
             RELU, conv_7_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_7",2);
+            tiled_matmul_type, check, "conv_7",2,args7);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -289,6 +293,7 @@ void * thread_main() {
 
     // Branch 4
     // conv_10
+    args_matmul_auto_t args10;
     if (!conv) {
         start = read_cycles();
 
@@ -296,7 +301,7 @@ void * thread_main() {
             256,
             pool_9_out, conv_10_w, conv_10_b, ((elem_t*)inception3a_out + 224),
             RELU, conv_10_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_10",3);
+            tiled_matmul_type, check, "conv_10",3,args10);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -308,7 +313,7 @@ void * thread_main() {
             256,
             pool_9_out, conv_10_w, conv_10_b, ((elem_t*)inception3a_out + 224),
             RELU, conv_10_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_10",3);
+            tiled_matmul_type, check, "conv_10",3,args10);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -320,6 +325,7 @@ void * thread_main() {
     // Inception 3a
     // Branch 1
     // conv_4
+    args_matmul_auto_t args4;
     if (!conv) {
         start = read_cycles();
 
@@ -336,7 +342,7 @@ void * thread_main() {
             256,
             conv_4_in, conv_4_w, conv_4_b, ((elem_t*)inception3a_out + 0),
             RELU, conv_4_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_4",0);
+            tiled_matmul_type, check, "conv_4",0,args4);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -348,7 +354,7 @@ void * thread_main() {
             256,
             conv_3_out_pooled, conv_4_w, conv_4_b, ((elem_t*)inception3a_out + 0),
             RELU, conv_4_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_4",0);
+            tiled_matmul_type, check, "conv_4",0,args4);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -366,6 +372,8 @@ void * thread_main() {
 
 
     // conv_6
+    args_matmul_auto_t args6;
+    args_tiled_conv_auto_t argsc6;
     if (!conv) {
         start = read_cycles();
 
@@ -382,7 +390,7 @@ void * thread_main() {
             256,
             conv_6_in, conv_6_w, conv_6_b, ((elem_t*)inception3a_out + 64),
             RELU, conv_6_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_6",1);
+            tiled_matmul_type, check, "conv_6",1,args6);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -403,7 +411,7 @@ void * thread_main() {
             RELU, conv_6_params.output_scale, 0,
             conv_6_params.pool_size, 0, conv_6_params.pool_padding, true,
 
-            tiled_matmul_type,1);
+            tiled_matmul_type,1,argsc6);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -412,6 +420,8 @@ void * thread_main() {
     }
 
     // conv_8
+    args_matmul_auto_t args8;
+    args_tiled_conv_auto_t argsc8;
     if (!conv) {
         start = read_cycles();
 
@@ -428,7 +438,7 @@ void * thread_main() {
             256,
             conv_8_in, conv_8_w, conv_8_b, ((elem_t*)inception3a_out + 192),
             RELU, conv_8_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_8",2);
+            tiled_matmul_type, check, "conv_8",2,args8);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -449,7 +459,7 @@ void * thread_main() {
             RELU, conv_8_params.output_scale, 0,
             conv_8_params.pool_size, 0, conv_8_params.pool_padding, true,
 
-            tiled_matmul_type,2);
+            tiled_matmul_type,2,argsc8);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -486,6 +496,7 @@ void * thread_main() {
     // Inception 3b
     // Branch 1
     // conv_11
+    args_matmul_auto_t args11;
     if (!conv) {
         start = read_cycles();
 
@@ -493,7 +504,7 @@ void * thread_main() {
             480,
             ((elem_t*)inception3a_out), conv_11_w, conv_11_b, ((elem_t*)inception3b_out + 0),
             RELU, conv_11_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_11",0);
+            tiled_matmul_type, check, "conv_11",0,args11);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -505,7 +516,7 @@ void * thread_main() {
             480,
             ((elem_t*)inception3a_out), conv_11_w, conv_11_b, ((elem_t*)inception3b_out + 0),
             RELU, conv_11_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_11",0);
+            tiled_matmul_type, check, "conv_11",0,args11);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -514,6 +525,7 @@ void * thread_main() {
 
     // Branch 2
     // conv_12
+    args_matmul_auto_t args12;
     if (!conv) {
         start = read_cycles();
 
@@ -521,7 +533,7 @@ void * thread_main() {
             conv_12_params.J,
             ((elem_t*)inception3a_out), conv_12_w, conv_12_b, conv_12_out,
             RELU, conv_12_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_12",1);
+            tiled_matmul_type, check, "conv_12",1,args12);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -533,7 +545,7 @@ void * thread_main() {
             conv_12_params.J,
             ((elem_t*)inception3a_out), conv_12_w, conv_12_b, conv_12_out,
             RELU, conv_12_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_12",1);
+            tiled_matmul_type, check, "conv_12",1,args12);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -545,6 +557,7 @@ void * thread_main() {
 
     // Branch 3
     // conv_14
+    args_matmul_auto_t args14;
     if (!conv) {
         start = read_cycles();
 
@@ -552,7 +565,7 @@ void * thread_main() {
             conv_14_params.J,
             ((elem_t*)inception3a_out), conv_14_w, conv_14_b, conv_14_out,
             RELU, conv_14_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_14",2);
+            tiled_matmul_type, check, "conv_14",2,args14);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -564,7 +577,7 @@ void * thread_main() {
             conv_14_params.J,
             ((elem_t*)inception3a_out), conv_14_w, conv_14_b, conv_14_out,
             RELU, conv_14_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_14",2);
+            tiled_matmul_type, check, "conv_14",2,args14);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -575,6 +588,7 @@ void * thread_main() {
 
     // Branch 4
     // conv_17
+    args_matmul_auto_t args17;
     if (!conv) {
         start = read_cycles();
 
@@ -582,7 +596,7 @@ void * thread_main() {
             480,
             pool_16_out, conv_17_w, conv_17_b, ((elem_t*)inception3b_out + 416),
             RELU, conv_17_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_17",3);
+            tiled_matmul_type, check, "conv_17",3,args17);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -594,7 +608,7 @@ void * thread_main() {
             480,
             pool_16_out, conv_17_w, conv_17_b, ((elem_t*)inception3b_out + 416),
             RELU, conv_17_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_17",3);
+            tiled_matmul_type, check, "conv_17",3,args17);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -612,6 +626,8 @@ void * thread_main() {
 
 
     // conv_13
+    args_matmul_auto_t args13;
+    args_tiled_conv_auto_t argsc13;
     if (!conv) {
         start = read_cycles();
 
@@ -628,7 +644,7 @@ void * thread_main() {
             480,
             conv_13_in, conv_13_w, conv_13_b, ((elem_t*)inception3b_out + 128),
             RELU, conv_13_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_13",1);
+            tiled_matmul_type, check, "conv_13",1,args13);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -649,7 +665,7 @@ void * thread_main() {
             RELU, conv_13_params.output_scale, 0,
             conv_13_params.pool_size, 0, conv_13_params.pool_padding, true,
 
-            tiled_matmul_type,1);
+            tiled_matmul_type,1,argsc13);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -657,6 +673,8 @@ void * thread_main() {
     }
 
     // conv_15
+    args_matmul_auto_t args15;
+    args_tiled_conv_auto_t argsc15;
     if (!conv) {
         start = read_cycles();
 
@@ -673,7 +691,7 @@ void * thread_main() {
             480,
             conv_15_in, conv_15_w, conv_15_b, ((elem_t*)inception3b_out + 320),
             RELU, conv_15_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_15",2);
+            tiled_matmul_type, check, "conv_15",2,args15);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -694,7 +712,7 @@ void * thread_main() {
             RELU, conv_15_params.output_scale, 0,
             conv_15_params.pool_size, 0, conv_15_params.pool_padding, true,
 
-            tiled_matmul_type,2);
+            tiled_matmul_type,2,argsc15);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -741,6 +759,7 @@ void * thread_main() {
     // Inception 4a
     // Branch 1
     // conv_19
+    args_matmul_auto_t args19;
     if (!conv) {
         start = read_cycles();
 
@@ -748,7 +767,7 @@ void * thread_main() {
             512,
             pool_18_out, conv_19_w, conv_19_b, ((elem_t*)inception4a_out + 0),
             RELU, conv_19_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_19",0);
+            tiled_matmul_type, check, "conv_19",0,args19);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -760,7 +779,7 @@ void * thread_main() {
             512,
             pool_18_out, conv_19_w, conv_19_b, ((elem_t*)inception4a_out + 0),
             RELU, conv_19_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_19",0);
+            tiled_matmul_type, check, "conv_19",0,args19);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -769,6 +788,7 @@ void * thread_main() {
 
     // Branch 2
     // conv_20
+    args_matmul_auto_t args20;
     if (!conv) {
         start = read_cycles();
 
@@ -776,7 +796,7 @@ void * thread_main() {
             conv_20_params.J,
             pool_18_out, conv_20_w, conv_20_b, conv_20_out,
             RELU, conv_20_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_20",1);
+            tiled_matmul_type, check, "conv_20",1,args20);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -788,7 +808,7 @@ void * thread_main() {
             conv_20_params.J,
             pool_18_out, conv_20_w, conv_20_b, conv_20_out,
             RELU, conv_20_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_20",1);
+            tiled_matmul_type, check, "conv_20",1,args20);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -798,6 +818,7 @@ void * thread_main() {
 
     // Branch 3
     // conv_22
+    args_matmul_auto_t args22;
     if (!conv) {
         start = read_cycles();
 
@@ -805,7 +826,7 @@ void * thread_main() {
             conv_22_params.J,
             pool_18_out, conv_22_w, conv_22_b, conv_22_out,
             RELU, conv_22_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_22",2);
+            tiled_matmul_type, check, "conv_22",2,args22);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -817,7 +838,7 @@ void * thread_main() {
             conv_22_params.J,
             pool_18_out, conv_22_w, conv_22_b, conv_22_out,
             RELU, conv_22_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_22",2);
+            tiled_matmul_type, check, "conv_22",2,args22);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -828,6 +849,7 @@ void * thread_main() {
 
     // Branch 4
     // conv_25
+    args_matmul_auto_t args25;
     if (!conv) {
         start = read_cycles();
 
@@ -835,7 +857,7 @@ void * thread_main() {
             512,
             pool_24_out, conv_25_w, conv_25_b, ((elem_t*)inception4a_out + 448),
             RELU, conv_25_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_25",3);
+            tiled_matmul_type, check, "conv_25",3,args25);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -847,7 +869,7 @@ void * thread_main() {
             512,
             pool_24_out, conv_25_w, conv_25_b, ((elem_t*)inception4a_out + 448),
             RELU, conv_25_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_25",3);
+            tiled_matmul_type, check, "conv_25",3,args25);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -864,6 +886,8 @@ void * thread_main() {
     //4a PASS 2
 
     // conv_21
+    args_matmul_auto_t args21;
+    args_tiled_conv_auto_t argsc21;
     if (!conv) {
         start = read_cycles();
 
@@ -880,7 +904,7 @@ void * thread_main() {
             512,
             conv_21_in, conv_21_w, conv_21_b, ((elem_t*)inception4a_out + 192),
             RELU, conv_21_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_21",1);
+            tiled_matmul_type, check, "conv_21",1,args21);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -901,7 +925,7 @@ void * thread_main() {
             RELU, conv_21_params.output_scale, 0,
             conv_21_params.pool_size, 0, conv_21_params.pool_padding, true,
 
-            tiled_matmul_type,1);
+            tiled_matmul_type,1,argsc21);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -909,6 +933,8 @@ void * thread_main() {
     }
 
     // conv_23
+    args_matmul_auto_t args23;
+    args_tiled_conv_auto_t argsc23;
     if (!conv) {
         start = read_cycles();
 
@@ -925,7 +951,7 @@ void * thread_main() {
             512,
             conv_23_in, conv_23_w, conv_23_b, ((elem_t*)inception4a_out + 400),
             RELU, conv_23_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_23",2);
+            tiled_matmul_type, check, "conv_23",2,args23);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -946,7 +972,7 @@ void * thread_main() {
             RELU, conv_23_params.output_scale, 0,
             conv_23_params.pool_size, 0, conv_23_params.pool_padding, true,
 
-            tiled_matmul_type,2);
+            tiled_matmul_type,2,argsc23);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -980,6 +1006,7 @@ void * thread_main() {
     // Inception 4b
     // Branch 1
     // conv_26
+    args_matmul_auto_t args26;
     if (!conv) {
         start = read_cycles();
 
@@ -987,7 +1014,7 @@ void * thread_main() {
             512,
             ((elem_t*)inception4a_out), conv_26_w, conv_26_b, ((elem_t*)inception4b_out + 0),
             RELU, conv_26_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_26",0);
+            tiled_matmul_type, check, "conv_26",0,args26);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -999,7 +1026,7 @@ void * thread_main() {
             512,
             ((elem_t*)inception4a_out), conv_26_w, conv_26_b, ((elem_t*)inception4b_out + 0),
             RELU, conv_26_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_26",0);
+            tiled_matmul_type, check, "conv_26",0,args26);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1008,6 +1035,7 @@ void * thread_main() {
 
     // Branch 2
     // conv_27
+    args_matmul_auto_t args27;
     if (!conv) {
         start = read_cycles();
 
@@ -1015,7 +1043,7 @@ void * thread_main() {
             conv_27_params.J,
             ((elem_t*)inception4a_out), conv_27_w, conv_27_b, conv_27_out,
             RELU, conv_27_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_27",1);
+            tiled_matmul_type, check, "conv_27",1,args27);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1027,7 +1055,7 @@ void * thread_main() {
             conv_27_params.J,
             ((elem_t*)inception4a_out), conv_27_w, conv_27_b, conv_27_out,
             RELU, conv_27_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_27",1);
+            tiled_matmul_type, check, "conv_27",1,args27);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1037,6 +1065,7 @@ void * thread_main() {
 
     // Branch 3
     // conv_29
+    args_matmul_auto_t args29;
     if (!conv) {
         start = read_cycles();
 
@@ -1044,7 +1073,7 @@ void * thread_main() {
             conv_29_params.J,
             ((elem_t*)inception4a_out), conv_29_w, conv_29_b, conv_29_out,
             RELU, conv_29_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_29",2);
+            tiled_matmul_type, check, "conv_29",2,args29);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1056,7 +1085,7 @@ void * thread_main() {
             conv_29_params.J,
             ((elem_t*)inception4a_out), conv_29_w, conv_29_b, conv_29_out,
             RELU, conv_29_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_29",2);
+            tiled_matmul_type, check, "conv_29",2,args29);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1065,6 +1094,7 @@ void * thread_main() {
 
     // Branch 4
     // conv_32
+    args_matmul_auto_t args32;
     if (!conv) {
         start = read_cycles();
 
@@ -1072,7 +1102,7 @@ void * thread_main() {
             512,
             pool_31_out, conv_32_w, conv_32_b, ((elem_t*)inception4b_out + 448),
             RELU, conv_32_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_32",3);
+            tiled_matmul_type, check, "conv_32",3,args32);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1084,7 +1114,7 @@ void * thread_main() {
             512,
             pool_31_out, conv_32_w, conv_32_b, ((elem_t*)inception4b_out + 448),
             RELU, conv_32_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_32",3);
+            tiled_matmul_type, check, "conv_32",3,args32);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1101,6 +1131,8 @@ void * thread_main() {
     //Pass 2
 
     // conv_28
+    args_matmul_auto_t args28;
+    args_tiled_conv_auto_t argsc28;
     if (!conv) {
         start = read_cycles();
 
@@ -1117,7 +1149,7 @@ void * thread_main() {
             512,
             conv_28_in, conv_28_w, conv_28_b, ((elem_t*)inception4b_out + 160),
             RELU, conv_28_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_28",1);
+            tiled_matmul_type, check, "conv_28",1,args28);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1138,7 +1170,7 @@ void * thread_main() {
             RELU, conv_28_params.output_scale, 0,
             conv_28_params.pool_size, 0, conv_28_params.pool_padding, true,
 
-            tiled_matmul_type,1);
+            tiled_matmul_type,1,argsc28);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1147,6 +1179,8 @@ void * thread_main() {
 
 
     // conv_30
+    args_matmul_auto_t args30;
+    args_tiled_conv_auto_t argsc30;
     if (!conv) {
         start = read_cycles();
 
@@ -1163,7 +1197,7 @@ void * thread_main() {
             512,
             conv_30_in, conv_30_w, conv_30_b, ((elem_t*)inception4b_out + 384),
             RELU, conv_30_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_30",2);
+            tiled_matmul_type, check, "conv_30",2,args30);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1184,7 +1218,7 @@ void * thread_main() {
             RELU, conv_30_params.output_scale, 0,
             conv_30_params.pool_size, 0, conv_30_params.pool_padding, true,
 
-            tiled_matmul_type,2);
+            tiled_matmul_type,2,argsc30);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1217,6 +1251,7 @@ void * thread_main() {
     // Inception 4c
     // Branch 1
     // conv_33
+    args_matmul_auto_t args33;
     if (!conv) {
         start = read_cycles();
 
@@ -1224,7 +1259,7 @@ void * thread_main() {
             512,
             ((elem_t*)inception4b_out), conv_33_w, conv_33_b, ((elem_t*)inception4c_out + 0),
             RELU, conv_33_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_33", 0);
+            tiled_matmul_type, check, "conv_33", 0,args33);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1236,7 +1271,7 @@ void * thread_main() {
             512,
             ((elem_t*)inception4b_out), conv_33_w, conv_33_b, ((elem_t*)inception4c_out + 0),
             RELU, conv_33_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_33", 0);
+            tiled_matmul_type, check, "conv_33", 0,args33);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1245,6 +1280,7 @@ void * thread_main() {
 
     // Branch 2
     // conv_34
+    args_matmul_auto_t args34;
     if (!conv) {
         start = read_cycles();
 
@@ -1252,7 +1288,7 @@ void * thread_main() {
             conv_34_params.J,
             ((elem_t*)inception4b_out), conv_34_w, conv_34_b, conv_34_out,
             RELU, conv_34_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_34", 1);
+            tiled_matmul_type, check, "conv_34", 1,args34);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1264,7 +1300,7 @@ void * thread_main() {
             conv_34_params.J,
             ((elem_t*)inception4b_out), conv_34_w, conv_34_b, conv_34_out,
             RELU, conv_34_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_34", 1);
+            tiled_matmul_type, check, "conv_34", 1,args34);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1275,6 +1311,7 @@ void * thread_main() {
 
     // Branch 3
     // conv_36
+    args_matmul_auto_t args36;
     if (!conv) {
         start = read_cycles();
 
@@ -1282,7 +1319,7 @@ void * thread_main() {
             conv_36_params.J,
             ((elem_t*)inception4b_out), conv_36_w, conv_36_b, conv_36_out,
             RELU, conv_36_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_36", 2);
+            tiled_matmul_type, check, "conv_36", 2, args36);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1294,7 +1331,7 @@ void * thread_main() {
             conv_36_params.J,
             ((elem_t*)inception4b_out), conv_36_w, conv_36_b, conv_36_out,
             RELU, conv_36_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_36", 2);
+            tiled_matmul_type, check, "conv_36", 2, args36);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1303,6 +1340,7 @@ void * thread_main() {
 
     // Branch 4
     // conv_39
+    args_matmul_auto_t args39;
     if (!conv) {
         start = read_cycles();
 
@@ -1310,7 +1348,7 @@ void * thread_main() {
             512,
             pool_38_out, conv_39_w, conv_39_b, ((elem_t*)inception4c_out + 448),
             RELU, conv_39_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_39",3);
+            tiled_matmul_type, check, "conv_39",3,args39);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1322,7 +1360,7 @@ void * thread_main() {
             512,
             pool_38_out, conv_39_w, conv_39_b, ((elem_t*)inception4c_out + 448),
             RELU, conv_39_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_39",3);
+            tiled_matmul_type, check, "conv_39",3,args39);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1339,6 +1377,8 @@ void * thread_main() {
     //pass 2
 
     // conv_35
+    args_matmul_auto_t args35;
+    args_tiled_conv_auto_t argsc35;
     if (!conv) {
         start = read_cycles();
 
@@ -1355,7 +1395,7 @@ void * thread_main() {
             512,
             conv_35_in, conv_35_w, conv_35_b, ((elem_t*)inception4c_out + 128),
             RELU, conv_35_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_35", 1);
+            tiled_matmul_type, check, "conv_35", 1,args35);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1376,7 +1416,7 @@ void * thread_main() {
             RELU, conv_35_params.output_scale, 0,
             conv_35_params.pool_size, 0, conv_35_params.pool_padding, true,
 
-            tiled_matmul_type, 1);
+            tiled_matmul_type, 1,argsc35);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1385,6 +1425,8 @@ void * thread_main() {
 
 
         // conv_37
+        args_matmul_auto_t args37;
+        args_tiled_conv_auto_t argsc37;
         if (!conv) {
             start = read_cycles();
 
@@ -1401,7 +1443,7 @@ void * thread_main() {
                 512,
                 conv_37_in, conv_37_w, conv_37_b, ((elem_t*)inception4c_out + 384),
                 RELU, conv_37_params.output_scale, 0, true,
-                tiled_matmul_type, check, "conv_37",2);
+                tiled_matmul_type, check, "conv_37",2,args37);
 
             end = read_cycles();
             matmul_cycles += end - start;
@@ -1422,7 +1464,7 @@ void * thread_main() {
                 RELU, conv_37_params.output_scale, 0,
                 conv_37_params.pool_size, 0, conv_37_params.pool_padding, true,
 
-                tiled_matmul_type, 2);
+                tiled_matmul_type, 2,argsc37);
 
             end = read_cycles();
             conv_cycles += end - start;
@@ -1459,6 +1501,7 @@ void * thread_main() {
     // Inception 4d
     // Branch 1
     // conv_40
+    args_matmul_auto_t args40;
     if (!conv) {
         start = read_cycles();
 
@@ -1466,7 +1509,7 @@ void * thread_main() {
             528,
             ((elem_t*)inception4c_out), conv_40_w, conv_40_b, ((elem_t*)inception4d_out + 0),
             RELU, conv_40_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_40", 0);
+            tiled_matmul_type, check, "conv_40", 0,args40);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1478,7 +1521,7 @@ void * thread_main() {
             528,
             ((elem_t*)inception4c_out), conv_40_w, conv_40_b, ((elem_t*)inception4d_out + 0),
             RELU, conv_40_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_40", 0);
+            tiled_matmul_type, check, "conv_40", 0,args40);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1487,6 +1530,7 @@ void * thread_main() {
 
     // Branch 2
     // conv_41
+    args_matmul_auto_t args41;
     if (!conv) {
         start = read_cycles();
 
@@ -1494,7 +1538,7 @@ void * thread_main() {
             conv_41_params.J,
             ((elem_t*)inception4c_out), conv_41_w, conv_41_b, conv_41_out,
             RELU, conv_41_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_41", 1);
+            tiled_matmul_type, check, "conv_41", 1,args41);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1506,7 +1550,7 @@ void * thread_main() {
             conv_41_params.J,
             ((elem_t*)inception4c_out), conv_41_w, conv_41_b, conv_41_out,
             RELU, conv_41_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_41", 1);
+            tiled_matmul_type, check, "conv_41", 1,args41);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1516,6 +1560,7 @@ void * thread_main() {
 
     // Branch 3
     // conv_43
+    args_matmul_auto_t args43;
     if (!conv) {
         start = read_cycles();
 
@@ -1523,7 +1568,7 @@ void * thread_main() {
             conv_43_params.J,
             ((elem_t*)inception4c_out), conv_43_w, conv_43_b, conv_43_out,
             RELU, conv_43_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_43",2);
+            tiled_matmul_type, check, "conv_43",2,args43);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1535,7 +1580,7 @@ void * thread_main() {
             conv_43_params.J,
             ((elem_t*)inception4c_out), conv_43_w, conv_43_b, conv_43_out,
             RELU, conv_43_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_43",2);
+            tiled_matmul_type, check, "conv_43",2,args43);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1546,6 +1591,7 @@ void * thread_main() {
 
     // Branch 4
     // conv_46
+    args_matmul_auto_t args46;
     if (!conv) {
         start = read_cycles();
 
@@ -1553,7 +1599,7 @@ void * thread_main() {
             528,
             pool_45_out, conv_46_w, conv_46_b, ((elem_t*)inception4d_out + 464),
             RELU, conv_46_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_46",3);
+            tiled_matmul_type, check, "conv_46",3,args46);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1565,7 +1611,7 @@ void * thread_main() {
             528,
             pool_45_out, conv_46_w, conv_46_b, ((elem_t*)inception4d_out + 464),
             RELU, conv_46_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_46",3);
+            tiled_matmul_type, check, "conv_46",3,args46);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1583,6 +1629,8 @@ void * thread_main() {
 
 
     // conv_42
+    args_matmul_auto_t args42;
+    args_tiled_conv_auto_t argsc42
     if (!conv) {
         start = read_cycles();
 
@@ -1599,7 +1647,7 @@ void * thread_main() {
             528,
             conv_42_in, conv_42_w, conv_42_b, ((elem_t*)inception4d_out + 112),
             RELU, conv_42_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_42",1);
+            tiled_matmul_type, check, "conv_42",1,args42);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1620,7 +1668,7 @@ void * thread_main() {
             RELU, conv_42_params.output_scale, 0,
             conv_42_params.pool_size, 0, conv_42_params.pool_padding, true,
 
-            tiled_matmul_type,1);
+            tiled_matmul_type,1,argsc42);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1629,6 +1677,8 @@ void * thread_main() {
 
 
     // conv_44
+    args_matmul_auto_t args44;
+    args_tiled_conv_auto_t argsc44;
     if (!conv) {
         start = read_cycles();
 
@@ -1645,7 +1695,7 @@ void * thread_main() {
             528,
             conv_44_in, conv_44_w, conv_44_b, ((elem_t*)inception4d_out + 400),
             RELU, conv_44_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_44",2);
+            tiled_matmul_type, check, "conv_44",2,args44);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1666,7 +1716,7 @@ void * thread_main() {
             RELU, conv_44_params.output_scale, 0,
             conv_44_params.pool_size, 0, conv_44_params.pool_padding, true,
 
-            tiled_matmul_type,2);
+            tiled_matmul_type,2,argsc44);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1705,6 +1755,7 @@ void * thread_main() {
     // Inception 4e
     // Branch 1
     // conv_47
+    args_matmul_auto_t args47;
     if (!conv) {
         start = read_cycles();
 
@@ -1712,7 +1763,7 @@ void * thread_main() {
             832,
             ((elem_t*)inception4d_out), conv_47_w, conv_47_b, ((elem_t*)inception4e_out + 0),
             RELU, conv_47_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_47", 0);
+            tiled_matmul_type, check, "conv_47", 0,args47);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1724,7 +1775,7 @@ void * thread_main() {
             832,
             ((elem_t*)inception4d_out), conv_47_w, conv_47_b, ((elem_t*)inception4e_out + 0),
             RELU, conv_47_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_47", 0);
+            tiled_matmul_type, check, "conv_47", 0,args47);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1733,6 +1784,7 @@ void * thread_main() {
 
     // Branch 2
     // conv_48
+    args_matmul_auto_t args48;
     if (!conv) {
         start = read_cycles();
 
@@ -1740,7 +1792,7 @@ void * thread_main() {
             conv_48_params.J,
             ((elem_t*)inception4d_out), conv_48_w, conv_48_b, conv_48_out,
             RELU, conv_48_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_48", 1);
+            tiled_matmul_type, check, "conv_48", 1,args48);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1752,7 +1804,7 @@ void * thread_main() {
             conv_48_params.J,
             ((elem_t*)inception4d_out), conv_48_w, conv_48_b, conv_48_out,
             RELU, conv_48_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_48", 1);
+            tiled_matmul_type, check, "conv_48", 1,args48);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1762,6 +1814,7 @@ void * thread_main() {
 
     // Branch 3
     // conv_50
+    args_matmul_auto_t args50;
     if (!conv) {
         start = read_cycles();
 
@@ -1769,7 +1822,7 @@ void * thread_main() {
             conv_50_params.J,
             ((elem_t*)inception4d_out), conv_50_w, conv_50_b, conv_50_out,
             RELU, conv_50_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_50",2);
+            tiled_matmul_type, check, "conv_50",2,args50);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1781,7 +1834,7 @@ void * thread_main() {
             conv_50_params.J,
             ((elem_t*)inception4d_out), conv_50_w, conv_50_b, conv_50_out,
             RELU, conv_50_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_50",2);
+            tiled_matmul_type, check, "conv_50",2,args50);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1791,6 +1844,7 @@ void * thread_main() {
 
     // Branch 4
     // conv_53
+    args_matmul_auto_t args53;
     if (!conv) {
         start = read_cycles();
 
@@ -1798,7 +1852,7 @@ void * thread_main() {
             832,
             pool_52_out, conv_53_w, conv_53_b, ((elem_t*)inception4e_out + 704),
             RELU, conv_53_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_53", 3);
+            tiled_matmul_type, check, "conv_53", 3,args53);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1810,7 +1864,7 @@ void * thread_main() {
             832,
             pool_52_out, conv_53_w, conv_53_b, ((elem_t*)inception4e_out + 704),
             RELU, conv_53_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_53", 3);
+            tiled_matmul_type, check, "conv_53", 3,args53);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1827,6 +1881,8 @@ void * thread_main() {
 
 
     // conv_49
+    args_matmul_auto_t args49;
+    args_tiled_conv_auto_t argsc49;
     if (!conv) {
         start = read_cycles();
 
@@ -1843,7 +1899,7 @@ void * thread_main() {
             832,
             conv_49_in, conv_49_w, conv_49_b, ((elem_t*)inception4e_out + 256),
             RELU, conv_49_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_49", 1);
+            tiled_matmul_type, check, "conv_49", 1,args49);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1864,7 +1920,7 @@ void * thread_main() {
             RELU, conv_49_params.output_scale, 0,
             conv_49_params.pool_size, 0, conv_49_params.pool_padding, true,
 
-            tiled_matmul_type, 1);
+            tiled_matmul_type, 1,argsc49);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -1873,6 +1929,8 @@ void * thread_main() {
 
 
         // conv_51
+        args_matmul_auto_t args51;
+        args_tiled_conv_auto_t argsc51;
         if (!conv) {
             start = read_cycles();
 
@@ -1889,7 +1947,7 @@ void * thread_main() {
                 832,
                 conv_51_in, conv_51_w, conv_51_b, ((elem_t*)inception4e_out + 576),
                 RELU, conv_51_params.output_scale, 0, true,
-                tiled_matmul_type, check, "conv_51",2);
+                tiled_matmul_type, check, "conv_51",2,args51);
 
             end = read_cycles();
             matmul_cycles += end - start;
@@ -1910,7 +1968,7 @@ void * thread_main() {
                 RELU, conv_51_params.output_scale, 0,
                 conv_51_params.pool_size, 0, conv_51_params.pool_padding, true,
 
-                tiled_matmul_type,2);
+                tiled_matmul_type,2,argsc51);
 
             end = read_cycles();
             conv_cycles += end - start;
@@ -1957,6 +2015,7 @@ void * thread_main() {
     // Inception 5a
     // Branch 1
     // conv_55
+    args_matmul_auto_t args55;
     if (!conv) {
         start = read_cycles();
 
@@ -1964,7 +2023,7 @@ void * thread_main() {
             832,
             pool_54_out, conv_55_w, conv_55_b, ((elem_t*)inception5a_out + 0),
             RELU, conv_55_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_55",0);
+            tiled_matmul_type, check, "conv_55",0,args55);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1976,7 +2035,7 @@ void * thread_main() {
             832,
             pool_54_out, conv_55_w, conv_55_b, ((elem_t*)inception5a_out + 0),
             RELU, conv_55_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_55",0);
+            tiled_matmul_type, check, "conv_55",0,args55);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -1985,6 +2044,7 @@ void * thread_main() {
 
     // Branch 2
     // conv_56
+    args_matmul_auto_t args56;
     if (!conv) {
         start = read_cycles();
 
@@ -1992,7 +2052,7 @@ void * thread_main() {
             conv_56_params.J,
             pool_54_out, conv_56_w, conv_56_b, conv_56_out,
             RELU, conv_56_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_56",1);
+            tiled_matmul_type, check, "conv_56",1,args56);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2004,7 +2064,7 @@ void * thread_main() {
             conv_56_params.J,
             pool_54_out, conv_56_w, conv_56_b, conv_56_out,
             RELU, conv_56_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_56",1);
+            tiled_matmul_type, check, "conv_56",1,args56);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2014,6 +2074,7 @@ void * thread_main() {
 
     // Branch 3
     // conv_58
+    args_matmul_auto_t args58;
     if (!conv) {
         start = read_cycles();
 
@@ -2021,7 +2082,7 @@ void * thread_main() {
             conv_58_params.J,
             pool_54_out, conv_58_w, conv_58_b, conv_58_out,
             RELU, conv_58_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_58",2);
+            tiled_matmul_type, check, "conv_58",2,args58);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2033,7 +2094,7 @@ void * thread_main() {
             conv_58_params.J,
             pool_54_out, conv_58_w, conv_58_b, conv_58_out,
             RELU, conv_58_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_58",2);
+            tiled_matmul_type, check, "conv_58",2,args58);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2044,6 +2105,7 @@ void * thread_main() {
 
     // Branch 4
     // conv_61
+    args_matmul_auto_t args61;
     if (!conv) {
         start = read_cycles();
 
@@ -2051,7 +2113,7 @@ void * thread_main() {
             832,
             pool_60_out, conv_61_w, conv_61_b, ((elem_t*)inception5a_out + 704),
             RELU, conv_61_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_61",3);
+            tiled_matmul_type, check, "conv_61",3,args61);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2063,7 +2125,7 @@ void * thread_main() {
             832,
             pool_60_out, conv_61_w, conv_61_b, ((elem_t*)inception5a_out + 704),
             RELU, conv_61_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_61",3);
+            tiled_matmul_type, check, "conv_61",3,args61);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2079,6 +2141,8 @@ void * thread_main() {
     //p2
 
     // conv_57
+    args_matmul_auto_t args57;
+    args_tiled_conv_auto_t argsc57;
     if (!conv) {
         start = read_cycles();
 
@@ -2095,7 +2159,7 @@ void * thread_main() {
             832,
             conv_57_in, conv_57_w, conv_57_b, ((elem_t*)inception5a_out + 256),
             RELU, conv_57_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_57",1);
+            tiled_matmul_type, check, "conv_57",1,args57);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2116,7 +2180,7 @@ void * thread_main() {
             RELU, conv_57_params.output_scale, 0,
             conv_57_params.pool_size, 0, conv_57_params.pool_padding, true,
 
-            tiled_matmul_type,1);
+            tiled_matmul_type,1,argsc57);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -2124,6 +2188,8 @@ void * thread_main() {
     }
 
     // conv_59
+    args_matmul_auto_t args59;
+    args_tiled_conv_auto_t argsc59;
     if (!conv) {
         start = read_cycles();
 
@@ -2140,7 +2206,7 @@ void * thread_main() {
             832,
             conv_59_in, conv_59_w, conv_59_b, ((elem_t*)inception5a_out + 576),
             RELU, conv_59_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_59",2);
+            tiled_matmul_type, check, "conv_59",2,args59);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2161,7 +2227,7 @@ void * thread_main() {
             RELU, conv_59_params.output_scale, 0,
             conv_59_params.pool_size, 0, conv_59_params.pool_padding, true,
 
-            tiled_matmul_type,2);
+            tiled_matmul_type,2,argsc59);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -2194,6 +2260,7 @@ void * thread_main() {
     // Inception 5b
     // Branch 1
     // conv_62
+    args_matmul_auto_t args62;
     if (!conv) {
         start = read_cycles();
 
@@ -2201,7 +2268,7 @@ void * thread_main() {
             1024,
             ((elem_t*)inception5a_out), conv_62_w, conv_62_b, ((elem_t*)inception5b_out + 0),
             RELU, conv_62_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_62",0);
+            tiled_matmul_type, check, "conv_62",0,args62);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2213,7 +2280,7 @@ void * thread_main() {
             1024,
             ((elem_t*)inception5a_out), conv_62_w, conv_62_b, ((elem_t*)inception5b_out + 0),
             RELU, conv_62_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_62",0);
+            tiled_matmul_type, check, "conv_62",0,args62);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2222,6 +2289,7 @@ void * thread_main() {
 
     // Branch 2
     // conv_63
+    args_matmul_auto_t args63;
     if (!conv) {
         start = read_cycles();
 
@@ -2229,7 +2297,7 @@ void * thread_main() {
             conv_63_params.J,
             ((elem_t*)inception5a_out), conv_63_w, conv_63_b, conv_63_out,
             RELU, conv_63_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_63",1);
+            tiled_matmul_type, check, "conv_63",1,args63);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2241,7 +2309,7 @@ void * thread_main() {
             conv_63_params.J,
             ((elem_t*)inception5a_out), conv_63_w, conv_63_b, conv_63_out,
             RELU, conv_63_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_63",1);
+            tiled_matmul_type, check, "conv_63",1, args63);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2250,6 +2318,7 @@ void * thread_main() {
 
     // Branch 3
     // conv_65
+    args_matmul_auto_t args65;
     if (!conv) {
         start = read_cycles();
 
@@ -2257,7 +2326,7 @@ void * thread_main() {
             conv_65_params.J,
             ((elem_t*)inception5a_out), conv_65_w, conv_65_b, conv_65_out,
             RELU, conv_65_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_65",2);
+            tiled_matmul_type, check, "conv_65",2,args65);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2268,7 +2337,7 @@ void * thread_main() {
             conv_65_params.J,
             ((elem_t*)inception5a_out), conv_65_w, conv_65_b, conv_65_out,
             RELU, conv_65_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_65",2);
+            tiled_matmul_type, check, "conv_65",2,args65);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2279,6 +2348,7 @@ void * thread_main() {
 
     // Branch 4
     // conv_68
+    args_matmul_auto_t args68;
     if (!conv) {
         start = read_cycles();
 
@@ -2286,7 +2356,7 @@ void * thread_main() {
             1024,
             pool_67_out, conv_68_w, conv_68_b, ((elem_t*)inception5b_out + 896),
             RELU, conv_68_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_68",3);
+            tiled_matmul_type, check, "conv_68",3,args68);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2297,7 +2367,7 @@ void * thread_main() {
             1024,
             pool_67_out, conv_68_w, conv_68_b, ((elem_t*)inception5b_out + 896),
             RELU, conv_68_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_68",3);
+            tiled_matmul_type, check, "conv_68",3,args68);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2314,6 +2384,8 @@ void * thread_main() {
 
 
     // conv_64
+    args_matmul_auto_t args64;
+    args_tiled_conv_auto_t argsc64;
     if (!conv) {
         start = read_cycles();
 
@@ -2330,7 +2402,7 @@ void * thread_main() {
             1024,
             conv_64_in, conv_64_w, conv_64_b, ((elem_t*)inception5b_out + 384),
             RELU, conv_64_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_64",1);
+            tiled_matmul_type, check, "conv_64",1,args64);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2350,7 +2422,7 @@ void * thread_main() {
             RELU, conv_64_params.output_scale, 0,
             conv_64_params.pool_size, 0, conv_64_params.pool_padding, true,
 
-            tiled_matmul_type,1);
+            tiled_matmul_type,1,argsc64);
 
         end = read_cycles();
         conv_cycles += end - start;
@@ -2358,6 +2430,8 @@ void * thread_main() {
     }
 
     // conv_66
+    args_matmul_auto_t args66;
+    args_tiled_conv_auto_t argsc66;
     if (!conv) {
         start = read_cycles();
 
@@ -2374,7 +2448,7 @@ void * thread_main() {
             1024,
             conv_66_in, conv_66_w, conv_66_b, ((elem_t*)inception5b_out + 768),
             RELU, conv_66_params.output_scale, 0, true,
-            tiled_matmul_type, check, "conv_66",2);
+            tiled_matmul_type, check, "conv_66",2,args66);
 
         end = read_cycles();
         matmul_cycles += end - start;
@@ -2394,7 +2468,7 @@ void * thread_main() {
             RELU, conv_66_params.output_scale, 0,
             conv_66_params.pool_size, 0, conv_66_params.pool_padding, true,
 
-            tiled_matmul_type,2);
+            tiled_matmul_type,2,argsc66);
 
         end = read_cycles();
         conv_cycles += end - start;
