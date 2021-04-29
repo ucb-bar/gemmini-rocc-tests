@@ -36,7 +36,6 @@ tests = \
 	global_average \
 	template \
 	pool \
-	multicore \
 
 tests_baremetal = $(tests:=-baremetal)
 
