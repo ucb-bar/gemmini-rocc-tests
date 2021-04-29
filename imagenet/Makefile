@@ -7,6 +7,7 @@ tests = \
 	googlenet_1batch \
 	googlenet_batch_parallel \
 	googlenet_outchannel_parallel \
+	googlenet_inception_parallel \
 	# alexnet \
 
 tests_baremetal = $(tests:=-baremetal)
@@ -64,4 +65,3 @@ run-baremetal: $(runs_baremetal)
 	$(RUNNER)$^
 
 junk += $(tests_baremetal) $(tests_linux)
-
