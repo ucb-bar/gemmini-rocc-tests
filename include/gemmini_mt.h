@@ -206,7 +206,7 @@ static void tiled_conv_outchannel_norun(
         int act, acc_scale_t scale, size_t relu6_shift,
         int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
-        enum tiled_matmul_type_t tiled_conv_type, int t, args_tiled_conv_auto_t args;) {
+        enum tiled_matmul_type_t tiled_conv_type, int t, args_tiled_conv_auto_t args) {
 
 
 
