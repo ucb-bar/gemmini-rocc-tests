@@ -24,6 +24,8 @@ tests = \
 	conv_with_input_dilation \
 	conv_with_input_dilation_and_rot180 \
 	conv_with_input_dilation_and_neg_padding \
+	conv_trans_output_1203 \
+	conv_trans_weight_1203 \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_ws_At \
