@@ -152,7 +152,7 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         }
     }
 }
-
+/*
 static void tiled_matmul_nn_auto_loopld(size_t dim_I, size_t dim_J, size_t dim_K,
         elem_t* A, elem_t* B,
         const void * D, elem_t* C,
@@ -173,20 +173,22 @@ static void tiled_matmul_nn_auto_loopld(size_t dim_I, size_t dim_J, size_t dim_K
 		tiled_matmul_type, skip_A, skip_B);
 
 }
-
+*/
 static void tiled_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
 	size_t stride_C, //for output concat
 	elem_t* A, elem_t* B,
    const void * D, elem_t* C,
    int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
    enum tiled_matmul_type_t tiled_matmul_type,
-	bool skip_A, bool skip_B, size_t orow_divide, size_t batch_divide, size_t cid)
+	bool skip_A, bool skip_B, size_t orow_divide, size_t batch_divide, size_t cid,
+	bool profile, int latency, int alert_cycle, int unlock_cycle, int pause_turn)
 {
 	size_t stride_A = dim_K;
 	size_t stride_B = dim_J;
 	bool row_divisible = (orow_divide > 1) && (dim_I % orow_divide == 0);
 	size_t orow_offset_floor = 0;
-	if(!row_divisible && orow_divide > 1 && dim_I > DIM) { // for FC layers
+	if(!row_divisible && orow_divide > 1 && dim_J < DIM * orow_divide * 2) {
+	//if(!row_divisible && orow_divide > 1 && dim_I > DIM) { // for FC layers
 		row_divisible = true;
 		size_t dim_I_floor = dim_I / orow_divide;
 		orow_offset_floor = dim_I - dim_I_floor * orow_divide;
@@ -221,7 +223,8 @@ static void tiled_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
 		act, scale, relu6_shift, repeating_bias,
 		false, false,
 		false, false,
-		tiled_matmul_type, skip_A, skip_B);
+		tiled_matmul_type, skip_A, skip_B,
+	   profile, latency, alert_cycle, unlock_cycle, pause_turn);
 
 }
 
