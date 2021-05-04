@@ -8,18 +8,6 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-/*
-#define BATCH_SIZE 2
-#define IN_DIM 16
-#define IN_CHANNELS 1
-#define OUT_CHANNELS 1
-#define KERNEL_DIM 1
-#define PADDING 0
-#define STRIDE 1
-
-#define NO_BIAS true
-*/
-
 #ifndef BAREMETAL
 
 #define BATCH_SIZE 4
