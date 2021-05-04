@@ -2403,7 +2403,7 @@ static int tiled_conv_total_spad_rows_A_stride(bool acc,
 
     const int in_channels_per_bank = ichs / DIM + (ichs % DIM != 0);
     const int out_channels_per_bank = ochs / DIM + (ochs % DIM != 0);
-    const int batches_per_bank = ochs / DIM + (ochs % DIM != 0);
+    const int batches_per_bank = batches / DIM + (batches % DIM != 0);
 
     const int A_rows = trans_input_3120 ?
         (batches_per_bank * ichs * (irows >> downsample) * (icols >> downsample)) :
