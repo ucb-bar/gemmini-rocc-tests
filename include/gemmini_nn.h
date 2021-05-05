@@ -92,7 +92,8 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
         tile_I, tile_J, tile_K,
         false, false,
         false, false,
-        tiled_matmul_type, false, false);
+        tiled_matmul_type, false, false,
+	false, 0, 0, 0, 0);
 
     if (check) {
         printf("%s: CPU\n", layer_name);
@@ -152,35 +153,15 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         }
     }
 }
-/*
-static void tiled_matmul_nn_auto_loopld(size_t dim_I, size_t dim_J, size_t dim_K,
-        elem_t* A, elem_t* B,
-        const void * D, elem_t* C,
-        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
-        enum tiled_matmul_type_t tiled_matmul_type,
-		  bool skip_A, bool skip_B, bool A_padding, bool B_padding, size_t och_divide, bool och_split)
-{
-	
-	size_t stride_A = (A_padding && (dim_K % 128 == 0)) ? dim_K + 64 : dim_K;
-	size_t stride_B = (B_padding && ((dim_J * och_divide) % 128 == 0)) ? dim_J*och_divide + 64 : dim_J*och_divide;
-	tiled_matmul_auto_loopld(dim_I, dim_J, dim_K,
-		A, B, D, C, 
-		stride_A, stride_B, stride_B, och_split ? stride_B * 2 : stride_B, //for now ignore padding
-		MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-		act, scale, relu6_shift, repeating_bias,
-		false, false,
-		false, false,
-		tiled_matmul_type, skip_A, skip_B);
 
-}
-*/
-static void tiled_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
+// with bubble
+static void tiled_matmul_nn_auto_bubble(size_t dim_I, size_t dim_J, size_t dim_K,
 	size_t stride_C, //for output concat
 	elem_t* A, elem_t* B,
    const void * D, elem_t* C,
    int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
    enum tiled_matmul_type_t tiled_matmul_type,
-	bool skip_A, bool skip_B, size_t orow_divide, size_t batch_divide, size_t cid,
+	size_t orow_divide, size_t batch_divide, size_t cid,bool skip_A, bool skip_B, 
 	bool profile, int latency, int alert_cycle, int unlock_cycle, int pause_turn)
 {
 	size_t stride_A = dim_K;
@@ -281,6 +262,60 @@ static void conv_dw(size_t I, size_t J,
             }
         }
     }
+}
+static void tiled_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
+	size_t stride_C, //for output concat
+	elem_t* A, elem_t* B,
+   const void * D, elem_t* C,
+   int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
+   enum tiled_matmul_type_t tiled_matmul_type,
+	bool skip_A, bool skip_B, size_t orow_divide, size_t batch_divide, size_t cid)
+//	bool profile, int latency, int alert_cycle, int unlock_cycle, int pause_turn)
+{
+	size_t stride_A = dim_K;
+	size_t stride_B = dim_J;
+	bool row_divisible = (orow_divide > 1) && (dim_I % orow_divide == 0);
+	size_t orow_offset_floor = 0;
+	if(!row_divisible && orow_divide > 1 && dim_J < DIM * orow_divide * 2) {
+	//if(!row_divisible && orow_divide > 1 && dim_I > DIM) { // for FC layers
+		row_divisible = true;
+		size_t dim_I_floor = dim_I / orow_divide;
+		orow_offset_floor = dim_I - dim_I_floor * orow_divide;
+		if(cid != 0) dim_I = dim_I_floor;
+		else dim_I = dim_I - dim_I_floor * (orow_divide - 1);
+	}
+	else if(row_divisible){
+		dim_I = dim_I / orow_divide;
+	}
+	size_t och_divide = (row_divisible) ? 1 : orow_divide; // if row can't be divided, then divide channel instead
+   //dim_I = row_divisible ? dim_I / orow_divide : dim_I;
+	dim_I = dim_I / batch_divide; //batch dimension: I
+	dim_J = dim_J / och_divide;
+
+	if(!row_divisible) orow_divide = 1;
+	int out_offset = (row_divisible || (batch_divide != 1)) ? 0 : dim_J * cid; // no need to apply offset if we divided row
+	int A_orow_offset = (row_divisible && cid != 0) ? stride_A * cid * dim_I + stride_A * orow_offset_floor : 0; // if row is divided, need offset it I dimension
+   int C_orow_offset = (row_divisible && cid != 0) ? stride_C * cid * dim_I + stride_C * orow_offset_floor : 0; // if row is divided, need offset it I dimension
+//	printf("dim_I: %d, orow_offset_floor: %d, A_row_offset: %d \n", dim_I, orow_offset_floor, A_orow_offset);
+	int A_batch_offset = 0;
+	int C_batch_offset = 0; 
+	if (batch_divide > 1){
+	   A_batch_offset = stride_A * cid * dim_I;
+	   C_batch_offset = stride_C * cid * dim_I;
+	}
+
+	bool no_bias = (D==NULL);
+	tiled_matmul_auto_loopld(dim_I, dim_J, dim_K,
+		A + A_orow_offset + A_batch_offset, B + out_offset, no_bias ? NULL : D + out_offset*sizeof(acc_t), C + C_orow_offset + out_offset + C_batch_offset, 
+		stride_A, stride_B, stride_B, stride_C,
+		MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+		act, scale, relu6_shift, repeating_bias,
+		false, false,
+		false, false,
+		tiled_matmul_type, skip_A, skip_B,
+		false, 0, 0, 0, 0);
+	   //profile, latency, alert_cycle, unlock_cycle, pause_turn);
+
 }
 
 static void conv_dw_with_col2im(size_t prev_I, size_t prev_J, size_t I, size_t J,
