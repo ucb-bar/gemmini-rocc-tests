@@ -160,7 +160,7 @@ void init_random(elem_t * buf, int len) {
 #ifdef FAST
       *ptr = 1;
 #else
-      *ptr = (rand() % 5) - 2;
+      *ptr = i++ == 0; // (rand() % 5) - 2;
 #endif
     }
 }
