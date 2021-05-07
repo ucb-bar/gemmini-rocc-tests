@@ -105,6 +105,8 @@ void conv(int batch_size, int in_channels, int in_dim,
 
                     output[b][orow][ocol][och] = result;
                 }
+
+                if (CHECK_JUST_FIRST) return;
             }
         }
     }
@@ -254,6 +256,7 @@ int main() {
         // 0, 0, 0,
 
         WS);
+        // CPU);
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 
