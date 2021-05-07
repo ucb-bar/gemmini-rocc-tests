@@ -8,19 +8,6 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define CHECK_JUST_FIRST true
-
-#define BATCH_SIZE 1
-#define IN_DIM 4
-#define IN_CHANNELS 241
-#define OUT_CHANNELS 481
-#define KERNEL_DIM 1
-#define PADDING 0
-#define STRIDE 2
-
-#define NO_BIAS true
-
-/*
 #ifndef BAREMETAL
 
 #define BATCH_SIZE 4
@@ -55,7 +42,6 @@
 #endif
 
 #define NO_BIAS false
-*/
 
 #define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
@@ -69,10 +55,6 @@ void conv(int batch_size, int in_channels, int in_dim,
         elem_t weights[out_channels][kernel_dim][kernel_dim][in_channels],
         acc_t bias[out_channels],
         elem_t output[batch_size][out_dim][out_dim][out_channels]) {
-    if (CHECK_JUST_FIRST) {
-        output[0][0][0][0] = 1;
-        return;
-    }
 
 #ifdef GEMMINI_ASSERTIONS
     if (out_dim != (in_dim + 2*padding - kernel_dim) / stride + 1) {
@@ -109,8 +91,6 @@ void conv(int batch_size, int in_channels, int in_dim,
 
                     output[b][orow][ocol][och] = result;
                 }
-
-                if (CHECK_JUST_FIRST) return;
             }
         }
     }
@@ -133,8 +113,6 @@ void flatten_weights(int out_channels, int kernel_dim, int in_channels,
 
                     weights_mat[wmatrow][outc] =
                         weights[outc][krow][kcol][inc];
-
-                    return;
                 }
             }
         }
@@ -142,21 +120,10 @@ void flatten_weights(int out_channels, int kernel_dim, int in_channels,
 }
 
 bool vec_is_equal(elem_t * a, elem_t * b, int len) {
-    if (CHECK_JUST_FIRST) len = 1;
-
-    int incorrects = 0;
-    for (int i = 0; i < len; i++) {
-        if (a[i] != b[i]) {
-            if (incorrects < 100 || incorrects % 1000 == 0) {
-                printf("i=%d | Correct: %d | Incorrect: %d\n", i, a[i], b[i]);
-            }
-            incorrects++;
-        }
-    }
-    if (incorrects > 0) {
-        printf("%d out of %d elements incorrect\n", incorrects, len);
-    }
-    return incorrects == 0;
+    for (int i = 0; i < len; i++)
+        if (a[i] != b[i])
+            return false;
+    return true;
 }
 
 void init_random(elem_t * buf, int len) {
@@ -166,8 +133,7 @@ void init_random(elem_t * buf, int len) {
 #ifdef FAST
       *ptr = 1;
 #else
-      *ptr = i++ == 0; // (rand() % 5) - 2;
-      return;
+      *ptr = (rand() % 5) - 2;
 #endif
     }
 }
@@ -185,7 +151,6 @@ void init_random_acc(acc_t * buf, int len) {
 }
 
 void init_zeros_acc(acc_t * buf, int len) {
-    return;
     for (acc_t * ptr = buf; ptr < buf + len; ptr++) {
         *ptr = 0;
     }
@@ -249,7 +214,6 @@ int main() {
     printf("Gemmini conv...\n");
     uint64_t start_gemmini = read_cycles();
     tiled_conv_A_stride_auto(
-    // tiled_conv_downsample(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
         STRIDE, 1, 1, PADDING, KERNEL_DIM,
@@ -260,11 +224,9 @@ int main() {
         NO_BIAS ? NULL : (acc_t*)bias,
         (elem_t*)output_mat,
 
-        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0,
-        0, 0, 0,
+        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, 0,
 
         WS);
-        // CPU);
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 
@@ -283,12 +245,10 @@ int main() {
     }
 #else
     bool success = vec_is_equal(&output[0][0][0][0], &output_mat[0][0], sizeof(output) / sizeof(elem_t));
-
 #endif
 
     if (!success) {
-        printf("FAIL\n");
-        return 1;
+        // return 1;
 
         printf("bias:\n");
         for (int och = 0; och < OUT_CHANNELS; och++) {

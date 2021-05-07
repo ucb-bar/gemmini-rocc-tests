@@ -2405,9 +2405,22 @@ static int tiled_conv_total_spad_rows_A_stride(bool acc,
     const int out_channels_per_bank = ochs / DIM + (ochs % DIM != 0);
     const int batches_per_bank = batches / DIM + (batches % DIM != 0);
 
+    // const int A_rows = trans_input_3120 ?
+    //     (batches_per_bank * ichs * (irows >> downsample) * (icols >> downsample)) :
+    //     (in_channels_per_bank * batches * (irows >> downsample) * (icols >> downsample));
+
+    // TODO in downsample mode, we should need one half of the rows and columns
     const int A_rows = trans_input_3120 ?
-        (batches_per_bank * ichs * (irows >> downsample) * (icols >> downsample)) :
-        (in_channels_per_bank * batches * (irows >> downsample) * (icols >> downsample));
+        (batches_per_bank * ichs * (irows) * (icols)) :
+        (in_channels_per_bank * batches * (irows) * (icols));
+
+// #define DS(x) (((x) + downsample) >> downsample)
+// 
+//     const int A_rows = trans_input_3120 ?
+//         (batches_per_bank * ichs * (DS(irows)) * (DS(icols))) :
+//         (in_channels_per_bank * batches * (DS(irows)) * (DS(icols)));
+// 
+// #undef DS
 
     const int B_rows = trans_weight_0132 ?
       in_channels_per_bank * kcols * krows * ochs :
