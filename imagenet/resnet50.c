@@ -1122,6 +1122,8 @@ int main (int argc, char * argv[]) {
         printf("conv 26 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_26_out);
+
     // conv_27
     if (!conv) {
         start = read_cycles();
@@ -1146,6 +1148,8 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
         printf("matmul 27 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_27_out);
 
     // Downsampling conv_24_out
     // conv_28
@@ -1191,6 +1195,8 @@ int main (int argc, char * argv[]) {
         printf("conv 28 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_28_out);
+
     // Add residuals
     start = read_cycles();
 
@@ -1206,7 +1212,10 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
+    printf("resadd\n");
+    STAT_MATRIX(conv_27_out);
+
     // conv_29
     if (!conv) {
         start = read_cycles();
@@ -1231,6 +1240,8 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
         printf("matmul 29 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_29_out);
 
     // conv_30
     if (!conv) {
@@ -1274,6 +1285,8 @@ int main (int argc, char * argv[]) {
         printf("conv 30 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_30_out);
+
     // conv_31
     if (!conv) {
         start = read_cycles();
@@ -1299,6 +1312,8 @@ int main (int argc, char * argv[]) {
         printf("matmul 31 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_31_out);
+
     // Add residuals
     start = read_cycles();
 
@@ -1314,7 +1329,9 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
+    STAT_MATRIX(conv_31_out);
+
     // conv_32
     if (!conv) {
         start = read_cycles();
@@ -1339,6 +1356,8 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
         printf("matmul 32 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_32_out);
 
     // conv_33
     if (!conv) {
