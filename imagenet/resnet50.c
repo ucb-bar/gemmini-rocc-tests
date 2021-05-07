@@ -565,7 +565,6 @@ int main (int argc, char * argv[]) {
 
     printf("resadd\n");
     STAT_MATRIX(conv_11_out);
-    exit(0);
 
     // conv_12
     if (!conv) {
@@ -1370,6 +1369,8 @@ int main (int argc, char * argv[]) {
         printf("conv 33 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_33_out);
+
     // conv_34
     if (!conv) {
         start = read_cycles();
@@ -2019,6 +2020,8 @@ int main (int argc, char * argv[]) {
         printf("matmul 51 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_51_out);
+
     // conv_52
     if (!conv) {
       start = read_cycles();
@@ -2061,6 +2064,8 @@ int main (int argc, char * argv[]) {
         printf("conv 52 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_52_out);
+
     // conv_53
     if (!conv) {
         start = read_cycles();
@@ -2086,6 +2091,8 @@ int main (int argc, char * argv[]) {
         printf("matmul 53 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_53_out);
+
     // Add residuals
     start = read_cycles();
 
@@ -2101,6 +2108,9 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
+
+    printf("resadd\n");
+    STAT_MATRIX(conv_53_out);
     
     // Global averaging
     static elem_t average[4][2048] row_align(1);
@@ -2124,6 +2134,8 @@ int main (int argc, char * argv[]) {
     end = read_cycles();
     matmul_cycles += end - start;
     printf("matmul 54 cycles: %llu \n", end - start);
+
+    STAT_MATRIX(fc_54_out);
 
     // Find highest probs
     int preds[fc_54_params.batch_size];
