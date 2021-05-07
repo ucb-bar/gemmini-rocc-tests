@@ -8,15 +8,17 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define BATCH_SIZE 4
-#define IN_DIM 28
-#define IN_CHANNELS 512
-#define OUT_CHANNELS 1024
+#define CHECK_JUST_FIRST true
+
+#define BATCH_SIZE 1
+#define IN_DIM 4
+#define IN_CHANNELS 241
+#define OUT_CHANNELS 481
 #define KERNEL_DIM 1
 #define PADDING 0
 #define STRIDE 2
 
-#define NO_BIAS false
+#define NO_BIAS true
 
 /*
 #ifndef BAREMETAL
@@ -132,10 +134,12 @@ void flatten_weights(int out_channels, int kernel_dim, int in_channels,
 }
 
 bool vec_is_equal(elem_t * a, elem_t * b, int len) {
+    if (CHECK_JUST_FIRST) len = 1;
+
     int incorrects = 0;
     for (int i = 0; i < len; i++) {
         if (a[i] != b[i]) {
-            if (incorrects < 100 || incorrects % 100 == 0) {
+            if (incorrects < 100 || incorrects % 1000 == 0) {
                 printf("i=%d | Correct: %d | Incorrect: %d\n", i, a[i], b[i]);
             }
             incorrects++;

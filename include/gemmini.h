@@ -3080,6 +3080,8 @@ static void tiled_conv_downsample(
                     MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
                     MVIN_SCALE_IDENTITY, act, scale, relu6_shift,
                     true, false, false, false, false, 3, tiled_conv_type);
+
+            return; 
         }
     }
 }

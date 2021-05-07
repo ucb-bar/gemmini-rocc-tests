@@ -1052,7 +1052,10 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
+    printf("resadd\n");
+    STAT_MATRIX(conv_24_out);
+
     // conv_25
     if (!conv) {
         start = read_cycles();
@@ -1152,7 +1155,7 @@ int main (int argc, char * argv[]) {
     STAT_MATRIX(conv_27_out);
 
     // Downsampling conv_24_out
-    // conv_28
+    // conv_28 CHANGES HASAN
     if (!conv) {
       start = read_cycles();
 
