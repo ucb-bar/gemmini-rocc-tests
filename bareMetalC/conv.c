@@ -8,6 +8,17 @@
 #endif
 #include "include/gemmini_testutils.h"
 
+#define BATCH_SIZE 4
+#define IN_DIM 28
+#define IN_CHANNELS 512
+#define OUT_CHANNELS 1024
+#define KERNEL_DIM 1
+#define PADDING 0
+#define STRIDE 2
+
+#define NO_BIAS false
+
+/*
 #ifndef BAREMETAL
 
 #define BATCH_SIZE 4
@@ -42,6 +53,7 @@
 #endif
 
 #define NO_BIAS false
+*/
 
 #define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
@@ -120,10 +132,19 @@ void flatten_weights(int out_channels, int kernel_dim, int in_channels,
 }
 
 bool vec_is_equal(elem_t * a, elem_t * b, int len) {
-    for (int i = 0; i < len; i++)
-        if (a[i] != b[i])
-            return false;
-    return true;
+    int incorrects = 0;
+    for (int i = 0; i < len; i++) {
+        if (a[i] != b[i]) {
+            if (incorrects < 100 || incorrects % 100 == 0) {
+                printf("i=%d | Correct: %d | Incorrect: %d\n", i, a[i], b[i]);
+            }
+            incorrects++;
+        }
+    }
+    if (incorrects > 0) {
+        printf("%d out of %d elements incorrect\n", incorrects, len);
+    }
+    return incorrects == 0;
 }
 
 void init_random(elem_t * buf, int len) {
@@ -213,18 +234,20 @@ int main() {
 
     printf("Gemmini conv...\n");
     uint64_t start_gemmini = read_cycles();
-    tiled_conv_A_stride_auto(
+    // tiled_conv_A_stride_auto(
+    tiled_conv_downsample(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
-        STRIDE, 1, 1, PADDING, KERNEL_DIM,
-        false, false, false, false, false,
+        // STRIDE, 1, 1, PADDING, KERNEL_DIM,
+        // false, false, false, false, false,
 
         (elem_t*)input,
         (elem_t*)weights_mat,
         NO_BIAS ? NULL : (acc_t*)bias,
         (elem_t*)output_mat,
 
-        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, 0,
+        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0,
+        // 0, 0, 0,
 
         WS);
     uint64_t end_gemmini = read_cycles();
@@ -245,10 +268,12 @@ int main() {
     }
 #else
     bool success = vec_is_equal(&output[0][0][0][0], &output_mat[0][0], sizeof(output) / sizeof(elem_t));
+
 #endif
 
     if (!success) {
-        // return 1;
+        printf("FAIL\n");
+        return 1;
 
         printf("bias:\n");
         for (int och = 0; och < OUT_CHANNELS; och++) {
