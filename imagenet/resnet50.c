@@ -312,7 +312,6 @@ int main (int argc, char * argv[]) {
     }
 
     STAT_MATRIX(conv_5_out);
-    exit(0);
 
     // Add residuals
     start = read_cycles();
@@ -329,6 +328,9 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
+
+    printf("resadd\n");
+    STAT_MATRIX(conv_4_out);
 
     // conv_6
     if (!conv) {
@@ -354,6 +356,8 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
         printf("matmul 6 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_6_out);
 
     // conv_7
     if (!conv) {
@@ -397,6 +401,8 @@ int main (int argc, char * argv[]) {
         printf("conv 7 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_7_out);
+
     // conv_8
     if (!conv) {
         start = read_cycles();
@@ -422,6 +428,8 @@ int main (int argc, char * argv[]) {
         printf("matmul 8 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_8_out);
+
     // Add residuals
     start = read_cycles();
 
@@ -437,6 +445,9 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
+
+    printf("resadd\n");
+    STAT_MATRIX(conv_8_out);
 
     // conv_9
     if (!conv) {
@@ -462,6 +473,8 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
         printf("matmul 9 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_9_out);
 
     // conv_10
     if (!conv) {
@@ -505,6 +518,8 @@ int main (int argc, char * argv[]) {
         printf("conv 10 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_10_out);
+
     // conv_11
     if (!conv) {
         start = read_cycles();
@@ -530,6 +545,8 @@ int main (int argc, char * argv[]) {
         printf("matmul 11 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_11_out);
+
     // Add residuals
     start = read_cycles();
 
@@ -545,6 +562,10 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
+
+    printf("resadd\n");
+    STAT_MATRIX(conv_11_out);
+    exit(0);
 
     // conv_12
     if (!conv) {
