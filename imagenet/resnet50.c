@@ -785,6 +785,8 @@ int main (int argc, char * argv[]) {
         printf("conv 17 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_17_out);
+
     // conv_18
     if (!conv) {
         start = read_cycles();
@@ -810,6 +812,8 @@ int main (int argc, char * argv[]) {
         printf("matmul 18 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_18_out);
+
     // Add residuals
     start = read_cycles();
 
@@ -825,6 +829,9 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
+
+    printf("resadd\n");
+    STAT_MATRIX(conv_18_out);
     
     // conv_19
     if (!conv) {
@@ -850,6 +857,8 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
         printf("matmul 19 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_19_out);
 
     // conv_20
     if (!conv) {
@@ -959,6 +968,8 @@ int main (int argc, char * argv[]) {
         printf("matmul 22 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_22_out);
+
     // conv_23
     if (!conv) {
       start = read_cycles();
@@ -1066,6 +1077,8 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
         printf("matmul 25 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_25_out);
 
     // conv_26
     if (!conv) {
