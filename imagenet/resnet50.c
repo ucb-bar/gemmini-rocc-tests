@@ -1155,7 +1155,7 @@ int main (int argc, char * argv[]) {
     STAT_MATRIX(conv_27_out);
 
     // Downsampling conv_24_out
-    // conv_28 CHANGES HASAN
+    // conv_28
     if (!conv) {
       start = read_cycles();
 
@@ -1897,7 +1897,7 @@ int main (int argc, char * argv[]) {
     STAT_MATRIX(conv_46_out);
 
     // Downsampling conv_43_out
-    // conv_47
+    // conv_47 CHANGES HASAN
     if (!conv) {
       start = read_cycles();
 

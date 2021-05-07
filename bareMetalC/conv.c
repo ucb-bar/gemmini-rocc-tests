@@ -248,12 +248,12 @@ int main() {
 
     printf("Gemmini conv...\n");
     uint64_t start_gemmini = read_cycles();
-    // tiled_conv_A_stride_auto(
-    tiled_conv_downsample(
+    tiled_conv_A_stride_auto(
+    // tiled_conv_downsample(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
-        // STRIDE, 1, 1, PADDING, KERNEL_DIM,
-        // false, false, false, false, false,
+        STRIDE, 1, 1, PADDING, KERNEL_DIM,
+        false, false, false, false, false,
 
         (elem_t*)input,
         (elem_t*)weights_mat,
@@ -261,7 +261,7 @@ int main() {
         (elem_t*)output_mat,
 
         NO_ACTIVATION, ACC_SCALE_IDENTITY, 0,
-        // 0, 0, 0,
+        0, 0, 0,
 
         WS);
         // CPU);
