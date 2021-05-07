@@ -661,8 +661,6 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t * b = b_transpose ? (B + j0*tile_J*DIM*stride_B + k0*tile_K*DIM)
           : (B + k0*tile_K*DIM*stride_B + j0*tile_J*DIM);
 
-        printf("k0: %d\n", k0);
-
         (*inner)(a, b, pre, out,
             A_scale_factor, B_scale_factor, D_scale_factor,
             I, J, K,
