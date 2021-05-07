@@ -1660,6 +1660,8 @@ int main (int argc, char * argv[]) {
         printf("matmul 40 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_40_out);
+
     // Add residuals
     start = read_cycles();
 
@@ -1675,7 +1677,10 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
+    printf("resadd\n");
+    STAT_MATRIX(conv_40_out);
+
     // conv_41
     if (!conv) {
         start = read_cycles();
@@ -1700,6 +1705,8 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
         printf("matmul 41 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_41_out);
 
     // conv_42
     if (!conv) {
@@ -1743,6 +1750,8 @@ int main (int argc, char * argv[]) {
         printf("conv 42 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_42_out);
+
     // conv_43
     if (!conv) {
         start = read_cycles();
@@ -1768,6 +1777,8 @@ int main (int argc, char * argv[]) {
         printf("matmul 43 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_43_out);
+
     // Add residuals
     start = read_cycles();
 
@@ -1783,7 +1794,10 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
+    printf("resadd\n");
+    STAT_MATRIX(conv_43_out);
+
     // conv_44
     if (!conv) {
         start = read_cycles();
@@ -1808,6 +1822,8 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
         printf("matmul 44 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_44_out);
 
     // conv_45
     if (!conv) {
@@ -1851,6 +1867,8 @@ int main (int argc, char * argv[]) {
         printf("conv 45 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_45_out);
+
     // conv_46
     if (!conv) {
         start = read_cycles();
@@ -1875,6 +1893,8 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
         printf("matmul 46 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_46_out);
 
     // Downsampling conv_43_out
     // conv_47
