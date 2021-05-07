@@ -946,7 +946,7 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
 }
 
 static size_t tiled_matmul_total_spad_rows(size_t I, size_t J, size_t K) {
-  return (I * K + K * J) * DIM;
+  return (I * K + K * J + 1) * DIM;
 }
 
 static size_t tiled_matmul_total_acc_rows(size_t I, size_t J) {

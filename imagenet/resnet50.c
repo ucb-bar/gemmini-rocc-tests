@@ -1431,6 +1431,8 @@ int main (int argc, char * argv[]) {
         printf("matmul 34 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_34_out);
+
     // Add residuals
     start = read_cycles();
 
@@ -1446,7 +1448,10 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
+    printf("resadd\n");
+    STAT_MATRIX(conv_34_out);
+
     // conv_35
     if (!conv) {
         start = read_cycles();
@@ -1471,6 +1476,8 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
         printf("matmul 35 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_35_out);
 
     // conv_36
     if (!conv) {
@@ -1513,6 +1520,8 @@ int main (int argc, char * argv[]) {
         conv_cycles += end - start;
         printf("conv 36 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_36_out);
 
     // conv_37
     if (!conv) {
@@ -1580,6 +1589,8 @@ int main (int argc, char * argv[]) {
         printf("matmul 38 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_38_out);
+
     // conv_39
     if (!conv) {
       start = read_cycles();
@@ -1621,6 +1632,8 @@ int main (int argc, char * argv[]) {
         conv_cycles += end - start;
         printf("conv 39 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_39_out);
 
     // conv_40
     if (!conv) {
@@ -1906,6 +1919,8 @@ int main (int argc, char * argv[]) {
         printf("conv 47 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_47_out);
+
     // Add residuals
     start = read_cycles();
 
@@ -1921,7 +1936,10 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
+    printf("resadd\n");
+    STAT_MATRIX(conv_46_out);
+
     // conv_48
     if (!conv) {
         start = read_cycles();
@@ -1946,6 +1964,8 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
         printf("matmul 48 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_48_out);
 
     // conv_49
     if (!conv) {
