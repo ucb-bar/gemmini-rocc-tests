@@ -632,8 +632,8 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
     inner = &sp_tiled_matmul_ws;
   }
 
-  for (size_t i0 = 0; i0 < I0; i0++)
-    for (size_t j0 = 0; j0 < J0; j0++)
+  for (size_t i0 = 0; i0 < 1 /*I0*/; i0++)
+    for (size_t j0 = 0; j0 < 1 /*J0*/; j0++)
       for (size_t k0 = 0; k0 < K0; k0++) {
 
         const void * pre;
@@ -660,6 +660,8 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
 
         const elem_t * b = b_transpose ? (B + j0*tile_J*DIM*stride_B + k0*tile_K*DIM)
           : (B + k0*tile_K*DIM*stride_B + j0*tile_J*DIM);
+
+        printf("k0: %d\n", k0);
 
         (*inner)(a, b, pre, out,
             A_scale_factor, B_scale_factor, D_scale_factor,
