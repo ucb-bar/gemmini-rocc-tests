@@ -13,7 +13,8 @@
 #define STAT_IMAGES(IMAGES) \
 { \
     elem_t max = elem_t_min, min = elem_t_max; \
-    int sum = 0, count = 0; \
+    uint64_t sum = 0; \
+    int count = 0; \
     for (int i = 0; i < sizeof(IMAGES)/sizeof(IMAGES[0]); i++) { \
         for (int j = 0; j < sizeof(IMAGES[0])/sizeof(IMAGES[0][0]); j++) { \
             for (int k = 0; k < sizeof(IMAGES[0][0])/sizeof(IMAGES[0][0][0]); k++) { \
@@ -32,13 +33,14 @@
     } \
     printf("  min: %d\n", min); \
     printf("  max: %d\n", max); \
-    printf("  average*1000: %d\n", (sum*1000)/count); \
+    printf("  average*1000: %llu\n", (sum*1000)/count); \
 }
 
 #define STAT_MATRIX(MATRIX) \
 { \
     elem_t max = elem_t_min, min = elem_t_max; \
-    int sum = 0, count = 0; \
+    uint64_t sum = 0; \
+    int count = 0; \
     for (int i = 0; i < sizeof(MATRIX)/sizeof(MATRIX[0]); i++) { \
         for (int j = 0; j < sizeof(MATRIX[0])/sizeof(MATRIX[0][0]); j++) { \
             if (MATRIX[i][j] > max) { \
@@ -53,7 +55,7 @@
     } \
     printf("  min: %d\n", min); \
     printf("  max: %d\n", max); \
-    printf("  average*1000: %d\n", (sum*1000)/count); \
+    printf("  average*1000: %llu\n", (sum*1000)/count); \
 }
 
 int main (int argc, char * argv[]) {
