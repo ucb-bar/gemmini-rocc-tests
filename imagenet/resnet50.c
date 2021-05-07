@@ -10,6 +10,52 @@
 #include "resnet50_params.h"
 #include "images.h"
 
+#define STAT_IMAGES(IMAGES) \
+{ \
+    elem_t max = elem_t_min, min = elem_t_max; \
+    int sum = 0, count = 0; \
+    for (int i = 0; i < sizeof(IMAGES)/sizeof(IMAGES[0]); i++) { \
+        for (int j = 0; j < sizeof(IMAGES[0])/sizeof(IMAGES[0][0]); j++) { \
+            for (int k = 0; k < sizeof(IMAGES[0][0])/sizeof(IMAGES[0][0][0]); k++) { \
+                for (int l = 0; l < sizeof(IMAGES[0][0][0])/sizeof(IMAGES[0][0][0][0]); l++) { \
+                    if (IMAGES[i][j][k][l] > max) { \
+                        max = IMAGES[i][j][k][l]; \
+                    } \
+                    if (IMAGES[i][j][k][l] < min) { \
+                        min = IMAGES[i][j][k][l]; \
+                    } \
+                    sum += IMAGES[i][j][k][l]; \
+                    count++; \
+                } \
+            } \
+        } \
+    } \
+    printf("  min: %d\n", min); \
+    printf("  max: %d\n", max); \
+    printf("  average*1000: %d\n", (sum*1000)/count); \
+}
+
+#define STAT_MATRIX(MATRIX) \
+{ \
+    elem_t max = elem_t_min, min = elem_t_max; \
+    int sum = 0, count = 0; \
+    for (int i = 0; i < sizeof(MATRIX)/sizeof(MATRIX[0]); i++) { \
+        for (int j = 0; j < sizeof(MATRIX[0])/sizeof(MATRIX[0][0]); j++) { \
+            if (MATRIX[i][j] > max) { \
+                max = MATRIX[i][j]; \
+            } \
+            if (MATRIX[i][j] < min) { \
+                min = MATRIX[i][j]; \
+            } \
+            sum += MATRIX[i][j]; \
+            count++; \
+        } \
+    } \
+    printf("  min: %d\n", min); \
+    printf("  max: %d\n", max); \
+    printf("  average*1000: %d\n", (sum*1000)/count); \
+}
+
 int main (int argc, char * argv[]) {
 #ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
@@ -119,6 +165,8 @@ int main (int argc, char * argv[]) {
         printf("conv 1 cycles: %llu \n", end - start);
     }
 
+    STAT_IMAGES(conv_1_out_pooled);
+
     // conv_2
     if (!conv) {
       start = read_cycles();
@@ -152,6 +200,9 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
         printf("matmul 2 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_2_out);
+    exit(0);
 
     // conv_3
     if (!conv) {
