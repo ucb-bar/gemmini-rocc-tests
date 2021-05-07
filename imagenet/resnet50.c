@@ -204,7 +204,6 @@ int main (int argc, char * argv[]) {
     }
 
     STAT_MATRIX(conv_2_out);
-    exit(0);
 
     // conv_3
     if (!conv) {
@@ -248,6 +247,8 @@ int main (int argc, char * argv[]) {
         printf("conv 3 cycles: %llu \n", end - start);
     }
 
+    STAT_MATRIX(conv_3_out);
+
     // conv_4
     if (!conv) {
         start = read_cycles();
@@ -272,6 +273,8 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
         printf("matmul 4 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_4_out);
 
     // Downsampling conv_1_out_pooled
     // conv_5
@@ -307,6 +310,9 @@ int main (int argc, char * argv[]) {
         matmul_cycles += end - start;
         printf("matmul 5 cycles: %llu \n", end - start);
     }
+
+    STAT_MATRIX(conv_5_out);
+    exit(0);
 
     // Add residuals
     start = read_cycles();
