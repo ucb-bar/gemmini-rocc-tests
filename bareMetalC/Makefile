@@ -21,6 +21,7 @@ tests = \
 	conv_with_pool \
 	conv_with_dilation \
 	conv_with_dilation_and_rot180 \
+	conv_outchannel_parallel \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_ws_At \
@@ -54,7 +55,7 @@ else
 endif
 
 BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
-GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_testutils.h
+GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_mt.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_testutils.h
 
 CFLAGS := $(CFLAGS) \
 	-DPREALLOCATE=1 \

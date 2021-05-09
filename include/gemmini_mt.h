@@ -58,6 +58,9 @@ static void worker_matmul_extended_auto(void * args_ptr) {
 }
 
 static void worker_tiled_conv_auto(void * args_ptr) {
+  if (args_ptr == NULL)
+    return;
+
   args_tiled_conv_auto_t * args = args_ptr;
 
   tiled_conv_A_stride_auto(
@@ -157,7 +160,7 @@ static void tiled_conv_batch_parallel_auto(
 
 static void matmul_extended_auto_norun(size_t dim_I, size_t dim_J, size_t dim_K,
         size_t stride_C,
-        const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
+        const elem_t * A, const elem_t * B,
         const void * D, elem_t* C,
         int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
         enum tiled_matmul_type_t tiled_matmul_type,
@@ -197,7 +200,7 @@ static void tiled_conv_outchannel_norun(
         int stride, int dilation, int padding, int kernel_dim,
         bool wrot180,
 
-        int out_channels_stride,
+        int out_channels_stride, int weight_out_channels_stride,
 
         const elem_t * input,
         const elem_t * weights,
@@ -208,9 +211,6 @@ static void tiled_conv_outchannel_norun(
         int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
         enum tiled_matmul_type_t tiled_conv_type, int t, args_tiled_conv_auto_t args) {
-
-
-
 
     args.batch_size = batch_size;
     args.in_dim = in_dim;
@@ -224,6 +224,7 @@ static void tiled_conv_outchannel_norun(
     args.wrot180 = wrot180;
 
     args.out_channels_stride = out_channels_stride;
+    args.weight_out_channels_stride = weight_out_channels_stride;
 
     args.input = input;
     args.weights = (elem_t*)weights;
@@ -241,7 +242,7 @@ static void tiled_conv_outchannel_norun(
     args.tiled_conv_type = tiled_conv_type;
 
     SET_TASK(t, worker_tiled_conv_auto, &args);
-  }
+}
 
 
 static void tiled_conv_outchannel_parallel_auto(
@@ -268,10 +269,13 @@ static void tiled_conv_outchannel_parallel_auto(
 
   for (int t = 0; t < THREADS; t++) {
     const int outchannel = t * outchannel_per_thread;
+    const bool skip = outchannel >= out_channels;
 
     const int outchannels = outchannel + outchannel_per_thread <= out_channels ?
       outchannel_per_thread :
       out_channels - outchannel;
+
+    // printf("Start thread: %d | outchannel: %d | outchannels: %d | out_channels: %d | output: %p | skip: %d\n", t, outchannel, outchannels, out_channels, output, skip);
 
     args[t].batch_size = batch_size;
     args[t].in_dim = in_dim;
@@ -289,7 +293,7 @@ static void tiled_conv_outchannel_parallel_auto(
 
     args[t].input = input;
     args[t].weights = (elem_t*)weights + outchannel;
-    args[t].bias = bias;
+    args[t].bias = bias == NULL ? NULL : (bias + outchannel);
     args[t].output = (elem_t*)output + outchannel;
 
     args[t].act = act;
@@ -302,9 +306,10 @@ static void tiled_conv_outchannel_parallel_auto(
 
     args[t].tiled_conv_type = tiled_conv_type;
 
-    SET_TASK(t, worker_tiled_conv_auto, &args[t]);
+    SET_TASK(t, worker_tiled_conv_auto, skip ? NULL : &args[t]);
   }
   RUN_TASKS();
 }
 
 #endif
+

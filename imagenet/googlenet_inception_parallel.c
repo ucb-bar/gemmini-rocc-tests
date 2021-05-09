@@ -99,7 +99,7 @@ void * thread_main() {
             conv_1_params.stride, 1, conv_1_params.padding, conv_1_params.kernel_size,
             false,
 
-            conv_1_params.out_channels,
+            conv_1_params.out_channels, conv_1_params.out_channels,
 
             (elem_t*)images, (elem_t*)conv_1_w, (acc_t*)conv_1_b, (elem_t*)conv_1_out_pooled,
 
@@ -191,7 +191,7 @@ void * thread_main() {
             conv_3_params.stride, 1, conv_3_params.padding, conv_3_params.kernel_size,
             false,
 
-            conv_3_params.out_channels,
+            conv_3_params.out_channels, conv_3_params.out_channels,
 
             (elem_t*)conv_2_out, (elem_t*)conv_3_w, (acc_t*)conv_3_b, (elem_t*)conv_3_out_pooled,
 
@@ -404,7 +404,7 @@ void * thread_main() {
             conv_6_params.stride, 1, conv_6_params.padding, conv_6_params.kernel_size,
             false,
 
-            256,
+            256, conv_6_params.out_channels,
 
             (elem_t*)conv_5_out, (elem_t*)conv_6_w, (acc_t*)conv_6_b, (elem_t*)((elem_t*)inception3a_out + 64),
 
@@ -452,7 +452,7 @@ void * thread_main() {
             conv_8_params.stride, 1, conv_8_params.padding, conv_8_params.kernel_size,
             false,
 
-            256,
+            256, conv_8_params.out_channels,
 
             (elem_t*)conv_7_out, (elem_t*)conv_8_w, (acc_t*)conv_8_b, (elem_t*)((elem_t*)inception3a_out + 192),
 
@@ -658,7 +658,7 @@ void * thread_main() {
             conv_13_params.stride, 1, conv_13_params.padding, conv_13_params.kernel_size,
             false,
 
-            480,
+            480, conv_13_params.out_channels,
 
             (elem_t*)conv_12_out, (elem_t*)conv_13_w, (acc_t*)conv_13_b, (elem_t*)((elem_t*)inception3b_out + 128),
 
@@ -705,7 +705,7 @@ void * thread_main() {
             conv_15_params.stride, 1, conv_15_params.padding, conv_15_params.kernel_size,
             false,
 
-            480,
+            480, conv_15_params.out_channels,
 
             (elem_t*)conv_14_out, (elem_t*)conv_15_w, (acc_t*)conv_15_b, (elem_t*)((elem_t*)inception3b_out + 320),
 
@@ -918,7 +918,7 @@ void * thread_main() {
             conv_21_params.stride, 1, conv_21_params.padding, conv_21_params.kernel_size,
             false,
 
-            512,
+            512, conv_21_params.out_channels,
 
             (elem_t*)conv_20_out, (elem_t*)conv_21_w, (acc_t*)conv_21_b, (elem_t*)((elem_t*)inception4a_out + 192),
 
@@ -965,7 +965,7 @@ void * thread_main() {
             conv_23_params.stride, 1, conv_23_params.padding, conv_23_params.kernel_size,
             false,
 
-            512,
+            512, conv_23_params.out_channels,
 
             (elem_t*)conv_22_out, (elem_t*)conv_23_w, (acc_t*)conv_23_b, (elem_t*)((elem_t*)inception4a_out + 400),
 
@@ -1163,7 +1163,7 @@ void * thread_main() {
             conv_28_params.stride, 1, conv_28_params.padding, conv_28_params.kernel_size,
             false,
 
-            512,
+            512, conv_28_params.out_channels,
 
             (elem_t*)conv_27_out, (elem_t*)conv_28_w, (acc_t*)conv_28_b, (elem_t*)((elem_t*)inception4b_out + 160),
 
@@ -1211,7 +1211,7 @@ void * thread_main() {
             conv_30_params.stride, 1, conv_30_params.padding, conv_30_params.kernel_size,
             false,
 
-            512,
+            512, conv_30_params.out_channels,
 
             (elem_t*)conv_29_out, (elem_t*)conv_30_w, (acc_t*)conv_30_b, (elem_t*)((elem_t*)inception4b_out + 384),
 
@@ -1409,7 +1409,7 @@ void * thread_main() {
             conv_35_params.stride, 1, conv_35_params.padding, conv_35_params.kernel_size,
             false,
 
-            512,
+            512, conv_35_params.out_channels,
 
             (elem_t*)conv_34_out, (elem_t*)conv_35_w, (acc_t*)conv_35_b, (elem_t*)((elem_t*)inception4c_out + 128),
 
@@ -1457,7 +1457,7 @@ void * thread_main() {
                 conv_37_params.stride, 1, conv_37_params.padding, conv_37_params.kernel_size,
                 false,
 
-                512,
+                512, conv_37_params.out_channels,
 
                 (elem_t*)conv_36_out, (elem_t*)conv_37_w, (acc_t*)conv_37_b, (elem_t*)((elem_t*)inception4c_out + 384),
 
@@ -1661,7 +1661,7 @@ void * thread_main() {
             conv_42_params.stride, 1, conv_42_params.padding, conv_42_params.kernel_size,
             false,
 
-            528,
+            528, conv_42_params.out_channels,
 
             (elem_t*)conv_41_out, (elem_t*)conv_42_w, (acc_t*)conv_42_b, (elem_t*)((elem_t*)inception4d_out + 112),
 
@@ -1709,7 +1709,7 @@ void * thread_main() {
             conv_44_params.stride, 1, conv_44_params.padding, conv_44_params.kernel_size,
             false,
 
-            528,
+            528, conv_44_params.out_channels,
 
             (elem_t*)conv_43_out, (elem_t*)conv_44_w, (acc_t*)conv_44_b, (elem_t*)((elem_t*)inception4d_out + 400),
 
@@ -1913,7 +1913,7 @@ void * thread_main() {
             conv_49_params.stride, 1, conv_49_params.padding, conv_49_params.kernel_size,
             false,
 
-            832,
+            832, conv_49_params.out_channels,
 
             (elem_t*)conv_48_out, (elem_t*)conv_49_w, (acc_t*)conv_49_b, (elem_t*)((elem_t*)inception4e_out + 256),
 
@@ -1961,7 +1961,7 @@ void * thread_main() {
                 conv_51_params.stride, 1, conv_51_params.padding, conv_51_params.kernel_size,
                 false,
 
-                832,
+                832, conv_51_params.out_channels,
 
                 (elem_t*)conv_50_out, (elem_t*)conv_51_w, (acc_t*)conv_51_b, (elem_t*)((elem_t*)inception4e_out + 576),
 
@@ -2173,7 +2173,7 @@ void * thread_main() {
             conv_57_params.stride, 1, conv_57_params.padding, conv_57_params.kernel_size,
             false,
 
-            832,
+            832, conv_57_params.out_channels,
 
             (elem_t*)conv_56_out, (elem_t*)conv_57_w, (acc_t*)conv_57_b, (elem_t*)((elem_t*)inception5a_out + 256),
 
@@ -2220,7 +2220,7 @@ void * thread_main() {
             conv_59_params.stride, 1, conv_59_params.padding, conv_59_params.kernel_size,
             false,
 
-            832,
+            832, conv_59_params.out_channels,
 
             (elem_t*)conv_58_out, (elem_t*)conv_59_w, (acc_t*)conv_59_b, (elem_t*)((elem_t*)inception5a_out + 576),
 
@@ -2415,7 +2415,7 @@ void * thread_main() {
             conv_64_params.stride, 1, conv_64_params.padding, conv_64_params.kernel_size,
             false,
 
-            1024,
+            1024, conv_64_params.out_channels,
 
             (elem_t*)conv_63_out, (elem_t*)conv_64_w, (acc_t*)conv_64_b, (elem_t*)((elem_t*)inception5b_out + 384),
 
@@ -2461,7 +2461,7 @@ void * thread_main() {
             conv_66_params.stride, 1, conv_66_params.padding, conv_66_params.kernel_size,
             false,
 
-            1024,
+            1024, conv_66_params.out_channels,
 
             (elem_t*)conv_65_out, (elem_t*)conv_66_w, (acc_t*)conv_66_b, (elem_t*)((elem_t*)inception5b_out + 768),
 
