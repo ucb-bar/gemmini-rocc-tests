@@ -181,6 +181,30 @@ static void tiled_matmul_nn_auto_extended(size_t dim_I, size_t dim_J, size_t dim
         tiled_matmul_type);
 }
 
+static void tiled_matmul_nn_auto_extended2(size_t dim_I, size_t dim_J, size_t dim_K,
+        size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
+        const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
+        const void * D, elem_t* C,
+        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
+        enum tiled_matmul_type_t tiled_matmul_type,
+        bool check, char * layer_name)
+{
+    if (check) {
+        printf("%s: check not yet supported\n", layer_name);
+        exit(1);
+    }
+
+    tiled_matmul_auto(dim_I, dim_J, dim_K,
+        (elem_t*)A, (elem_t*)B, D, (elem_t*)C,
+        stride_A, stride_B, stride_D, stride_C,
+        MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+        act, scale, relu6_shift, repeating_bias,
+        false, false,
+        false, false,
+        3,
+        tiled_matmul_type);
+}
+
 static void conv_dw(size_t I, size_t J,
     const size_t batch_size, const size_t channels, const size_t in_dim, const size_t out_dim, const size_t kernel_size,
     const elem_t input[batch_size][in_dim][in_dim][channels],

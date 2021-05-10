@@ -37,6 +37,7 @@ tests = \
 	global_average \
 	template \
 	pool \
+	tiled_matmul_ws_I_parallel \
 
 tests_baremetal = $(tests:=-baremetal)
 

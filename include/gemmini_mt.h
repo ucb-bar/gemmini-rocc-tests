@@ -7,17 +7,9 @@
 #include "include/gemmini.h"
 #include "include/gemmini_nn.h"
 
-static void tiled_matmul_nn_auto_extended(size_t dim_I, size_t dim_J, size_t dim_K,
-        size_t stride_C,
-        const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
-        const void * D, elem_t* C,
-        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
-        enum tiled_matmul_type_t tiled_matmul_type,
-        bool check, char * layer_name);
-
 //struct for nn_auto_extended split
 typedef struct args_matmul_auto_t{
-  size_t dim_I; size_t dim_J; size_t dim_K;
+          size_t dim_I; size_t dim_J; size_t dim_K;
           size_t stride_C;
           const elem_t * A; const elem_t * B;
           const void * D; elem_t* C;
@@ -25,6 +17,16 @@ typedef struct args_matmul_auto_t{
           enum tiled_matmul_type_t tiled_matmul_type;
           bool check; char * layer_name;
 } args_matmul_auto_t;
+
+typedef struct args_matmul2_auto_t{
+          size_t dim_I; size_t dim_J; size_t dim_K;
+          size_t stride_A; size_t stride_B; size_t stride_D; size_t stride_C;
+          const elem_t * A; const elem_t * B;
+          const void * D; elem_t* C;
+          int act; acc_scale_t scale; size_t relu6_shift; bool repeating_bias;
+          enum tiled_matmul_type_t tiled_matmul_type;
+          bool check; char * layer_name;
+} args_matmul2_auto_t;
 
 typedef struct args_tiled_conv_auto_t {
   int batch_size; int in_dim; int in_channels;
@@ -46,10 +48,28 @@ typedef struct args_tiled_conv_auto_t {
 } args_tiled_conv_auto_t;
 
 static void worker_matmul_extended_auto(void * args_ptr) {
+  if (args_ptr == NULL)
+    return;
+
   args_matmul_auto_t * args = args_ptr;
 
   tiled_matmul_nn_auto_extended(args->dim_I, args->dim_J, args->dim_K,
           args->stride_C,
+          args->A, args->B,
+          args->D, args->C,
+          args->act, args->scale, args->relu6_shift, args->repeating_bias,
+          args->tiled_matmul_type,
+          args->check, args->layer_name);
+}
+
+static void worker_matmul2_extended_auto(void * args_ptr) {
+  if (args_ptr == NULL)
+    return;
+
+  args_matmul2_auto_t * args = args_ptr;
+
+  tiled_matmul_nn_auto_extended2(args->dim_I, args->dim_J, args->dim_K,
+          args->stride_A, args->stride_B, args->stride_D, args->stride_C,
           args->A, args->B,
           args->D, args->C,
           args->act, args->scale, args->relu6_shift, args->repeating_bias,
@@ -191,7 +211,7 @@ static void matmul_extended_auto_norun(size_t dim_I, size_t dim_J, size_t dim_K,
     args.layer_name = layer_name;
 
     SET_TASK(thread, worker_matmul_extended_auto, &args);
-        }
+}
 
 // Out-channel parallel convolution
 static void tiled_conv_outchannel_norun(
@@ -275,8 +295,6 @@ static void tiled_conv_outchannel_parallel_auto(
       outchannel_per_thread :
       out_channels - outchannel;
 
-    // printf("Start thread: %d | outchannel: %d | outchannels: %d | out_channels: %d | output: %p | skip: %d\n", t, outchannel, outchannels, out_channels, output, skip);
-
     args[t].batch_size = batch_size;
     args[t].in_dim = in_dim;
     args[t].in_channels = in_channels;
@@ -308,6 +326,57 @@ static void tiled_conv_outchannel_parallel_auto(
 
     SET_TASK(t, worker_tiled_conv_auto, skip ? NULL : &args[t]);
   }
+  RUN_TASKS();
+}
+
+// I-parallel matmul
+static void tiled_matmul_nn_I_parallel_auto_extended(size_t dim_I, size_t dim_J, size_t dim_K,
+        size_t stride_C,
+        const elem_t * A, const elem_t * B,
+        const void * D, elem_t * C,
+        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
+        enum tiled_matmul_type_t tiled_matmul_type,
+        bool check, char * layer_name)
+{
+  args_matmul2_auto_t args[THREADS];
+
+  const int dim_I_per_thread = dim_I / THREADS + (dim_I % THREADS != 0);
+
+  for (int t = 0; t < THREADS; t++) {
+    const int I = t * dim_I_per_thread;
+    const bool skip = I >= dim_I;
+
+    const int I_dim = I + dim_I_per_thread <= dim_I ?
+      dim_I_per_thread :
+      dim_I - I;
+
+    args[t].dim_I = I_dim;
+    args[t].dim_J = dim_J;
+    args[t].dim_K = dim_K;
+
+    args[t].stride_A = dim_K;
+    args[t].stride_B = dim_J;
+    args[t].stride_D = dim_J;
+    args[t].stride_C = stride_C;
+
+    args[t].A = A + I * dim_K;
+    args[t].B = B;
+    args[t].D = (D == NULL || repeating_bias) ? D : ((acc_t*)D + I * dim_J);
+    args[t].C = C + I * dim_J;
+
+    args[t].act = act;
+    args[t].scale = scale;
+    args[t].relu6_shift = relu6_shift;
+    args[t].repeating_bias = repeating_bias;
+
+    args[t].tiled_matmul_type = tiled_matmul_type;
+
+    args[t].check = check;
+    args[t].layer_name = layer_name;
+
+    SET_TASK(t, worker_matmul2_extended_auto, skip ? NULL : &args[t]);
+  }
+
   RUN_TASKS();
 }
 

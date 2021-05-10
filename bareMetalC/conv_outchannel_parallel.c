@@ -10,6 +10,16 @@
 #endif
 #include "include/gemmini_testutils.h"
 
+#define BATCH_SIZE 4
+#define IN_DIM 224
+#define IN_CHANNELS 3
+#define OUT_CHANNELS 32
+#define KERNEL_DIM 3
+#define PADDING 1
+#define STRIDE 2
+
+#define NO_BIAS false
+
 /*
 #define BATCH_SIZE 1
 #define IN_DIM 1
@@ -22,6 +32,7 @@
 #define NO_BIAS true // false
 */
 
+/*
 #ifndef BAREMETAL
 
 #define BATCH_SIZE 4
@@ -56,6 +67,7 @@
 #endif
 
 #define NO_BIAS false
+*/
 
 #define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
