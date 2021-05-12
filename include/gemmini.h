@@ -2638,6 +2638,8 @@ static void tiled_conv_A_stride(
             }
         }
     }
+
+    gemmini_fence();
 }
 
 static void tiled_conv_A_stride_auto(
