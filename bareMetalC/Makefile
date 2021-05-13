@@ -1,6 +1,7 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
+	multicore \
 	mvin_mvout \
 	mvin_mvout_zeros \
 	mvin_mvout_stride \
@@ -22,6 +23,8 @@ tests = \
 	conv_with_dilation \
 	conv_with_dilation_and_rot180 \
 	conv_outchannel_parallel \
+	conv_outrow_parallel \
+	conv_outchannel_and_outrow_parallel \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_ws_At \
@@ -38,6 +41,8 @@ tests = \
 	template \
 	pool \
 	tiled_matmul_ws_I_parallel \
+	tiled_matmul_ws_J_parallel \
+	tiled_matmul_ws_IJ_parallel \
 
 tests_baremetal = $(tests:=-baremetal)
 

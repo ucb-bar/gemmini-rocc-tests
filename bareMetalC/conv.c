@@ -8,6 +8,15 @@
 #endif
 #include "include/gemmini_testutils.h"
 
+#define BATCH_SIZE 1
+#define IN_DIM 28
+#define IN_CHANNELS 16
+#define OUT_CHANNELS 32
+#define KERNEL_DIM 3
+#define PADDING 1
+#define STRIDE 1
+
+/*
 #ifndef BAREMETAL
 
 #define BATCH_SIZE 4
@@ -40,6 +49,7 @@
 #define STRIDE 2
 
 #endif
+*/
 
 #define NO_BIAS false
 
@@ -176,28 +186,28 @@ int main() {
     static elem_t output[BATCH_SIZE][OUT_DIM][OUT_DIM][OUT_CHANNELS];
 
     printf("Randomize inputs...\n");
-    init_random(&input[0][0][0][0], sizeof(input) / sizeof(elem_t));
+    // init_random(&input[0][0][0][0], sizeof(input) / sizeof(elem_t));
 
     printf("Randomize weights...\n");
-    init_random(&weights[0][0][0][0], sizeof(weights) / sizeof(elem_t));
+    // init_random(&weights[0][0][0][0], sizeof(weights) / sizeof(elem_t));
 
     printf("Randomize bias...\n");
-    if (NO_BIAS)
-        init_zeros_acc(&bias[0], sizeof(bias) / sizeof(acc_t));
-    else
-        init_random_acc(&bias[0], sizeof(bias) / sizeof(acc_t));
+    // if (NO_BIAS)
+        // init_zeros_acc(&bias[0], sizeof(bias) / sizeof(acc_t));
+    // else
+        // init_random_acc(&bias[0], sizeof(bias) / sizeof(acc_t));
 
     printf("CPU conv...\n");
     uint64_t start_cpu = read_cycles();
 #ifndef FAST
-    conv(BATCH_SIZE, IN_CHANNELS, IN_DIM,
-            OUT_CHANNELS, KERNEL_DIM,
-            OUT_DIM,
-            STRIDE, PADDING,
-            input,
-            weights,
-            bias,
-            output);
+    // conv(BATCH_SIZE, IN_CHANNELS, IN_DIM,
+    //         OUT_CHANNELS, KERNEL_DIM,
+    //         OUT_DIM,
+    //         STRIDE, PADDING,
+    //         input,
+    //         weights,
+    //         bias,
+    //         output);
 #endif
     uint64_t end_cpu = read_cycles();
     printf("CPU conv took %llu cycles\n", end_cpu - start_cpu);
@@ -206,10 +216,10 @@ int main() {
     static elem_t output_mat[N_PATCHES][OUT_CHANNELS];
 
     printf("Flatten weights...\n");
-    flatten_weights(OUT_CHANNELS, KERNEL_DIM, IN_CHANNELS,
-            PATCH_SIZE,
-            weights,
-            weights_mat);
+    // flatten_weights(OUT_CHANNELS, KERNEL_DIM, IN_CHANNELS,
+    //         PATCH_SIZE,
+    //         weights,
+    //         weights_mat);
 
     printf("Gemmini conv...\n");
     uint64_t start_gemmini = read_cycles();
@@ -219,7 +229,7 @@ int main() {
         STRIDE, 1, PADDING, KERNEL_DIM,
         false,
 
-        OUT_CHANNELS, OUT_CHANNELS,
+        OUT_CHANNELS, OUT_CHANNELS, -1, 0,
 
         (elem_t*)input,
         (elem_t*)weights_mat,
@@ -229,10 +239,15 @@ int main() {
         NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, 0, false,
 
         WS);
+    gemmini_fence();
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 
     assert(sizeof(output_mat) == sizeof(output));
+
+    uint64_t ideal_cycles = (BATCH_SIZE * OUT_DIM*OUT_DIM * KERNEL_DIM*KERNEL_DIM * IN_CHANNELS * OUT_CHANNELS) / (DIM*DIM);
+    printf("Ideal cycles: %llu\n", ideal_cycles);
+    printf("Utilization: %llu\n", (ideal_cycles*100) / (end_gemmini - start_gemmini));
 
 #ifdef FAST
     bool success = true;
@@ -250,8 +265,9 @@ int main() {
 #endif
 
     if (!success) {
-        // return 1;
+        return 1;
 
+        /*
         printf("bias:\n");
         for (int och = 0; och < OUT_CHANNELS; och++) {
             printf("%d,", bias[och]);
@@ -321,6 +337,7 @@ int main() {
             printf("\b],");
         }
         printf("\b\n\n");
+        */
 
         printf("output_mat:\n");
         for (int orow = 0; orow < BATCH_SIZE * OUT_DIM * OUT_DIM; orow++) {

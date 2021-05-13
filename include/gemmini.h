@@ -2459,7 +2459,7 @@ static void tiled_conv_A_stride(
         int stride, int dilation, int padding, int kernel_dim,
         bool wrot180,
 
-        int out_channels_stride, int weight_out_channels_stride,
+        int out_channels_stride, int weight_out_channels_stride, int porow_max, int porow_start,
 
         int batches,
         int porows, int pocols, int pochs,
@@ -2551,8 +2551,13 @@ static void tiled_conv_A_stride(
     if (pool_ceil_dim)
       pool_out_dim += (out_dim + 2*pool_padding - pool_size) % pool_stride != 0;
 
+    if (porow_max == -1) {
+      porow_max = pool_out_dim;
+    }
+
     for (int b = 0; b < batch_size; b += batches) {
-        for (int porow = 0; porow < pool_out_dim; porow += porows) {
+        // for (int porow = 0; porow < pool_out_dim; porow += porows) {
+        for (int porow = porow_start; porow < porow_start + porow_max; porow += porows) {
             const int orow = porow * pool_stride - pool_padding;
 
             for (int pocol = 0; pocol < pool_out_dim; pocol += pocols) {
@@ -2648,7 +2653,7 @@ static void tiled_conv_A_stride_auto(
         int stride, int dilation, int padding, int kernel_dim,
         bool wrot180,
 
-        int out_channels_stride, int weight_out_channels_stride,
+        int out_channels_stride, int weight_out_channels_stride, int porow_max, int porow_start,
 
         const elem_t * input,
         const elem_t * weights,
@@ -2671,13 +2676,18 @@ static void tiled_conv_A_stride_auto(
     if (pool_ceil_dim)
       pool_out_dim += (out_dim + 2*pool_padding - pool_size) % pool_stride != 0;
 
+    if (porow_max == -1) {
+      porow_max = pool_out_dim;
+    }
+
     const bool downsample = stride == 2 && kernel_dim == 1 && padding == 0 && no_pool && in_dim % 2 == 0;
 
     // Tile convolution params
 
     // int args[] = {batch_size, porows, pocols, pochs, krows, kcols, kchs};
-    int args[] = {batch_size, pool_out_dim, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
-    const int max_args[] = {batch_size, pool_out_dim, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
+    // int args[] = {batch_size, pool_out_dim, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
+    int args[] = {batch_size, porow_max, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
+    const int max_args[] = {batch_size, porow_max, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
 
     const int orows_idx = 1;
     const int ocols_idx = 2;
@@ -2817,7 +2827,7 @@ static void tiled_conv_A_stride_auto(
         stride, dilation, padding, kernel_dim,
         wrot180,
 
-        out_channels_stride, weight_out_channels_stride,
+        out_channels_stride, weight_out_channels_stride, porow_max, porow_start,
 
         batches,
         orows, ocols, ochs,

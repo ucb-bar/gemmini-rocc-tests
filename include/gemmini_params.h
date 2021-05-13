@@ -76,6 +76,5 @@ typedef uint32_t acc_scale_t_bits;
 #define ACC_SCALE_SIG_BITS 24
 
 #define ACC_READ_SMALL_WIDTH
-#define ACC_READ_FULL_WIDTH
 
 #endif // GEMMINI_PARAMS_H
