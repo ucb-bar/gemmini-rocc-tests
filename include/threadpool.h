@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <sched.h>
 #include <pthread.h>
+#include <stdatomic.h>
 #else
 #include "util.h"
 #endif
@@ -22,10 +23,32 @@ pthread_t _thread_pool_impl_thread_id_main;
 pthread_t _thread_pool_impl_thread_ids[THREADS];
 pthread_barrier_t _thread_pool_impl_threadpool_barrier;
 pthread_attr_t _thread_pool_impl_attr;
+_Atomic int lock = 0;
 #endif
 
 #ifndef BAREMETAL
-#define BARRIER() pthread_barrier_wait(&_thread_pool_impl_threadpool_barrier);
+
+//pthread barrier - increment by one, if lock = threadnums release
+void barr(){
+
+  int my_lock = 0;
+
+  atomic_fetch_add_explicit(&lock,1, memory_order_relaxed);
+
+  //now in for loop check lock
+  do{
+
+    my_lock = atomic_load_explicit(&lock, memory_order_relaxed);
+
+  } while (my_lock != THREADS+1);
+
+  //all threads have entered barrier, cleanly exit and reset to 0
+  atomic_fetch_add_explicit(&lock,-1, memory_order_relaxed);
+
+}
+
+
+#define BARRIER() barr();
 #else
 #define BARRIER() barrier(THREADS+1);
 #endif
@@ -176,4 +199,3 @@ int main() {}
 #endif
 
 #endif
-
