@@ -37,6 +37,9 @@
 
 #define k_MVIN3 14
 
+#define k_MVIN_SP_CONFIG 18
+#define k_MVIN_SP_COO 19
+
 #define CONFIG_EX 0
 #define CONFIG_LD 1
 #define CONFIG_ST 2
@@ -179,7 +182,10 @@ acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct) \
   ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, funct)
 
-// mvin and mvout
+#define gemmini_extended_mvin_sparse_coo(dram_addr_dat, dram_addr_ind, spad_addr, start_col, cols, start_row, rows) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr_dat, dram_addr_ind, k_MVIN_SP_CONFIG) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(rows) << (ADDR_LEN + 16)) | ((uint64_t)(cols) << ADDR_LEN) | (spad_addr), ((uint64_t)(start_row) << (16)) | (uint64_t)(start_col), k_MVIN_SP_COO)
+
 #define gemmini_extended_mvin(dram_addr, spad_addr, cols, rows) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)(rows) << (ADDR_LEN + 16)) | ((uint64_t)(cols) << ADDR_LEN) | (spad_addr), k_MVIN)
 
