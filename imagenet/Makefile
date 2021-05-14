@@ -3,6 +3,7 @@ include $(abs_top_srcdir)/Makefrag
 tests = \
 	googlenet \
 	googlenet_1batch \
+	googlenet_1batch_best \
 	googlenet_batch_parallel \
 	googlenet_outchannel_parallel \
 	googlenet_outchannel_and_I_parallel \
