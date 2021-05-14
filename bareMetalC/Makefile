@@ -2,6 +2,7 @@ include $(abs_top_srcdir)/Makefrag
 
 tests = \
 	mvin_mvout \
+	mvin_mvout_sparse \
 	mvin_mvout_stride \
 	mvin_mvout_acc \
 	mvin_mvout_acc_zero_stride \
@@ -19,6 +20,7 @@ tests = \
 	conv_with_pool \
 	tiled_matmul_os \
 	tiled_matmul_ws \
+	tiled_matmul_gcn_1 \
 	tiled_matmul_ws_At \
 	tiled_matmul_ws_Bt \
 	tiled_matmul_ws_full_C \
