@@ -9,6 +9,7 @@ tests = \
 	googlenet_outchannel_and_I_parallel \
 	googlenet_inception_parallel \
 	googlenet_1batch_outchannel_and_I_parallel \
+	googlenet_branched \
 	# mobilenet \
 	# resnet50 \
 	# alexnet \
