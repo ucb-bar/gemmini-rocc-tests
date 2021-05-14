@@ -10,7 +10,7 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define CHECK_RESULT 1
+#define CHECK_RESULT 0
 
 #define NO_BIAS 1
 #define FULL_BIAS_WIDTH 1
@@ -23,12 +23,12 @@ typedef elem_t ACC_T;
 
 #ifndef BAREMETAL
 #define MAT_DIM_I 1000
-#define MAT_DIM_K 1000
-#define MAT_DIM_J 3703
+#define MAT_DIM_K 3703
+#define MAT_DIM_J 300
 #else
 #define MAT_DIM_I 1000
-#define MAT_DIM_K 1000
-#define MAT_DIM_J 3703
+#define MAT_DIM_K 3703
+#define MAT_DIM_J 300
 #endif
 
 void print_tile(elem_t* in, int tile_dim) {
