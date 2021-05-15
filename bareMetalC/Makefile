@@ -21,9 +21,11 @@ tests = \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_gcn_1 \
+	tiled_matmul_gcn_1b \
 	tiled_matmul_gcn_2 \
 	tiled_matmul_gcn_3 \
 	tiled_matmul_gcn_4 \
+	tiled_matmul_gcn_4b \
 	tiled_matmul_ws_At \
 	tiled_matmul_ws_Bt \
 	tiled_matmul_ws_full_C \
