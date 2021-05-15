@@ -644,6 +644,8 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
 
   const size_t sizeof_D = low_D ? sizeof(elem_t) : sizeof(acc_t) ;
   const size_t sizeof_C = full_C ? sizeof(acc_t) : sizeof(elem_t);
+  bool bubble_enable = !(latency == 1 && alert == 1 && pause_turn == 0);
+
 
   gemmini_extended_config_ex(dataflow, act, 0, scale, relu6_shift, 1, a_transpose, b_transpose);
   gemmini_config_st(stride_C * sizeof_C);
@@ -701,8 +703,8 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
             a_transpose, b_transpose,
             full_C, low_D,
             no_bias, repeating_bias,
-	    skip_A, skip_B, cache_hit ? 0 : 2, //multifly factor hardcode
-	    profile, profile ? 0 : latency, profile ? 0 : alert, unlock_cycle, pause_turn);
+	    skip_A, skip_B, cache_hit ? 0 : 1, //multifly factor hardcode
+	    profile, /*(bubble_enable && dim_I < DIM) ? 3000 :*/ (profile ? 0 : latency), profile ? 0 : alert, unlock_cycle, pause_turn);
       }
     }
   gemmini_fence();
@@ -1266,7 +1268,7 @@ static void tiled_matmul_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
 }
 
 // this is with loop_ld to detect multicore conflicts
-static void tiled_matmul_profile(size_t repeat){
+static void tiled_matmul_profile(size_t repeat, bool profile_average, int scale_latency){
 #define partition_rows (BANK_NUM * BANK_ROWS / 2)
 #define mats_in_partition (partition_rows / DIM)
 #define mats_in_acc (ACC_ROWS / DIM)
@@ -1316,12 +1318,12 @@ static void tiled_matmul_profile(size_t repeat){
     printf("spad_row utilization: %d%%\n", (spad_rows * 100) / max_spad_rows);
     printf("acc_row utilization: %d%%\n\n", (acc_rows * 100) / max_acc_rows);
     */
-
+  int profile = profile_average ? 1 : 3;
   gemmini_extended3_config_ld(stride_A * sizeof(elem_t), MVIN_SCALE_IDENTITY, false, 0);
   for(int i = 0; i < repeat; i++){
-  	   gemmini_loop_ld(false, 0, true, true, tile_I, tile_K, 0, 0, A, stride_A, 0, 0, 0, (i > 2) ?  1 : 0);
-		// 1: profile average
-		gemmini_fence();
+      gemmini_loop_ld(false, 0, true, true, tile_I, tile_K, 0, 0, A, stride_A, 0, 0, scale_latency, profile);//(i > 6) ?  profile : 0);
+      // 1: profile average
+  gemmini_fence();
   }
 
 #undef partition_rows
@@ -3062,8 +3064,8 @@ static void tiled_conv_A_stride_cid(
 												//pool_out,
 
                                     no_bias, no_pool, both_out,
-												skip_weight,  cache_hit ? 0 : 2, //multifly factor hardcode 
-												profile, profile ? 0 : latency, profile ? 0 : alert, unlock_cycle, pause_turn); 
+			            skip_weight,  cache_hit ? 0 : 1, //multifly factor hardcode 
+				    profile, profile ? 0 : latency, profile ? 0 : alert, unlock_cycle, pause_turn); 
                             }
                         }
                     }
@@ -3253,7 +3255,7 @@ static void tiled_conv_A_stride_loopld(
 												NULL,
 
                                     no_bias, no_pool, both_out,
-												skip_weight, cache_hit ? 0 : 2, //multifly factor hardcode
+												skip_weight, cache_hit ? 0 : 1, //multifly factor hardcode
 												profile, profile ? 0 : latency, profile ? 0 : alert, unlock_cycle,  pause_turn);
                             }
                         }
@@ -3422,7 +3424,7 @@ static void tiled_conv_A_stride_dw(
 												NULL,
 
                                     no_bias, no_pool, false,
-												skip_weight, cache_hit ? 0 : 2, //multifly factor hardcode
+												skip_weight, cache_hit ? 0 : 1, //multifly factor hardcode
 												profile, profile ? 0 : latency, profile ? 0 : alert, unlock_cycle, pause_turn);
                         }
                     }
@@ -3663,13 +3665,13 @@ static void tiled_conv_A_stride_auto_cid(
 	 } //only need batch level offset when we divide batch dimension
 */
 	 // divide in row dimension (single batch)
-	 bool row_divisible = (orow_divide > 1);// && (pool_out_dim % orow_divide == 0);
+	 bool row_divisible = (orow_divide > 1) && (pool_out_dim % orow_divide == 0);
 	 int pool_out_row = (row_divisible) ? (pool_out_dim / orow_divide) : pool_out_dim;
 	 if(pool_out_dim % orow_divide != 0) {
 		if(cid != orow_divide - 1) pool_out_row += 1;
 		//else pool_out_row -= 1;
 	}
-	 const size_t och_divide = 1;//(row_divisible) ? 1 : orow_divide; //if row isn't divisible, divide channel instead
+	 const size_t och_divide = (row_divisible) ? 1 : orow_divide; //if row isn't divisible, divide channel instead
   	 out_channels = out_channels / och_divide;
   	 const int out_offset = (och_divide > 1) ? out_channels * cid : 0;
 
@@ -3991,13 +3993,13 @@ static void tiled_conv_A_stride_auto_bubble(
 	 } //only need batch level offset when we divide batch dimension
 */
 	 // divide in row dimension (single batch)
-	 bool row_divisible = (orow_divide > 1);// && (pool_out_dim % orow_divide == 0);
+	 bool row_divisible = (orow_divide > 1) && (pool_out_dim % orow_divide == 0);
 	 int pool_out_row = (row_divisible) ? (pool_out_dim / orow_divide) : pool_out_dim;
 	 if(pool_out_dim % orow_divide != 0) {
 		if(cid != orow_divide - 1) pool_out_row += 1;
 		//else pool_out_row -= 1;
 	}
-	 const size_t och_divide = 1;//(row_divisible) ? 1 : orow_divide; //if row isn't divisible, divide channel instead
+	 const size_t och_divide = (row_divisible) ? 1 : orow_divide; //if row isn't divisible, divide channel instead
   	 out_channels = out_channels / och_divide;
   	 const int out_offset = (och_divide > 1) ? out_channels * cid : 0;
 
