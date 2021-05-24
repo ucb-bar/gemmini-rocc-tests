@@ -2820,11 +2820,11 @@ static void tiled_conv_A_stride(
         if (acc_rows > ACC_ROWS / 2) {
             printf("not enough accumulator space to store outputs\n");
             exit(1);
-        }
+        }/*
         if (kernel_dim <= padding) {
             printf("kernel_dim must be larger than padding\n");
             exit(1);
-        }
+        }*/
 //        if (dilation != 1) {
 //            printf("dilation is only supported on CPU\n");
 //            exit(1);
@@ -3003,10 +3003,10 @@ static void tiled_conv_A_stride_cid(
             printf("not enough accumulator space to store outputs\n");
             exit(1);
         }
-        if (kernel_dim <= padding) {
-            printf("kernel_dim must be larger than padding\n");
-            exit(1);
-        }
+        //if (kernel_dim <= padding) {
+        //    printf("kernel_dim must be larger than padding\n");
+        //    exit(1);
+        //}
     }
 #endif
 
@@ -3196,10 +3196,10 @@ static void tiled_conv_A_stride_loopld(
             printf("not enough accumulator space to store outputs\n");
             exit(1);
         }
-        if (kernel_dim <= padding) {
-            printf("kernel_dim must be larger than padding\n");
-            exit(1);
-        }
+        //if (kernel_dim <= padding) {
+        //    printf("kernel_dim must be larger than padding\n");
+        //    exit(1);
+       // }
     }
 #endif
 
@@ -3365,11 +3365,11 @@ static void tiled_conv_A_stride_dw(
         if (acc_rows > ACC_ROWS / 2) {
             printf("not enough accumulator space to store outputs\n");
             exit(1);
-        }
+        }/*
         if (kernel_dim <= padding) {
             printf("kernel_dim must be larger than padding\n");
             exit(1);
-        }
+        }*/
     }
 #endif
 
@@ -5417,11 +5417,11 @@ static void tiled_conv_original(
         if (acc_rows > ACC_ROWS) {
             printf("not enough accumulator space to store outputs\n");
             exit(1);
-        }
+        }/*
         if (kernel_dim <= padding) {
             printf("kernel_dim must be larger than padding\n");
             exit(1);
-        }
+        }*/
     }
 #endif
 
