@@ -224,19 +224,6 @@ void printMatrix(elem_t m[DIM][DIM]) {
   }
 }
 
-void printSparseMat(elem_t data[DIM*DIM], elem_t coo[DIM*DIM][2]) {
-  for (size_t i = 0; i < DIM*DIM; ++i) {
-#ifndef ELEM_T_IS_FLOAT
-      if (data[i])
-          printf("%d (%d, %d), ", data[i], coo[i][0], coo[i][1]);
-#else
-      if (data[i])
-          printf("%x (%d, %d), ", elem_t_to_elem_t_bits(data[i]), coo[i][0], coo[i][1]);
-#endif
-  }
-  printf("\n");
-}
-
 void printMatrixAcc(acc_t m[DIM][DIM]) {
   for (size_t i = 0; i < DIM; ++i) {
     for (size_t j = 0; j < DIM; ++j)

@@ -17,6 +17,27 @@
 #error not enough scratchpad space
 #endif
 
+void printSparseMat(elem_t data[DIM*DIM], ind_t coo[DIM*DIM][2]) {
+  for (size_t i = 0; i < DIM*DIM; ++i) {
+#ifndef ELEM_T_IS_FLOAT
+      if (data[i])
+          printf("[%d] %d (%d, %d), ", i, data[i], coo[i][0], coo[i][1]);
+#else
+      if (data[i])
+          printf("[%d] %x (%d, %d), ", i, elem_t_to_elem_t_bits(data[i]), coo[i][0], coo[i][1]);
+#endif
+  }
+  printf("\n");
+}
+
+void printFMatrix(float m[DIM][DIM]) {
+  for (size_t i = 0; i < DIM; ++i) {
+    for (size_t j = 0; j < DIM; ++j)
+      printf("%f ", m[i][j]);
+    printf("\n");
+  }
+}
+
 int main() {
 #ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
@@ -44,7 +65,8 @@ int main() {
     for (size_t i = 0; i < DIM; ++i)
       for (size_t j = 0; j < DIM; ++j)
         if ((rand() % 100) < SPARSITY) { 
-          int value = i*DIM + j + n;
+          //int value = (i*DIM + j + n); // / 2; there is some sort of clamping going on here
+          float value = (float) (rand() % 128); 
           InDense[n][i][j]          = value;
           InSpData[n][sparse_index] = value;
           InSpCoo[n][sparse_index][0] = i;
@@ -71,7 +93,7 @@ int main() {
     printf("Mvin %d\n", n);
     // the current spike implementation requires that the addresses of data and coo passed in 
     // point to the first nonzero value after or including (start_row, start_col) (in this case 0,0)
-    gemmini_extended_mvin_sparse_coo(&InSpData[n], &InSpCoo[n], n*DIM, 0, DIM, 0, DIM); 
+    gemmini_extended_mvin_sparse_coo(&InSpData[n], &InSpCoo[n], DIM*DIM, n*DIM, 0, DIM, 0, DIM); 
     printf("Mvout %d\n", n);
     gemmini_mvout(&OutDense[n], n*DIM);
   }
