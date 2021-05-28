@@ -975,7 +975,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #define db_mats_in_partition (db_partition_rows / DIM)
 #define db_mats_in_acc ((ACC_ROWS / 2) / DIM)
 #define db_max_tile_i_j ((size_t)sqrt(db_mats_in_acc))
-#define db_max_tile_k (db_mats_in_partition / db_max_tile_i_j)
+#define db_max_tile_k (db_mats_in_partition / db_max_tile_i_j - 1)
 
     const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
     const size_t dim_J_padded = (dim_J / DIM + (dim_J % DIM != 0)) * DIM;
@@ -1033,7 +1033,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 
     printf("tile_I: %d\n", tile_I);
     printf("tile_J: %d\n", tile_J);
-    printf("tile_K: %d\n\n", tile_J);
+    printf("tile_K: %d\n\n", tile_K);
 
     printf("spad_rows: %d\n", spad_rows);
     printf("acc_rows: %d\n\n", acc_rows);
