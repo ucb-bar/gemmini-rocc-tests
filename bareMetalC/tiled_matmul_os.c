@@ -155,7 +155,7 @@ int main() {
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
             false, false,
             false, false,
-            3,
+            0,
             OS);
 
     unsigned long end = read_cycles();
