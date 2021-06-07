@@ -26,9 +26,9 @@ typedef elem_t ACC_T;
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM_I 64
-#define MAT_DIM_K 64
-#define MAT_DIM_J 64
+#define MAT_DIM_I 60
+#define MAT_DIM_K 50
+#define MAT_DIM_J 40
 #endif
 
 void print_tile(elem_t* in, int tile_dim) {
@@ -154,7 +154,7 @@ int main() {
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
             false, false,
             false, !FULL_BIAS_WIDTH,
-            3, false,
+            3, true,
             WS);
 
     unsigned long end = read_cycles();
