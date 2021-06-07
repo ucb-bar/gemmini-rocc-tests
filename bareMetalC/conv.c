@@ -15,13 +15,21 @@
 #define PADDING 1
 #define STRIDE 2
 #else
-#define BATCH_SIZE 3
+#ifdef FAST
+#define IN_DIM 9
+#define IN_CHANNELS 5
+#define OUT_CHANNELS 7
+#else
 #define IN_DIM 23
 #define IN_CHANNELS 17
 #define OUT_CHANNELS 31
+#endif
+
+#define BATCH_SIZE 3
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 2
+
 #endif
 
 #define NO_BIAS false
@@ -69,9 +77,6 @@ void conv(int batch_size, int in_channels, int in_dim,
                         }
                     }
 
-                    // Shift while rounding to nearest integer (ties round to negative infinity)
-                    result = ROUNDING_RIGHT_SHIFT(result, 0);
-
                     // Clip result
                     result = result > elem_t_max ? elem_t_max : (result < elem_t_min ? elem_t_min : result);
 
@@ -113,16 +118,26 @@ bool vec_is_equal(elem_t * a, elem_t * b, int len) {
 }
 
 void init_random(elem_t * buf, int len) {
+    elem_t i = 0;
     for (elem_t * ptr = buf; ptr < buf + len; ptr++) {
         // *ptr = (rand() % 32) - 16;
-        *ptr = (rand() % 5) - 2;
+#ifdef FAST
+      *ptr = 1;
+#else
+      *ptr = (rand() % 5) - 2;
+#endif
     }
 }
 
 void init_random_acc(acc_t * buf, int len) {
+    elem_t i = 0;
     for (acc_t * ptr = buf; ptr < buf + len; ptr++) {
         // *ptr = (rand() % 32) - 16;
-        *ptr = (rand() % 5) - 2;
+#ifdef FAST
+      *ptr = 1;
+#else
+      *ptr = (rand() % 5) - 2;
+#endif
     }
 }
 
@@ -159,6 +174,7 @@ int main() {
 
     printf("CPU conv...\n");
     uint64_t start_cpu = read_cycles();
+#ifndef FAST
     conv(BATCH_SIZE, IN_CHANNELS, IN_DIM,
             OUT_CHANNELS, KERNEL_DIM,
             OUT_DIM,
@@ -167,6 +183,7 @@ int main() {
             weights,
             bias,
             output);
+#endif
     uint64_t end_cpu = read_cycles();
     printf("CPU conv took %llu cycles\n", end_cpu - start_cpu);
 
@@ -191,7 +208,7 @@ int main() {
         NO_BIAS ? NULL : (acc_t*)bias,
         (elem_t*)output_mat,
 
-        NO_ACTIVATION, 0, 0, 0, 0, 0,
+        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, 0,
 
         WS);
     uint64_t end_gemmini = read_cycles();
@@ -199,7 +216,20 @@ int main() {
 
     ASSERT(sizeof(output_mat) == sizeof(output), "output_mat size");
 
+#ifdef FAST
+    bool success = true;
+    for (int orow = 0; orow < BATCH_SIZE * OUT_DIM * OUT_DIM; orow++) {
+      for (int ocol = 0; ocol < OUT_CHANNELS; ocol++) {
+	elem_t v = output_mat[orow][ocol];
+	if (v != 21 && v != 31 && v != 46) {
+	  success = false;
+	  break;
+	}
+      }
+    }
+#else
     bool success = vec_is_equal(&output[0][0][0][0], &output_mat[0][0], sizeof(output) / sizeof(elem_t));
+#endif
 
     if (!success) {
         // return 1;
@@ -289,4 +319,3 @@ int main() {
 
     return 0;
 }
-

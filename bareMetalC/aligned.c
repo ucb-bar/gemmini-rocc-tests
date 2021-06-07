@@ -41,6 +41,7 @@ int main() {
     }
 
   gemmini_config_ld(DIM * sizeof(elem_t));
+  gemmini_config_st(DIM * sizeof(elem_t));
 
   // printf("Mvin\n");
   gemmini_mvin(In.data, 0);

@@ -16,6 +16,7 @@ int main() {
   pin_all();
   gemmini_flush(0);
   gemmini_config_ld(DIM * sizeof(elem_t));
+  gemmini_config_st(DIM * sizeof(elem_t));
 
   const int a_additions = 10;
   const int b_additions = 10;
@@ -54,7 +55,7 @@ int main() {
   gemmini_mvin(IDENTITY, D_addr);
   
   // printf("Setting mode\n");
-  gemmini_config_ex(OUTPUT_STATIONARY, 0, 0, 0, 0);
+  gemmini_config_ex(OUTPUT_STATIONARY, 0, 0, ACC_SCALE_IDENTITY, 0);
 
   // printf("RAW with A\n");
   for (int i = 0; i < a_additions; i++) {

@@ -8,7 +8,21 @@
 
 #include "include/gemmini_testutils.h"
 
+
+
+#define MIN(a,b) ((a > b) ? b : a)
+
+#ifdef FAST
+#define BIG_DIM (DIM*2)
+#define BINIT MIN(MAX_BLOCK_LEN_ACC, BIG_DIM/DIM)
+#define AINIT 2
+#define SINIT 12
+#else
 #define BIG_DIM 64
+#define BINIT 1
+#define AINIT 0
+#define SINIT 0
+#endif
 
 #if (BIG_DIM % DIM) != 0
 #error incorrect dimensions
@@ -39,18 +53,18 @@ int is_equal_big(elem_t x[BIG_DIM][BIG_DIM], elem_t y[BIG_DIM][BIG_DIM]) {
   return 1;
 }
 
-void matshift_big(full_t full[BIG_DIM][BIG_DIM], elem_t out[BIG_DIM][BIG_DIM], int shift) {
+void matscale_big(full_t full[BIG_DIM][BIG_DIM], elem_t out[BIG_DIM][BIG_DIM], acc_scale_t scale) {
   for (size_t r = 0; r < BIG_DIM; r++)
     for (size_t c = 0; c < BIG_DIM; c++) {
-      // Bitshift and round element
-      full_t shifted = ROUNDING_RIGHT_SHIFT(full[r][c], shift);
+      // Scale element
+      full_t scaled = ACC_SCALE(full[r][c], scale);
 
       // Saturate and cast element
 #ifndef ELEM_T_IS_FLOAT
-      full_t elem = shifted > elem_t_max ? elem_t_max : (shifted < elem_t_min ? elem_t_min : shifted);
+      full_t elem = scaled > elem_t_max ? elem_t_max : (scaled < elem_t_min ? elem_t_min : scaled);
       out[r][c] = elem;
 #else
-      out[r][c] = shifted; // TODO should we also saturate when using floats?
+      out[r][c] = scaled; // TODO should we also saturate when using floats?
 #endif
     }
 }
@@ -99,26 +113,30 @@ int main() {
   pin_all();
   gemmini_flush(0);
 
-  for (int block_len = 1; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN_ACC; block_len++) {
-    for (int activation = 0; activation <= 2; ++activation) {
-      for (int shift = 0; shift <= 12; shift += 4) {
-        // printf("block_len: %d, activation: %d, shift: %d\n", block_len, activation, shift);
+  for (int block_len = BINIT; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN_ACC; block_len++) {
+    for (int activation = AINIT; activation <= 2; ++activation) {
+      for (int scale = SINIT; scale <= 12; scale += 4) {
+        // printf("block_len: %d, activation: %d, scale: %d\n", block_len, activation, scale);
         
         static acc_t In[BIG_DIM][BIG_DIM] row_align_acc(1);
         static full_t In_full[BIG_DIM][BIG_DIM];
         static elem_t Out[BIG_DIM][BIG_DIM] row_align(1);
         static elem_t Out_gold[BIG_DIM][BIG_DIM];
 
-        int relu6_shift = shift+1;
+        int relu6_shift = scale+1;
 
         for (size_t i = 0; i < BIG_DIM; ++i) {
           for (size_t j = 0; j < BIG_DIM; ++j) {
 #ifndef ELEM_T_IS_FLOAT
             In[i][j] = 0;
-
-            int bytes = rand() % 2 ? sizeof(acc_t) : sizeof(elem_t);
+#ifdef FAST
+#define RAND (j + i)
+#else
+#define RAND rand()
+#endif
+            int bytes = RAND % 2 ? sizeof(acc_t) : sizeof(elem_t);
             for (size_t b = 0; b < bytes; ++b) {
-              In[i][j] |= (rand() % 255) << (b*8);
+              In[i][j] |= (RAND % 255) << (b*8);
             }
 #else
             acc_t_bits data;
@@ -139,7 +157,7 @@ int main() {
           }
         }
 
-        matshift_big(In_full, Out_gold, shift);
+        matscale_big(In_full, Out_gold, scale);
 
         if (activation == RELU)
           matrelu_big(Out_gold, Out_gold);
@@ -149,7 +167,7 @@ int main() {
         const uint32_t acc_addr = 1 << (ADDR_LEN-1);
 
         gemmini_config_ld(BIG_DIM*sizeof(acc_t));
-        gemmini_config_ex(0, activation, 0, shift, relu6_shift);
+        gemmini_config_ex(0, activation, 0, scale, relu6_shift);
         gemmini_config_st(BIG_DIM*sizeof(elem_t));
 
         for (size_t i = 0; i < BIG_DIM; i += DIM) {
@@ -179,7 +197,7 @@ int main() {
 
         // printf("Check\n");
         if (!is_equal_big(Out, Out_gold)) {
-          printf("block_len: %d, activation: %d, shift: %d\n", block_len, activation, shift);
+          printf("block_len: %d, activation: %d, scale: %d\n", block_len, activation, scale);
 
           /*printf("Out:\n");
           for (size_t i = 0; i < BIG_DIM; i++) {

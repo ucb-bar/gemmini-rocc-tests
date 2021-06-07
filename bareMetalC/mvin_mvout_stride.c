@@ -8,7 +8,14 @@
 
 #include "include/gemmini_testutils.h"
 
+#define MIN(a,b) ((a > b) ? b : a)
+#ifdef FAST
+#define BIG_DIM (DIM*2)
+#define BINIT MIN(MAX_BLOCK_LEN_ACC, BIG_DIM/DIM)
+#else
 #define BIG_DIM 64
+#define BINIT 1
+#endif
 
 #if (BIG_DIM % DIM) != 0
 #error incorrect dimensions
@@ -38,7 +45,7 @@ int main() {
   pin_all();
   gemmini_flush(0);
 
-  for (int block_len = 1; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN; block_len++) {
+  for (int block_len = BINIT; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN; block_len++) {
     // printf("block_len: %d\n", block_len);
 
     static elem_t In[BIG_DIM][BIG_DIM] row_align(1);
@@ -46,7 +53,12 @@ int main() {
 
     for (size_t i = 0; i < BIG_DIM; ++i)
       for (size_t j = 0; j < BIG_DIM; ++j) {
-        In[i][j] = (rand() % 64) - 32; // i*BIG_DIM + j;
+#ifdef FAST
+#define RAND (j + i)
+#else
+#define RAND rand()
+#endif
+        In[i][j] = (RAND % 64) - 32; // i*BIG_DIM + j;
         Out[i][j] = 0;
       }
 

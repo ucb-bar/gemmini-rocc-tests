@@ -8,7 +8,15 @@
 
 #include "include/gemmini_testutils.h"
 
+#ifdef FAST
+#define N 2
+#define AINIT 2
+#define SINIT 12
+#else
 #define N 4
+#define AINIT 0
+#define SINIT 12
+#endif
 
 #if (N*DIM) > ACC_ROWS
 #error not enough accumulator space
@@ -18,16 +26,16 @@ int main() {
   pin_all();
   gemmini_flush(0);
 
-  for (int activation = 0; activation <= 2; ++activation) {
-    for (int shift = 0; shift <= 12; shift += 4) {
-      // printf("activation: %d, shift: %d\n", activation, shift);
+  for (int activation = AINIT; activation <= 2; ++activation) {
+    for (int scale = SINIT; scale <= 12; scale += 4) {
+      // printf("activation: %d, scale: %d\n", activation, scale);
 
       static acc_t In[N][DIM][DIM] row_align_acc(1);
       static full_t In_full[N][DIM][DIM];
       static elem_t Out[N][DIM][DIM] row_align(1);
       static elem_t Out_gold[N][DIM][DIM];
 
-      int relu6_shift = shift+1;
+      int relu6_shift = scale+1;
 
       // printf("Initializing matrices\n");
       for (size_t n = 0; n < N; ++n)
@@ -35,10 +43,14 @@ int main() {
           for (size_t j = 0; j < DIM; ++j) {
 #ifndef ELEM_T_IS_FLOAT
             In[n][i][j] = 0;
-
-            int bytes = rand() % 2 ? sizeof(acc_t) : sizeof(elem_t);
+#ifdef FAST
+#define RAND (j + i)
+#else
+#define RAND rand()
+#endif
+            int bytes = RAND % 2 ? sizeof(acc_t) : sizeof(elem_t);
             for (size_t b = 0; b < bytes; ++b) {
-              In[n][i][j] |= (rand() % 255) << (b*8);
+              In[n][i][j] |= (RAND % 255) << (b*8);
             }
 #else
             acc_t_bits data;
@@ -60,7 +72,7 @@ int main() {
 
       // printf("Shifting and activating matrices\n");
       for (size_t n = 0; n < N; ++n) {
-        matshift(In_full[n], Out_gold[n], shift);
+        matscale(In_full[n], Out_gold[n], scale);
 
         if (activation == RELU)
           matrelu(Out_gold[n], Out_gold[n]);
@@ -72,7 +84,7 @@ int main() {
 
       // printf("Config\n");
       gemmini_config_ld(DIM*sizeof(acc_t));
-      gemmini_config_ex(0, activation, 0, shift, relu6_shift);
+      gemmini_config_ex(0, activation, 0, scale, relu6_shift);
       gemmini_config_st(DIM*sizeof(elem_t));
 
       // printf("Mvin and mvout\n");
@@ -89,7 +101,7 @@ int main() {
       // printf("Check\n");
       for (size_t n = 0; n < N; ++n)
         if (!is_equal(Out[n], Out_gold[n])) {
-          printf("activation: %d, shift: %d\n", activation, shift);
+          printf("activation: %d, scale: %d\n", activation, scale);
 
           printf("Matrix %u:\n", n);
           for (size_t i = 0; i < DIM; ++i) {
