@@ -28,6 +28,8 @@ int main() {
       for (size_t j = 0; j < DIM; ++j)
         In[n][i][j] = i*DIM + j + n;
 
+  gemmini_config_st(DIM * sizeof(elem_t));
+
   for (int n = 0; n < N; ++n) {
     gemmini_extended_config_ld(DIM * sizeof(elem_t), n);
     gemmini_mvin(In[n], n*DIM);
@@ -41,7 +43,7 @@ int main() {
 
     for (size_t i = 0; i < DIM; ++i)
       for (size_t j = 0; j < DIM; ++j) {
-         if (Out[n][i][j] != (elem_t)(n * In[n][i][j])) {
+         if (Out[n][i][j] != (elem_t)(MVIN_SCALE(In[n][i][j], n))) {
            is_correct = false;
            break;
          }
@@ -53,6 +55,7 @@ int main() {
       printf("Matrix %u output:\n", n);
       printMatrix(Out[n]);
       printf("\n");
+      printf("Scale: %d", n);
 
       exit(1);
     }
@@ -71,6 +74,7 @@ int main() {
         In_acc[n][i][j] = i*DIM + j + n;
 
   gemmini_config_ex(0, NO_ACTIVATION, 0, 0, 0); // Set shift to 0
+  gemmini_config_st(DIM * sizeof(elem_t));
 
   for (int n = 0; n < N; ++n) {
     gemmini_extended_config_ld(DIM * sizeof(acc_t), (n+1));
@@ -85,7 +89,8 @@ int main() {
 
     for (size_t i = 0; i < DIM; ++i)
       for (size_t j = 0; j < DIM; ++j) {
-         acc_t gold = (n+1) * In_acc[n][i][j];
+         // acc_t gold = (n+1) * In_acc[n][i][j];
+         acc_t gold = ACC_SCALE(In_acc[n][i][j], n+1);
          if (gold > elem_t_max) {
              gold = elem_t_max;
          } else if (gold < elem_t_min) {

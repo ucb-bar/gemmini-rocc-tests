@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #=============================================================================
 # variables
 #=============================================================================
@@ -7,6 +8,7 @@ XLEN           := @XLEN@
 RISCVTOOLS     := @RISCVTOOLS@
 ROCC           := examples
 CATEGORIES     := bareMetalC mlps imagenet
+RUNNER         := "spike --extension=gemmini "
 
 #=============================================================================
 # targets
@@ -30,3 +32,36 @@ clean:
 	$(MAKE) -C imagenet -f $(abs_top_srcdir)/imagenet/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-imagenet clean
 	$(MAKE) -C mlps -f $(abs_top_srcdir)/mlps/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-mlps clean
 
+test-baremetal-bareMetalC:
+	make -C bareMetalC	\
+	        -f $(abs_top_srcdir)/bareMetalC/Makefile \
+                TARGET_MAKEFILE=$(abs_top_srcdir)/bareMetalC/Makefile \
+		abs_top_srcdir=$(abs_top_srcdir) \
+	 	src_dir=$(abs_top_srcdir)/bareMetalC \
+	 	XLEN=$(XLEN) \
+	 	PREFIX=$(ROCC)-bareMetalC \
+		RISCVTOOLS=$(RISCVTOOLS) \
+		RUNNER=$(RUNNER) \
+		run-baremetal
+
+test-baremetal: test-baremetal-bareMetalC
+	make -C mlps	\
+	        -f $(abs_top_srcdir)/mlps/Makefile \
+                TARGET_MAKEFILE=$(abs_top_srcdir)/mlps/Makefile \
+		abs_top_srcdir=$(abs_top_srcdir) \
+	 	src_dir=$(abs_top_srcdir)/mlps \
+	 	XLEN=$(XLEN) \
+	 	PREFIX=$(ROCC)-mlps \
+		RISCVTOOLS=$(RISCVTOOLS) \
+		RUNNER=$(RUNNER) \
+	        run-baremetal
+	make -C imagenet	\
+	        -f $(abs_top_srcdir)/imagenet/Makefile \
+                TARGET_MAKEFILE=$(abs_top_srcdir)/imagenet/Makefile \
+		abs_top_srcdir=$(abs_top_srcdir) \
+	 	src_dir=$(abs_top_srcdir)/imagenet \
+	 	XLEN=$(XLEN) \
+	 	PREFIX=$(ROCC)-imagenet \
+		RISCVTOOLS=$(RISCVTOOLS) \
+		RUNNER=$(RUNNER) \
+		run-baremetal

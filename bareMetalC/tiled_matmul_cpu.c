@@ -65,18 +65,18 @@ int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]
   return 1;
 }
 
-void full_matshift(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_DIM_J], int shift) {
+void full_matscale(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_DIM_J], acc_scale_t scale) {
   for (size_t r = 0; r < MAT_DIM_I; r++)                             
     for (size_t c = 0; c < MAT_DIM_J; c++) {
-      // Bitshift and round element
-      full_t shifted = ROUNDING_RIGHT_SHIFT(full[r][c], shift);
+      // Scale element
+      full_t scaled = ACC_SCALE(full[r][c], scale);
 
       // Saturate and cast element
 #ifndef ELEM_T_IS_FLOAT
-      full_t elem = shifted > elem_t_max ? elem_t_max : (shifted < elem_t_min ? elem_t_min : shifted);
+      full_t elem = scaled > elem_t_max ? elem_t_max : (scaled < elem_t_min ? elem_t_min : scaled);
       out[r][c] = elem;
 #else
-      out[r][c] = shifted; // TODO should we also saturate when using floats?
+      out[r][c] = scaled; // TODO should we also saturate when using floats?
 #endif
     }
 } 
@@ -120,7 +120,7 @@ int main() {
     full_matmul(full_A, full_B, full_D, gold_full);
     unsigned long cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
-    full_matshift(gold_full, gold, 0);
+    full_matscale(gold_full, gold, ACC_SCALE_IDENTITY);
 #endif
 
     printf("Starting fast CPU matmul\n");
@@ -129,8 +129,10 @@ int main() {
     tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
             (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
-            MVIN_SCALE_ONE, MVIN_SCALE_ONE, MVIN_SCALE_ONE,
-            NO_ACTIVATION, 0, 0, false,
+            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
+            false, false,
+            false, false,
             CPU);
 
     unsigned long end = read_cycles();
