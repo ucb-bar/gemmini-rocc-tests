@@ -27,7 +27,7 @@
 // #define MAT_DIM_J 128
 
 #define MAT_DIM_I 32
-#define MAT_DIM_K 1000
+#define MAT_DIM_K 1022
 #define MAT_DIM_J 32
 
 // #define MAT_DIM_I 256
@@ -38,7 +38,7 @@
 
 #define L2SIZE 524288
 #define L2LINESIZE 64
-#define NUMDIRTY 10000
+#define NUMDIRTY 1
 
 #if A_TRANSPOSE==0
 #define A_STRIDE MAT_DIM_K
