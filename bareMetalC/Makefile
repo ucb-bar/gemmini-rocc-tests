@@ -32,6 +32,7 @@ tests = \
 	conv_trans_input_3120_with_kernel_dilation \
 	tiled_matmul_os \
 	tiled_matmul_ws \
+	tiled_matmul_ws_ooo \
 	tiled_matmul_ws_At \
 	tiled_matmul_ws_Bt \
 	tiled_matmul_ws_full_C \
