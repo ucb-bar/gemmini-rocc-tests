@@ -27,7 +27,7 @@
 // #define MAT_DIM_J 128
 
 #define MAT_DIM_I 32
-#define MAT_DIM_K 1022
+#define MAT_DIM_K 1000
 #define MAT_DIM_J 32
 
 // #define MAT_DIM_I 256
@@ -111,7 +111,7 @@ int main() {
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
             A_TRANSPOSE, B_TRANSPOSE,
             false, false,
-            1, true
+            1, true,
             WS);
 
     unsigned long end = read_cycles();
