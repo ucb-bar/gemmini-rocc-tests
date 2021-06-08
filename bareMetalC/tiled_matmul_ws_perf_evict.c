@@ -27,7 +27,7 @@
 // #define MAT_DIM_J 128
 
 #define MAT_DIM_I 32
-#define MAT_DIM_K 1000
+#define MAT_DIM_K 1022
 #define MAT_DIM_J 32
 
 // #define MAT_DIM_I 256
