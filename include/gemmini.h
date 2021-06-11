@@ -675,7 +675,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
 
   gemmini_fence();
 }
-
+/*
 static elem_t scale_and_sat(acc_t x, int act, acc_scale_t scale, size_t relu6_shift) {
   // Scale value down and round it
   x = ACC_SCALE(x, scale);
@@ -692,7 +692,7 @@ static elem_t scale_and_sat(acc_t x, int act, acc_scale_t scale, size_t relu6_sh
   }
   return x;
 }
-
+*/
 #ifdef HAS_MVIN_SCALE
 #define GEMMINI_SCALE(x, scale) MVIN_SCALE((x), (scale))
 #else
@@ -945,7 +945,8 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
 }
 
 static size_t tiled_matmul_total_spad_rows(size_t I, size_t J, size_t K) {
-  return (I * K + K * J) * DIM;
+  return (I * K + K * J + 1) * DIM;
+  //return (I * K + K * J) * DIM;
 }
 
 static size_t tiled_matmul_total_acc_rows(size_t I, size_t J) {
@@ -976,7 +977,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #define db_mats_in_partition (db_partition_rows / DIM)
 #define db_mats_in_acc ((ACC_ROWS / 2) / DIM)
 #define db_max_tile_i_j ((size_t)sqrt(db_mats_in_acc))
-#define db_max_tile_k (db_mats_in_partition / db_max_tile_i_j)
+#define db_max_tile_k (db_mats_in_partition / db_max_tile_i_j - 1)
 
     const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
     const size_t dim_J_padded = (dim_J / DIM + (dim_J % DIM != 0)) * DIM;
@@ -1034,7 +1035,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 
     printf("tile_I: %d\n", tile_I);
     printf("tile_J: %d\n", tile_J);
-    printf("tile_K: %d\n\n", tile_J);
+    printf("tile_K: %d\n\n", tile_K);
 
     printf("spad_rows: %d\n", spad_rows);
     printf("acc_rows: %d\n\n", acc_rows);
