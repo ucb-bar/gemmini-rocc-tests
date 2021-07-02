@@ -41,6 +41,7 @@ tests = \
 	tiled_matmul_option \
 	tiled_matmul_ws_perf \
 	tiled_matmul_ws_perf_evict \
+	tiled_matmul_ws_perf_evict_rand \
 	transpose \
 	fp_acc \
 	matrix_add \
