@@ -10,7 +10,7 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define NO_BIAS 0
+#define NO_BIAS 1
 #define REPEATING_BIAS 1
 
 #define A_TRANSPOSE 0
