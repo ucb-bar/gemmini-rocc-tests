@@ -89,7 +89,7 @@ int main() {
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
             A_TRANSPOSE, B_TRANSPOSE,
             false, false,
-            3, false,
+            0, false,
             WS);
 
     unsigned long end = read_cycles();
