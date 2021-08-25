@@ -108,117 +108,6 @@ void conv(int batch_size, int in_channels, int in_dim,
     }
 }
 
-void cpu_tiled_conv_inner(
-        int batch_size, int in_dim, int in_channels,
-        int out_channels, int out_dim, int pool_out_dim,
-
-        int stride, int padding, int kernel_dim,
-
-        int pool_size, int pool_stride, int pool_padding,
-
-        int batches,
-        int porows, int pocols, int pochs,
-        int krows, int kcols, int kchs,
-
-        int lpad, int rpad, int upad, int dpad,
-        int plpad, int prpad, int pupad, int pdpad,
-
-        elem_t * input,
-        elem_t * weights,
-        elem_t * output,
-        acc_t * bias,
-
-        bool no_bias) {
-
-    const int orows = porows * pool_stride + pool_size - 1 - pupad - pdpad;
-    const int ocols = pocols * pool_stride + pool_size - 1 - plpad - prpad;
-    const int ochs = pochs;
-
-    const int irows = orows * stride + krows - 1 - upad - dpad;
-    const int icols = ocols * stride + kcols - 1 - lpad - rpad;
-
-    elem_t output_buffer[batches*orows*ocols][ochs];
-
-    // Perform conv
-    for (int b = 0; b < batches; b++) {
-        for (int orow = 0; orow < orows; orow++) {
-            for (int ocol = 0; ocol < ocols; ocol++) {
-                for (int och = 0; och < ochs; och++) {
-                    output_buffer[b * orows * ocols + orow * ocols + ocol][och] = bias[och];
-
-                    for (int krow = 0; krow < krows; krow++) {
-                        for (int kcol = 0; kcol < kcols; kcol++) {
-                            for (int kch = 0; kch < kchs; kch++) {
-                                int irow = orow * stride + krow - upad;
-                                int icol = ocol * stride + kcol - lpad;
-
-                                elem_t pixel = irow < 0 || irow >= irows ||
-                                    icol < 0 || icol >= icols ?
-                                    0 : *(input + (b * in_dim * in_dim + irow * in_dim + icol) * in_channels + kch);
-
-                                elem_t weight = *(weights + (krow * kernel_dim * in_channels + kcol * in_channels + kch) * out_channels + och);
-
-                                output_buffer[b * orows * ocols + orow * ocols + ocol][och] += pixel * weight;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    assert(orows+pupad+pdpad >= pool_size && ocols+plpad+prpad >= pool_size);
-    assert(krows == kernel_dim && kcols == kernel_dim && kchs == in_channels);
-
-    // Pool output_buffer into output
-    // Arguments necessary:
-    // * pool_stride
-    // * pool_size
-    // * pool_out_dim
-    // * out_channels (this can just be stride)
-    // * porows
-    // * pocols
-    // * pochs (inner) (this can probably just be len in mvout)
-    // * output + (b * pool_out_dim + pool_out_dim) * out_channels + poch_outer (this can just be the vaddr in mvout)
-    // * orows
-    // * ocols
-    // * pupad
-    // * plpad
-    for (int b = 0; b < batches; b++) {
-        for (int poch_outer = 0; poch_outer < pochs; poch_outer += DIM) {
-            const int channels = poch_outer + DIM >= pochs ? pochs - poch_outer : DIM;
-
-            elem_t * pout_outer = output + (b * pool_out_dim * pool_out_dim)*out_channels + poch_outer;
-
-            // Everything below this will run in hardware
-            for (int porow = 0; porow < porows; porow++) {
-                for (int pocol = 0; pocol < pocols; pocol++) {
-                    for (int poch = 0; poch < channels; poch++) {
-                        elem_t * pout = pout_outer + (porow * pool_out_dim + pocol)*out_channels + poch;
-
-                        *pout = elem_t_min;
-
-                        for (int wrow = 0; wrow < pool_size; wrow++) {
-                            for (int wcol = 0; wcol < pool_size; wcol++) {
-                                int orow = porow * pool_stride + wrow - pupad;
-                                int ocol = pocol * pool_stride + wcol - plpad;
-
-                                elem_t pixel = orow < 0 || orow >= orows || ocol < 0 || ocol >= ocols ?
-                                    0 :
-                                    output_buffer[b * orows * ocols + orow * ocols + ocol][poch];
-
-                                if (pixel > *pout) {
-                                    *pout = pixel;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 void pool(int batch_size, int channels, int in_dim, int out_dim,
         int window_dim, int stride, int padding,
         elem_t input[batch_size][in_dim][in_dim][channels],
@@ -386,7 +275,8 @@ int main() {
     tiled_conv_A_stride_auto(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
-        STRIDE, PADDING, KERNEL_DIM,
+        STRIDE, 1, 1, PADDING, KERNEL_DIM,
+        false, false, false, false, false,
 
         // 1,
         // 1, 1, 1,

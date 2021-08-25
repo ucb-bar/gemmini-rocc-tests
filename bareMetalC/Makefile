@@ -19,6 +19,16 @@ tests = \
 	mvin_scale \
 	conv \
 	conv_with_pool \
+	conv_with_rot180 \
+	conv_with_kernel_dilation \
+	conv_with_input_dilation \
+	conv_with_input_dilation_and_rot180 \
+	conv_with_input_dilation_and_neg_padding \
+	conv_trans_output_1203 \
+	conv_trans_weight_1203 \
+	conv_trans_weight_0132 \
+	conv_trans_input_3120 \
+	conv_trans_input_3120_with_kernel_dilation \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_ws_At \
@@ -31,6 +41,7 @@ tests = \
 	transpose \
 	matrix_add \
 	resadd \
+	global_average \
 	template \
 	counter
 

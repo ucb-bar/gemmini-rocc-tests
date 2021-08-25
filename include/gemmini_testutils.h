@@ -27,7 +27,7 @@
 // #define GEMMINI_ASSERTIONS
 
 // Matmul utility functions
-void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+static void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       C_full[r][c] = D[r][c];
@@ -36,7 +36,7 @@ void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C
     }
 }
 
-void matmul_short(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
+static void matmul_short(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       C[r][c] = D[r][c];
@@ -45,7 +45,7 @@ void matmul_short(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], el
     }
 }
 
-void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+static void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
   // Identical to the other matmul function, but with a 64-bit bias
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
@@ -55,7 +55,7 @@ void matmul_full(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], ful
     }
 }
 
-void matmul_A_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+static void matmul_A_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       C_full[r][c] = D[r][c];
@@ -64,7 +64,7 @@ void matmul_A_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][D
     }
 }
 
-void matmul_short_A_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
+static void matmul_short_A_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       C[r][c] = D[r][c];
@@ -73,7 +73,7 @@ void matmul_short_A_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[
     }
 }
 
-void matmul_full_A_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+static void matmul_full_A_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       C_full[r][c] = D[r][c];
@@ -82,7 +82,7 @@ void matmul_full_A_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[D
     }
 }
 
-void matmul_B_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+static void matmul_B_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       C_full[r][c] = D[r][c];
@@ -91,7 +91,7 @@ void matmul_B_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][D
     }
 }
 
-void matmul_short_B_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
+static void matmul_short_B_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       C[r][c] = D[r][c];
@@ -100,7 +100,7 @@ void matmul_short_B_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[
     }
 }
 
-void matmul_full_B_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+static void matmul_full_B_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       C_full[r][c] = D[r][c];
@@ -109,7 +109,7 @@ void matmul_full_B_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[D
     }
 }
 
-void matmul_AB_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+static void matmul_AB_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       C_full[r][c] = D[r][c];
@@ -118,7 +118,7 @@ void matmul_AB_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][
     }
 }
 
-void matmul_short_AB_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
+static void matmul_short_AB_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], elem_t C[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       C[r][c] = D[r][c];
@@ -127,7 +127,7 @@ void matmul_short_AB_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D
     }
 }
 
-void matmul_full_AB_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
+static void matmul_full_AB_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       C_full[r][c] = D[r][c];
@@ -136,14 +136,14 @@ void matmul_full_AB_transposed(elem_t A[DIM][DIM], elem_t B[DIM][DIM], full_t D[
     }
 }
 
-void matadd(full_t sum[DIM][DIM], full_t m1[DIM][DIM], full_t m2[DIM][DIM]) {
+static void matadd(full_t sum[DIM][DIM], full_t m1[DIM][DIM], full_t m2[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++)
       sum[r][c] = m1[r][c] + m2[r][c];
 }
 
 // THIS IS A ROUNDING SHIFT! It also performs a saturating cast
-void matshift(full_t full[DIM][DIM], elem_t out[DIM][DIM], int shift) {
+static void matshift(full_t full[DIM][DIM], elem_t out[DIM][DIM], int shift) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       // Bitshift and round element
@@ -159,7 +159,7 @@ void matshift(full_t full[DIM][DIM], elem_t out[DIM][DIM], int shift) {
     }
 }
 
-void matscale(full_t full[DIM][DIM], elem_t out[DIM][DIM], acc_scale_t scale) {
+static void matscale(full_t full[DIM][DIM], elem_t out[DIM][DIM], acc_scale_t scale) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++) {
       // Bitshift and round element
@@ -175,13 +175,13 @@ void matscale(full_t full[DIM][DIM], elem_t out[DIM][DIM], acc_scale_t scale) {
     }
 }
 
-void matrelu(elem_t in[DIM][DIM], elem_t out[DIM][DIM]) {
+static void matrelu(elem_t in[DIM][DIM], elem_t out[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++)
       out[r][c] = in[r][c] > 0 ? in[r][c] : 0;
 }
 
-void matrelu6(elem_t in[DIM][DIM], elem_t out[DIM][DIM], int scale) {
+static void matrelu6(elem_t in[DIM][DIM], elem_t out[DIM][DIM], int scale) {
   int max = 6 * scale;
 
   for (size_t r = 0; r < DIM; r++)
@@ -191,7 +191,7 @@ void matrelu6(elem_t in[DIM][DIM], elem_t out[DIM][DIM], int scale) {
     }
 }
 
-void transpose(elem_t in[DIM][DIM], elem_t out[DIM][DIM]) {
+static void transpose(elem_t in[DIM][DIM], elem_t out[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)
     for (size_t c = 0; c < DIM; c++)
       out[c][r] = in[r][c];
@@ -212,7 +212,7 @@ double rand_double() {
 }
 #endif
 
-void printMatrix(elem_t m[DIM][DIM]) {
+static void printMatrix(elem_t m[DIM][DIM]) {
   for (size_t i = 0; i < DIM; ++i) {
     for (size_t j = 0; j < DIM; ++j)
 #ifndef ELEM_T_IS_FLOAT
@@ -224,7 +224,7 @@ void printMatrix(elem_t m[DIM][DIM]) {
   }
 }
 
-void printMatrixAcc(acc_t m[DIM][DIM]) {
+static void printMatrixAcc(acc_t m[DIM][DIM]) {
   for (size_t i = 0; i < DIM; ++i) {
     for (size_t j = 0; j < DIM; ++j)
 #ifndef ELEM_T_IS_FLOAT
@@ -236,7 +236,7 @@ void printMatrixAcc(acc_t m[DIM][DIM]) {
   }
 }
 
-int is_equal(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
+static int is_equal(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
   for (size_t i = 0; i < DIM; ++i)
     for (size_t j = 0; j < DIM; ++j) {
 #ifndef ELEM_T_IS_FLOAT
@@ -252,7 +252,7 @@ int is_equal(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
   return 1;
 }
 
-int is_equal_transposed(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
+static int is_equal_transposed(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
   for (size_t i = 0; i < DIM; ++i)
     for (size_t j = 0; j < DIM; ++j) {
 #ifndef ELEM_T_IS_FLOAT
@@ -280,7 +280,7 @@ int is_equal_transposed(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
         } \
       result;})
 
-uint64_t read_cycles() {
+static uint64_t read_cycles() {
     uint64_t cycles;
     asm volatile ("rdcycle %0" : "=r" (cycles));
     return cycles;

@@ -216,7 +216,8 @@ int main() {
     tiled_conv_A_stride_auto(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
-        STRIDE, PADDING, KERNEL_DIM,
+        STRIDE, 1, 1, PADDING, KERNEL_DIM,
+        false, false, false, false, false,
 
         (elem_t*)input,
         (elem_t*)weights_mat,
