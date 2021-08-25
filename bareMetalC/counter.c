@@ -46,11 +46,9 @@ int main() {
         In[n][i][j] = i*DIM + j + n;
 
   // Move in
-  for (size_t n = 0; n < N; ++n) {
-    // printf("Mvin %d\n", n);
-    gemmini_mvin(In[n], n*DIM);
-    // printf("Mvout %d\n", n);
-    gemmini_mvout(Out[n], n*DIM);
+  for (size_t i = 0; i < N; i++) {
+    gemmini_mvin(In[i], i*DIM);
+    gemmini_mvout(Out[i], i*DIM);
   }
 
   // Check value (should be increasing right now as Gemmini executes in the background)
@@ -59,8 +57,8 @@ int main() {
   counter_snapshot_take();
   int snapshot_val = counter_read(0);
 
-  // Print counter value
-  // This have to be done later to avoid syscall which can delay the snapshot taking
+  // Print first counter value (Syscall takes a lot of time, and we might not capture a snapshot when
+  // the instructions are still being executed)
   printf("Read DMA cycles: %d\n", counter_val);
   if (counter_val == 0) {
     printf("Counter Value failed to increase\n");
