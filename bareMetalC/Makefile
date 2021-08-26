@@ -43,7 +43,7 @@ tests = \
 	resadd \
 	global_average \
 	template \
-	counter
+	gemmini_counter
 
 tests_baremetal = $(tests:=-baremetal)
 
