@@ -101,10 +101,17 @@ int main() {
     gemmini_mvin(In[i], i*DIM);
     gemmini_mvout(Out[i], i*DIM);
   }
-  counter_val = counter_read(7);
+  // Fused read and take snapshot command
+  uint32_t custom_command = (7 & 0x7) << 4 | 0x4;
+  gemmini_counter_access(counter_val, custom_command);
   printf("ROB # of load insts after executing %d mvin and mvout insts: %d\n", N-1, counter_val);
   if (counter_val < 3) {
     printf("The load ROB counter value is too small\n");
+    exit(1);
+  }
+  snapshot_val = counter_read(7);
+  if (counter_val != snapshot_val) {
+    printf("Snapshot value doesn't match the raw value read before snapshot taken\n");
     exit(1);
   }
 

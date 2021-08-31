@@ -289,7 +289,7 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 
 // Read counter
 static uint32_t counter_read(size_t index) {
-  uint32_t config_reg = (index & 0x7);
+  uint32_t config_reg = (index & 0x7) << 4;
   uint32_t res;
   gemmini_counter_access(res, config_reg);
   return res;
@@ -297,28 +297,28 @@ static uint32_t counter_read(size_t index) {
 
 // Configure counter to take a new signal
 static void counter_configure(size_t index, size_t counter_code, bool external) {
-  uint32_t config_reg = (index & 0x7) | 0x40 | (counter_code & 0x1f) << 7 | external << 31;
+  uint32_t config_reg = (index & 0x7) << 4 | 0x8 | (counter_code & 0x3f) << 12 | external << 31;
   uint32_t placeholder;
   gemmini_counter_access(placeholder, config_reg);
 }
 
 // Take a snapshot
 static void counter_snapshot_take() {
-  uint32_t config_reg = 0x20;
+  uint32_t config_reg = 0x4;
   uint32_t placeholder;
   gemmini_counter_access(placeholder, config_reg);
 }
 
 // Counter snapshot reset
 static void counter_snapshot_reset() {
-  uint32_t config_reg = 0x10;
+  uint32_t config_reg = 0x2;
   uint32_t placeholder;
   gemmini_counter_access(placeholder, config_reg);
 }
 
 // Counter module reset
 static void counter_reset() {
-  uint32_t config_reg = 0x8;
+  uint32_t config_reg = 0x1;
   uint32_t placeholder;
   gemmini_counter_access(placeholder, config_reg);
 }
