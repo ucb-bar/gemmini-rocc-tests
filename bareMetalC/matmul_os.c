@@ -137,7 +137,7 @@ int main() {
       }
 
       // printf("Setting mode\n");
-      gemmini_config_ex(OUTPUT_STATIONARY, activation, shift, 0, relu6_shift);
+      gemmini_config_ex(OUTPUT_STATIONARY, activation, shift, relu6_shift);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
