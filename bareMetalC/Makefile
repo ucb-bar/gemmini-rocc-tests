@@ -42,7 +42,8 @@ tests = \
 	matrix_add \
 	resadd \
 	global_average \
-	template
+	template \
+	gemmini_counter
 
 tests_baremetal = $(tests:=-baremetal)
 

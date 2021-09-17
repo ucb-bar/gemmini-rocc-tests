@@ -113,7 +113,7 @@ int main() {
     const uint32_t acc_addr = 5 << (ADDR_LEN-3);
 
     gemmini_config_ld(BIG_DIM*sizeof(acc_t));
-    gemmini_config_ex(0, NO_ACTIVATION, 0, 0, 0);
+    gemmini_config_ex(0, NO_ACTIVATION, 0, 0);
     gemmini_config_st(BIG_DIM*sizeof(acc_t));
 
     for (size_t i = 0; i < BIG_DIM; i += DIM) {

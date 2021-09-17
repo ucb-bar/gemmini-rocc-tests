@@ -19,6 +19,9 @@
 // Accelerator interface
 #include "rocc-software/src/xcustom.h"
 
+// Counter Definition
+#include "include/gemmini_counter.h"
+
 #define k_CONFIG 0
 #define k_MVIN2 1
 #define k_MVIN 2
@@ -36,6 +39,8 @@
 #define k_LOOP_WS_CONFIG_STRIDES_DC 13
 
 #define k_MVIN3 14
+
+#define k_COUNTER 126
 
 #define k_LOOP_CONV_WS 15
 #define k_LOOP_CONV_WS_CONFIG_1 16
@@ -231,21 +236,21 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
   gemmini_preload(GARBAGE_ADDR, C)
 
 // config
-#define gemmini_extended3_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift, C_stride, A_stride, A_transpose, B_transpose, ocol, row_turn, kdim, stride, channel, row_left, kdim2, weight_double_bank, weight_triple_bank, set_only_strides) \
+#define gemmini_extended3_config_ex(dataflow, sys_act, sys_shift, sys_acc_scale, relu6_shift, C_stride, A_stride, A_transpose, B_transpose, ocol, row_turn, kdim, stride, channel, row_left, kdim2, weight_double_bank, weight_triple_bank, set_only_strides) \
   { \
-    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)acc_scale_t_to_acc_scale_t_bits((acc_scale_t)acc_scale) << 32) | ((uint64_t)(A_stride) << 16) | (B_transpose << 9) | (A_transpose << 8) | ((set_only_strides) << 7) | ((act) << 3) | ((dataflow) << 2) | CONFIG_EX, ((uint64_t)(C_stride) << 48) | ((uint64_t)(relu6_shift) << 32) | (sys_shift), k_CONFIG); \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)acc_scale_t_to_acc_scale_t_bits((acc_scale_t)sys_acc_scale) << 32) | ((uint64_t)(A_stride) << 16) | (B_transpose << 9) | (A_transpose << 8) | ((set_only_strides) << 7) | ((sys_act) << 3) | ((dataflow) << 2) | CONFIG_EX, ((uint64_t)(C_stride) << 48) | ((uint64_t)(relu6_shift) << 32) | (sys_shift), k_CONFIG); \
     \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(weight_triple_bank) << 59) | ((uint64_t)(weight_double_bank) << 58) | ((uint64_t)(row_left) << 54) | ((uint64_t)(row_turn) << 42) | CONFIG_IM2COL, ((uint64_t)ocol << 56) | ((uint64_t)kdim2 << 48) | ((uint64_t)kdim << 44) | ((uint64_t)channel << 23) | ((uint64_t)stride << 20), k_CONFIG) \
   }
 
-#define gemmini_extended2_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift, A_stride, A_transpose, B_transpose, ocol, row_turn, kdim, stride, channel, row_left, kdim2, weight_double_bank, weight_triple_bank) \
-  gemmini_extended3_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift, 1, A_stride, A_transpose, B_transpose, 0, 0, 0, 0, 0, 0, 0, 0, 0, false)
+#define gemmini_extended2_config_ex(dataflow, sys_act, sys_shift, relu6_shift, A_stride, A_transpose, B_transpose, ocol, row_turn, kdim, stride, channel, row_left, kdim2, weight_double_bank, weight_triple_bank) \
+  gemmini_extended3_config_ex(dataflow, sys_act, sys_shift, ACC_SCALE_IDENTITY, relu6_shift, 1, A_stride, A_transpose, B_transpose, 0, 0, 0, 0, 0, 0, 0, 0, 0, false)
 
-#define gemmini_extended_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift, A_stride, A_transpose, B_transpose) \
-  gemmini_extended2_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift, A_stride, A_transpose, B_transpose, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+#define gemmini_extended_config_ex(dataflow, sys_act, sys_shift, relu6_shift, A_stride, A_transpose, B_transpose) \
+  gemmini_extended2_config_ex(dataflow, sys_act, sys_shift, relu6_shift, A_stride, A_transpose, B_transpose, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
-#define gemmini_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift) \
-    gemmini_extended_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift, 1, 0, 0)
+#define gemmini_config_ex(dataflow, sys_act, sys_shift, relu6_shift) \
+    gemmini_extended_config_ex(dataflow, sys_act, sys_shift, relu6_shift, 1, 0, 0)
 
 #define gemmini_extended4_config_ld(stride, scale, shrunk, block_mvin_stride, id) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale_t_to_scale_t_bits(scale)) << 32) | ((uint64_t)(block_mvin_stride) << 16) | ((id) << 3) | ((shrunk) << 2) | CONFIG_LD, stride, k_CONFIG)
@@ -262,11 +267,14 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define gemmini_config_ld(stride) \
   gemmini_extended_config_ld(stride, MVIN_SCALE_IDENTITY)
 
-#define gemmini_extended_config_st(stride, pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, upad, lpad) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(ocols) << 56) | ((uint64_t)(orows) << 48) | ((uint64_t)(pocols) << 40) | ((uint64_t)(porows) << 32) | ((uint64_t)(pool_out_dim) << 24) | ((uint64_t)(lpad) << 10) | ((uint64_t)(upad) << 8) | ((uint64_t)(pool_size) << 6) | ((uint64_t)(pool_stride) << 4) | CONFIG_ST, stride, k_CONFIG)
+#define gemmini_extended2_config_st(stride, acc_act, acc_scale, pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, upad, lpad) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(ocols) << 56) | ((uint64_t)(orows) << 48) | ((uint64_t)(pocols) << 40) | ((uint64_t)(porows) << 32) | ((uint64_t)(pool_out_dim) << 24) | ((uint64_t)(lpad) << 10) | ((uint64_t)(upad) << 8) | ((uint64_t)(pool_size) << 6) | ((uint64_t)(pool_stride) << 4) | ((acc_act) << 2) | CONFIG_ST, ((uint64_t)acc_scale_t_to_acc_scale_t_bits((acc_scale_t)acc_scale) << 32) | ((uint32_t)stride), k_CONFIG)
+
+#define gemmini_extended_config_st(stride, acc_act, acc_scale) \
+    gemmini_extended2_config_st(stride, acc_act, acc_scale, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
 #define gemmini_config_st(stride) \
-    gemmini_extended_config_st(stride, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    gemmini_extended_config_st(stride, NO_ACTIVATION, ACC_SCALE_IDENTITY)
 
 // flush
 #define gemmini_flush(skip) \
@@ -274,6 +282,49 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 
 // fence
 #define gemmini_fence() asm volatile("fence")
+
+// Counter access
+#define gemmini_counter_access(rd, config_reg) \
+  { \
+    uint32_t _placeholder; \
+    ROCC_INSTRUCTION(XCUSTOM_ACC, rd, config_reg, _placeholder, k_COUNTER) \
+  }
+
+// Read counter
+static uint32_t counter_read(size_t index) {
+  uint32_t config_reg = (index & 0x7) << 4;
+  uint32_t res;
+  gemmini_counter_access(res, config_reg);
+  return res;
+}
+
+// Configure counter to take a new signal
+static void counter_configure(size_t index, size_t counter_code, bool external) {
+  uint32_t config_reg = (index & 0x7) << 4 | 0x8 | (counter_code & 0x3f) << 12 | external << 31;
+  uint32_t placeholder;
+  gemmini_counter_access(placeholder, config_reg);
+}
+
+// Take a snapshot
+static void counter_snapshot_take() {
+  uint32_t config_reg = 0x4;
+  uint32_t placeholder;
+  gemmini_counter_access(placeholder, config_reg);
+}
+
+// Counter snapshot reset
+static void counter_snapshot_reset() {
+  uint32_t config_reg = 0x2;
+  uint32_t placeholder;
+  gemmini_counter_access(placeholder, config_reg);
+}
+
+// Counter module reset
+static void counter_reset() {
+  uint32_t config_reg = 0x1;
+  uint32_t placeholder;
+  gemmini_counter_access(placeholder, config_reg);
+}
 
 // weight-stationary matmul loop
 #define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, A_transpose, B_transpose, full_C, low_D, ex_accumulate, weightA) \
@@ -287,7 +338,7 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
   }
 
 // weight-stationary matmul loop
-#define gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120) \
+#define gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, activation, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120) \
   { \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(out_channels) << 48) | ((uint64_t)(in_channels) << 32) | ((uint64_t)(in_dim) << 16) | (uint64_t)(batch_size), \
       ((uint64_t)(padding) << 48) | ((uint64_t)(stride) << 32) | ((uint64_t)(pool_out_dim) << 16) | (uint64_t)(out_dim), k_LOOP_CONV_WS_CONFIG_1) \
@@ -302,7 +353,8 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, bias, \
       input, k_LOOP_CONV_WS_CONFIG_6) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((trans_input_3120) << 5) | ((trans_weight_0132) << 4) | ((trans_weight_1203) << 3) | ((trans_output_1203) << 2) | ((wrot180) << 1) | (no_bias), \
-      ((input_dilated) << 2) | ((downsample) << 1) | (no_pool), k_LOOP_CONV_WS) \
+      ((activation) << 3)| ((input_dilated) << 2) | ((downsample) << 1) | (no_pool), \
+      k_LOOP_CONV_WS) \
   }
 
 // Tiling functions
@@ -611,8 +663,8 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
   const size_t sizeof_D = low_D ? sizeof(elem_t) : sizeof(acc_t) ;
   const size_t sizeof_C = full_C ? sizeof(acc_t) : sizeof(elem_t);
 
-  gemmini_extended_config_ex(dataflow, act, 0, scale, relu6_shift, 1, a_transpose, b_transpose);
-  gemmini_config_st(stride_C * sizeof_C);
+  gemmini_extended_config_ex(dataflow, act, 0, relu6_shift, 1, a_transpose, b_transpose);
+  gemmini_extended_config_st(stride_C * sizeof_C, act, scale);
   gemmini_extended3_config_ld(stride_A * sizeof(elem_t), A_scale_factor, false, 0);
   gemmini_extended3_config_ld(stride_B * sizeof(elem_t), B_scale_factor, false, 1)
   gemmini_extended3_config_ld(repeating_bias ? 0 : (stride_D * sizeof_D), D_scale_factor, low_D, 2);
@@ -1080,6 +1132,8 @@ static void sp_tiled_conv_A_stride(
         elem_t * output,
         const acc_t * bias,
 
+        int act, acc_scale_t scale,
+
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
         bool trans_weight_1203, bool trans_weight_0132,
 
@@ -1132,7 +1186,7 @@ static void sp_tiled_conv_A_stride(
     C_sp_addr_row = (C_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
   }
 
-  gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120);
+  gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, act, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120);
 
   /*
   // mvin bias
@@ -1295,7 +1349,7 @@ static void sp_tiled_conv_A_stride(
     const int ocol_it = trans_input_3120 ? 1 : (DIM << input_dilated);
 
     if (trans_input_3120) {
-      gemmini_extended3_config_ex(0, 0, 0, 0, 0, orows * ocols, irows * icols, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, true);
+      gemmini_extended3_config_ex(0, 0, 0, 0, 0, 0, orows * ocols, irows * icols, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, true);
     }
 
     for (int och = 0; och < ochs; och += DIM) {
@@ -1410,7 +1464,7 @@ static void sp_tiled_conv_A_stride(
             }
           }
     } else {
-      gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
+      gemmini_extended2_config_st(out_channels * sizeof(elem_t), act, scale, pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
   
       for (int b = 0; b < batches; b++) {
         for (int poch = 0; poch < pochs; poch += DIM) {
@@ -1426,7 +1480,7 @@ static void sp_tiled_conv_A_stride(
         }
       }
   
-      gemmini_config_st(out_channels * sizeof(elem_t));
+      gemmini_extended_config_st(out_channels * sizeof(elem_t), act, scale);
     }
   }
   */
@@ -1479,7 +1533,7 @@ static void sp_tiled_conv_ds(
 
     int odims = im2col_height;
 
-	  gemmini_extended2_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, 1, false, false, ocols, row_turn, 1, stride, kchs, row_left, 1, double_bank, triple_bank); //if want 2 banks for weight, last is 1
+	  gemmini_extended2_config_ex(WEIGHT_STATIONARY, act, 0, relu6_shift, 1, false, false, ocols, row_turn, 1, stride, kchs, row_left, 1, double_bank, triple_bank); //if want 2 banks for weight, last is 1
 
     const uint32_t A_sp_addr_start = 0;
     const uint32_t B_sp_addr_start = B_sp_addr_outer == 0 ? (BANK_NUM - weight_bank) * BANK_ROWS : B_sp_addr_outer;
@@ -1641,7 +1695,7 @@ int bidims = batches*idims;
  // mvout output
 //   printf("mvout \n");
    if (output != NULL) {
-		gemmini_extended_config_st(out_channels * sizeof(elem_t), 0, 1, out_dim, 0, 0, orows, ocols, 0, 0);
+		gemmini_extended2_config_st(out_channels * sizeof(elem_t), act, scale, 0, 1, out_dim, 0, 0, orows, ocols, 0, 0);
 		for(int b = 0; b < batches; b++)
 			for(int och = 0; och < ochs; och += DIM){
 				const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * odims + b * odims;
@@ -1689,7 +1743,7 @@ static void sp_tiled_conv_dw(
 	const int odims = ocols*orows;
 	const int row_left = odims%DIM;
 	const int row_turn = row_left == 0 ? odims/DIM - 1 : odims/DIM;
-	gemmini_extended2_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, 1, false, false, ocols, row_turn, kernel_dim, stride, kchs, row_left, kdims, double_bank, triple_bank); //if want 2 banks for weight, last is 1
+	gemmini_extended2_config_ex(WEIGHT_STATIONARY, act, 0, relu6_shift, 1, false, false, ocols, row_turn, kernel_dim, stride, kchs, row_left, kdims, double_bank, triple_bank); //if want 2 banks for weight, last is 1
 
     int idims = irows*icols;
     int bidims = batches*idims;
@@ -1864,7 +1918,7 @@ static void sp_tiled_conv_first(
     const int odims = ocols*orows;
     const int row_left = odims%DIM;
     const int row_turn = row_left == 0 ? odims/DIM - 1 : odims/DIM;
-    gemmini_extended2_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, 1, false, false, ocols, row_turn, 1, stride, ichs, row_left, krows, double_bank, triple_bank); //if want 2 banks for weight, last is 1
+    gemmini_extended2_config_ex(WEIGHT_STATIONARY, act, 0, relu6_shift, 1, false, false, ocols, row_turn, 1, stride, ichs, row_left, krows, double_bank, triple_bank); //if want 2 banks for weight, last is 1
 
     int idims = irows*icols;
     int bidims = batches*idims;
@@ -1967,7 +2021,7 @@ static void sp_tiled_conv_first(
 
     // mvout output
    if (output != NULL) {
-               gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
+               gemmini_extended2_config_st(out_channels * sizeof(elem_t), act, scale, pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
            for (int b = 0; b < batches; b++) {
                for (int poch = 0; poch < pochs; poch += DIM) {
                     const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
@@ -2027,7 +2081,7 @@ static void sp_tiled_conv_ws_original(
     const int turn = im2col_width%DIM == 0 ? im2col_width/DIM : im2col_width/DIM + 1;
     const int double_bank = weight_bank > 1 ? 1 : 0;
     const int triple_bank = weight_bank > 2 ? 1 : 0;
-    gemmini_extended2_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, 1, false, false, ocols, row_turn, krows, stride, kchs, row_left, kdims, double_bank, triple_bank); //if want 2 banks for weight, last is 1
+    gemmini_extended2_config_ex(WEIGHT_STATIONARY, act, 0, relu6_shift, 1, false, false, ocols, row_turn, krows, stride, kchs, row_left, kdims, double_bank, triple_bank); //if want 2 banks for weight, last is 1
 
     const uint32_t A_sp_addr_start = 0;
     const uint32_t B_sp_addr_start = (BANK_NUM - weight_bank) * BANK_ROWS;
@@ -2157,7 +2211,7 @@ static void sp_tiled_conv_ws_original(
 
 	   } else {
 //		   printf("pool \n");
-              gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
+              gemmini_extended2_config_st(out_channels * sizeof(elem_t), act, scale, pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
             gemmini_fence(); // TODO remove this when the ROB can accurately handle these
             for (int b = 0; b < batches; b++) {
                 for (int poch = 0; poch < pochs; poch += DIM) {
@@ -2186,7 +2240,7 @@ static void sp_tiled_conv_ws_original_first(
 
         int batches,
         int porows, int pocols, int pochs,
-	int krows, int kchs,
+        int krows, int kchs,
 
         int lpad, int rpad, int upad, int dpad,
         int plpad, int prpad, int pupad, int pdpad,
@@ -2198,7 +2252,7 @@ static void sp_tiled_conv_ws_original_first(
 
         int act, acc_scale_t scale, int relu6_shift,
         bool no_bias, bool no_pool, bool mvin_weight,
-	int weight_bank) {
+        int weight_bank) {
 
     const int orows = porows * pool_stride + pool_size - 1 - pupad - pdpad;
     const int ocols = pocols * pool_stride + pool_size - 1 - plpad - prpad;
@@ -2219,7 +2273,7 @@ int bidims = batches*irows*icols;
     const int row_turn = row_left == 0 ? odims/DIM - 1 : odims/DIM;
     const int double_bank = weight_bank > 1 ? 1 : 0;
     const int triple_bank = weight_bank > 2 ? 1 : 0;
-    gemmini_extended2_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, 1, false, false, ocols, row_turn, krows, stride, kchs, row_left, kdims, double_bank, triple_bank); //if want 2 banks for weight, last is 1
+    gemmini_extended2_config_ex(WEIGHT_STATIONARY, act, 0, relu6_shift, 1, false, false, ocols, row_turn, krows, stride, kchs, row_left, kdims, double_bank, triple_bank); //if want 2 banks for weight, last is 1
 
     const uint32_t A_sp_addr_start = 0;
     const uint32_t B_sp_addr_start = (BANK_NUM - weight_bank) * BANK_ROWS;
@@ -2329,7 +2383,7 @@ int bidims = batches*irows*icols;
     }
 
    if (output != NULL) {
-           gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
+           gemmini_extended2_config_st(out_channels * sizeof(elem_t), act, scale, pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
            for (int b = 0; b < batches; b++) {
                 for (int poch = 0; poch < pochs; poch += DIM) {
                     const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
@@ -2725,9 +2779,9 @@ static void tiled_conv_A_stride(
     const size_t st_dram_stride = trans_output_1203 ?
         batch_size * out_channels * sizeof(elem_t) :
         out_channels * sizeof(elem_t);
-    gemmini_config_st(st_dram_stride);
+    gemmini_extended_config_st(st_dram_stride, act, scale);
 
-    gemmini_extended3_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, input_dilation, stride >> downsample, trans_input_3120, trans_weight_0132, 0, 0, 0, 0, 0, 0, 0, 0, 0, false);
+    gemmini_extended3_config_ex(WEIGHT_STATIONARY, 0, 0, 0, relu6_shift, input_dilation, stride >> downsample, trans_input_3120, trans_weight_0132, 0, 0, 0, 0, 0, 0, 0, 0, 0, false);
 
     const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
     const int dilated_in_dim = in_dim + (input_dilation-1)*(in_dim-1);
@@ -2839,6 +2893,8 @@ static void tiled_conv_A_stride(
                                     weights_slice,
                                     out,
                                     bias_,
+
+                                    act, scale,
 
                                     wrot180, trans_output_1203, trans_input_3120,
                                     trans_weight_1203, trans_weight_0132,
@@ -3506,7 +3562,7 @@ static void sp_tiled_conv_ws(
 	const int row_left = odims%DIM;
 	const int row_turn = row_left == 0 ? odims/DIM - 1 : odims/DIM;
 //	const int turn = im2col_width%DIM == 0 ? im2col_width/DIM : im2col_width/DIM + 1;
-	gemmini_extended2_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, 1, false, false, ocols, row_turn, krows, stride, kchs, row_left, kdims, double_bank, triple_bank); //if want 2 banks for weight, last is 1
+	gemmini_extended2_config_ex(WEIGHT_STATIONARY, act, 0, relu6_shift, 1, false, false, ocols, row_turn, krows, stride, kchs, row_left, kdims, double_bank, triple_bank); //if want 2 banks for weight, last is 1
 
     int idims = irows*icols;
     int bidims = batches*idims;
@@ -3514,7 +3570,7 @@ static void sp_tiled_conv_ws(
 	gemmini_config_st(out_channels*sizeof(elem_t));
    }
    else{
-	   gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
+	   gemmini_extended2_config_st(out_channels * sizeof(elem_t), act, scale, pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
    }
     const uint32_t A_sp_addr_start = 0;
     const uint32_t D_sp_addr_start = 1 << (ADDR_LEN - 1);
@@ -3711,7 +3767,7 @@ static void sp_tiled_conv_ws(
                     }
 	   } else {
 //		   printf("pool \n");
-              gemmini_extended_config_st(out_channels * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
+              gemmini_extended2_config_st(out_channels * sizeof(elem_t), act, pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
 //             gemmini_fence(); // TODO remove this when the ROB can accurately handle these
             for (int b = 0; b < batches; b++) {
                 for (int poch = 0; poch < pochs; poch += DIM) {
@@ -3729,7 +3785,7 @@ static void sp_tiled_conv_ws(
 /*
     // mvout output
    if (output != NULL) {
-		gemmini_extended_config_st(out_channels * sizeof(elem_t), 0, 1, out_dim, 0, 0, orows, ocols, 0, 0);
+		gemmini_extended2_config_st(out_channels * sizeof(elem_t), act, 0, 1, out_dim, 0, 0, orows, ocols, 0, 0);
 		for(int b = 0; b < batches; b++)
 			for(int och = 0; och < ochs; och += DIM){
 				const int J = ochs - och > DIM ? DIM : ochs - och;
@@ -4771,8 +4827,8 @@ static void tiled_resadd(const size_t I, const size_t J,
         bool relu,
         enum tiled_matmul_type_t matadd_type) {
 
-    gemmini_config_st(J * sizeof(elem_t));
-    gemmini_config_ex(WS, relu ? RELU : NO_ACTIVATION, 0, C_scale, 0);
+    gemmini_extended_config_st(J * sizeof(elem_t), relu ? RELU : NO_ACTIVATION, C_scale);
+    gemmini_config_ex(WS, 0, 0, 0);
 
     gemmini_extended4_config_ld(J * sizeof(elem_t), A_scale, true, DIM, 0);
     gemmini_extended4_config_ld(J * sizeof(elem_t), B_scale, true, DIM, 1);
@@ -4914,8 +4970,8 @@ static void tiled_global_average(const elem_t * input, elem_t * output,
     int channel_tile_size) {
 
   gemmini_extended4_config_ld(DIM*sizeof(elem_t), MVIN_SCALE_IDENTITY, true, 1, 0);
-  gemmini_config_ex(0, NO_ACTIVATION, 0, 1.0 / (dim*dim), 0);
-  gemmini_config_st(0);
+  gemmini_config_ex(0, NO_ACTIVATION, 0, 0);
+  gemmini_extended_config_st(0, NO_ACTIVATION, 1.0 / (dim*dim));
 
   for (int batch = 0; batch < batches; batch++) {
     for (int channel = 0; channel < channels; channel += channel_tile_size) {

@@ -45,7 +45,6 @@ int main() {
 
   gemmini_flush(0);
   gemmini_config_ld(DIM * sizeof(elem_t));
-  gemmini_config_st(DIM * sizeof(elem_t));
 
   for (int activation = AINIT; activation <= 2; ++activation) {
 #ifdef ACC_SCALE_T_IS_FLOAT
@@ -175,7 +174,8 @@ int main() {
         }
 
       // printf("Setting mode\n");
-      gemmini_config_ex(WEIGHT_STATIONARY, activation, 0, scale, relu6_shift);
+      gemmini_config_ex(WEIGHT_STATIONARY, 0, 0, relu6_shift);
+      gemmini_extended_config_st(DIM * sizeof(elem_t), activation, scale);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
