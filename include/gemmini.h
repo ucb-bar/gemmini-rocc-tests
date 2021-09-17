@@ -3135,7 +3135,7 @@ static void tiled_conv_downsample(
                     A_stride, B_stride, D_stride, C_stride,
                     MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
                     MVIN_SCALE_IDENTITY, act, scale, relu6_shift,
-                    true, false, false, false, false, 3, tiled_conv_type);
+                    true, false, false, false, false, 0, tiled_conv_type);
         }
     }
 }
