@@ -63,7 +63,7 @@ int main() {
       int16_t imag = In[i][j] & 0xFFFF;
 
       char sign = imag < 0 ? '-' : '+';
-      int16_t abs_imag = image < 0 ? -imag : imag;
+      int16_t abs_imag = imag < 0 ? -imag : imag;
 
       printf("(%d %c %di) ", real, sign, abs_imag);
     }
@@ -77,7 +77,7 @@ int main() {
       int16_t imag = Out[i][j] & 0xFFFF;
 
       char sign = imag < 0 ? '-' : '+';
-      int16_t abs_imag = image < 0 ? -imag : imag;
+      int16_t abs_imag = imag < 0 ? -imag : imag;
 
       printf("(%d %c %di) ", real, sign, abs_imag);
     }
