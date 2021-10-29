@@ -71,6 +71,8 @@ typedef uint32_t acc_scale_t_bits;
 #define MVIN_SCALE(x, scale) \
     ({float y = ROUND_NEAR_EVEN((x) * (scale)); y > INT8_MAX ? INT8_MAX : (y < INT8_MIN ? INT8_MIN : (elem_t)y);})
 
+#define MVIN_SCALE_ACC(x, scale) (x)
+
 #define ACC_SCALE_T_IS_FLOAT
 #define ACC_SCALE_EXP_BITS 8
 #define ACC_SCALE_SIG_BITS 24

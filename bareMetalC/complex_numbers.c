@@ -62,7 +62,10 @@ int main() {
       int16_t real = In[i][j] >> 16;
       int16_t imag = In[i][j] & 0xFFFF;
 
-      printf("(%d, %d) ", real, imag);
+      char sign = imag < 0 ? "-" : "+";
+      int16_t abs_image = image < 0 ? -imag : imag;
+
+      printf("(%d %c %di) ", real, sign, abs_imag);
     }
     printf("\n");
   }
@@ -73,7 +76,10 @@ int main() {
       int16_t real = Out[i][j] >> 16;
       int16_t imag = Out[i][j] & 0xFFFF;
 
-      printf("(%d, %d) ", real, imag);
+      char sign = imag < 0 ? "-" : "+";
+      int16_t abs_image = image < 0 ? -imag : imag;
+
+      printf("(%d %c %di) ", real, sign, abs_imag);
     }
     printf("\n");
   }
