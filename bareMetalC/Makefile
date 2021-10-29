@@ -44,7 +44,8 @@ tests = \
 	global_average \
 	template \
 	gemmini_counter \
-	complex_numbers
+	complex_numbers \
+	conv_first_layer
 
 tests_baremetal = $(tests:=-baremetal)
 
