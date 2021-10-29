@@ -143,6 +143,8 @@ static scale_t_bits scale_t_to_scale_t_bits(scale_t x) {
     un.f = x;
     return un.b;
 }
+#else
+#define scale_t_to_scale_t_bits(x) 0
 #endif
 
 #ifdef HAS_MVIN_ACC_SCALE
