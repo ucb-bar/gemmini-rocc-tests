@@ -301,8 +301,13 @@ static uint32_t counter_read(size_t index) {
 }
 
 // Configure counter to take a new signal
-static void counter_configure(size_t index, size_t counter_code, bool external) {
-  uint32_t config_reg = (index & 0x7) << 4 | 0x8 | (counter_code & 0x3f) << 12 | external << 31;
+static void counter_configure(size_t index, size_t counter_code) {
+  int non_incremental = counter_code > INCREMENTAL_COUNTERS;
+  if (non_incremental) {
+    counter_code -= INCREMENTAL_COUNTERS;
+  }
+
+  uint32_t config_reg = (index & 0x7) << 4 | 0x8 | (counter_code & 0x3f) << 12 | non_incremental << 31;
   uint32_t placeholder;
   gemmini_counter_access(placeholder, config_reg);
 }

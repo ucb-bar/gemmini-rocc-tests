@@ -27,7 +27,7 @@ int main() {
   gemmini_flush(0);
 
   // Set counter and reset
-  counter_configure(0, LOAD_ACTIVE_CYCLE, false);
+  counter_configure(0, LOAD_ACTIVE_CYCLE);
   if(counter_read(0) != 0) {
     printf("Counter Reset Failed (not equal to 0)\n");
     exit(1);
@@ -53,6 +53,7 @@ int main() {
 
   // Check value (should be increasing right now as Gemmini executes in the background)
   int counter_val = counter_read(0);
+
   // Take a snapshot
   counter_snapshot_take();
   int snapshot_val = counter_read(0);
@@ -96,19 +97,22 @@ int main() {
   }
 
   // Check external counter
-  counter_configure(7, ROB_LD_COUNT, true);
+  counter_configure(7, RESERVATION_STATION_LD_COUNT);
   for (size_t i = 0; i < N; i++) {
     gemmini_mvin(In[i], i*DIM);
     gemmini_mvout(Out[i], i*DIM);
   }
+
   // Fused read and take snapshot command
   uint32_t custom_command = (7 & 0x7) << 4 | 0x4;
   gemmini_counter_access(counter_val, custom_command);
-  printf("ROB # of load insts after executing %d mvin and mvout insts: %d\n", N-1, counter_val);
+
+  printf("RESERVATION_STATION # of load insts after executing %d mvin and mvout insts: %d\n", N-1, counter_val);
   if (counter_val < 3) {
-    printf("The load ROB counter value is too small\n");
+    printf("The load RESERVATION_STATION counter value is too small\n");
     exit(1);
   }
+
   snapshot_val = counter_read(7);
   if (counter_val != snapshot_val) {
     printf("Snapshot value doesn't match the raw value read before snapshot taken\n");
@@ -117,5 +121,4 @@ int main() {
 
   exit(0);
 }
-
 
