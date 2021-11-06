@@ -262,5 +262,7 @@ int main() {
         return 1;
     }
 
+    printf("Success! Both CPU conv and Gemmini conv returned the same results\n");
+
     return 0;
 }
