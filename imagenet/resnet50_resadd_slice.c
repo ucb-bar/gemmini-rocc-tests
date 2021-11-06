@@ -74,7 +74,6 @@ int main (int argc, char * argv[]) {
      */
     uint32_t total_bytes_read, total_read_latency;
 
-    counter_reset();
     /*
     counter_configure(..., ...);
     counter_configure(..., ...);
