@@ -69,7 +69,7 @@ int main (int argc, char * argv[]) {
     uint32_t total_bytes_read, total_read_latency;
 
     counter_configure(0, RDMA_BYTES_REC);
-    counter_configure(1, RDMA_BYTES_REC);
+    counter_configure(1, RDMA_TOTAL_LATENCY);
 
     tiled_resadd_auto(conv_8_params.I, conv_8_params.J,
         conv_8_params.res_scale,
