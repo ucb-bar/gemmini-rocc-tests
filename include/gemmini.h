@@ -1204,6 +1204,15 @@ static void sp_tiled_conv_tutorial(
 
             const elem_t * in = input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels + ich;
 
+            /* TUTORIAL: Step 1
+             * We want to move in three input-columns in each mvin command,
+             * rather than just one input-column as before.
+             *
+             * Below, we move in "K" columns into the scratchpad in every
+             * command, which represents a single input-column. If we want to
+             * move in 3 input-columns instead, what should we multiply K by?
+             */
+
             gemmini_extended_mvin(in,
                 A_sp_addr,
                 K, I);
@@ -1243,6 +1252,14 @@ static void sp_tiled_conv_tutorial(
   {
     for (int och = 0; och < ochs; och += DIM) {
       for (int krow = 0; krow < krows; krow++) {
+
+        /* TUTORIAL: Step 2
+         * We want to find the dot-product over three kernel-columns
+         * simultaneously in a single matmul, rather than finding the
+         * dot-product over one kernel-column in each matmul as before.
+         *
+         * How much should we increase "kcol" by in each iteration now?
+         */
         for (int kcol = 0; kcol < kcols; kcol++) {
           for (int kch = 0; kch < kchs; kch += DIM) {
             bool new_weights = true;
@@ -1268,6 +1285,18 @@ static void sp_tiled_conv_tutorial(
 
                   const int I = ocols - ocol > DIM ? DIM : ocols - ocol;
                   const int J = ochs - och > DIM ? DIM : ochs - och;
+
+                  /* TUTORIAL: Step 3
+                   * We want to find the dot-product over three kernel-columns
+                   * simultaneously in a single matmul, rather than finding the
+                   * dot-product over one kernel-column in each matmul as
+                   * before.
+                   *
+                   * Below, we reduce over "K" elements in every matmul, which
+                   * represents a single kernel-column. How should we change
+                   * "K" so that we reduce over 3 kernel-columns instead?
+                   */
+
                   const int K = kchs - kch > DIM ? DIM : kchs - kch;
 
                   uint32_t A_sp_addr = A_sp_addr_start + (kch / DIM) * batches * irows * icols + b * irows * icols + irow * icols + icol;
