@@ -63,13 +63,21 @@ int main (int argc, char * argv[]) {
     start = read_cycles();
 
     /*
+     * TUTORIAL
      * Add code here to configure "total_bytes_read" and "total_read_latency"
      * counters.
+     *
+     * Look in "include/gemmini_counter.h" to see the counter codes.
+     *
+     * You have up to 8 counters in this build, and you can decide which of them
+     * to tie to which signal.
      */
     uint32_t total_bytes_read, total_read_latency;
 
-    counter_configure(0, RDMA_BYTES_REC);
-    counter_configure(1, RDMA_TOTAL_LATENCY);
+    /*
+    counter_configure(..., ...);
+    counter_configure(..., ...);
+    */
 
     tiled_resadd_auto(conv_8_params.I, conv_8_params.J,
         conv_8_params.res_scale,
@@ -85,15 +93,20 @@ int main (int argc, char * argv[]) {
     total_cycles = end - start;
 
     /*
+     * TUTORIAL
      * Add code here to read "total_bytes_read" and "total_read_latency"
      * counters.
      */
-    total_bytes_read = counter_read(0);
-    total_read_latency = counter_read(1);
+
+    /*
+    total_bytes_read = counter_read(...);
+    total_read_latency = counter_read(...);
+    */
 
     printf("Total cycles taken for resadd: %llu\n", total_cycles);
+    printf("Read DMA total bytes read: %llu\n", total_bytes_read);
     printf("Read DMA bandwidth (bytes/cycle): %llu\n", total_bytes_read / total_cycles);
-    printf("DMA request latency: %llu\n", total_read_latency);
+    printf("Read DMA total latency: %llu\n", total_read_latency);
 
     exit(0);
 }
