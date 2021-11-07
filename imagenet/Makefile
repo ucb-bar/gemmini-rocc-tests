@@ -4,6 +4,7 @@ tests = \
 	resnet50 \
 	mobilenet \
 	resnet50_resadd_slice \
+	profile_resadd_tutorial \
 	# alexnet \
 
 tests_baremetal = $(tests:=-baremetal)
