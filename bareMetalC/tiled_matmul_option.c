@@ -212,6 +212,7 @@ int main() {
                         activation, scale, relu6_shift, repeating_bias,
                         a_transpose, b_transpose,
                         false, false,
+                        0,
                         option);
 
                 if (!full_is_equal(full_C, gold)) {

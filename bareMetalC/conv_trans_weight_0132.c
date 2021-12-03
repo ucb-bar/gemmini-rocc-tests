@@ -12,12 +12,11 @@
 
 #define BATCH_SIZE 4
 #define IN_DIM 224
-#define IN_CHANNELS 3
+#define IN_CHANNELS 17
 #define OUT_CHANNELS 32
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 2
-#define DILATION 2
 
 #else
 
@@ -39,64 +38,18 @@
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 2
-#define DILATION 2
 
 #endif
 
 #define NO_BIAS false
 
-#define OUT_DIM ((IN_DIM + 2*PADDING - DILATION * (KERNEL_DIM - 1) - 1) / STRIDE + 1)
+#define TRANS_OUTPUT_1203 false
+#define TRANS_WEIGHT_1203 false
+#define TRANS_WEIGHT_0132 true
+
+#define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
 #define N_PATCHES (BATCH_SIZE * OUT_DIM * OUT_DIM)
-
-void conv(int batch_size, int in_channels, int in_dim,
-        int out_channels, int kernel_dim,
-        int out_dim,
-        int stride, int dilation, int padding,
-        elem_t input[batch_size][in_dim][in_dim][in_channels],
-        elem_t weights[out_channels][kernel_dim][kernel_dim][in_channels],
-        acc_t bias[out_channels],
-        elem_t output[batch_size][out_dim][out_dim][out_channels]) {
-
-#ifdef GEMMINI_ASSERTIONS
-    if (out_dim != (in_dim + 2*padding - dilation * (kernel_dim - 1) - 1) / stride + 1) {
-        printf("conv out_dim is not correct\n");
-        exit(1);
-    }
-#endif
-
-    for (int b = 0; b < batch_size; b++) {
-        for (int orow = 0; orow < out_dim; orow++) {
-            for (int ocol = 0; ocol < out_dim; ocol++) {
-                for (int och = 0; och < out_channels; och++) {
-                    acc_t result = bias[och];
-
-                    for (int krow = 0; krow < kernel_dim; krow++) {
-                        for (int kcol = 0; kcol < kernel_dim; kcol++) {
-                            for (int kch = 0; kch < in_channels; kch++) {
-                                int irow = orow * stride + krow * dilation - padding;
-                                int icol = ocol * stride + kcol * dilation - padding;
-
-                                elem_t pixel = irow < 0 || irow >= in_dim ||
-                                    icol < 0 || icol >= in_dim ?
-                                    0 : input[b][irow][icol][kch];
-
-                                result +=
-                                    weights[och][krow][kcol][kch] *
-                                    pixel;
-                            }
-                        }
-                    }
-
-                    // Clip result
-                    result = result > elem_t_max ? elem_t_max : (result < elem_t_min ? elem_t_min : result);
-
-                    output[b][orow][ocol][och] = result;
-                }
-            }
-        }
-    }
-}
 
 void flatten_weights(int out_channels, int kernel_dim, int in_channels,
         int patch_size,
@@ -189,21 +142,6 @@ int main() {
     else
         init_random_acc(&bias[0], sizeof(bias) / sizeof(acc_t));
 
-    printf("CPU conv...\n");
-    uint64_t start_cpu = read_cycles();
-#ifndef FAST
-    conv(BATCH_SIZE, IN_CHANNELS, IN_DIM,
-            OUT_CHANNELS, KERNEL_DIM,
-            OUT_DIM,
-            STRIDE, DILATION, PADDING,
-            input,
-            weights,
-            bias,
-            output);
-#endif
-    uint64_t end_cpu = read_cycles();
-    printf("CPU conv took %llu cycles\n", end_cpu - start_cpu);
-
     static elem_t weights_mat[PATCH_SIZE][OUT_CHANNELS];
     static elem_t output_mat[N_PATCHES][OUT_CHANNELS];
 
@@ -213,12 +151,34 @@ int main() {
             weights,
             weights_mat);
 
+    printf("CPU conv...\n");
+    uint64_t start_cpu = read_cycles();
+#ifndef FAST
+    tiled_conv_A_stride_auto(
+        BATCH_SIZE, IN_DIM, IN_CHANNELS,
+        OUT_CHANNELS, OUT_DIM,
+        STRIDE, 1, 1, PADDING, KERNEL_DIM,
+        false, TRANS_OUTPUT_1203, false, TRANS_WEIGHT_1203, TRANS_WEIGHT_0132,
+
+        (elem_t*)input,
+        (elem_t*)weights_mat,
+        NO_BIAS ? NULL : (acc_t*)bias,
+        (elem_t*)output,
+
+        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, 0,
+
+        CPU);
+#endif
+    uint64_t end_cpu = read_cycles();
+    printf("CPU conv took %llu cycles\n", end_cpu - start_cpu);
+
     printf("Gemmini conv...\n");
     uint64_t start_gemmini = read_cycles();
     tiled_conv_A_stride_auto(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
-        STRIDE, DILATION, PADDING, KERNEL_DIM,
+        STRIDE, 1, 1, PADDING, KERNEL_DIM,
+        false, TRANS_OUTPUT_1203, false, TRANS_WEIGHT_1203, TRANS_WEIGHT_0132,
 
         (elem_t*)input,
         (elem_t*)weights_mat,
@@ -227,8 +187,7 @@ int main() {
 
         NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, 0,
 
-        CPU);
-        // WS); // TODO add support for WS conv with dilation
+        WS);
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 

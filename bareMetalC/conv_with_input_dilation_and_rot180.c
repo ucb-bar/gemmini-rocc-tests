@@ -13,10 +13,11 @@
 #define BATCH_SIZE 4
 #define IN_DIM 224
 #define IN_CHANNELS 3
-#define OUT_CHANNELS 32
+#define OUT_CHANNELS 17
 #define KERNEL_DIM 3
 #define PADDING 1
-#define STRIDE 2
+#define STRIDE 1
+#define INPUT_DILATION 2
 
 #else
 
@@ -37,31 +38,66 @@
 #define BATCH_SIZE 2
 #define KERNEL_DIM 3
 #define PADDING 1
-#define STRIDE 2
+#define STRIDE 1
+#define INPUT_DILATION 2
 
 #endif
 
 #define NO_BIAS false
 
-#define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
+#define WROT180 true
+
+#define IN_DIM_DILATED (IN_DIM + (INPUT_DILATION - 1)*(IN_DIM - 1))
+#define OUT_DIM ((IN_DIM_DILATED + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
 #define N_PATCHES (BATCH_SIZE * OUT_DIM * OUT_DIM)
 
 void conv(int batch_size, int in_channels, int in_dim,
         int out_channels, int kernel_dim,
         int out_dim,
-        int stride, int padding,
+        int stride, int input_dilation, int padding, bool wrot180,
         elem_t input[batch_size][in_dim][in_dim][in_channels],
         elem_t weights[out_channels][kernel_dim][kernel_dim][in_channels],
         acc_t bias[out_channels],
         elem_t output[batch_size][out_dim][out_dim][out_channels]) {
 
+    const size_t in_dim_dilated = in_dim + (input_dilation - 1)*(in_dim - 1);
+    assert(in_dim_dilated == IN_DIM_DILATED);
+    static elem_t dilated[BATCH_SIZE][IN_DIM_DILATED][IN_DIM_DILATED][IN_CHANNELS];
+
+    static elem_t weights_rot180[OUT_CHANNELS][KERNEL_DIM][KERNEL_DIM][IN_CHANNELS];
+
 #ifdef GEMMINI_ASSERTIONS
-    if (out_dim != (in_dim + 2*padding - kernel_dim) / stride + 1) {
+    if (out_dim != (in_dim_dilated + 2*padding - kernel_dim) / stride + 1) {
         printf("conv out_dim is not correct\n");
+        printf("out_dim\n");
         exit(1);
     }
 #endif
+
+    // Populate dilated
+    for (int b = 0; b < batch_size; b++)
+        for (int irow = 0; irow < in_dim_dilated; irow++)
+            for (int icol = 0; icol < in_dim_dilated; icol++)
+                for (int ich = 0; ich < in_channels; ich++)
+                    dilated[b][irow][icol][ich] = 0;
+
+    size_t idx = 0;
+    for (int b = 0; b < batch_size; b++)
+        for (int irow = 0; irow < in_dim_dilated; irow += input_dilation)
+            for (int icol = 0; icol < in_dim_dilated; icol += input_dilation)
+                for (int ich = 0; ich < in_channels; ich++) {
+                    dilated[b][irow][icol][ich] = *((elem_t*)input + idx);
+                    idx++;
+                }
+
+    // Populate weights_rot180
+    for (int och = 0; och < out_channels; och++)
+        for (int krow = 0; krow < kernel_dim; krow++)
+            for (int kcol = 0; kcol < kernel_dim; kcol++)
+                for (int kch = 0; kch < in_channels; kch++)
+                    weights_rot180[och][krow][kcol][kch] =
+                        weights[och][kernel_dim-krow-1][kernel_dim-kcol-1][kch];
 
     for (int b = 0; b < batch_size; b++) {
         for (int orow = 0; orow < out_dim; orow++) {
@@ -75,13 +111,15 @@ void conv(int batch_size, int in_channels, int in_dim,
                                 int irow = orow * stride + krow - padding;
                                 int icol = ocol * stride + kcol - padding;
 
-                                elem_t pixel = irow < 0 || irow >= in_dim ||
-                                    icol < 0 || icol >= in_dim ?
-                                    0 : input[b][irow][icol][kch];
+                                elem_t pixel = irow < 0 || irow >= in_dim_dilated ||
+                                    icol < 0 || icol >= in_dim_dilated ?
+                                    0 : dilated[b][irow][icol][kch];
 
-                                result +=
-                                    weights[och][krow][kcol][kch] *
-                                    pixel;
+                                elem_t w = wrot180 ?
+                                    weights_rot180[och][krow][kcol][kch] :
+                                    weights[och][krow][kcol][kch];
+
+                                result += w * pixel;
                             }
                         }
                     }
@@ -193,7 +231,7 @@ int main() {
     conv(BATCH_SIZE, IN_CHANNELS, IN_DIM,
             OUT_CHANNELS, KERNEL_DIM,
             OUT_DIM,
-            STRIDE, PADDING,
+            STRIDE, INPUT_DILATION, PADDING, WROT180,
             input,
             weights,
             bias,
@@ -216,8 +254,8 @@ int main() {
     tiled_conv_A_stride_auto(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
-        STRIDE, 1, 1, PADDING, KERNEL_DIM,
-        false, false, false, false, false,
+        STRIDE, INPUT_DILATION, 1, PADDING, KERNEL_DIM,
+        WROT180, false, false, false, false,
 
         (elem_t*)input,
         (elem_t*)weights_mat,
@@ -237,7 +275,7 @@ int main() {
     for (int orow = 0; orow < BATCH_SIZE * OUT_DIM * OUT_DIM; orow++) {
       for (int ocol = 0; ocol < OUT_CHANNELS; ocol++) {
 	elem_t v = output_mat[orow][ocol];
-	if (v != 21 && v != 31 && v != 46) {
+	if (v != 6 && v != 11 && v != 21) {
 	  success = false;
 	  break;
 	}

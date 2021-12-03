@@ -141,6 +141,7 @@ int main() {
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
             false, false,
             false, false,
+            0,
             CPU);
 
     unsigned long end = read_cycles();

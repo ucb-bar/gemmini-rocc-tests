@@ -92,8 +92,8 @@ int main() {
 
       // printf("Config\n");
       gemmini_config_ld(DIM*sizeof(acc_t));
-      gemmini_config_ex(0, activation, 0, scale, relu6_shift);
-      gemmini_config_st(DIM*sizeof(elem_t));
+      gemmini_config_ex(0, 0, 0, relu6_shift);
+      gemmini_extended_config_st(DIM*sizeof(elem_t), activation, scale);
 
       // printf("Mvin and mvout\n");
       for (size_t n = 0; n < N; ++n) {
