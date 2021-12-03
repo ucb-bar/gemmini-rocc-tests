@@ -1174,8 +1174,12 @@ static void sp_tiled_conv_A_stride(
     icols = icols_unpadded + UNDILATED(lpad) + UNDILATED(rpad);
   }
 
+#ifdef HAS_FIRST_LAYER_OPTIMIZATIONS
   int max_pixels_per_row = downsample || ichs > DIM ? 1 : DIM/ichs;
   if (max_pixels_per_row > kcols) max_pixels_per_row = kcols;
+#else
+  const int max_pixels_per_row = 1;
+#endif
 
   // Calculate spad address offsets
   const int out_channels_per_bank = ochs / DIM + (ochs % DIM != 0);
