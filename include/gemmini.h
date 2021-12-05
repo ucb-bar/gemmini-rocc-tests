@@ -254,6 +254,8 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define gemmini_config_ex(dataflow, sys_act, sys_shift, relu6_shift) \
     gemmini_extended_config_ex(dataflow, sys_act, sys_shift, relu6_shift, 1, 0, 0)
 
+// Note: The "pixel_repeats" parameter below is still experimental, andthere is
+// a high chance that it will be removed in future releases.
 #define gemmini_extended5_config_ld(stride, scale, shrunk, block_mvin_stride, pixel_repeats, id) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale_t_to_scale_t_bits(scale)) << 32) | ((uint64_t)(block_mvin_stride) << 16) | ((uint64_t)(pixel_repeats) << 8) | ((id) << 3) | ((shrunk) << 2) | CONFIG_LD, stride, k_CONFIG)
 
