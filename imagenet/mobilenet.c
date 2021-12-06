@@ -92,10 +92,11 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_auto_first(
+        tiled_conv_A_stride_auto(
             conv_1_params.batch_size, conv_1_params.in_dim, conv_1_params.in_channels,
             conv_1_params.out_channels, conv_1_params.out_dim,
-            conv_1_params.stride, conv_1_params.padding, conv_1_params.kernel_size,
+            conv_1_params.stride, 1, 1, conv_1_params.padding, conv_1_params.kernel_size,
+            false, false, false, false, false,
 
             (elem_t*)images, (elem_t*)conv_1_w, (acc_t*)conv_1_b, (elem_t*)conv_1_out,
 
