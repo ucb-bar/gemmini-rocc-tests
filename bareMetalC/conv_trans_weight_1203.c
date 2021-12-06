@@ -153,7 +153,7 @@ int main() {
     printf("CPU conv...\n");
     uint64_t start_cpu = read_cycles();
 #ifndef FAST
-    tiled_conv_A_stride_auto(
+    tiled_conv_auto(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
         STRIDE, 1, 1, PADDING, KERNEL_DIM,
@@ -173,7 +173,7 @@ int main() {
 
     printf("Gemmini conv...\n");
     uint64_t start_gemmini = read_cycles();
-    tiled_conv_A_stride_auto(
+    tiled_conv_auto(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
         STRIDE, 1, 1, PADDING, KERNEL_DIM,

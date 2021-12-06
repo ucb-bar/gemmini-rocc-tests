@@ -92,7 +92,7 @@ int main (int argc, char * argv[]) {
     } else {
         start = read_cycles();
 
-        tiled_conv_A_stride_auto(
+        tiled_conv_auto(
             conv_1_params.batch_size, conv_1_params.in_dim, conv_1_params.in_channels,
             conv_1_params.out_channels, conv_1_params.out_dim,
             conv_1_params.stride, 1, 1, conv_1_params.padding, conv_1_params.kernel_size,

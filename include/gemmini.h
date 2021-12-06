@@ -1130,7 +1130,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 }
 
 
-static void sp_tiled_conv_A_stride(
+static void sp_tiled_conv(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
@@ -1671,7 +1671,7 @@ static void sp_tiled_conv_dw(
 }
 
 
-static int tiled_conv_total_spad_rows(bool acc, bool weight,
+static int tiled_conv_total_spad_rows_dw(bool acc, bool weight,
         int stride,
         int batches,
         int porows, int pocols, int ochs,
@@ -1701,7 +1701,7 @@ static int tiled_conv_total_spad_rows(bool acc, bool weight,
 }
 
 
-static int tiled_conv_total_spad_rows_A_stride(bool acc,
+static int tiled_conv_total_spad_rows(bool acc,
         int stride,
         int input_dilation,
         int kernel_dilation,
@@ -1938,7 +1938,7 @@ static void conv_cpu(
 }
 
 
-static void tiled_conv_A_stride(
+static void tiled_conv(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
@@ -2012,10 +2012,10 @@ static void tiled_conv_A_stride(
         // const int ocols = pocols * pool_stride + pool_size - 1;
 
         // Check that data will fit in scratchpad
-        const int spad_rows = tiled_conv_total_spad_rows_A_stride(false,
+        const int spad_rows = tiled_conv_total_spad_rows(false,
             stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
             batches, porows, pocols, pochs, krows, kcols, kchs, pool_size, pool_stride);
-        const int acc_rows = tiled_conv_total_spad_rows_A_stride(true,
+        const int acc_rows = tiled_conv_total_spad_rows(true,
             stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
             batches, porows, pocols, pochs, krows, kcols, kchs, pool_size, pool_stride);
 
@@ -2148,7 +2148,7 @@ static void tiled_conv_A_stride(
                                   in = input + (kch*in_dim*in_dim + ((irow+upad)>>input_dilated)*in_dim + ((icol+lpad)>>input_dilated)) * batch_size + b;
                                 }
 
-                                sp_tiled_conv_A_stride(
+                                sp_tiled_conv(
                                     batch_size, in_dim, in_channels,
                                     out_channels, out_dim, pool_out_dim,
 
@@ -2220,11 +2220,11 @@ static void tiled_conv_dw(
 #ifdef GEMMINI_ASSERTIONS
     {
         // Check that data will fit in scratchpad
-        const int spad_rows_weight = tiled_conv_total_spad_rows(false, true,
+        const int spad_rows_weight = tiled_conv_total_spad_rows_dw(false, true,
             stride, batches, porows, pocols, 1, kcols, kcols, 1, pool_size, pool_stride);
-        const int spad_rows_input = tiled_conv_total_spad_rows(false, false,
+        const int spad_rows_input = tiled_conv_total_spad_rows_dw(false, false,
             stride, batches, porows, pocols, 1, kcols, kcols, 1, pool_size, pool_stride);
-        const int acc_rows = tiled_conv_total_spad_rows(true, false,
+        const int acc_rows = tiled_conv_total_spad_rows_dw(true, false,
             stride, batches, porows, pocols, 1, kcols, kcols, 1, pool_size, pool_stride);
 
         const int weight_bank = 1;
@@ -2313,7 +2313,7 @@ static void tiled_conv_dw(
 }
 
 
-static void tiled_conv_A_stride_auto(
+static void tiled_conv_auto(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
@@ -2356,10 +2356,10 @@ static void tiled_conv_A_stride_auto(
     const int max_spad_rows = (BANK_NUM*BANK_ROWS / 2);
     const int max_acc_rows = (ACC_ROWS / 2);
 
-    int spad_rows = tiled_conv_total_spad_rows_A_stride(false,
+    int spad_rows = tiled_conv_total_spad_rows(false,
         stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
         args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
-    int acc_rows = tiled_conv_total_spad_rows_A_stride(true,
+    int acc_rows = tiled_conv_total_spad_rows(true,
         stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
         args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
 
@@ -2388,10 +2388,10 @@ static void tiled_conv_A_stride_auto(
             args[max_idx]--;
         }
 
-        spad_rows = tiled_conv_total_spad_rows_A_stride(false,
+        spad_rows = tiled_conv_total_spad_rows(false,
             stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
             args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
-        acc_rows = tiled_conv_total_spad_rows_A_stride(true,
+        acc_rows = tiled_conv_total_spad_rows(true,
             stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
             args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     }
@@ -2407,10 +2407,10 @@ static void tiled_conv_A_stride_auto(
         if (args_candidate[ocols_idx] > max_args[ocols_idx])
             continue;
 
-        spad_rows = tiled_conv_total_spad_rows_A_stride(false,
+        spad_rows = tiled_conv_total_spad_rows(false,
             stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
             args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
-        acc_rows = tiled_conv_total_spad_rows_A_stride(true,
+        acc_rows = tiled_conv_total_spad_rows(true,
             stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
             args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
 
@@ -2432,10 +2432,10 @@ static void tiled_conv_A_stride_auto(
             if (args_candidate[i] > max_args[i])
                 continue;
 
-            spad_rows = tiled_conv_total_spad_rows_A_stride(false,
+            spad_rows = tiled_conv_total_spad_rows(false,
                 stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
                 args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
-            acc_rows = tiled_conv_total_spad_rows_A_stride(true,
+            acc_rows = tiled_conv_total_spad_rows(true,
                 stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
                 args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
 
@@ -2455,10 +2455,10 @@ static void tiled_conv_A_stride_auto(
     const int kchs = args[6];
 
     /*
-    spad_rows = tiled_conv_total_spad_rows_A_stride(false,
+    spad_rows = tiled_conv_total_spad_rows(false,
         stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
         args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
-    acc_rows = tiled_conv_total_spad_rows_A_stride(true,
+    acc_rows = tiled_conv_total_spad_rows(true,
         stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
         args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
 
@@ -2479,7 +2479,7 @@ static void tiled_conv_A_stride_auto(
     printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
     */
 
-    tiled_conv_A_stride(
+    tiled_conv(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
         stride, input_dilation, kernel_dilation, padding, kernel_dim,
@@ -2572,7 +2572,7 @@ static void tiled_conv_auto_dw(
     const int weight_bank = 1;
     int args[] = {batch_size, pool_out_dim, pool_out_dim, 1, 1}; //out_channel, in_channel to 1
 
-    int acc_rows = tiled_conv_total_spad_rows(true, false,
+    int acc_rows = tiled_conv_total_spad_rows_dw(true, false,
         stride, args[0], args[1], args[2], args[3], kernel_dim, kernel_dim, args[4], pool_size, pool_stride);
 
     int och_floor = (args[3]/DIM) + 1;
@@ -2585,7 +2585,7 @@ static void tiled_conv_auto_dw(
 			args[0]--;
 		}
 
-        acc_rows = tiled_conv_total_spad_rows(true, false, stride, args[0], args[1], args[2], args[3], kernel_dim, kernel_dim, args[4], pool_size, pool_stride);
+        acc_rows = tiled_conv_total_spad_rows_dw(true, false, stride, args[0], args[1], args[2], args[3], kernel_dim, kernel_dim, args[4], pool_size, pool_stride);
     }
 
     int batches = args[0];
