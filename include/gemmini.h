@@ -1182,7 +1182,11 @@ static void sp_tiled_conv(
   }
 
 #ifdef HAS_FIRST_LAYER_OPTIMIZATIONS
-  int max_pixels_per_row = downsample || ichs > DIM ? 1 : DIM/ichs;
+  const bool transposed = trans_output_1203 || trans_input_3120 ||
+      trans_weight_1203 || trans_weight_0132;
+  int max_pixels_per_row = transposed || wrot180 || downsample ||
+      input_dilated || kernel_dilation > 1 ||
+      ichs > DIM ? 1 : DIM/ichs;
   if (max_pixels_per_row > kcols) max_pixels_per_row = kcols;
 #else
   const int max_pixels_per_row = 1;
