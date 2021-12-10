@@ -15,8 +15,10 @@ tests_baremetal = $(tests:=-baremetal)
 runs_baremetal = $(addsuffix .run,$(tests_baremetal))
 ifdef BAREMETAL_ONLY
 	tests_linux =
+	tests_pk =
 else
 	tests_linux = $(tests:=-linux)
+	tests_pk = $(tests:=-pk)
 endif
 
 BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
@@ -40,6 +42,11 @@ CFLAGS := $(CFLAGS) \
 	-I$(BENCH_COMMON) \
 	-DID_STRING=$(ID_STRING) \
 
+CFLAGS_PK := \
+	$(CFLAGS) \
+	-static \
+	-DBAREMETAL=1 \
+
 CFLAGS_BAREMETAL := \
 	$(CFLAGS) \
 	-nostdlib \
@@ -48,7 +55,7 @@ CFLAGS_BAREMETAL := \
 	-T $(BENCH_COMMON)/test.ld \
 	-DBAREMETAL=1 \
 
-all: $(tests_baremetal) $(tests_linux)
+all: $(tests_baremetal) $(tests_linux) $(tests_pk)
 
 vpath %.c $(src_dir)
 
@@ -59,10 +66,13 @@ vpath %.c $(src_dir)
 %-linux: %.c $(GEMMINI_HEADERS)
 	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@
 
+%-pk: %.c $(GEMMINI_HEADERS)
+	$(CC_LINUX) $(CFLAGS_PK) $< $(LFLAGS) -o $@
+
 run-baremetal: $(runs_baremetal)
 
 %-baremetal.run: %-baremetal
 	$(RUNNER)$^
 
-junk += $(tests_baremetal) $(tests_linux)
+junk += $(tests_baremetal) $(tests_linux) $(tests_pk)
 
