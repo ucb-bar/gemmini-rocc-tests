@@ -121,27 +121,15 @@ int main() {
 
         for (size_t i = 0; i < I; i++)
             for (size_t k = 0; k < K; k++)
-#ifndef ELEM_T_IS_FLOAT
-                A[i][k] = rand() % elem_t_max;
-#else
-                A[i][k] = rand_double();
-#endif
+                A[i][k] = rand() % 5;
 
         for (size_t k = 0; k < K; k++)
             for (size_t j = 0; j < J; j++)
-#ifndef ELEM_T_IS_FLOAT
-                B[k][j] = rand() % elem_t_max;
-#else
-                B[k][j] = rand_double();
-#endif
+                B[k][j] = rand() % 5;
 
         for (size_t i = 0; i < I; i++)
             for (size_t j = 0; j < J; j++)
-#ifndef ELEM_T_IS_FLOAT
-                D[i][j] = rand() % elem_t_max;
-#else
-                D[i][j] = rand_double();
-#endif
+                D[i][j] = rand() % 5;
 
         for (size_t i = 0; i < I; i++)
             for (size_t j = 0; j < J; j++) {

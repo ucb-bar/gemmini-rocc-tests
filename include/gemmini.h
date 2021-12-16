@@ -2809,7 +2809,11 @@ static void global_average_cpu(const elem_t * input, elem_t * output,
         }
       }
 
+#ifdef ELEM_T_IS_FLOAT
+      output[batch * channels + channel] = sum / count;
+#else
       output[batch * channels + channel] = (sum + count/2) / count;
+#endif
     }
   }
 }
