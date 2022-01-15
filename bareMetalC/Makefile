@@ -30,6 +30,7 @@ tests = \
 	conv_trans_input_3120 \
 	conv_trans_input_3120_with_kernel_dilation \
 	conv_first_layer \
+	conv_dw \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_ws_At \

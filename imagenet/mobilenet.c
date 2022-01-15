@@ -42,7 +42,7 @@ int main (int argc, char * argv[]) {
     bool conv = true;
     
     if (argc < 3) {
-        conv = false;
+        conv = true;
     } else if (strcmp(argv[2], "conv") == 0) {
         conv = true;
     } else if (strcmp(argv[2], "matmul") == 0) {
@@ -117,12 +117,12 @@ int main (int argc, char * argv[]) {
             conv_dw_2_params.batch_size, conv_dw_2_params.in_channels, conv_dw_2_params.out_dim, conv_dw_2_params.kernel_size,
             conv_1_out, conv_dw_2_w, conv_dw_2_b, conv_dw_2_out, &conv_dw_2_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_2_params.batch_size, conv_dw_2_params.in_dim, conv_dw_2_params.in_channels,
-            conv_dw_2_params.out_channels, conv_dw_2_params.out_dim,
+            conv_dw_2_params.out_dim,
             conv_dw_2_params.stride, conv_dw_2_params.padding, conv_dw_2_params.kernel_size,
 
-            (elem_t*)conv_1_out, (elem_t*)conv_dw_2_w_flat, (acc_t*)conv_dw_2_b, (elem_t*)conv_dw_2_out,
+            (elem_t*)conv_1_out, (elem_t*)conv_dw_2_w, (acc_t*)conv_dw_2_b, (elem_t*)conv_dw_2_out,
 
             RELU, conv_dw_2_params.output_scale, 0,
             conv_dw_2_params.pool_size, 0, conv_dw_2_params.pool_padding,
@@ -190,12 +190,12 @@ int main (int argc, char * argv[]) {
             conv_dw_5_params.batch_size, conv_dw_5_params.in_channels, conv_dw_5_params.out_dim, conv_dw_5_params.kernel_size,
             conv_4_out, conv_dw_5_w, conv_dw_5_b, conv_dw_5_out, &conv_dw_5_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_5_params.batch_size, conv_dw_5_params.in_dim, conv_dw_5_params.in_channels,
-            conv_dw_5_params.out_channels, conv_dw_5_params.out_dim,
+            conv_dw_5_params.out_dim,
             conv_dw_5_params.stride, conv_dw_5_params.padding, conv_dw_5_params.kernel_size,
 
-            (elem_t*)conv_4_out, (elem_t*)conv_dw_5_w_flat, (acc_t*)conv_dw_5_b, (elem_t*)conv_dw_5_out,
+            (elem_t*)conv_4_out, (elem_t*)conv_dw_5_w, (acc_t*)conv_dw_5_b, (elem_t*)conv_dw_5_out,
 
             RELU, conv_dw_5_params.output_scale, 0,
             conv_dw_5_params.pool_size, 0, conv_dw_5_params.pool_padding,
@@ -263,12 +263,12 @@ int main (int argc, char * argv[]) {
             conv_dw_8_params.batch_size, conv_dw_8_params.in_channels, conv_dw_8_params.out_dim, conv_dw_8_params.kernel_size,
             conv_7_out, conv_dw_8_w, conv_dw_8_b, conv_dw_8_out, &conv_dw_8_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_8_params.batch_size, conv_dw_8_params.in_dim, conv_dw_8_params.in_channels,
-            conv_dw_8_params.out_channels, conv_dw_8_params.out_dim,
+            conv_dw_8_params.out_dim,
             conv_dw_8_params.stride, conv_dw_8_params.padding, conv_dw_8_params.kernel_size,
 
-            (elem_t*)conv_7_out, (elem_t*)conv_dw_8_w_flat, (acc_t*)conv_dw_8_b, (elem_t*)conv_dw_8_out,
+            (elem_t*)conv_7_out, (elem_t*)conv_dw_8_w, (acc_t*)conv_dw_8_b, (elem_t*)conv_dw_8_out,
 
             RELU, conv_dw_8_params.output_scale, 0,
             conv_dw_8_params.pool_size, 0, conv_dw_8_params.pool_padding,
@@ -351,12 +351,12 @@ int main (int argc, char * argv[]) {
             conv_dw_11_params.batch_size, conv_dw_11_params.in_channels, conv_dw_11_params.out_dim, conv_dw_11_params.kernel_size,
             conv_10_out, conv_dw_11_w, conv_dw_11_b, conv_dw_11_out, &conv_dw_11_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_11_params.batch_size, conv_dw_11_params.in_dim, conv_dw_11_params.in_channels,
-            conv_dw_11_params.out_channels, conv_dw_11_params.out_dim,
+            conv_dw_11_params.out_dim,
             conv_dw_11_params.stride, conv_dw_11_params.padding, conv_dw_11_params.kernel_size,
 
-            (elem_t*)conv_10_out, (elem_t*)conv_dw_11_w_flat, (acc_t*)conv_dw_11_b, (elem_t*)conv_dw_11_out,
+            (elem_t*)conv_10_out, (elem_t*)conv_dw_11_w, (acc_t*)conv_dw_11_b, (elem_t*)conv_dw_11_out,
 
             RELU, conv_dw_11_params.output_scale, 0,
             conv_dw_11_params.pool_size, 0, conv_dw_11_params.pool_padding,
@@ -424,12 +424,12 @@ int main (int argc, char * argv[]) {
             conv_dw_14_params.batch_size, conv_dw_14_params.in_channels, conv_dw_14_params.out_dim, conv_dw_14_params.kernel_size,
             conv_13_out, conv_dw_14_w, conv_dw_14_b, conv_dw_14_out, &conv_dw_14_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_14_params.batch_size, conv_dw_14_params.in_dim, conv_dw_14_params.in_channels,
-            conv_dw_14_params.out_channels, conv_dw_14_params.out_dim,
+            conv_dw_14_params.out_dim,
             conv_dw_14_params.stride, conv_dw_14_params.padding, conv_dw_14_params.kernel_size,
 
-            (elem_t*)conv_13_out, (elem_t*)conv_dw_14_w_flat, (acc_t*)conv_dw_14_b, (elem_t*)conv_dw_14_out,
+            (elem_t*)conv_13_out, (elem_t*)conv_dw_14_w, (acc_t*)conv_dw_14_b, (elem_t*)conv_dw_14_out,
 
             RELU, conv_dw_14_params.output_scale, 0,
             conv_dw_14_params.pool_size, 0, conv_dw_14_params.pool_padding,
@@ -514,12 +514,12 @@ int main (int argc, char * argv[]) {
             conv_dw_17_params.batch_size, conv_dw_17_params.in_channels, conv_dw_17_params.out_dim, conv_dw_17_params.kernel_size,
             conv_16_out, conv_dw_17_w, conv_dw_17_b, conv_dw_17_out, &conv_dw_17_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_17_params.batch_size, conv_dw_17_params.in_dim, conv_dw_17_params.in_channels,
-            conv_dw_17_params.out_channels, conv_dw_17_params.out_dim,
+            conv_dw_17_params.out_dim,
             conv_dw_17_params.stride, conv_dw_17_params.padding, conv_dw_17_params.kernel_size,
 
-            (elem_t*)conv_16_out, (elem_t*)conv_dw_17_w_flat, (acc_t*)conv_dw_17_b, (elem_t*)conv_dw_17_out,
+            (elem_t*)conv_16_out, (elem_t*)conv_dw_17_w, (acc_t*)conv_dw_17_b, (elem_t*)conv_dw_17_out,
 
             RELU, conv_dw_17_params.output_scale, 0,
             conv_dw_17_params.pool_size, 0, conv_dw_17_params.pool_padding,
@@ -604,12 +604,12 @@ int main (int argc, char * argv[]) {
             conv_dw_20_params.batch_size, conv_dw_20_params.in_channels, conv_dw_20_params.out_dim, conv_dw_20_params.kernel_size,
             conv_19_out, conv_dw_20_w, conv_dw_20_b, conv_dw_20_out, &conv_dw_20_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_20_params.batch_size, conv_dw_20_params.in_dim, conv_dw_20_params.in_channels,
-            conv_dw_20_params.out_channels, conv_dw_20_params.out_dim,
+            conv_dw_20_params.out_dim,
             conv_dw_20_params.stride, conv_dw_20_params.padding, conv_dw_20_params.kernel_size,
 
-            (elem_t*)conv_19_out, (elem_t*)conv_dw_20_w_flat, (acc_t*)conv_dw_20_b, (elem_t*)conv_dw_20_out,
+            (elem_t*)conv_19_out, (elem_t*)conv_dw_20_w, (acc_t*)conv_dw_20_b, (elem_t*)conv_dw_20_out,
 
             RELU, conv_dw_20_params.output_scale, 0,
             conv_dw_20_params.pool_size, 0, conv_dw_20_params.pool_padding,
@@ -677,12 +677,12 @@ int main (int argc, char * argv[]) {
             conv_dw_23_params.batch_size, conv_dw_23_params.in_channels, conv_dw_23_params.out_dim, conv_dw_23_params.kernel_size,
             conv_22_out, conv_dw_23_w, conv_dw_23_b, conv_dw_23_out, &conv_dw_23_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_23_params.batch_size, conv_dw_23_params.in_dim, conv_dw_23_params.in_channels,
-            conv_dw_23_params.out_channels, conv_dw_23_params.out_dim,
+            conv_dw_23_params.out_dim,
             conv_dw_23_params.stride, conv_dw_23_params.padding, conv_dw_23_params.kernel_size,
 
-            (elem_t*)conv_22_out, (elem_t*)conv_dw_23_w_flat, (acc_t*)conv_dw_23_b, (elem_t*)conv_dw_23_out,
+            (elem_t*)conv_22_out, (elem_t*)conv_dw_23_w, (acc_t*)conv_dw_23_b, (elem_t*)conv_dw_23_out,
 
             RELU, conv_dw_23_params.output_scale, 0,
             conv_dw_23_params.pool_size, 0, conv_dw_23_params.pool_padding,
@@ -767,12 +767,12 @@ int main (int argc, char * argv[]) {
             conv_dw_26_params.batch_size, conv_dw_26_params.in_channels, conv_dw_26_params.out_dim, conv_dw_26_params.kernel_size,
             conv_25_out, conv_dw_26_w, conv_dw_26_b, conv_dw_26_out, &conv_dw_26_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_26_params.batch_size, conv_dw_26_params.in_dim, conv_dw_26_params.in_channels,
-            conv_dw_26_params.out_channels, conv_dw_26_params.out_dim,
+            conv_dw_26_params.out_dim,
             conv_dw_26_params.stride, conv_dw_26_params.padding, conv_dw_26_params.kernel_size,
 
-            (elem_t*)conv_25_out, (elem_t*)conv_dw_26_w_flat, (acc_t*)conv_dw_26_b, (elem_t*)conv_dw_26_out,
+            (elem_t*)conv_25_out, (elem_t*)conv_dw_26_w, (acc_t*)conv_dw_26_b, (elem_t*)conv_dw_26_out,
 
             RELU, conv_dw_26_params.output_scale, 0,
             conv_dw_26_params.pool_size, 0, conv_dw_26_params.pool_padding,
@@ -857,12 +857,12 @@ int main (int argc, char * argv[]) {
             conv_dw_29_params.batch_size, conv_dw_29_params.in_channels, conv_dw_29_params.out_dim, conv_dw_29_params.kernel_size,
             conv_28_out, conv_dw_29_w, conv_dw_29_b, conv_dw_29_out, &conv_dw_29_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_29_params.batch_size, conv_dw_29_params.in_dim, conv_dw_29_params.in_channels,
-            conv_dw_29_params.out_channels, conv_dw_29_params.out_dim,
+            conv_dw_29_params.out_dim,
             conv_dw_29_params.stride, conv_dw_29_params.padding, conv_dw_29_params.kernel_size,
 
-            (elem_t*)conv_28_out, (elem_t*)conv_dw_29_w_flat, (acc_t*)conv_dw_29_b, (elem_t*)conv_dw_29_out,
+            (elem_t*)conv_28_out, (elem_t*)conv_dw_29_w, (acc_t*)conv_dw_29_b, (elem_t*)conv_dw_29_out,
 
             RELU, conv_dw_29_params.output_scale, 0,
             conv_dw_29_params.pool_size, 0, conv_dw_29_params.pool_padding,
@@ -947,12 +947,12 @@ int main (int argc, char * argv[]) {
             conv_dw_32_params.batch_size, conv_dw_32_params.in_channels, conv_dw_32_params.out_dim, conv_dw_32_params.kernel_size,
             conv_31_out, conv_dw_32_w, conv_dw_32_b, conv_dw_32_out, &conv_dw_32_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_32_params.batch_size, conv_dw_32_params.in_dim, conv_dw_32_params.in_channels,
-            conv_dw_32_params.out_channels, conv_dw_32_params.out_dim,
+            conv_dw_32_params.out_dim,
             conv_dw_32_params.stride, conv_dw_32_params.padding, conv_dw_32_params.kernel_size,
 
-            (elem_t*)conv_31_out, (elem_t*)conv_dw_32_w_flat, (acc_t*)conv_dw_32_b, (elem_t*)conv_dw_32_out,
+            (elem_t*)conv_31_out, (elem_t*)conv_dw_32_w, (acc_t*)conv_dw_32_b, (elem_t*)conv_dw_32_out,
 
             RELU, conv_dw_32_params.output_scale, 0,
             conv_dw_32_params.pool_size, 0, conv_dw_32_params.pool_padding,
@@ -1021,12 +1021,12 @@ int main (int argc, char * argv[]) {
             conv_dw_35_params.batch_size, conv_dw_35_params.in_channels, conv_dw_35_params.out_dim, conv_dw_35_params.kernel_size,
             conv_34_out, conv_dw_35_w, conv_dw_35_b, conv_dw_35_out, &conv_dw_35_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_35_params.batch_size, conv_dw_35_params.in_dim, conv_dw_35_params.in_channels,
-            conv_dw_35_params.out_channels, conv_dw_35_params.out_dim,
+            conv_dw_35_params.out_dim,
             conv_dw_35_params.stride, conv_dw_35_params.padding, conv_dw_35_params.kernel_size,
 
-            (elem_t*)conv_34_out, (elem_t*)conv_dw_35_w_flat, (acc_t*)conv_dw_35_b, (elem_t*)conv_dw_35_out,
+            (elem_t*)conv_34_out, (elem_t*)conv_dw_35_w, (acc_t*)conv_dw_35_b, (elem_t*)conv_dw_35_out,
 
             RELU, conv_dw_35_params.output_scale, 0,
             conv_dw_35_params.pool_size, 0, conv_dw_35_params.pool_padding,
@@ -1111,12 +1111,12 @@ int main (int argc, char * argv[]) {
         conv_dw_38_params.batch_size, conv_dw_38_params.in_channels, conv_dw_38_params.out_dim, conv_dw_38_params.kernel_size,
         conv_37_out, conv_dw_38_w, conv_dw_38_b, conv_dw_38_out, &conv_dw_38_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_38_params.batch_size, conv_dw_38_params.in_dim, conv_dw_38_params.in_channels,
-            conv_dw_38_params.out_channels, conv_dw_38_params.out_dim,
+            conv_dw_38_params.out_dim,
             conv_dw_38_params.stride, conv_dw_38_params.padding, conv_dw_38_params.kernel_size,
 
-            (elem_t*)conv_37_out, (elem_t*)conv_dw_38_w_flat, (acc_t*)conv_dw_38_b, (elem_t*)conv_dw_38_out,
+            (elem_t*)conv_37_out, (elem_t*)conv_dw_38_w, (acc_t*)conv_dw_38_b, (elem_t*)conv_dw_38_out,
 
             RELU, conv_dw_38_params.output_scale, 0,
             conv_dw_38_params.pool_size, 0, conv_dw_38_params.pool_padding,
@@ -1201,12 +1201,12 @@ int main (int argc, char * argv[]) {
             conv_dw_41_params.batch_size, conv_dw_41_params.in_channels, conv_dw_41_params.out_dim, conv_dw_41_params.kernel_size,
             conv_40_out, conv_dw_41_w, conv_dw_41_b, conv_dw_41_out, &conv_dw_41_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_41_params.batch_size, conv_dw_41_params.in_dim, conv_dw_41_params.in_channels,
-            conv_dw_41_params.out_channels, conv_dw_41_params.out_dim,
+            conv_dw_41_params.out_dim,
             conv_dw_41_params.stride, conv_dw_41_params.padding, conv_dw_41_params.kernel_size,
 
-            (elem_t*)conv_40_out, (elem_t*)conv_dw_41_w_flat, (acc_t*)conv_dw_41_b, (elem_t*)conv_dw_41_out,
+            (elem_t*)conv_40_out, (elem_t*)conv_dw_41_w, (acc_t*)conv_dw_41_b, (elem_t*)conv_dw_41_out,
 
             RELU, conv_dw_41_params.output_scale, 0,
             conv_dw_41_params.pool_size, 0, conv_dw_41_params.pool_padding,
@@ -1275,12 +1275,12 @@ int main (int argc, char * argv[]) {
             conv_dw_44_params.batch_size, conv_dw_44_params.in_channels, conv_dw_44_params.out_dim, conv_dw_44_params.kernel_size,
             conv_43_out, conv_dw_44_w, conv_dw_44_b, conv_dw_44_out, &conv_dw_44_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_44_params.batch_size, conv_dw_44_params.in_dim, conv_dw_44_params.in_channels,
-            conv_dw_44_params.out_channels, conv_dw_44_params.out_dim,
+            conv_dw_44_params.out_dim,
             conv_dw_44_params.stride, conv_dw_44_params.padding, conv_dw_44_params.kernel_size,
 
-            (elem_t*)conv_43_out, (elem_t*)conv_dw_44_w_flat, (acc_t*)conv_dw_44_b, (elem_t*)conv_dw_44_out,
+            (elem_t*)conv_43_out, (elem_t*)conv_dw_44_w, (acc_t*)conv_dw_44_b, (elem_t*)conv_dw_44_out,
 
             RELU, conv_dw_44_params.output_scale, 0,
             conv_dw_44_params.pool_size, 0, conv_dw_44_params.pool_padding,
@@ -1365,12 +1365,12 @@ int main (int argc, char * argv[]) {
             conv_dw_47_params.batch_size, conv_dw_47_params.in_channels, conv_dw_47_params.out_dim, conv_dw_47_params.kernel_size,
             conv_46_out, conv_dw_47_w, conv_dw_47_b, conv_dw_47_out, &conv_dw_47_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_47_params.batch_size, conv_dw_47_params.in_dim, conv_dw_47_params.in_channels,
-            conv_dw_47_params.out_channels, conv_dw_47_params.out_dim,
+            conv_dw_47_params.out_dim,
             conv_dw_47_params.stride, conv_dw_47_params.padding, conv_dw_47_params.kernel_size,
 
-            (elem_t*)conv_46_out, (elem_t*)conv_dw_47_w_flat, (acc_t*)conv_dw_47_b, (elem_t*)conv_dw_47_out,
+            (elem_t*)conv_46_out, (elem_t*)conv_dw_47_w, (acc_t*)conv_dw_47_b, (elem_t*)conv_dw_47_out,
 
             RELU, conv_dw_47_params.output_scale, 0,
             conv_dw_47_params.pool_size, 0, conv_dw_47_params.pool_padding,
@@ -1455,12 +1455,12 @@ int main (int argc, char * argv[]) {
             conv_dw_50_params.batch_size, conv_dw_50_params.in_channels, conv_dw_50_params.out_dim, conv_dw_50_params.kernel_size,
             conv_49_out, conv_dw_50_w, conv_dw_50_b, conv_dw_50_out, &conv_dw_50_params);
     } else {
-        tiled_conv_auto_dw(
+        tiled_conv_dw_auto(
             conv_dw_50_params.batch_size, conv_dw_50_params.in_dim, conv_dw_50_params.in_channels,
-            conv_dw_50_params.out_channels, conv_dw_50_params.out_dim,
+            conv_dw_50_params.out_dim,
             conv_dw_50_params.stride, conv_dw_50_params.padding, conv_dw_50_params.kernel_size,
 
-            (elem_t*)conv_49_out, (elem_t*)conv_dw_50_w_flat, (acc_t*)conv_dw_50_b, (elem_t*)conv_dw_50_out,
+            (elem_t*)conv_49_out, (elem_t*)conv_dw_50_w, (acc_t*)conv_dw_50_b, (elem_t*)conv_dw_50_out,
 
             RELU, conv_dw_50_params.output_scale, 0,
             conv_dw_50_params.pool_size, 0, conv_dw_50_params.pool_padding,
