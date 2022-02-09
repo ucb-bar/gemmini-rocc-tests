@@ -39,6 +39,10 @@ struct FcParams {
     int I, J, K;
 };
 
+enum layer_type_t {CONV, MATMUL, FC, RESADD, POOL}
+size_t priority_score[NUM_CORE] = {0};
+size_t adjust[NUM_CORE] = {0};
+
 #define HIST_IMAGES(IMAGES) \
     for (int num = -128; num <= 127; num++) { \
         int count = 0; \
@@ -93,7 +97,7 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
         false, false,
         false, false,
         3,
-        tiled_matmul_type);
+        tiled_matmul_type, 0, 0);
 
     if (check) {
         printf("%s: CPU\n", layer_name);
@@ -156,6 +160,183 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         }
     }
 }
+
+static void tiled_matmul_nn_auto_stride(size_t dim_I, size_t dim_J, size_t dim_K,
+  size_t stride_A, size_t stride_B, size_t stride_C,
+  elem_t* A, elem_t* B,
+  const void * D, elem_t* C,
+  int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
+  enum tiled_matmul_type_t tiled_matmul_type,
+  size_t orow_divide, size_t batch_divide, size_t cid,
+  int target_util)
+{
+  size_t* args_out;
+  size_t args[10];
+  args_out = tiling_factor_matmul_calculate_auto(dim_I, dim_J, dim_K, orow_divide, batch_divide, cid, args, target_util);
+  dim_I = args_out[3];
+  dim_J = args_out[4];
+  dim_K = args_out[5];
+  size_t tile_I = args_out[8];
+  size_t tile_J = args_out[9];
+  size_t tile_K = args_out[10];
+
+  size_t orow_offset_floor = args_out[6];
+  bool row_divisible = (args_out[7] != 0);
+  int window = args_out[0];
+  int target_load = args_out[1];
+
+  orow_divide = batch_divide * orow_divide;
+  batch_divide = 1;
+  //size_t total_divide = orow_divide * batch_divide; // number of cores for this workload
+
+  if(!row_divisible) orow_divide = 1;
+  int out_offset = (row_divisible) ? 0 : dim_J * cid; // no need to apply offset if we divided row
+  int A_orow_offset = (row_divisible && cid != 0) ? stride_A * cid * dim_I + stride_A * orow_offset_floor : 0; // if row is divided, need offset it I dimension
+  int C_orow_offset = (row_divisible && cid != 0) ? stride_C * cid * dim_I + stride_C * orow_offset_floor : 0; // if row is divided, need offset it I dimension
+//  printf("dim_I: %d, orow_offset_floor: %d, A_row_offset: %d \n", dim_I, orow_offset_floor, A_orow_offset);
+  int A_batch_offset = 0;
+  int C_batch_offset = 0;
+  if (batch_divide > 1){
+     A_batch_offset = stride_A * cid * dim_I;
+     C_batch_offset = stride_C * cid * dim_I;
+  }
+
+  bool no_bias = (D==NULL);
+  
+  tiled_matmul(dim_I, dim_J, dim_K,
+    A + A_orow_offset + A_batch_offset, B + out_offset, no_bias ? NULL : D + out_offset*sizeof(acc_t), C + C_orow_offset + out_offset + C_batch_offset,
+    stride_A, stride_B, stride_B, stride_C,
+    MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+    act, scale, relu6_shift, repeating_bias,
+    tile_I, tile_J, tile_K,
+    false, false, false, false, 3,
+    tiled_matmul_type, 
+    window, target_load);
+
+}
+
+// assign priority score -> get workloads to execute -> assign resources
+int* scheduler(
+    float priority[], // previous priority (initialization: user given priority)
+    uint64_t old[], // how long it has been in the queue
+    uint64_t target[]
+    ){
+
+  int num_workload = (int)(sizeof(priority) / sizeof(priority[0]));
+  uint64_t old_total = 0;
+  for (int i = 0; i < num_workload; i += 1)
+    old_total += old[i];
+
+  for (int i = 0; i < num_workload; i += 1){
+    priority[i] += (old[i] / old_total);
+  }
+
+
+
+
+// enum layer_type_t {CONV, MATMUL, FC, RESADD, POOL}
+// update cycles
+// update remainig macs, next target util
+// ideal cycles based on load (FC) or compute macs (CONV)
+int64_t* next_target_util(
+    int64_t args_out[],
+    //int64_t remaining_cycles, int64_t remaining_mem_cycles, int64_t remaining_pool_cycles, int64_t prev_cycles,
+    //uint64_t prev_conv_ideal, uint64_t prev_mem_ideal, uint64_t prev_pool_ideal,
+    //size_t mem_target, // 1 / num_core
+    int compute_target, // conv layer target (from pre-compiled)
+    enum layer_type_t prev_layer_type, enum layer_tyepe_t next_layer_type,
+    const struct ConvParams * prev_params,
+    size_t orow_divide, size_t batch_divide, size_t cid, size_t wid){ // wid: workload id
+
+  // remaining cycles: remain target cycles
+  // prev macs: total macs before this layer
+  // MEM: update remaining mem cycles
+  // conv: update remaining cycle, conv ideal -> subtract expected mem cycle -> compute next layer's target conv
+  remaining_cycles = args_out[0];
+  remaining_mem_cycles = args_out[1];
+  remaining_pool_cycles = args_out[2];
+  prev_conv_ideal = args_out[3];
+  prev_mem_ideal = args_out[4];
+  prev_pool_ideal = args_out[5];
+  mem_target = (size_t)(args_out[6]);
+  prev_cycles = args_out[7]; // prev_layer_cycles
+
+  remaining_cycles -= prev_cycles;
+  uint64_t new_conv_ideal = prev_conv_ideal;
+  uint64_t new_mem_ideal = prev_mem_ideal;
+  uint64_t new_pool_ideal = prev_pool_ideal;
+  if(prev_layer_type == CONV){
+    int args_in[10];
+    int* args = tiled_conv_A_stride_bubble_calculate(args_in, prev_params -> batch_size, prev_params->in_dim, prev_params->in_channels,
+        prev_params->out_channels, prev_params->out_dim, prev_params->stride, prev_params->dilation, prev_params->padding, prev_params->kernel_dim,
+        prev_params->pool_size, prev_params->pool_stride, prev_params->pool_padding, prev_params->pool_ceil_dim,
+        orow_divide, batch_divide, cid);
+    uint64_t prev_layer_ideal = args[9];
+    new_conv_ideal -= prev_layer_ideal;
+  }
+  else if(prev_layer_type == MATMUL){
+    size_t args_in[10];
+    size_t* args = tiling_factor_matmul_calculate_auto(prev_params->I, prev_params->J, prev_params->K,
+        orow_divide, batch_divide, cid, args_in, 0);
+    uint64_t prev_layer_ideal = args[2];
+    new_conv_ideal -= prev_layer_ideal;
+  }
+  else if(prev_layer_type == FC){
+    size_t args_in[10];
+    remaining_mem_cycles -= prev_cycles;
+    size_t* args = tiling_factor_matmul_calculate_auto(prev_params->I, prev_params->J, prev_params->K,
+        orow_divide, batch_divide, cid, args_in, 0);
+    uint64_t prev_layer_ideal = args[2];
+    new_mem_ideal -= prev_layer_ideal;
+  }
+  else if(prev_layer_type == RESADD){
+    remaining_mem_cycle -= prev_cycles;
+    int args_in[5];
+    int* args = tiled_resadd_bubble_calculate(args_in, prev_params->I, prev_params->J,
+        orow_divide, batch_divide, 0);
+    uint64_t resadd_ideal = args[2];
+    new_mem_ideal -= resadd_ideal;
+  }
+  else if(prev_layer_type == POOL){
+    remaining_pool_cycles -= prev_cycles;
+    int args_in[5];
+    int* args = tiled_pool_bubble_calculate(args_in, prev_params->batch_size, prev_params->in_dim, prev_params->out_channels, prev_params->out_dim,
+        prev_params->pool_size, prev_params->pool_stride, prev_params->pool_padding,
+        orow_divide, batch_divide, 0);
+    uint64_t pool_ideal = args[2];
+    new_mem_ideal -= pool_ideal;
+  }
+
+  int next_conv_target = 0;
+  //if(next_layer_type == CONV || next_layer_type == MATMUL){
+  uint64_t remaining_conv_target_cycles = remaining_cycles - (uint64_t)(new_mem_ideal / mem_target) - (uint64_t)(new_pool_ideal / mem_target * 2);
+  next_conv_target = (int)(remaining_conv_target_cycles / new_conv_ideal); // Todo: reuse factor
+  //}
+  if(wid < NUM_CORE){
+    adjust[wid] = remaining_conv_target_cycles - compute_target;
+  }
+
+  int next_mem_target = new_mem_ideal;
+  if(new_conv_ideal == 0){ // done conv
+    next_mem_target = (int)(remaining_mem_target_cycles / new_mem_ideal);
+  }
+ 
+  //ToDo: update priority score
+  //ToDo: adjust target
+
+  args_out[0] = remaining_cycles;
+  args_out[1] = remaining_mem_cycles;
+  args_out[2] = remaining_pool_cycles;
+  args_out[3] = new_conv_ideal;
+  args_out[4] = new_mem_ideal;
+  args_out[5] = new_pool_ideal;
+  args_out[6] = new_mem_target;
+  args_out[7] = new_conv_target;
+
+  return args_out;
+
+}
+
 
 static void conv_dw(size_t I, size_t J,
     const size_t batch_size, const size_t channels, const size_t in_dim, const size_t out_dim, const size_t kernel_size,
