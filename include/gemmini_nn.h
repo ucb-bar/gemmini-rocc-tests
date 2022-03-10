@@ -25,7 +25,8 @@ struct ConvParams {
     acc_scale_t output_scale;
     scale_t res_scale;
     int pool_size, pool_stride, pool_padding, out_dim_pooled;
-    
+   
+    int in_stride, out_stride, weight_stride;
     int I, J, K;
 };
 
@@ -35,13 +36,16 @@ struct FcParams {
     int out_features;
     acc_scale_t output_scale;
     bool bias;
+    int out_stride;
 
     int I, J, K;
 };
 
-enum layer_type_t {CONV, MATMUL, FC, RESADD, POOL}
-size_t priority_score[NUM_CORE] = {0};
-size_t adjust[NUM_CORE] = {0};
+
+//enum layer_type_t {CONV, MATMUL, FC, RESADD, POOL}
+//size_t priority_score[NUM_CORE] = {0};
+//size_t adjust[NUM_CORE] = {0};
+
 
 #define HIST_IMAGES(IMAGES) \
     for (int num = -128; num <= 127; num++) { \
@@ -215,24 +219,299 @@ static void tiled_matmul_nn_auto_stride(size_t dim_I, size_t dim_J, size_t dim_K
 
 }
 
-// assign priority score -> get workloads to execute -> assign resources
-int* scheduler(
-    float priority[], // previous priority (initialization: user given priority)
-    uint64_t old[], // how long it has been in the queue
-    uint64_t target[]
+
+static void tiled_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
+  size_t stride_C,
+  elem_t* A, elem_t* B,
+  const void * D, elem_t* C,
+  int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
+  enum tiled_matmul_type_t tiled_matmul_type,
+  size_t orow_divide, size_t batch_divide, size_t cid,
+  int target_util){
+
+  size_t stride_A = (dim_K % 128 == 0) ? dim_K + 64 : dim_K;
+  size_t stride_B = (dim_J % 128 == 0) ? dim_J + 64 : dim_J;
+
+  tiled_matmul_nn_auto_stride(
+      dim_I, dim_J, dim_K,
+      stride_A, stride_B, stride_C,
+      A, B, D, C,
+      act, scale, relu6_shift, repeating_bias,
+      WS,
+      orow_divide, batch_divide, cid,
+      target_util);
+
+}
+/*
+
+// two level scheduler:
+// 1: periodically get the selected group of workload of top priority updated score
+// 2: arrange it into execution order
+// store workload_id to global gemmini queue (gemmini_queue) 
+int* calm_scheduler_level2(
+    int num_workload, // number of workload in the queue
+    int candidate_workload[num_workload], // selected workload with top priority
+    // uint64_t target[num_workload], // left target cycles for candidate workloads
+    int64_t old[num_workload], // how old? (can be negative for SLA test)
+    uint64_t expect_time[num_workload], // expect runtime (per unit core - 2 cores)
+    float priority_update[num_workload] // initial priority (same for SLA test)
     ){
 
-  int num_workload = (int)(sizeof(priority) / sizeof(priority[0]));
-  uint64_t old_total = 0;
-  for (int i = 0; i < num_workload; i += 1)
-    old_total += old[i];
+  for(int i = 0; i < num_workload; i++){
+    priority_update[i] += (float)(old[i] / expect_time[i]);
+  }
 
-  for (int i = 0; i < num_workload; i += 1){
-    priority[i] += (old[i] / old_total);
+  // priority order
+  for(int i = 0; i < num_workload; i++){
+    for(int j = i+1; j < num_workload; j++){
+      if(priority_update[i] < priority_update[j]){
+        float a = priority_update[i];
+        priority_update[i] = priority_update[j];
+        priority_update[j] = a;
+
+        int b = candidate_workload[i];
+        candidate_workload[i] = candidate_workload[j];
+        candidate_workload[j] = b;
+      }
+    }
   }
 
 
+}
 
+
+
+
+// need pre-compiled data for the pre-emption overhead
+// return if there is gemmini core to be killed / preempt (immediate? or for synchronization?)
+// invoke when new workload is dispatched
+int* calm_dispatch(
+    size_t arr[], // copy of current gemmini state (which workload running)
+    size_t workload_total_id, // total_id for recording performance
+    size_t workload_type, // pre-compiled workload type
+    size_t workload_batch,
+    size_t user_given_priority,
+    size_t user_given_sensitivity
+    // uint64_t target_runtime, // target runtime for the new workload
+    ){
+
+  uint64_t current_time = read_cycles();
+
+  int new_workload_id = -1;
+
+  // put to the workload queue
+  if(workload_type >= 0){
+    for(int i = 0; i < MAX_WORKLOAD; i++){
+      if(workload_queue[i][ENTRY_TYPE] == -1){
+        workload_queue[i][ENTRY_TYPE] = workload_type;
+        workload_queue[i][ENTRY_TOTAL_ID] = workload_total_id;
+        workload_queue[i][ENTRY_PRIORITY] = user_given_priority;
+        workload_queue[i][ENTRY_TARGET] = user_given_sensitivity * prerun_time[workload_type] * Tq;
+        workload_queue[i][ENTRY_ARRIVAL_TIME] = current_time;
+        workload_queue[i][ENTRY_BATCH_SIZE] = workload_batch;
+        workload_queue[i][ENTRY_EXPECT_CYCLE] = compiled_time[workload_type]; // expected isolated runtime, 1 batch cycle
+        workload_queue[i][ENTRY_NUM_BLOCK] = compiled_layer_block[workload_type]; // precompiled number of layer block
+        new_workload_id = i;
+
+        workload_queue[i][ENTRY_STATE] = 0;
+        workload_queue[i][ENTRY_START_TIME] = 0;
+        workload_queue[i][ENTRY_BATCH_DONE] = 0; // to track offline batch-processing workload
+        workload_queue[i][ENTRY_BATCH_CURRENT] = 0; // currently running number of batches
+        workload_queue[i][ENTRY_LAYER] = 0; // which layer has finished executed (to resume once pre-empted) get from gemmini_state tracking
+        break;
+        //gemmini state tracking array should have real-time layer progress, expected leftover cycles
+      }
+    }
+    if(user_given_priority > PRIORI2 && user_given_sensitivity == QoS3){
+      if(Tq == 1){
+        // kill others, start
+
+        arr = {1}; // all immediate kill, flush out all the queue (need to launch new thread and schedule run again - add expected cycles)
+        return arr;
+      }
+      else if(Tq == 2){
+        // kill two others (latency insesntive ones)
+
+        arr = 
+        return arr;
+      }
+    }
+  }
+
+}
+
+// need pre-compiled data when 1/2/4 cores run for a workload
+// order by priority -> select few workloads -> re
+
+
+int* calm_scheduler(
+    size_t arr[], // empty entries: -1 
+    ){
+
+  uint64_t current_time = read_cycles();
+
+#define SAVE_ENTRIES 5 // number of entries
+#define SAVE_ID 0 // to index into workload_queue
+#define SAVE_PRIORITY 1 // for initial priority
+#define SAVE_TARGET 2 // time left for target
+#define SAVE_STATE 3 // 0: not started, > 0: leftover cycle
+#define SAVE_NUM_CORE 5 // number of cores to allocate
+
+  int64_t queue_save[4][num_workload][SAVE_ENTRIES] = {-1};
+  float priority_update[4][num_workload] = {-1};
+
+  int w[4] = {0};
+  uint64_t current_expected_cycle = workload_queue[taken_workload_id][ENTRY_EXPECT_CYCLE] * workload_queue[i][ENTRY_BATCH_CURRENT] / workload_queue[i][ENTRY_NUM_CORE];
+
+  for(int i = 0; i < NUM_CORES; i++){
+    // type 0: not started, 1: in the gemmini gueue, 2: running, 3: stopped
+    if(workload_queue[i][ENTRY_STATE] == 0 || workload_queue[i][ENTRY_STATE] == 3){
+      // add expected cycles -> may need to preempt currently running cores later on
+      uint64_t old = workload_queue[i][ENTRY_ARRIVAL_TIME] - current + current_expected_cycle; // add expected cycles of the currently started ones
+      uint64_t left_cycles = workload_queue[i][ENTRY_TARGET] - old;
+      if(workload_queue[i][ENTRY_SENSITIVITY] == QoS0){ // offline
+        queue_save[0][w[0]][SAVE_ID] = i;
+        queue_save[0][w[0]][SAVE_TARGET] = 0; // infinite target
+        queue_save[0][w[0]][SAVE_EXPECT_TIME] = workload_queue[i][ENTRY_EXPECT_TIME] * QoS1; // 1 core runtime
+        queue_save[0][w[0]][SAVE_NUM_CORE] = 1;
+        priority_update[0][w[0]] = workload_queue[i][ENTRY_PRIORITY] + (old / queue_save[0][w[0]][SAVE_EXPECT_TIME]); // ToDo: check scaling factor
+        w[0] ++;
+      }
+      else if(workload_queue[i][ENTRY_SENSITIVITY] == QoS1){ // can run with 1 core
+        queue_save[1][w[1]][SAVE_ID] = i;
+        queue_save[1][w[1]][SAVE_TARGET] = left_cycles;
+        queue_save[1][w[1]][SAVE_EXPECT_TIME] = workload_queue[i][ENTRY_EXPECT_TIME] * QoS1; // 1 core runtime
+        if(left_cycles < queue_save[1][w[1]][SAVE_EXPECT_TIME] * 0.8) queue_save[1][w[1]][SAVE_NUM_CORE] = 2;
+        else queue_save[1][w[1]][SAVE_NUM_CORE] = 1;
+        priority_update[1][w[1]] = workload_queue[i][ENTRY_PRIORITY] + (old / queue_save[1][w[1]][SAVE_EXPECT_TIME]);
+        w[1] ++;
+      }
+      else if(workload_queue[i][ENTRY_SENSITIVITY] == QoS2){ // run with 2 core
+        queue_save[2][w[2]][SAVE_ID] = i;
+        queue_save[2][w[2]][SAVE_TARGET] = left_cycles;
+        queue_save[2][w[2]][SAVE_EXPECT_TIME] = workload_queue[i][ENTRY_EXPECT_TIME] * QoS2; // 2 core runtime
+        if(left_cycles < queue_save[2][w[2]][SAVE_EXPECT_TIME] * 0.8) queue_save[2][w[2]][SAVE_NUM_CORE] = 4;
+        else if(left_cycles > queue_save[2][w[2]][SAVE_EXPECT_TIME] * 2) queue_save[2][w[2]][SAVE_NUM_CORE] = 1; 
+        else queue_save[2][w[2]][SAVE_NUM_CORE] = 2;
+        priority_update[2][w[2]] = workload_queue[i][ENTRY_PRIORITY] + (old / queue_save[2][w[2]][SAVE_EXPECT_TIME]);
+        w[2] ++;
+      }
+      else if(workload_queue[i][ENTRY_SENSITIVITY] == QoS3){ // when tq > 2
+        queue_save[3][w[3]][SAVE_ID] = i;
+        queue_save[3][w[3]][SAVE_TARGET] = left_cycles;
+        if(left_cycles > queue_save[3][w[3]][SAVE_EXPECT_TIME] * 3) queue_save[3][w[3]][SAVE_NUM_CORE] = 2; 
+        else queue_save[3][w[3]][SAVE_NUM_CORE] = 4;
+        queue_save[3][w[3]][SAVE_EXPECT_TIME] = workload_queue[i][ENTRY_EXPECT_TIME] * QoS3; // 4 core runtime
+        priority_update[3][w[3]] = workload_queue[i][ENTRY_PRIORITY] + (old / queue_save[3][w[3]][SAVE_EXPECT_TIME]);
+        w[3] ++;
+      }
+    }
+  }
+
+  // priority order
+  for(int wi = 0; wi < 4; wi++){
+    int num_workload = w[wi];
+    for(int i = 0; i < num_workload; i++){
+      for(int j = i+1; j < num_workload; j++){
+        if(priority_update[wi][i] < priority_update[wi][j]){
+          float a = priority_update[wi][i];
+          priority_update[wi][i] = priority_update[wi][j];
+          priority_update[wi][j] = a;
+
+          // ToDo: see if pointer swapping works
+          int64_t* b = queue_save[wi][i];
+          queue_save[wi][i] = queue_save[wi][j];
+          queue_save[wi][j] = b;
+
+        }
+      }
+    }
+  }
+  
+  int num_preempt_need = 0;
+  int current_qos = workload_queue[taken_workload_id][ENTRY_SENSITIVITY]; // taken workload's sensitivity (try to match the sensitivity for the next workload
+  for(int wi = 3; wi >= 0; wi --){ // in reverse order
+    if(w[wi] > 0){ 
+      if(current_qos == wi){ // select this
+        int num_need_core = queue_save[wi][0][SAVE_NUM_CORE]; 
+        num_preempt_need = num_need_core > num_free_core ? num_need_core - num_free_core : 0;
+        for (int i = 0; i < NUM_CORES; i++){
+          if(num_need_core > 0 && arr[i] == -1){
+            arr[i] = queue_save[wi][0][SAVE_ID]; // workload_queue index
+            num_need_core --;
+            num_free_core --;
+          }
+        }
+        
+        if(num_free_core > 0 && w[wi] > 1){ // if there is left cores
+          int num_extra_core = queue_save[wi][1][SAVE_NUM_CORE];
+          // num_preempt_need = num_extra_core > num_free_core ? num_free_core - num_extra_core : 0; // for now, disable this
+          for (int i = 0; i < NUM_CORES; i++){
+            if(num_extra_core > 0 && arr[i] == -1){
+              arr[i] = queue_save[wi][1][SAVE_ID];
+              num_extra_core --;
+              num_free_core --;
+            }
+          }
+        }
+        break;
+      }
+      else{
+        int num_need_core = queue_save[wi][0][SAVE_NUM_CORE];
+        
+        
+        for(int i = 0; i < NUM_CORES; i++){
+          if(num_need_core > 0 && arr[i] == -1){
+            arr[i] = queue_save[wi][0][SAVE_ID];
+            num_need_core --;
+            num_free_core --;
+          }
+        }
+      }
+    }
+  }
+
+   if(need_terminate){
+     immediate_terminate = (queue_save[0][SAVE_PRIORITY] == MAX_PRIORITY); // when max -> immediate terminate
+     int expect_new_runtime = queue_save[0][SAVE_EXPECT_TIME] / NUM_UNIT_CORE; // assume perfect scaling
+     for(int i = 0; i < num_workload; i++){
+       priority_update[i] += expect_new_runtime / workload_queue[(queue_save[w][SAVE_ID])][ENTRY_TARGET] * PRIORITY_SCALE;
+     }
+    // priority order
+     for (int i = 1; i < num_workload; ++i){
+        for (int j = i + 1; j < num_workload; ++j){
+           if (priority_update[i] < priority_update[j]){
+              float a = priority_update[i];
+              priority_update[i] = priority_update[j];
+              priority_update[j] = a;
+
+              // Todo: see if it works
+              int64_t* b = queue_save[i]; 
+              queue_save[i] = queue_save[j];
+              queue_save[j] = b;
+    
+              //int64_t c = target[i];
+              //target[i] = target[j];
+              //target[j] = c;
+           }
+        }
+     }
+
+     // put on the queue (and set the number of cores)
+
+     
+   }
+   else{
+     // put on the queue (and set the number of cores)
+   }
+
+   for(int i = 0; i < num_workload; i++){
+     gemmini_queue[i][0] = queue_save[i][SAVE_ID]; // save workload ID
+     queue_save[i][SAVE_TARGET] 
+
+   }
+
+}
 
 // enum layer_type_t {CONV, MATMUL, FC, RESADD, POOL}
 // update cycles
@@ -246,7 +525,7 @@ int64_t* next_target_util(
     int compute_target, // conv layer target (from pre-compiled)
     enum layer_type_t prev_layer_type, enum layer_tyepe_t next_layer_type,
     const struct ConvParams * prev_params,
-    size_t orow_divide, size_t batch_divide, size_t cid, size_t wid){ // wid: workload id
+    size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id){ // group_id: valid group id for only 1 core per workload running group 
 
   // remaining cycles: remain target cycles
   // prev macs: total macs before this layer
@@ -312,8 +591,8 @@ int64_t* next_target_util(
   uint64_t remaining_conv_target_cycles = remaining_cycles - (uint64_t)(new_mem_ideal / mem_target) - (uint64_t)(new_pool_ideal / mem_target * 2);
   next_conv_target = (int)(remaining_conv_target_cycles / new_conv_ideal); // Todo: reuse factor
   //}
-  if(wid < NUM_CORE){
-    adjust[wid] = remaining_conv_target_cycles - compute_target;
+  if(group_id < NUM_CORE){
+    adjust[group_id] = remaining_conv_target_cycles - compute_target;
   }
 
   int next_mem_target = new_mem_ideal;
@@ -336,7 +615,7 @@ int64_t* next_target_util(
   return args_out;
 
 }
-
+*/
 
 static void conv_dw(size_t I, size_t J,
     const size_t batch_size, const size_t channels, const size_t in_dim, const size_t out_dim, const size_t kernel_size,

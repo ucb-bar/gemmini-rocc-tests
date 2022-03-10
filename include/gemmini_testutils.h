@@ -26,6 +26,61 @@
 
 // #define GEMMINI_ASSERTIONS
 
+// NUM_CORES: number of integrated gemmini cores
+// MAX_WORKLOAD: number of maximum workload that the queue can hold
+// compiled_time[workload_type][NUM_CORES]: pre-compiled estimated time per core settings
+// workload_queue[workload_id][workload_type, target, arrival_time, priority, states, total_id]: state of running or waiting workloads, with targets and arrival time
+// states: state of run (-1: finished, 0: not started, 1: fully assigined and running, 2: need more allocation)
+// workload_id: the place on the workload_queue become workload_id, -1 when starting (all need to be allocated)
+// workload_type: pre-compiled workload type, order or compiled_time
+// total_id: id out of total workloads, for savings for printing purpose
+// running_gemmini[NUM_CORES(gemmini_states)]: state of gemmini
+// gemmini_states: idle (-1), running (workload id)
+
+#define NUM_CORES 4
+#define MAX_WORKLOAD 6
+#define TOTAL_WORKLOAD 50
+
+#define MAX_PRIORITY 11
+#define PRIORI0 1 // Free: 0-1
+#define PRIORI1 8 // Normal: 2-8
+#define PRIORI2 9 // Production: 9
+#define PRIORI3 11 // Monitoring: 10-11
+// latency sensitiveness
+#define QoS0 0 // lowest (infinite) -> 1 core
+#define QoS1 4 // low (4 Tq) -> 1 core or 2 core
+#define QoS2 2 // middle (2 Tq) -> 2 cores
+#define QoS3 1 // high (1 Tq)
+// to make things easy, allow 1 for QoS3, 2 for QoS2, 2 for QoS1, 
+
+#define PRIORITY_SCALE 5
+#define Tq 1 // unit T for QoS target (T_isolated)
+
+// macros for workload queue
+#define ENTRY_TYPE
+#define ENTRY_TARGET
+#define ENTRY_PRIORITY
+#define ENTRY_ARRIVAL_TIME
+#define ENTRY_START_TIME
+#define ENTRY_STATE
+#define ENTRY_NUM_CORE
+#define ENTRY_EXPECT_TIME
+#define ENTRY_BATCH
+#define ENTRY_TOTAL_ID
+// BATCH: less preempt, kill overhead & more flexibility
+
+static uint64_t prerun_time[MAX_WORKLOAD] = {};
+static uint64_t compiled_time[MAX_WORKLOAD][NUM_CORES] = {}; // 6 workloads, 4 different core settings
+static uint64_t workload_queue[MAX_WORKLOAD][10] = {};
+static int gemmini_queue[MAX_WORKLOAD][2] = {-1}; // store workloads to execute, and number of cores needed for each
+static int running_gemmini[NUM_CORES] = {-1}; // gemmini state 
+static uint64_t total_workload[TOTAL_WORKLOAD] = {0};
+
+static int start_queue = 0;// start pointer for gemmini_queue
+static int end_queue = 0;// end poiinter for gemmini_queue
+
+//////////////////////////////////////////////////////////
+
 // Matmul utility functions
 static void matmul(elem_t A[DIM][DIM], elem_t B[DIM][DIM], elem_t D[DIM][DIM], full_t C_full[DIM][DIM]) {
   for (size_t r = 0; r < DIM; r++)

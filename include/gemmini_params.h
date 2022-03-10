@@ -14,8 +14,6 @@
 #define MAX_BLOCK_LEN (MAX_BYTES/(DIM*1))
 #define MAX_BLOCK_LEN_ACC (MAX_BYTES/(DIM*4))
 
-#define NUM_CORE 4
-
 typedef int8_t elem_t;
 static const elem_t elem_t_max = 127;
 static const elem_t elem_t_min = -128;
@@ -73,11 +71,15 @@ typedef uint32_t acc_scale_t_bits;
 #define MVIN_SCALE(x, scale) \
     ({float y = ROUND_NEAR_EVEN((x) * (scale)); y > INT8_MAX ? INT8_MAX : (y < INT8_MIN ? INT8_MIN : (elem_t)y);})
 
+#define MVIN_SCALE_ACC(x, scale) (x)
+
 #define ACC_SCALE_T_IS_FLOAT
 #define ACC_SCALE_EXP_BITS 8
 #define ACC_SCALE_SIG_BITS 24
 
 #define ACC_READ_SMALL_WIDTH
 #define ACC_READ_FULL_WIDTH
+
+#define HAS_FIRST_LAYER_OPTIMIZATIONS
 
 #endif // GEMMINI_PARAMS_H

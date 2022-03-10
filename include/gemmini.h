@@ -118,16 +118,25 @@ bool acc_t_isnan(acc_t x) {
 }
 #endif
 
-int ceil_int(int a, int b){
+int ceil_divide_int(int a, int b){
   int c = (a % b == 0) ? ((int)(a/b)) :(((int)(a/b)) + 1); 
   if(a < b) c = 1;
   return c;
 }
 
-int round_int(int a, int b){
+int round_divide_int(int a, int b){
   int c = (a % b == 0) ? ((int)(a/b)) : ((a % b) >= 0.5*b ? (((int)(a/b)) + 1) : (int)(a/b));
   if(a < b) c = 1;
   return c;
+}
+
+int round_int(float a){
+  int int_a = (int)(a);
+  if(int_a - a == 0){
+    return int_a;
+  }
+  else
+    return (int)(a + 0.5);
 }
 
 #ifdef HAS_MVIN_SCALE
@@ -246,14 +255,14 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define gemmini_extended3_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift, C_stride, A_stride, A_transpose, B_transpose, ocol, row_turn, kdim, stride, channel, row_left, kdim2, weight_double_bank, weight_triple_bank, set_only_strides) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)acc_scale_t_to_acc_scale_t_bits((acc_scale_t)acc_scale) << 32) | ((uint64_t)(A_stride) << 16) | (B_transpose << 9) | (A_transpose << 8) | ((set_only_strides) << 7) | ((act) << 3) | ((dataflow) << 2) | CONFIG_EX, ((uint64_t)(C_stride) << 48) | ((uint64_t)(relu6_shift) << 32) | (sys_shift), k_CONFIG)
 
-#define gemmini_extended2_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift, A_stride, A_transpose, B_transpose, ocol, row_turn, kdim, stride, channel, row_left, kdim2, weight_double_bank, weight_triple_bank) \
+#define gemmini_extended2_config_ex(dataflow, act, sys_shift, relu6_shift, A_stride, A_transpose, B_transpose, ocol, row_turn, kdim, stride, channel, row_left, kdim2, weight_double_bank, weight_triple_bank) \
   gemmini_extended3_config_ex(dataflow, act, sys_shift, ACC_SCALE_IDENTITY, relu6_shift, 1, A_stride, A_transpose, B_transpose, 0, 0, 0, 0, 0, 0, 0, 0, 0, false)
    
-#define gemmini_extended_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift, A_stride, A_transpose, B_transpose) \
-  gemmini_extended2_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift, A_stride, A_transpose, B_transpose, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+#define gemmini_extended_config_ex(dataflow, act, sys_shift, relu6_shift, A_stride, A_transpose, B_transpose) \
+  gemmini_extended2_config_ex(dataflow, act, sys_shift, relu6_shift, A_stride, A_transpose, B_transpose, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
-#define gemmini_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift) \
-    gemmini_extended_config_ex(dataflow, act, sys_shift, acc_scale, relu6_shift, 1, 0, 0)
+#define gemmini_config_ex(dataflow, act, sys_shift, relu6_shift) \
+    gemmini_extended_config_ex(dataflow, act, sys_shift, relu6_shift, 1, 0, 0)
 
 #define gemmini_extended4_config_ld(stride, scale, shrunk, block_mvin_stride, id) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale_t_to_scale_t_bits(scale)) << 32) | ((uint64_t)(block_mvin_stride) << 16) | ((id) << 3) | ((shrunk) << 2) | CONFIG_LD, stride, k_CONFIG)
@@ -270,11 +279,15 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define gemmini_config_ld(stride) \
   gemmini_extended_config_ld(stride, MVIN_SCALE_IDENTITY)
 
-#define gemmini_extended_config_st(stride, pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, upad, lpad) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(ocols) << 56) | ((uint64_t)(orows) << 48) | ((uint64_t)(pocols) << 40) | ((uint64_t)(porows) << 32) | ((uint64_t)(pool_out_dim) << 24) | ((uint64_t)(lpad) << 10) | ((uint64_t)(upad) << 8) | ((uint64_t)(pool_size) << 6) | ((uint64_t)(pool_stride) << 4) | CONFIG_ST, stride, k_CONFIG)
+#define gemmini_extended2_config_st(stride, acc_act, acc_scale, pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, upad, lpad) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(ocols) << 56) | ((uint64_t)(orows) << 48) | ((uint64_t)(pocols) << 40) | ((uint64_t)(porows) << 32) | ((uint64_t)(pool_out_dim) << 24) | ((uint64_t)(lpad) << 10) | ((uint64_t)(upad) << 8) | ((uint64_t)(pool_size) << 6) | ((uint64_t)(pool_stride) << 4) | ((acc_act) << 2) | CONFIG_ST, ((uint64_t)acc_scale_t_to_acc_scale_t_bits((acc_scale_t)acc_scale) << 32) | ((uint32_t)stride), k_CONFIG)
+
+#define gemmini_extended_config_st(stride, acc_act, acc_scale) \
+    gemmini_extended2_config_st(stride, acc_act, acc_scale, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
 #define gemmini_config_st(stride) \
-    gemmini_extended_config_st(stride, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    gemmini_extended_config_st(stride, NO_ACTIVATION, ACC_SCALE_IDENTITY)
+
 
 // flush
 #define gemmini_flush(skip) \
@@ -445,14 +458,14 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
   const int total_macs = dim_I * dim_J * dim_K;
   int ideal_runtime = (int)(total_macs / (DIM*DIM));
   if(fc_layer){
-    const int total_loads = dim_I * ceil_int(dim_K, DIM) + dim_K * ceil_int(dim_J, DIM) + dim_I * ceil_int(dim_J, DIM) * 4;
+    const int total_loads = dim_I * ceil_divide_int(dim_K, DIM) + dim_K * ceil_divide_int(dim_J, DIM) + dim_I * ceil_divide_int(dim_J, DIM) * 4;
     ideal_runtime = total_loads;
   }
 
   if(target_util != 0){
     size_t num_tiles = I0 * J0 * K0;
     if(fc_layer){
-      const int total_loads = dim_I * ceil_int(dim_K, DIM) + dim_K * ceil_int(dim_J, DIM) + dim_I * ceil_int(dim_J, DIM) * 4;
+      const int total_loads = dim_I * ceil_divide_int(dim_K, DIM) + dim_K * ceil_divide_int(dim_J, DIM) + dim_I * ceil_divide_int(dim_J, DIM) * 4;
       //int ideal_runtime = (int)(total_loads / DIM);
       int target_runtime = target_util <= 100 ? ((int)(total_loads * 100 / target_util)) : target_util;
       window = target_runtime / num_tiles;
@@ -466,7 +479,7 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
       target_runtime -= (tile_I * tile_J * tile_K * DIM + tile_I*DIM * tile_J*DIM * 4 / DIM);
       int target_tile_runtime = target_runtime / num_tiles;
       if(num_tiles > 4){
-        int num_K_tile = ceil_int(dim_K, tile_K*DIM);
+        int num_K_tile = ceil_divide_int(dim_K, tile_K*DIM);
         int bias_time = (4 * tile_I * tile_J * DIM) / num_K_tile;
         //target_tile_runtime -= store_time;
         window = target_tile_runtime;
@@ -479,12 +492,12 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
             int J = j0 + tile_J*DIM > dim_J ? dim_J - j0 : tile_J*DIM;
             int A_load_unit = I > DIM ? DIM : I;
             int B_load_unit = J > DIM ? DIM : J;
-            D_load += ceil_int(J * 4, B_load_unit) * ceil_int(I, A_load_unit);//ceil_int(I, A_load_unit) * 4; //ceil_int(I*J, DIM);
+            D_load += ceil_divide_int(J * 4, B_load_unit) * ceil_divide_int(I, A_load_unit);//ceil_divide_int(I, A_load_unit) * 4; //ceil_divide_int(I*J, DIM);
             for (size_t k0 = 0; k0 < dim_K; k0+=tile_K*DIM) {
               int K = k0 + tile_K*DIM > dim_K ? dim_K - k0 : tile_K*DIM;
               int K_load_unit = K > DIM ? DIM : K;
-              A_load += (ceil_int(K, K_load_unit) * I);
-              B_load += (ceil_int(J, B_load_unit) * K);
+              A_load += (ceil_divide_int(K, K_load_unit) * I);
+              B_load += (ceil_divide_int(J, B_load_unit) * K);
             }
           }
         }
@@ -775,7 +788,6 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
     }
   }
   */
-
   // Combined loop
   gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
     A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
@@ -828,8 +840,8 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
   const size_t sizeof_D = low_D ? sizeof(elem_t) : sizeof(acc_t) ;
   const size_t sizeof_C = full_C ? sizeof(acc_t) : sizeof(elem_t);
 
-  gemmini_extended_config_ex(dataflow, act, 0, scale, relu6_shift, 1, a_transpose, b_transpose);
-  gemmini_config_st(stride_C * sizeof_C);
+  gemmini_extended_config_ex(dataflow, act, 0, relu6_shift, 1, a_transpose, b_transpose);
+  gemmini_extended_config_st(stride_C * sizeof_C, act, scale);
   gemmini_config_calm(window, target_load);
   gemmini_extended3_config_ld(stride_A * sizeof(elem_t), A_scale_factor, false, 0);
   gemmini_extended3_config_ld(stride_B * sizeof(elem_t), B_scale_factor, false, 1)
@@ -1069,7 +1081,6 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         uint8_t weightA,
         enum tiled_matmul_type_t tiled_matmul_type,
         int window, int target_load) {
-
 #ifdef GEMMINI_ASSERTIONS
   // Make sure that the tiling factors make sense
   if (tile_I <= 0) {
@@ -1827,7 +1838,7 @@ int* tiling_factor_calculate(int args[], int stride, int pool_size, int pool_str
     }
     
     if(in_channels == 3 && padding == 0 && kernel_dim == 3){
-      int prop = ceil_int(out_channels, args[3]);
+      int prop = ceil_divide_int(out_channels, args[3]);
       args[3] = out_channels;
       args[2] = args[2] / prop;
     }
@@ -2001,7 +2012,7 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
 
     if(target_util != 0){
       //const size_t out_row = (pool_out_row - 1) * pool_stride + pool_size - 2 * pool_padding;
-      size_t num_tiles = round_int(out_channels, pochs) * round_int(batch_size, batches) * round_int(porow_end - porow_start, porows) * round_int(pool_out_dim, pocols) * round_int(kernel_dim, krows) * round_int(kernel_dim, kcols) * round_int(in_channels, kchs);
+      size_t num_tiles = round_divide_int(out_channels, pochs) * round_divide_int(batch_size, batches) * round_divide_int(porow_end - porow_start, porows) * round_divide_int(pool_out_dim, pocols) * round_divide_int(kernel_dim, krows) * round_divide_int(kernel_dim, kcols) * round_divide_int(in_channels, kchs);
       //const uint64_t total_macs = out_channels * batch_size * out_dim * out_row * kernel_dim * kernel_dim * in_channels;
       //int ideal_runtime = ((int)(total_macs / (DIM*DIM)));
       const int target_runtime = target_util <= 100 ? (int)(ideal_runtime * 100 / target_util) : target_util;
@@ -2039,7 +2050,7 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
               const int ocol = eff_pocol * pool_stride + pool_size - 1;//eff_pocol * pool_stride - pool_padding;
               const int prpad = ocol_position + ocol > out_dim ? ocol + ocol_position - out_dim : 0;
               int ocol_unit = ocol < DIM ? ocol : DIM;
-              bias_load += orow * ceil_int(ocol, ocol_unit) * ceil_int(eff_poch * 4, poch_unit);// (int)(orow * ocol * eff_poch / DIM);
+              bias_load += orow * ceil_divide_int(ocol, ocol_unit) * ceil_divide_int(eff_poch * 4, poch_unit);// (int)(orow * ocol * eff_poch / DIM);
               for (int krow = 0; krow < kernel_dim; krow += krows) {
                 int eff_krow = krow + krows > kernel_dim ? kernel_dim - krow : krows;
                 int dilated_krows = eff_krow + (dilation - 1) * (eff_krow - 1);
@@ -2053,8 +2064,8 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
                   for (int kch = 0; kch < in_channels; kch += kchs) {
                     int eff_kch = kch + kchs > in_channels ? in_channels - kch : kchs;
                     int kch_unit = eff_kch < DIM ? eff_kch : DIM;
-                    input_load += ceil_int(eff_kch, kch_unit) * irow * icol;
-                    weight_load += ceil_int(eff_kch, kch_unit) * eff_poch * eff_krow * eff_kcol;
+                    input_load += ceil_divide_int(eff_kch, kch_unit) * irow * icol;
+                    weight_load += ceil_divide_int(eff_kch, kch_unit) * eff_poch * eff_krow * eff_kcol;
                   }
                 }
               }
@@ -2065,7 +2076,7 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
         int num_K_tile = (int)((in_channels*kernel_dim*kernel_dim)/(kchs*krows*kcols));
         //int store_time = acc_rows / num_K_tile;
         //target_tile_runtime -= store_time;
-        int weight_time = krows * kcols * pochs * (ceil_int)(kchs, DIM);
+        int weight_time = krows * kcols * pochs * (ceil_divide_int)(kchs, DIM);
         int input_time = input_load / num_tiles;
         int bias_time = acc_rows / num_K_tile * 4;//bias_load / num_tiles;
         int ideal_tile_cycle = (int)(ideal_runtime / num_tiles);
@@ -2098,7 +2109,7 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
   //if not row divisible
   else{
     if(target_util != 0){
-      size_t num_tiles = (round_int(out_channels, pochs)) * ((int)(batch_size / batches)) * round_int(pool_out_dim, porows) * round_int(pool_out_dim, pocols) * round_int(kernel_dim, krows) * round_int(kernel_dim, kcols) * round_int(in_channels, kchs);
+      size_t num_tiles = (round_divide_int(out_channels, pochs)) * ((int)(batch_size / batches)) * round_divide_int(pool_out_dim, porows) * round_divide_int(pool_out_dim, pocols) * round_divide_int(kernel_dim, krows) * round_divide_int(kernel_dim, kcols) * round_divide_int(in_channels, kchs);
       //const int total_macs = out_channels * batch_size * out_dim * out_dim * kernel_dim * kernel_dim * in_channels;
       //int ideal_runtime = ((int)(total_macs / (DIM*DIM)));
       const int target_runtime = target_util > 100 ? target_util : (int)(ideal_runtime * 100 / target_util);
@@ -2136,7 +2147,7 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
               const int ocol = eff_pocol * pool_stride + pool_size - 1;//eff_pocol * pool_stride - pool_padding;
               const int prpad = ocol_position + ocol > out_dim ? ocol + ocol_position - out_dim : 0;
               int ocol_unit = ocol < DIM ? ocol : DIM;
-              bias_load += orow * ceil_int(ocol, ocol_unit) * ceil_int(eff_poch * 4, poch_unit);// (int)(orow * ocol * eff_poch / DIM);
+              bias_load += orow * ceil_divide_int(ocol, ocol_unit) * ceil_divide_int(eff_poch * 4, poch_unit);// (int)(orow * ocol * eff_poch / DIM);
               //bias_load += (int)(orow * ocol * eff_poch / DIM);
               for (int krow = 0; krow < kernel_dim; krow += krows) {
                 int eff_krow = krow + krows > kernel_dim ? kernel_dim - krow : krows;
@@ -2149,8 +2160,8 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
                   for (int kch = 0; kch < in_channels; kch += kchs) {
                     int eff_kch = kch + kchs > in_channels ? in_channels - kch : kchs;
                     int kch_unit = eff_kch < DIM ? eff_kch : DIM;
-                    input_load += ceil_int(eff_kch, kch_unit) * irow * icol;
-                    weight_load += ceil_int(eff_kch, kch_unit) * eff_poch * eff_krow * eff_kcol;
+                    input_load += ceil_divide_int(eff_kch, kch_unit) * irow * icol;
+                    weight_load += ceil_divide_int(eff_kch, kch_unit) * eff_poch * eff_krow * eff_kcol;
                   }
                 }
               }
@@ -2159,7 +2170,7 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
         }
         int num_K_tile = (int)((in_channels*kernel_dim*kernel_dim)/(kchs*krows*kcols));
         int ideal_tile_cycle = (int)(ideal_runtime / num_tiles);
-        int weight_time = krows * kcols * pochs* (ceil_int)(kchs, DIM);
+        int weight_time = krows * kcols * pochs* (ceil_divide_int)(kchs, DIM);
         int input_time = input_load / num_tiles;
         int bias_time = acc_rows / num_K_tile * 4;//bias_load / num_tiles;
         int fresh_weight_load = (kernel_dim * kernel_dim * out_channels / DIM * in_channels);
@@ -2513,9 +2524,9 @@ static void tiled_conv_A_stride(
     const size_t st_dram_stride = trans_output_1203 ?
         batch_size * out_channels * sizeof(elem_t) :
         out_channels * sizeof(elem_t);
-    gemmini_config_st(st_dram_stride);
+    gemmini_extended_config_st(st_dram_stride, act, scale);
     gemmini_config_calm(0, 0);
-    gemmini_extended3_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, input_dilation, stride >> downsample, trans_input_3120, trans_weight_0132, 0, 0, 0, 0, 0, 0, 0, 0, 0, false);
+    gemmini_extended3_config_ex(WEIGHT_STATIONARY, 0, 0, 0, relu6_shift, input_dilation, stride >> downsample, trans_input_3120, trans_weight_0132, 0, 0, 0, 0, 0, 0, 0, 0, 0, false);
 
     const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
     const int dilated_in_dim = in_dim + (input_dilation-1)*(in_dim-1);
@@ -2711,8 +2722,8 @@ static void tiled_conv_A_stride_cid(
   }
 #endif
 
-  gemmini_config_st(out_stride * sizeof(elem_t));
-  gemmini_extended3_config_ex(WEIGHT_STATIONARY, act, 0, scale, relu6_shift, input_dilation, stride >> downsample, false, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, false);
+  gemmini_extended_config_st(out_stride * sizeof(elem_t), act, scale);
+  gemmini_extended3_config_ex(WEIGHT_STATIONARY, 0, 0, 0, relu6_shift, input_dilation, stride >> downsample, false, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, false);
 
   int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
   const int dilated_in_dim = in_dim + (input_dilation-1)*(in_dim-1);
@@ -3322,7 +3333,7 @@ static void tiled_resadd(const size_t I, const size_t J,
   int window = 0;
   int target_load = 0;
 	int total_mems = I * J * 3;
-	int num_tile = round_int(I, tile_I) * round_int(J, tile_J);
+	int num_tile = round_divide_int(I, tile_I) * round_divide_int(J, tile_J);
 	//printf("total macs: %d, number of tile: %d, tile_I: %d, tile_J: %d \n", total_mems, num_tile, tile_I, tile_J);
   
 	int macs_per_tile = (int)(total_mems / num_tile);
@@ -3335,8 +3346,8 @@ static void tiled_resadd(const size_t I, const size_t J,
 	//printf("ideal cycle: %d, target_cycle: %d, \n", ideal_cycles, target_cycles);
   //printf("priority: %d, window: %d, target_load: %d \n", priority, window, target_load);
  */
-  gemmini_config_st(J_stride * sizeof(elem_t));
-  gemmini_config_ex(WS, relu ? RELU : NO_ACTIVATION, 0, C_scale, 0);
+  gemmini_extended_config_st(J_stride * sizeof(elem_t), relu ? RELU : NO_ACTIVATION, C_scale);
+  gemmini_config_ex(WS, 0, 0, 0);
   gemmini_config_calm(window, target_load);
   gemmini_extended4_config_ld(J_stride * sizeof(elem_t), A_scale, true, DIM, 0);
   gemmini_extended4_config_ld(J_stride * sizeof(elem_t), B_scale, true, DIM, 1);
@@ -3402,7 +3413,7 @@ int* tiled_resadd_bubble_calculate(
   int window = 0;
   int target_load = 0;
 	int total_mems = I * J * 3;
-	int num_tile = round_int(I, tile_I) * round_int(J, tile_J);
+	int num_tile = round_divide_int(I, tile_I) * round_divide_int(J, tile_J);
 	//printf("total macs: %d, number of tile: %d, tile_I: %d, tile_J: %d \n", total_mems, num_tile, tile_I, tile_J);
   
 	int macs_per_tile = (int)(total_mems / num_tile);
@@ -3494,7 +3505,7 @@ static void tiled_resadd_auto_stride(size_t I, size_t J,
   int window = 0;
   int target_load = 0;
 	int total_mems = I * J * 3;
-	int num_tile = round_int(I, tile_I) * round_int(J, tile_J);
+	int num_tile = round_divide_int(I, tile_I) * round_divide_int(J, tile_J);
 	//printf("total macs: %d, number of tile: %d, tile_I: %d, tile_J: %d \n", total_mems, num_tile, tile_I, tile_J);
   
 	int macs_per_tile = (int)(total_mems / num_tile);
@@ -3623,7 +3634,7 @@ static void sp_tiled_pool(
 
     const uint32_t D_sp_addr_start = (1 << (ADDR_LEN - 1)) + D_sp_addr_row;
     const uint32_t C_sp_addr_start = (3 << (ADDR_LEN - 2)) + C_sp_addr_row;
-    gemmini_extended_config_st(stride * sizeof(elem_t), pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
+    gemmini_extended2_config_st(stride * sizeof(elem_t), 0, 1, pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
     gemmini_extended4_config_ld(stride * sizeof(elem_t), MVIN_SCALE_IDENTITY, true, batches * orows * ocols, 2);
 
   //  gemmini_extended4_config_ld(J_stride * sizeof(elem_t), B_scale, true, DIM, 1);
@@ -3681,8 +3692,8 @@ static void tiled_pool(
 	 //int out_stride = channels * och_divide;
 
     gemmini_config_calm(window, target_load);	 
-    gemmini_config_st(out_stride * sizeof(elem_t));
-    gemmini_extended_config_ex(WEIGHT_STATIONARY, RELU, 0, MVIN_SCALE_IDENTITY, 0, 1, false, false);
+    gemmini_extended_config_st(out_stride * sizeof(elem_t), RELU, MVIN_SCALE_IDENTITY);
+    gemmini_extended_config_ex(WEIGHT_STATIONARY, 0, 0, 0, 1, false, false);
 //	 int stride = channels*och_divide;
 //    gemmini_extended4_config_ld(stride * sizeof(elem_t), MVIN_SCALE_IDENTITY, true, DIM, 0);
  
@@ -4028,8 +4039,8 @@ static void tiled_global_average(const elem_t * input, elem_t * output,
     int channel_tile_size) {
 
   gemmini_extended4_config_ld(DIM*sizeof(elem_t), MVIN_SCALE_IDENTITY, true, 1, 0);
-  gemmini_config_ex(0, NO_ACTIVATION, 0, 1.0 / (dim*dim), 0);
-  gemmini_config_st(0);
+  gemmini_config_ex(0, NO_ACTIVATION, 0, 0);
+  gemmini_extended_config_st(0, NO_ACTIVATION, 1.0 / (dim*dim));
 
   for (int batch = 0; batch < batches; batch++) {
     for (int channel = 0; channel < channels; channel += channel_tile_size) {
