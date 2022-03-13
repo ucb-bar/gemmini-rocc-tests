@@ -11,24 +11,25 @@
 #define THREAD_SYNC 0
 #endif
 
+
 #ifndef BAREMETAL
-uint64_t* resnet_function(int cid, int num_cycle, uint64_t cycles[num_cycle], int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_res){
+uint64_t* resnet_function(int cid, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_res){
 #else
-uint64_t* resnet_function(int cid, int num_cycle, uint64_t cycles[num_cycle], int orow_divide, int batch_divide, int target_util){
+uint64_t* resnet_function(int cid, int orow_divide, int batch_divide, int target_util){
 #endif
 
+#define num_cycle (20+34+16+4)
+
+  static uint64_t cycles[num_cycle];
     uint64_t start, end;
     uint64_t total_matmul_cycles = 0, total_conv_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, total_resadd_cycles = 0, other_cycles = 0;
     uint64_t conv_cycles[20];
     uint64_t matmul_cycles[34];
     uint64_t res_add_cycles[16];
-printf("entered resnet_function\n");
-    //uint64_t target_cycle = target_cycles;
+   //uint64_t target_cycle = target_cycles;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(&barrier_res);
 #endif
-printf("barrier wait work \n");
-
     // conv_1
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -48,7 +49,6 @@ printf("barrier wait work \n");
     total_conv_cycles += end - start;
     conv_cycles[0] = end - start;
 
-printf("after layer 1 - cid: %d\n", cid);   
 #if THREAD_SYNC == 1
     pthread_barrier_wait(&barrier_res);
 #endif             
@@ -64,8 +64,7 @@ printf("after layer 1 - cid: %d\n", cid);
     total_matmul_cycles += end - start;
     matmul_cycles[0] = end - start;
 
-printf("after layer 2 - cid: %d\n", cid);   
-   #if THREAD_SYNC == 1
+  #if THREAD_SYNC == 1
     pthread_barrier_wait(&barrier_res);
 #endif
         
@@ -87,8 +86,6 @@ printf("after layer 2 - cid: %d\n", cid);
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[1] = end - start;
-
-printf("after layer 3 - cid: %d\n", cid);   
 
 #if THREAD_SYNC == 1
     pthread_barrier_wait(&barrier_res);
@@ -1327,4 +1324,6 @@ printf("after layer 3 - cid: %d\n", cid);
       }
     }
 
+    return cycles;
+#undef num_cycle
 }

@@ -12,11 +12,14 @@
 #endif
 
 #ifndef BAREMETAL
-uint64_t* squeezenet_function(int cid, int num_count, uint64_t cycles[num_count], int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_squ){
+uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_squeeze){
 #else
-uint64_t* squeezenet_function(int cid, int num_count, uint64_t cycles[num_count], int orow_divide, int batch_divide, int target_util){
+uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int target_util){
 #endif
 
+#define num_cycle (12+15+1+4)
+
+  static uint64_t cycles[num_cycle];
     uint64_t start, end;
     uint64_t total_matmul_cycles = 0, total_conv_cycles = 0, total_pool_cycles = 0, conv_dw_cycles = 0, other_cycles = 0;
     uint64_t conv_cycles[12];
@@ -585,5 +588,6 @@ uint64_t* squeezenet_function(int cid, int num_count, uint64_t cycles[num_count]
         if(i == 31) cycles[i] = total_conv_cycles + total_matmul_cycles + total_pool_cycles;
       }
     }
-
+    return cycles;
+#undef num_cycle
 }

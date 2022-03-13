@@ -12,11 +12,15 @@
 #endif
 
 #ifndef BAREMETAL
-uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_alex){
+uint64_t* alexnet_function(int cid, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_alex){
 #else
-uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], int orow_divide, int batch_divide, int target_util){
+uint64_t* alexnet_function(int cid, int orow_divide, int batch_divide, int target_util){
 #endif
 
+#define num_cycle (5+3+3+4)
+
+  static uint64_t cycles[num_cycle];
+ 
     uint64_t start, end;
     uint64_t total_matmul_cycles = 0, total_conv_cycles = 0, total_pool_cycles = 0, conv_dw_cycles = 0, other_cycles = 0;
     uint64_t conv_cycles[5];
@@ -269,5 +273,6 @@ uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], i
         if(i == 14) cycles[i] = total_conv_cycles + total_matmul_cycles + total_pool_cycles;
       }
     }
-
+    return cycles;
+#undef num_cycle
 }
