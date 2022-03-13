@@ -12,7 +12,7 @@
 #endif
 
 #ifndef BAREMETAL
-uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier){
+uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_alex){
 #else
 uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], int orow_divide, int batch_divide, int target_util){
 #endif
@@ -25,7 +25,7 @@ uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], i
 
     //uint64_t target_cycle = target_cycles;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(barrier_alex);
 #endif
 
     // conv_1
@@ -48,7 +48,7 @@ uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], i
     total_conv_cycles += end - start;
     conv_cycles[0] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(barrier_alex);
 #endif        
  
     start = read_cycles();
@@ -65,7 +65,7 @@ uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], i
     total_pool_cycles += end - start;
     pool_cycles[0] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(barrier_alex);
 #endif        
         
     // conv_2
@@ -88,7 +88,7 @@ uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], i
     total_conv_cycles += end - start;
     conv_cycles[1] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(barrier_alex);
 #endif        
   
     start = read_cycles();
@@ -105,7 +105,7 @@ uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], i
     total_pool_cycles += end - start;
     pool_cycles[1] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(barrier_alex);
 #endif              
     // conv_3
     start = read_cycles();
@@ -126,7 +126,7 @@ uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], i
     total_conv_cycles += end - start;
     conv_cycles[2] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(barrier_alex);
 #endif        
         
     // conv_4
@@ -148,7 +148,7 @@ uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], i
     total_conv_cycles += end - start;
     conv_cycles[3] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(barrier_alex);
 #endif        
         
     // conv_5
@@ -171,7 +171,7 @@ uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], i
     total_conv_cycles += end - start;
     conv_cycles[4] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(barrier_alex);
 #endif        
      
     start = read_cycles();
@@ -188,7 +188,7 @@ uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], i
     total_pool_cycles += end - start;
     pool_cycles[2] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(barrier_alex);
 #endif           
     // Global averaging
     
@@ -203,7 +203,7 @@ uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], i
     end = read_cycles();
     other_cycles = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(barrier_alex);
 #endif
 
     // fc_6
@@ -218,7 +218,7 @@ uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], i
     total_matmul_cycles += end - start;
     matmul_cycles[0] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(barrier_alex);
 #endif   
 
     // fc_7
@@ -233,7 +233,7 @@ uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], i
     total_matmul_cycles += end - start;
     matmul_cycles[1] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(barrier_alex);
 #endif   
 
     // fc_8
@@ -248,7 +248,7 @@ uint64_t* alexnet_function(int cid, int num_layer, uint64_t cycles[num_layer], i
     total_matmul_cycles += end - start;
     matmul_cycles[2] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(barrier_alex);
 #endif   
 
 
