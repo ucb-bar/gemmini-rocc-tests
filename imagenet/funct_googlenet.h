@@ -12,7 +12,7 @@
 #endif
 
 #ifndef BAREMETAL
-uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer], int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier){
+uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer], int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_goo){
 #else
 uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer], int orow_divide, int batch_divide, int target_util){
 #endif
@@ -20,11 +20,11 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     uint64_t start, end;
     uint64_t total_matmul_cycles = 0, total_conv_cycles = 0, total_pool_cycles = 0, conv_dw_cycles = 0, other_cycles = 0;
     uint64_t conv_cycles[58];
-    uint64_t pool_cycles[9];
+    uint64_t pool_cycles[11];
 
     //uint64_t target_cycle = target_cycles;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
   
     // conv_1
@@ -46,7 +46,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[0] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
         
     // conv_2
@@ -61,7 +61,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[1] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
         
     // conv_3
@@ -83,7 +83,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[2] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif       
    // pool_9 for Inception 3a branch 4
     start = read_cycles();
@@ -96,7 +96,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_pool_cycles += end - start;
     pool_cycles[0] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
     //Inception 3a
 	 //Branch 1
@@ -112,7 +112,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[3] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
 	 // Branch 2
     // conv_5
@@ -127,7 +127,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[4] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
                
     // conv_6
@@ -149,7 +149,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[5] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
     // Branch 3
     // conv_7
@@ -165,7 +165,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[6] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
        
     // conv_8
@@ -187,7 +187,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[7] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
        
     // Branch 4
@@ -203,7 +203,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[8] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
 // pool_16 for Inception 3a branch 4
     start = read_cycles();
@@ -216,7 +216,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_pool_cycles += end - start;
     pool_cycles[1] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
 	 //Inception 3b
 	 //Branch 1
@@ -234,7 +234,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[9] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
 
 	 // Branch 2
@@ -250,7 +250,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[10] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
                
     // conv_13
@@ -273,7 +273,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[11] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
     
 	 // Branch 3
@@ -290,7 +290,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[12] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
        
     // conv_15
@@ -313,7 +313,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[13] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
         
     // Branch 4
@@ -331,7 +331,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[14] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
 
 
@@ -346,7 +346,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_pool_cycles += end - start;
     pool_cycles[2] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
 
 	 //pool for inception 4a branch 4 input
@@ -358,9 +358,9 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
 			orow_divide, batch_divide, cid, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
-    pool_cycles[2] = end - start;
+    pool_cycles[3] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
 
 	 //Inception 4a
@@ -377,7 +377,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[15] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
 
 	 // Branch 2
@@ -393,7 +393,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[16] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
                
     // conv_21
@@ -415,7 +415,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[17] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
     
 	 // Branch 3
@@ -432,7 +432,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[18] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
        
     // conv_23
@@ -454,7 +454,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[19] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
         
     // Branch 4
@@ -470,7 +470,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[20] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
 
     
@@ -483,9 +483,9 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
 		orow_divide, batch_divide, cid, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
-    pool_cycles[3] = end - start;
+    pool_cycles[4] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
 	 //Inception 4b
 	 // Branch 1
@@ -502,7 +502,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[21] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
 
 	 // Branch 2
@@ -518,7 +518,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[22] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif          
     // conv_28
     start = read_cycles();
@@ -539,7 +539,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[23] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
     
 	 // Branch 3
@@ -556,7 +556,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[24] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
        
     // conv_30
@@ -573,12 +573,12 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
 			conv_30_params.pool_size, conv_30_params.pool_stride, conv_30_params.pool_padding, true,
 
 			WS, orow_divide, batch_divide, cid, target_util);
-//pthread_barrier_wait(&barrier);
+//pthread_barrier_wait(&barrier_goo);
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[25] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
         
     // Branch 4
@@ -595,7 +595,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[26] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
 
 // pool_38 for Inception 4b branch 4
@@ -607,9 +607,9 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
 		orow_divide, batch_divide, cid, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
-    pool_cycles[4] = end - start;
+    pool_cycles[5] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
 
 	 //Inception 4c
@@ -627,7 +627,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[27] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
 
 	 // Branch 2
@@ -643,7 +643,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[28] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
                
     // conv_35
@@ -665,7 +665,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[29] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
     
 	 // Branch 3
@@ -682,7 +682,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[30] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
        
     // conv_37
@@ -699,13 +699,13 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
 			conv_37_params.pool_size, conv_37_params.pool_stride, conv_37_params.pool_padding, true,
 
 			WS, orow_divide, batch_divide, cid, target_util);
- //pthread_barrier_wait(&barrier);
+ //pthread_barrier_wait(&barrier_goo);
 
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[31] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
         
     // Branch 4
@@ -722,7 +722,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[32] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif       
 
 // pool_45 for Inception 4c branch 4
@@ -734,9 +734,9 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
 		orow_divide, batch_divide, cid, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
-    pool_cycles[5] = end - start;
+    pool_cycles[6] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
 
     //Inception 4d
@@ -753,7 +753,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[33] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
 
 	 // Branch 2
@@ -769,7 +769,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[34] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
                
     // conv_42
@@ -791,7 +791,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[35] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
     
 	 // Branch 3
@@ -808,7 +808,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[36] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
        
     // conv_44
@@ -825,14 +825,14 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
 			conv_44_params.pool_size, conv_44_params.pool_stride, conv_44_params.pool_padding, true,
 
 			WS, orow_divide, batch_divide, cid, target_util);
-   // pthread_barrier_wait(&barrier);
+   // pthread_barrier_wait(&barrier_goo);
 
 
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[37] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
         
     // Branch 4
@@ -849,7 +849,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[38] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
 // pool_52 for Inception 4d branch 4
     start = read_cycles();
@@ -860,9 +860,9 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
 		orow_divide, batch_divide, cid, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
-    pool_cycles[6] = end - start;
+    pool_cycles[7] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
 
 	 //Inception 4e
@@ -894,7 +894,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[39] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
 
 	 // Branch 2
@@ -910,7 +910,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[40] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif  
     // conv_13
     start = read_cycles();
@@ -933,7 +933,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[41] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
 	 // Branch 3
     // conv_50
@@ -949,7 +949,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[42] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
        
     // conv_51
@@ -967,14 +967,14 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
       //pool_54_params.pool_size, pool_54_params.pool_stride, pool_54_params.pool_padding, true,
 
 			WS, orow_divide, batch_divide, cid, target_util);
- //pthread_barrier_wait(&barrier);
+ //pthread_barrier_wait(&barrier_goo);
 
 
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[43] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
     // Branch 4
     // conv_53
@@ -1004,7 +1004,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[44] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif       
 
 // pool
@@ -1016,9 +1016,9 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
 			orow_divide, batch_divide, cid, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
-    pool_cycles[7] = end - start;
+    pool_cycles[8] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif   
 
 
@@ -1031,9 +1031,9 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
 			orow_divide, batch_divide, cid, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
-    pool_cycles[7] = end - start;
+    pool_cycles[9] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif       
 
     // Branch 4
@@ -1049,7 +1049,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[45] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
 
 	 // Inception 5a
@@ -1067,7 +1067,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[46] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
 	 // Branch 2
     // conv_56
@@ -1082,7 +1082,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[47] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
 
     // conv_57
@@ -1104,7 +1104,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[48] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
 	 // Branch 3
     // conv_58
@@ -1120,7 +1120,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[49] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
        
     // conv_59
@@ -1137,14 +1137,14 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
 			conv_59_params.pool_size, conv_59_params.pool_stride, conv_59_params.pool_padding, true,
 
 			WS, orow_divide, batch_divide, cid, target_util);
-   //pthread_barrier_wait(&barrier);
+   //pthread_barrier_wait(&barrier_goo);
 
 
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[50] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
 // pool_67 for Inception 5b branch 4
     start = read_cycles();
@@ -1155,9 +1155,9 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
 		orow_divide, batch_divide, cid, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
-    pool_cycles[8] = end - start;
+    pool_cycles[10] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
 	 // Inception 5b
 	 //Branch 1
@@ -1173,7 +1173,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[51] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
  
 	 // Branch 2
@@ -1189,7 +1189,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[52] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
                
     // conv_64
@@ -1211,7 +1211,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_conv_cycles += end - start;
     conv_cycles[53] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
     
 	 // Branch 3
@@ -1228,7 +1228,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[54] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
     // conv_66
     start = read_cycles();
@@ -1244,14 +1244,14 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
 			conv_66_params.pool_size, conv_66_params.pool_stride, conv_66_params.pool_padding, true,
 
 			WS, orow_divide, batch_divide, cid, target_util);
-   //pthread_barrier_wait(&barrier);
+   //pthread_barrier_wait(&barrier_goo);
 
 
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[55] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
     // Branch 4
     // conv_68
@@ -1266,7 +1266,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[56] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif        
        
     // Global averaging
@@ -1281,7 +1281,7 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     end = read_cycles();
     other_cycles = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif
    // fc_69
     start = read_cycles();
@@ -1294,21 +1294,21 @@ uint64_t* googlenet_function(int cid, int num_layer, uint64_t cycles[num_layer],
     total_matmul_cycles += end - start;
     conv_cycles[57] = end - start;
 #if THREAD_SYNC == 1
-    pthread_barrier_wait(&barrier);
+    pthread_barrier_wait(&barrier_goo);
 #endif   
 
     for(int i = 0; i < num_layer; i++){
       if(i < 58){
         cycles[i] = conv_cycles[i];
       }
-      else if (i < 67){
+      else if (i < 69){
         cycles[i] = pool_cycles[i - 58];
       }
       else{
-        if(i == 67) cycles[i] = total_conv_cycles;
-        if(i == 68) cycles[i] = total_matmul_cycles;
-        if(i == 69) cycles[i] = total_pool_cycles;
-        if(i == 70) cycles[i] = total_conv_cycles + total_matmul_cycles + total_pool_cycles + other_cycles;
+        if(i == 70) cycles[i] = total_conv_cycles;
+        if(i == 71) cycles[i] = total_matmul_cycles;
+        if(i == 72) cycles[i] = total_pool_cycles;
+        if(i == 73) cycles[i] = total_conv_cycles + total_matmul_cycles + total_pool_cycles + other_cycles;
       }
     }
 
