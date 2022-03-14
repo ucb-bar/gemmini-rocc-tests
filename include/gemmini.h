@@ -2497,11 +2497,11 @@ static void tiled_conv_A_stride(
         if (acc_rows > ACC_ROWS / 2) {
             printf("not enough accumulator space to store outputs\n");
             exit(1);
-        }
+        }/*
         if (kernel_dim <= padding) {
             printf("kernel_dim must be larger than padding\n");
             exit(1);
-        }
+        }*/
         if (input_dilation > 2) {
             printf("input_dilation > 2 is only supported on CPU\n");
             exit(1);
@@ -2714,11 +2714,11 @@ static void tiled_conv_A_stride_cid(
       if (acc_rows > ACC_ROWS / 2) {
           printf("not enough accumulator space to store outputs\n");
           exit(1);
-      }
+      }/*
       if (kernel_dim <= padding) {
           printf("kernel_dim must be larger than padding\n");
           exit(1);
-      }
+      }*/
   }
 #endif
 
@@ -3709,7 +3709,7 @@ static void tiled_pool(
                   elem_t * out = pool_output + (b*pool_out_dim*pool_out_dim + porow*pool_out_dim + pocol) * out_stride + poch;
                   const elem_t * in = input + (b*in_dim*in_dim + orow_floored*in_dim + ocol_floored) * out_stride + poch;
 
-                 //printf("batch: %d, poch: %d, porow: %d, pocol: %d, krow: %d, kcol: %d, kch: %d \n", b, poch, porow, pocol, krow, kcol, kch);
+                  // printf("batch: %d, poch: %d, porow: %d, pocol: %d\n", b, poch, porow, pocol);
                   const int batches_ = batch_size - b > batches ? batches : batch_size - b;
                   const int porows_ = pool_out_dim - porow > porows ? porows : pool_out_dim - porow;
                   const int pocols_ = pool_out_dim - pocol > pocols ? pocols : pool_out_dim - pocol;
@@ -3962,14 +3962,17 @@ static void tiled_pool_auto_cid(int batch_size, int channels, int in_dim,
   const int pocols = args[5];
   const int pochs = args[6];
   //printf("window: %d, target_load: %d \n", window, target_load);
-      tiled_pool(batch_size, in_dim, channels, pool_out_dim,
+
+  //printf("C dram addr before pool: 0x%08lx\n", C);
+  tiled_pool(batch_size, in_dim, channels, pool_out_dim,
 				batches, porows, pocols, pochs,
         stride,
         A + batch_in_offset + out_offset, C + batch_out_offset + out_offset,	
 				RELU, MVIN_SCALE_IDENTITY, 0,
 				pool_size, pool_stride, pool_padding,
 				och_divide, window, target_load);
-   
+  
+  //printf("C dram addr after pool: 0x%08lx\n", C);
 }
 static void global_average_cpu(const elem_t * input, elem_t * output,
     int batches, int channels, int dim) {

@@ -27,6 +27,7 @@ struct ConvParams {
     int pool_size, pool_stride, pool_padding, out_dim_pooled;
    
     int in_stride, out_stride, weight_stride;
+    int dilation;
     int I, J, K;
 };
 
@@ -232,6 +233,7 @@ static void tiled_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
   size_t stride_A = (dim_K % 128 == 0) ? dim_K + 64 : dim_K;
   size_t stride_B = (dim_J % 128 == 0) ? dim_J + 64 : dim_J;
 
+//  printf("A dram addr: 0x%08lx\n", A);
   tiled_matmul_nn_auto_stride(
       dim_I, dim_J, dim_K,
       stride_A, stride_B, stride_C,
