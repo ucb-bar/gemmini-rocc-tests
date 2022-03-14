@@ -1,7 +1,7 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-  funct_resnet_test \
+  funct_fcnnet_test \
   # mobilenet \
 	# alexnet \
 
