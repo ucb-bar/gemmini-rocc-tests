@@ -5,8 +5,8 @@ RISCVTOOLS      := @RISCVTOOLS@
 ROCC = examples
 RUNNER         := "spike --extension=gemmini "
 
-.PHONY: all bareMetalC clean imagenet mlps
-all: bareMetalC imagenet mlps
+.PHONY: all bareMetalC clean imagenet mlps transformers
+all: bareMetalC imagenet mlps transformers
 
 vars = \
 	abs_top_srcdir=$(abs_top_srcdir) \
@@ -27,10 +27,15 @@ mlps:
 	mkdir -p $@
 	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
 
+transformers:
+	mkdir -p $@
+	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
+
 clean:
 	$(MAKE) -C bareMetalC -f $(abs_top_srcdir)/bareMetalC/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-bareMetalC clean
 	$(MAKE) -C imagenet -f $(abs_top_srcdir)/imagenet/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-imagenet clean
 	$(MAKE) -C mlps -f $(abs_top_srcdir)/mlps/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-mlps clean
+	$(MAKE) -C transformers -f $(abs_top_srcdir)/transformers/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-transformers clean
 
 test-baremetal-bareMetalC:
 	make -C bareMetalC	\
