@@ -3687,7 +3687,7 @@ static void tiled_pool(
     int act, acc_scale_t scale, size_t relu6_shift,
     int pool_size, int pool_stride, int pool_padding,
 
-		size_t och_divide, int window, int target_load) {
+		size_t orow_divide, size_t cid, int window, int target_load) {
 
 	 //int out_stride = channels * och_divide;
 
@@ -3696,10 +3696,16 @@ static void tiled_pool(
     gemmini_extended_config_ex(WEIGHT_STATIONARY, 0, 0, 0, 1, false, false);
 //	 int stride = channels*och_divide;
 //    gemmini_extended4_config_ld(stride * sizeof(elem_t), MVIN_SCALE_IDENTITY, true, DIM, 0);
+
+    bool row_divide = (orow_divide > 1);
+    int out_row = (row_divide) ? pool_out_dim / orow_divide : pool_out_dim;
+    size_t och_cid = (size_t)(cid % orow_divide);
+    int porow_start = row_divide ? out_row * och_cid : 0;
+    int porow_end = row_divide ? out_row * (och_cid + 1) : pool_out_dim;
  
     for (int poch = 0; poch < channels; poch += pochs) {
        for (int b = 0; b < batch_size; b += batches) {
-           for (int porow = 0; porow < pool_out_dim; porow += porows) {
+           for (int porow = porow_start; porow < porow_end; porow += porows) {
                const int orow = porow * pool_stride - pool_padding;
                const int orow_floored = orow < 0 ? 0 : orow;        
                for (int pocol = 0; pocol < pool_out_dim; pocol += pocols) {
@@ -3711,7 +3717,7 @@ static void tiled_pool(
 
                   // printf("batch: %d, poch: %d, porow: %d, pocol: %d\n", b, poch, porow, pocol);
                   const int batches_ = batch_size - b > batches ? batches : batch_size - b;
-                  const int porows_ = pool_out_dim - porow > porows ? porows : pool_out_dim - porow;
+                  const int porows_ = porow_end - porow > porows ? porows : porow_end - porow;
                   const int pocols_ = pool_out_dim - pocol > pocols ? pocols : pool_out_dim - pocol;
                   const int pochs_ = channels - poch > pochs ? pochs : channels - poch;
                   const int ocols_ = pocols_ * pool_stride + pool_size - 1;
@@ -3745,14 +3751,15 @@ int* tiled_pool_bubble_calculate(
     int batch_size, int in_dim, int channels,
     int out_dim,
     int pool_size, int pool_stride, int pool_padding,
-    size_t och_divide, size_t batch_divide,
+    bool row_divide, size_t och_divide, size_t batch_divide, size_t cid,
     int target_util){
   
   batch_size = batch_size/batch_divide;
-  channels = channels / och_divide;
- 
-  int args[] = {batch_size, out_dim, out_dim, channels, 1, 1, DIM};
-  const int max_args[] = {batch_size, out_dim, out_dim, channels, 1, 1, DIM};
+  channels = (row_divide) ? channels : channels / och_divide;
+
+  int out_row = (row_divide) ? out_dim / och_divide : out_dim;
+  int args[] = {batch_size, out_row, out_dim, channels, 1, 1, DIM};
+  const int max_args[] = {batch_size, out_row, out_dim, channels, 1, 1, DIM};
 
   const int orows_idx = 1;
   const int ocols_idx = 2;
@@ -3798,9 +3805,14 @@ int* tiled_pool_bubble_calculate(
     int num_tiles = 0;
     int total_load = 0;
     int ideal_cycle = 0;
+
+
+    size_t och_cid = (size_t)(cid % och_divide);
+    int porow_start = row_divide ? out_row * och_cid : 0;
+    int porow_end = row_divide ? out_row * (och_cid + 1) : out_dim;
     for (int poch = 0; poch < channels; poch += pochs) {
        for (int b = 0; b < batch_size; b += batches) {
-           for (int porow = 0; porow < out_dim; porow += porows) {
+           for (int porow = porow_start; porow < porow_end; porow += porows) {
                const int orow = porow * pool_stride - pool_padding;
                const int orow_floored = orow < 0 ? 0 : orow;        
                for (int pocol = 0; pocol < out_dim; pocol += pocols) {
@@ -3808,7 +3820,7 @@ int* tiled_pool_bubble_calculate(
                   const int ocol = pocol * pool_stride - pool_padding;
                   const int ocol_floored = ocol < 0 ? 0 : ocol;
                   const int batches_ = batch_size - b > batches ? batches : batch_size - b;
-                  const int porows_ = out_dim - porow > porows ? porows : out_dim - porow;
+                  const int porows_ = porow_end - porow > porows ? porows : porow_end - porow;
                   const int pocols_ = out_dim - pocol > pocols ? pocols : out_dim - pocol;
                   const int pochs_ = channels - poch > pochs ? pochs : channels - poch;
                   
@@ -3859,20 +3871,22 @@ static void tiled_pool_auto_cid(int batch_size, int channels, int in_dim,
   bool relu = true;
 	//int stride = channels;
 
+  bool row_divide = (och_divide > 1 && channels < 64);
   int * args;
   int args_in[] = {0, 0, 0, 0};
-  args = tiled_pool_bubble_calculate(args_in, batch_size, in_dim, channels, pool_out_dim, pool_size, pool_stride, pool_padding, och_divide, batch_divide, target_util);
+  args = tiled_pool_bubble_calculate(args_in, batch_size, in_dim, channels, pool_out_dim, pool_size, pool_stride, pool_padding, row_divide, och_divide, batch_divide, cid, target_util);
   
   size_t batch_cid = (size_t)(cid / och_divide);
   size_t och_cid = (size_t)(cid % och_divide);
 
 
   batch_size = batch_size/batch_divide;
-  channels = channels / och_divide;
+  channels = (row_divide) ? channels : channels / och_divide;
   //int pool_out_dim = (in_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 	int batch_in_offset = (batch_divide > 1) ? batch_size*in_dim*in_dim*stride*batch_cid : 0;
 	int batch_out_offset = (batch_divide > 1) ? batch_size*pool_out_dim*pool_out_dim*stride*batch_cid : 0; // not dividing in out_channel dimension
- 	const int out_offset = (och_divide > 1) ? channels * och_cid : 0;
+ 	const int out_offset = (och_divide > 1 && !row_divide) ? channels * och_cid : 0;
+  if(!row_divide) och_divide = 1;
 	 /*
 	 // int args[] = {batch_size, porows, pocols, pochs, krows, kcols, kchs};
   int args[] = {batch_size, pool_out_dim, pool_out_dim, channels, 1, 1, DIM};
@@ -3970,7 +3984,7 @@ static void tiled_pool_auto_cid(int batch_size, int channels, int in_dim,
         A + batch_in_offset + out_offset, C + batch_out_offset + out_offset,	
 				RELU, MVIN_SCALE_IDENTITY, 0,
 				pool_size, pool_stride, pool_padding,
-				och_divide, window, target_load);
+				och_divide, cid, window, target_load);
   
   //printf("C dram addr after pool: 0x%08lx\n", C);
 }
