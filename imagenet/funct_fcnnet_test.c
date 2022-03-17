@@ -14,6 +14,7 @@
 #include "util.h"
 
 #define NUM_LAYER (19+36+16+4)
+#define NUM_CORE 1
 
 void thread_entry(int cid, int nc)
 {
@@ -32,24 +33,17 @@ void thread_entry(int cid, int nc)
 
 
   for(int j = 0; j < nc; j++){
-    if(j == cid){
+    if(j == cid && j < NUM_CORE){
 #ifndef BAREMETAL
       *cycles = fcnnet_function(j, NUM_LAYER, cycles, 4, 1, 0, &barrier);
 #else
-      cycles = fcnnet_function(j, 4, 1, 0);
+      cycles = fcnnet_function(j, NUM_CORE, 1, 10);
 #endif
     }
   }
 
 	for (int i = 0; i < nc; i++) {
     if (i == cid) printf("Thread %d/%d ending\n", cid, nc);
-    barrier(nc);
-  }
-	for (int i = 0; i < nc; i++) {
-    if (i == cid) {
-      printf("conv0 cycles: %llu\n", *(cycles+0));
-      printf("conv1 cycles: %llu\n", *(cycles+1));
-    }
     barrier(nc);
   }
   exit(0);

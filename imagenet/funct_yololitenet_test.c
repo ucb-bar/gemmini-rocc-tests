@@ -14,6 +14,7 @@
 #include "util.h"
 
 #define NUM_LAYER (7+5+3)
+#define NUM_CORE 1
 
 void thread_entry(int cid, int nc)
 {
@@ -30,11 +31,11 @@ void thread_entry(int cid, int nc)
 
 
   for(int j = 0; j < nc; j++){
-    if(j == cid){
+    if(j == cid && j < NUM_CORE){
 #ifndef BAREMETAL
       *cycles = yololitenet_function(j, NUM_LAYER, cycles, 4, 1, 0, &barrier);
 #else
-      cycles = yololitenet_function(j, 4, 1, 0);
+      cycles = yololitenet_function(j, NUM_CORE, 1, 10);
 #endif
     }
   }

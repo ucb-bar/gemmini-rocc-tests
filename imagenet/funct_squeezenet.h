@@ -17,13 +17,13 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
 uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int target_util){
 #endif
 
-#define num_cycle (12+15+1+4)
+#define num_cycle (26+1+3)
 
   static uint64_t cycles[num_proc][num_cycle];
     uint64_t start, end;
-    uint64_t total_matmul_cycles = 0, total_conv_cycles = 0, total_pool_cycles = 0, conv_dw_cycles = 0, other_cycles = 0;
-    uint64_t conv_cycles[12];
-    uint64_t matmul_cycles[15];
+    uint64_t total_conv_cycles = 0, total_conv_cycles = 0, total_pool_cycles = 0, conv_dw_cycles = 0, other_cycles = 0;
+    uint64_t conv_cycles[26];
+    u//int64_t conv_cycles[15];
     uint64_t pool_cycles[1];
 
     // conv_1
@@ -68,7 +68,7 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
 
     end = read_cycles();
     total_conv_cycles += end - start;
-    conv_cycles[11] = end - start;
+    conv_cycles[0] += end - start;
 #if thread_sync == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif   
@@ -100,8 +100,8 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
 
 
     end = read_cycles();
-    total_matmul_cycles += end - start;
-    matmul_cycles[0] = end - start;
+    total_conv_cycles += end - start;
+    conv_cycles[1] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
@@ -115,8 +115,8 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
         orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
-    total_matmul_cycles += end - start;
-    matmul_cycles[1] = end - start;
+    total_conv_cycles += end - start;
+    conv_cycles[2] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
@@ -141,7 +141,7 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
 
     end = read_cycles();
     total_conv_cycles += end - start;
-    conv_cycles[1] = end - start;
+    conv_cycles[3] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif  
@@ -156,8 +156,8 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
         orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
-    total_matmul_cycles += end - start;
-    matmul_cycles[2] = end - start;
+    total_conv_cycles += end - start;
+    conv_cycles[4] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
@@ -179,7 +179,7 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
 
     end = read_cycles();
     total_conv_cycles += end - start;
-    conv_cycles[2] = end - start;
+    conv_cycles[5] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif  
@@ -203,7 +203,7 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
 
     end = read_cycles();
     total_conv_cycles += end - start;
-    conv_cycles[3] = end - start;
+    conv_cycles[6] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif  
@@ -218,8 +218,8 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
         orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
-    total_matmul_cycles += end - start;
-    matmul_cycles[3] = end - start;
+    total_conv_cycles += end - start;
+    conv_cycles[7] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
@@ -233,8 +233,8 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
         orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
-    total_matmul_cycles += end - start;
-    matmul_cycles[4] = end - start;
+    total_conv_cycles += end - start;
+    conv_cycles[8] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
@@ -259,7 +259,7 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
 
     end = read_cycles();
     total_conv_cycles += end - start;
-    conv_cycles[4] = end - start;
+    conv_cycles[9] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif  
@@ -274,8 +274,8 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
         orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
-    total_matmul_cycles += end - start;
-    matmul_cycles[5] = end - start;
+    total_conv_cycles += end - start;
+    conv_cycles[10] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
@@ -297,7 +297,7 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
 
     end = read_cycles();
     total_conv_cycles += end - start;
-    conv_cycles[5] = end - start;
+    conv_cycles[11] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif  
@@ -321,7 +321,7 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
 
     end = read_cycles();
     total_conv_cycles += end - start;
-    conv_cycles[6] = end - start;
+    conv_cycles[12] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif  
@@ -336,8 +336,8 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
         orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
-    total_matmul_cycles += end - start;
-    matmul_cycles[6] = end - start;
+    total_conv_cycles += end - start;
+    conv_cycles[13] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
@@ -351,8 +351,8 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
         orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
-    total_matmul_cycles += end - start;
-    matmul_cycles[7] = end - start;
+    total_conv_cycles += end - start;
+    conv_cycles[14] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
@@ -379,7 +379,7 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
 
     end = read_cycles();
     total_conv_cycles += end - start;
-    conv_cycles[7] = end - start;
+    conv_cycles[15] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif  
@@ -394,8 +394,8 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
         orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
-    total_matmul_cycles += end - start;
-    matmul_cycles[8] = end - start;
+    total_conv_cycles += end - start;
+    conv_cycles[16] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
@@ -409,8 +409,8 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
         orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
-    total_matmul_cycles += end - start;
-    matmul_cycles[9] = end - start;
+    total_conv_cycles += end - start;
+    conv_cycles[17] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
@@ -437,7 +437,7 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
 
     end = read_cycles();
     total_conv_cycles += end - start;
-    conv_cycles[8] = end - start;
+    conv_cycles[18] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif  
@@ -452,8 +452,8 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
         orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
-    total_matmul_cycles += end - start;
-    matmul_cycles[10] = end - start;
+    total_conv_cycles += end - start;
+    conv_cycles[19] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
@@ -467,8 +467,8 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
         orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
-    total_matmul_cycles += end - start;
-    matmul_cycles[11] = end - start;
+    total_conv_cycles += end - start;
+    conv_cycles[20] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
@@ -493,7 +493,7 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
 
     end = read_cycles();
     total_conv_cycles += end - start;
-    conv_cycles[9] = end - start;
+    conv_cycles[21] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif  
@@ -508,8 +508,8 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
         orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
-    total_matmul_cycles += end - start;
-    matmul_cycles[12] = end - start;
+    total_conv_cycles += end - start;
+    conv_cycles[22] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
@@ -523,8 +523,8 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
         orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
-    total_matmul_cycles += end - start;
-    matmul_cycles[13] = end - start;
+    total_conv_cycles += end - start;
+    conv_cycles[23] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
@@ -549,7 +549,7 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
 
     end = read_cycles();
     total_conv_cycles += end - start;
-    conv_cycles[10] = end - start;
+    conv_cycles[24] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif  
@@ -564,28 +564,24 @@ uint64_t* squeezenet_function(int cid, int orow_divide, int batch_divide, int ta
         orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
-    total_matmul_cycles += end - start;
-    matmul_cycles[14] = end - start;
+    total_conv_cycles += end - start;
+    conv_cycles[25] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
   
 
     for(int i = 0; i < num_cycle; i++){
-      if(i < 12){
+      if(i < 26){
         cycles[cid][i] = conv_cycles[i];
       }
-      else if(i < 27){
-        cycles[cid][i] = matmul_cycles[i - 12];
-      }
-      else if (i < 28){
-        cycles[cid][i] = pool_cycles[i - 27];
+      else if (i < 27){
+        cycles[cid][i] = pool_cycles[i - 26];
       }
       else{
-        if(i == 28) cycles[cid][i] = total_conv_cycles;
-        if(i == 29) cycles[cid][i] = total_matmul_cycles;
-        if(i == 30) cycles[cid][i] = total_pool_cycles;
-        if(i == 31) cycles[cid][i] = total_conv_cycles + total_matmul_cycles + total_pool_cycles;
+        if(i == 27) cycles[cid][i] = total_conv_cycles;
+        if(i == 28) cycles[cid][i] = total_pool_cycles;
+        if(i == 29) cycles[cid][i] = total_conv_cycles + total_pool_cycles;
       }
     }
     return cycles[cid];

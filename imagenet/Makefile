@@ -1,7 +1,14 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
+  funct_googlenet_test \
+  funct_squeezenet_test \
+  funct_fcnnet_test \
+  funct_alexnet_test \
+  funct_resnet_test \
   funct_kwsnet_test \
+  funct_yolonet_test \
+  funct_yololitenet_test \
   # mobilenet \
 	# alexnet \
 

@@ -14,6 +14,7 @@
 #include "util.h"
 
 #define NUM_LAYER (12+15+1+4)
+#define NUM_CORE 1
 
 void thread_entry(int cid, int nc)
 {
@@ -29,11 +30,11 @@ void thread_entry(int cid, int nc)
   uint64_t cycles[NUM_LAYER] = {0};
 
   for(int j = 0; j < nc; j++){
-    if(j == cid){
+    if(j == cid && j < NUM_CORE){
 #ifndef BAREMETAL
-      *cycles = squeezenet_function(j, NUM_LAYER, cycles, 4, 1, 0, &barrier);
+      *cycles = squeezenet_function(j, NUM_CORE, 1, 10, &barrier);
 #else
-      *cycles = squeezenet_function(j, NUM_LAYER, cycles, 4, 1, 0);
+      *cycles = squeezenet_function(j, NUM_CORE, 1, 10);
 #endif
     }
   }
