@@ -452,18 +452,32 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
   const size_t J0 = dim_J_padded / (tile_J*DIM) + (dim_J_padded % (tile_J*DIM) != 0);
   const size_t K0 = dim_K_padded / (tile_K*DIM) + (dim_K_padded % (tile_K*DIM) != 0);
 
+
+  // for pre-compilation
+  int A_load = 0;
+  int B_load = 0;
+  int D_load = 0;
+  int A_size = dim_I * ceil_divide_int(dim_K, DIM);
+  int B_size = dim_K * ceil_divide_int(dim_J, DIM);
+  int C_size = dim_I * ceil_divide_int(dim_J, DIM);
+  size_t num_tiles = I0 * J0 * K0;
+
+
    //CALM config
   int window = 0;
   int target_load = 0;
   const int total_macs = dim_I * dim_J * dim_K;
   int ideal_runtime = (int)(total_macs / (DIM*DIM));
   if(fc_layer){
-    const int total_loads = dim_I * ceil_divide_int(dim_K, DIM) + dim_K * ceil_divide_int(dim_J, DIM) + dim_I * ceil_divide_int(dim_J, DIM) * 4;
+    A_load = dim_I * ceil_divide_int(dim_K, DIM);
+    B_load = dim_K * ceil_divide_int(dim_J, DIM);
+    D_load = dim_I * ceil_divide_int(dim_J, DIM) * 4;
+    const int total_loads = A_load + B_load + D_load; //dim_I * ceil_divide_int(dim_K, DIM) + dim_K * ceil_divide_int(dim_J, DIM) + dim_I * ceil_divide_int(dim_J, DIM) * 4;
     ideal_runtime = total_loads;
   }
 
   if(target_util != 0){
-    size_t num_tiles = I0 * J0 * K0;
+    //size_t num_tiles = I0 * J0 * K0;
     if(fc_layer){
       const int total_loads = dim_I * ceil_divide_int(dim_K, DIM) + dim_K * ceil_divide_int(dim_J, DIM) + dim_I * ceil_divide_int(dim_J, DIM) * 4;
       //int ideal_runtime = (int)(total_loads / DIM);
@@ -478,14 +492,14 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
       int target_runtime = target_util <= 100 ? (int)(ideal_runtime * 100 / target_util) : target_util;
       target_runtime -= (tile_I * tile_J * tile_K * DIM + tile_I*DIM * tile_J*DIM * 4 / DIM);
       int target_tile_runtime = target_runtime / num_tiles;
-      if(num_tiles > 4){
+     // if(num_tiles > 4){
         int num_K_tile = ceil_divide_int(dim_K, tile_K*DIM);
         int bias_time = (4 * tile_I * tile_J * DIM) / num_K_tile;
         //target_tile_runtime -= store_time;
         window = target_tile_runtime;
-        int A_load = 0;
-        int B_load = 0;
-        int D_load = 0;
+       // int A_load = 0;
+       // int B_load = 0;
+       // int D_load = 0;
         for(size_t i0 = 0; i0 < dim_I; i0+=tile_I*DIM){
           int I = i0 + tile_I*DIM > dim_I ? dim_I - i0 : tile_I*DIM;
           for(size_t j0 = 0; j0 < dim_J; j0+=tile_J*DIM){
@@ -523,9 +537,17 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
           target_load = 0;
           window = 0;
         }
-      }
+    //  }
     }
   }
+/*
+  num_tiles = I0 * J0 * K0;
+  // for pre-compilation
+  printf("total A load: %d, total B load: %d, total D load: %d \n", A_load, B_load, D_load);
+  printf("A size: %d, B size: %d, C size: %d \n", A_size, B_size, C_size);
+  printf("number of tile: %d, target load per tile: %d\n\n", num_tiles, (A_load + B_load + D_load) / num_tiles);
+*/
+
   args[0] = window;
   args[1] = target_load;
   args[2] = ideal_runtime;
@@ -1999,6 +2021,15 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
   printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
 */
 
+  // for layer pre-compilation
+  int weight_load = 0;
+  int input_load = 0;
+  int bias_load = 0;
+  int weight_size = (ceil_divide_int)(out_channels, DIM) * in_channels * kernel_dim * kernel_dim;
+  int input_size = (ceil_divide_int)(in_channels, DIM) * in_dim * in_dim * batch_size; 
+  int output_size = (ceil_divide_int)(out_channels, DIM) * pool_out_dim * pool_out_dim * batch_size;
+  size_t num_tiles_store = 1;
+
   int window = 0;
   int target_load = 0;
   //printf("tiling factors: %d %d %d %d %d %d %d \n", batches, porows, pocols, pochs, krows, kcols, kchs);
@@ -2013,6 +2044,7 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
     if(target_util != 0){
       //const size_t out_row = (pool_out_row - 1) * pool_stride + pool_size - 2 * pool_padding;
       size_t num_tiles = round_divide_int(out_channels, pochs) * round_divide_int(batch_size, batches) * round_divide_int(porow_end - porow_start, porows) * round_divide_int(pool_out_dim, pocols) * round_divide_int(kernel_dim, krows) * round_divide_int(kernel_dim, kcols) * round_divide_int(in_channels, kchs);
+      num_tiles_store = num_tiles;
       //const uint64_t total_macs = out_channels * batch_size * out_dim * out_row * kernel_dim * kernel_dim * in_channels;
       //int ideal_runtime = ((int)(total_macs / (DIM*DIM)));
       const int target_runtime = target_util <= 100 ? (int)(ideal_runtime * 100 / target_util) : target_util;
@@ -2031,9 +2063,9 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
         target_load = 0;
       }
       else{
-        int bias_load = 0;
-        int weight_load = 0;
-        int input_load = 0;
+       // int bias_load = 0;
+       // int weight_load = 0;
+       // int input_load = 0;
         for (int poch = 0; poch < out_channels; poch += pochs) {
           int eff_poch = poch + pochs > out_channels ? out_channels - poch : pochs;
           int poch_unit = eff_poch < DIM ? eff_poch : DIM;
@@ -2110,15 +2142,16 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
   else{
     if(target_util != 0){
       size_t num_tiles = (round_divide_int(out_channels, pochs)) * ((int)(batch_size / batches)) * round_divide_int(pool_out_dim, porows) * round_divide_int(pool_out_dim, pocols) * round_divide_int(kernel_dim, krows) * round_divide_int(kernel_dim, kcols) * round_divide_int(in_channels, kchs);
+      num_tiles_store = num_tiles;
       //const int total_macs = out_channels * batch_size * out_dim * out_dim * kernel_dim * kernel_dim * in_channels;
       //int ideal_runtime = ((int)(total_macs / (DIM*DIM)));
       const int target_runtime = target_util > 100 ? target_util : (int)(ideal_runtime * 100 / target_util);
       int target_tile_runtime = target_runtime / num_tiles;
 //       printf("total macs: %d, num tiles: %d, porow: %d, pool out rows: %d, pocol: %d, pool out col: %d, krow: %d, kcol: %d, kchs: %d, pochs: %d \n", total_macs, num_tiles, porows, pool_out_dim, pocols, pool_out_dim, krows, kcols, kchs, pochs);
 //       printf("ideal runtime: %d, target_tile_runtime: %d\n", ideal_runtime, target_tile_runtime);
-      int weight_load = 0;
-      int input_load = 0;
-      int bias_load = 0;
+      //int weight_load = 0;
+      //int input_load = 0;
+      //int bias_load = 0;
       bool full_power = false; // when mesh utilization is too low
       if(pochs < DIM || kchs < DIM){
         int eff_poch = pochs >= DIM ? DIM : pochs;
@@ -2199,7 +2232,12 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
       }
     }
   }
-
+/*
+  // for pre-compilation
+  printf("total A load: %d, total B load: %d, total D load: %d \n", input_load, weight_load, bias_load);
+  printf("A size: %d, B size: %d, C size: %d \n", input_size, weight_size, output_size);
+  printf("number of tile: %d, target load per tile: %d\n\n", num_tiles_store, (input_load + weight_load + bias_load) / num_tiles_store);
+*/
   args[0] = tile_args[0];
   args[1] = tile_args[1];
   args[2] = tile_args[2];
@@ -3376,7 +3414,7 @@ int* tiled_resadd_bubble_calculate(
     size_t I, size_t J, 
     size_t orow_divide, size_t batch_divide,
     int target_util){
-  
+
   size_t batch_size = I / batch_divide;
   I = batch_size;
 
@@ -3413,10 +3451,10 @@ int* tiled_resadd_bubble_calculate(
   int window = 0;
   int target_load = 0;
 	int total_mems = I * J * 3;
-	int num_tile = round_divide_int(I, tile_I) * round_divide_int(J, tile_J);
+	int num_tile = ceil_divide_int(I, tile_I) * ceil_divide_int(J, tile_J);
 	//printf("total macs: %d, number of tile: %d, tile_I: %d, tile_J: %d \n", total_mems, num_tile, tile_I, tile_J);
-  
-	int macs_per_tile = (int)(total_mems / num_tile);
+
+  int macs_per_tile = (int)(total_mems / num_tile);
 	int ideal_cycles = (int)(total_mems / (DIM));// * DIM));
 	ideal_cycles -= ((tile_I * tile_J) / DIM);
   if (target_util != 0){
@@ -3425,7 +3463,11 @@ int* tiled_resadd_bubble_calculate(
     target_load = (int)(total_load / num_tile);
     window = (int)(target_cycles / num_tile);
   }
-
+ /* 
+  // for pre-compilation
+  int A_size = I * ceil_divide_int(J, DIM);
+  printf("resadd A size: %d, B size: %d, C size: %d, number of tile: %d, target load per tile: %d\n\n", A_size, A_size, A_size, num_tile, target_load);
+*/
   out_args[0] = window;
   out_args[1] = target_load;
   out_args[2] = ideal_cycles;
@@ -3806,7 +3848,6 @@ int* tiled_pool_bubble_calculate(
     int total_load = 0;
     int ideal_cycle = 0;
 
-
     size_t och_cid = (size_t)(cid % och_divide);
     int porow_start = row_divide ? out_row * och_cid : 0;
     int porow_end = row_divide ? out_row * (och_cid + 1) : out_dim;
@@ -3848,6 +3889,11 @@ int* tiled_pool_bubble_calculate(
     target_load = (int)(total_load / num_tiles) ;
     window = (int)(target_cycles / num_tiles) ;
   }
+/*
+  // for pre-compilation
+  int C_size = batch_size * out_dim * out_dim * (int)(channels / DIM);
+  printf("pool total load: %d, C size: %d, number of tile: %d, target load per tile: %d\n\n", total_load, C_size, num_tiles, target_load);
+*/
 
   out_args[0] = window;
   out_args[1] = target_load;
