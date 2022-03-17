@@ -19,7 +19,7 @@ uint64_t* yolonet_function(int cid, int orow_divide, int batch_divide, int targe
 
 #define num_cycle (19+5+3)
 
-  static uint64_t cycles[num_cycle];
+  static uint64_t cycles[num_proc][num_cycle];
  
     uint64_t start, end;
     uint64_t total_matmul_cycles = 0, total_conv_cycles = 0, total_pool_cycles = 0, conv_dw_cycles = 0, other_cycles = 0;
@@ -499,17 +499,17 @@ uint64_t* yolonet_function(int cid, int orow_divide, int batch_divide, int targe
     
     for(int i = 0; i < num_cycle; i++){
       if(i < 19){
-        cycles[i] = conv_cycles[i];
+        cycles[cid][i] = conv_cycles[i];
       }
       else if (i < 24){
-        cycles[i] = pool_cycles[i - 19];
+        cycles[cid][i] = pool_cycles[i - 19];
       }
       else{
-        if(i == 24) cycles[i] = total_conv_cycles;
-        if(i == 25) cycles[i] = total_pool_cycles;
-        if(i == 26) cycles[i] = total_conv_cycles + total_pool_cycles;
+        if(i == 24) cycles[cid][i] = total_conv_cycles;
+        if(i == 25) cycles[cid][i] = total_pool_cycles;
+        if(i == 26) cycles[cid][i] = total_conv_cycles + total_pool_cycles;
       }
     }
-    return cycles;
+    return cycles[cid];
 #undef num_cycle
 }

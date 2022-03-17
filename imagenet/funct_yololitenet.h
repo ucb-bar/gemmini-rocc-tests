@@ -19,7 +19,7 @@ uint64_t* yololitenet_function(int cid, int orow_divide, int batch_divide, int t
 
 #define num_cycle (7+5+3)
 
-  static uint64_t cycles[num_cycle];
+  static uint64_t cycles[num_proc][num_cycle];
  
     uint64_t start, end;
     uint64_t total_matmul_cycles = 0, total_conv_cycles = 0, total_pool_cycles = 0, conv_dw_cycles = 0, other_cycles = 0;
@@ -287,17 +287,17 @@ uint64_t* yololitenet_function(int cid, int orow_divide, int batch_divide, int t
 
     for(int i = 0; i < num_cycle; i++){
       if(i < 7){
-        cycles[i] = conv_cycles[i];
+        cycles[cid][i] = conv_cycles[i];
       }
       else if (i < 12){
-        cycles[i] = pool_cycles[i - 7];
+        cycles[cid][i] = pool_cycles[i - 7];
       }
       else{
-        if(i == 12) cycles[i] = total_conv_cycles;
-        if(i == 13) cycles[i] = total_pool_cycles;
-        if(i == 14) cycles[i] = total_conv_cycles + total_pool_cycles;
+        if(i == 12) cycles[cid][i] = total_conv_cycles;
+        if(i == 13) cycles[cid][i] = total_pool_cycles;
+        if(i == 14) cycles[cid][i] = total_conv_cycles + total_pool_cycles;
       }
     }
-    return cycles;
+    return cycles[cid];
 #undef num_cycle
 }

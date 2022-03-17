@@ -19,7 +19,7 @@ uint64_t* alexnet_function(int cid, int orow_divide, int batch_divide, int targe
 
 #define num_cycle (5+3+3+4)
 
-  static uint64_t cycles[num_cycle];
+  static uint64_t cycles[num_proc][num_cycle];
  
     uint64_t start, end;
     uint64_t total_matmul_cycles = 0, total_conv_cycles = 0, total_pool_cycles = 0, conv_dw_cycles = 0, other_cycles = 0;
@@ -35,16 +35,16 @@ uint64_t* alexnet_function(int cid, int orow_divide, int batch_divide, int targe
     // conv_1
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
-        conv_1_params.batch_size, conv_1_params.in_dim, conv_1_params.in_channels,
-        conv_1_params.out_channels, conv_1_params.out_dim,
-        conv_1_params.stride, 1, conv_1_params.padding, conv_1_params.kernel_size,
-        conv_1_params.out_stride,
+        conv_1_params_alex1.batch_size, conv_1_params_alex1.in_dim, conv_1_params_alex1.in_channels,
+        conv_1_params_alex1.out_channels, conv_1_params_alex1.out_dim,
+        conv_1_params_alex1.stride, 1, conv_1_params_alex1.padding, conv_1_params_alex1.kernel_size,
+        conv_1_params_alex1.out_stride,
 
-        (elem_t*)images, (elem_t*)conv_1_w, (acc_t*)conv_1_b, (elem_t*)conv_1_out,
+        (elem_t*)images, (elem_t*)conv_1_w_alex1, (acc_t*)conv_1_b_alex1, (elem_t*)conv_1_out_alex1,
 
-        RELU, conv_1_params.output_scale, 0,
+        RELU, conv_1_params_alex1.output_scale, 0,
         1, 1, 0, false,
-	//conv_1_params.pool_size, conv_1_params.pool_stride, conv_1_params.pool_padding, false,
+	//conv_1_params_alex1.pool_size, conv_1_params_alex1.pool_stride, conv_1_params_alex1.pool_padding, false,
 
         WS, orow_divide, batch_divide, cid, target_util);
 
@@ -57,14 +57,14 @@ uint64_t* alexnet_function(int cid, int orow_divide, int batch_divide, int targe
  
     start = read_cycles();
     tiled_pool_auto_cid(
-        conv_1_params.batch_size,
-        conv_1_params.out_channels, conv_1_params.out_dim, conv_1_params.out_dim_pooled,
-        conv_1_params.out_stride,
-        conv_1_params.pool_size, conv_1_params.pool_stride, conv_1_params.pool_padding,
+        conv_1_params_alex1.batch_size,
+        conv_1_params_alex1.out_channels, conv_1_params_alex1.out_dim, conv_1_params_alex1.out_dim_pooled,
+        conv_1_params_alex1.out_stride,
+        conv_1_params_alex1.pool_size, conv_1_params_alex1.pool_stride, conv_1_params_alex1.pool_padding,
 
-        (elem_t*)conv_1_out, (elem_t*)conv_1_out_pooled,
+        (elem_t*)conv_1_out_alex1, (elem_t*)conv_1_out_alex1_pooled,
 	orow_divide, batch_divide, cid, target_util);
-
+gemmini_fence();
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[0] = end - start;
@@ -75,16 +75,16 @@ uint64_t* alexnet_function(int cid, int orow_divide, int batch_divide, int targe
     // conv_2
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
-        conv_2_params.batch_size, conv_2_params.in_dim, conv_2_params.in_channels,
-        conv_2_params.out_channels, conv_2_params.out_dim,
-        conv_2_params.stride, 1, conv_2_params.padding, conv_2_params.kernel_size,
-        conv_2_params.out_stride,
+        conv_2_params_alex1.batch_size, conv_2_params_alex1.in_dim, conv_2_params_alex1.in_channels,
+        conv_2_params_alex1.out_channels, conv_2_params_alex1.out_dim,
+        conv_2_params_alex1.stride, 1, conv_2_params_alex1.padding, conv_2_params_alex1.kernel_size,
+        conv_2_params_alex1.out_stride,
 
-        (elem_t*)conv_1_out_pooled, (elem_t*)conv_2_w, (acc_t*)conv_2_b, (elem_t*)conv_2_out,
+        (elem_t*)conv_1_out_alex1_pooled, (elem_t*)conv_2_w_alex1, (acc_t*)conv_2_b_alex1, (elem_t*)conv_2_out_alex1,
 
-        RELU, conv_2_params.output_scale, 0,
+        RELU, conv_2_params_alex1.output_scale, 0,
         1, 1, 0, false,
-	//conv_2_params.pool_size, conv_2_params.pool_stride, conv_2_params.pool_padding, false,
+	//conv_2_params_alex1.pool_size, conv_2_params_alex1.pool_stride, conv_2_params_alex1.pool_padding, false,
 
         WS, orow_divide, batch_divide, cid, target_util);
 
@@ -97,32 +97,32 @@ uint64_t* alexnet_function(int cid, int orow_divide, int batch_divide, int targe
   
     start = read_cycles();
     tiled_pool_auto_cid(
-        conv_2_params.batch_size,
-        conv_2_params.out_channels, conv_2_params.out_dim, conv_2_params.out_dim_pooled,
-        conv_2_params.out_stride,
-        conv_2_params.pool_size, conv_2_params.pool_stride, conv_2_params.pool_padding,
+        conv_2_params_alex1.batch_size,
+        conv_2_params_alex1.out_channels, conv_2_params_alex1.out_dim, conv_2_params_alex1.out_dim_pooled,
+        conv_2_params_alex1.out_stride,
+        conv_2_params_alex1.pool_size, conv_2_params_alex1.pool_stride, conv_2_params_alex1.pool_padding,
 
-        (elem_t*)conv_2_out, (elem_t*)conv_2_out_pooled,
+        (elem_t*)conv_2_out_alex1, (elem_t*)conv_2_out_alex1_pooled,
 	orow_divide, batch_divide, cid, target_util);
-
+gemmini_fence();
     end = read_cycles();
-    total_pool_cycles += end - start;
-    pool_cycles[1] = end - start;
+    total_pool_cycles += (end > start ? end - start : 0);
+    pool_cycles[1] = (end > start ? end - start : 0);
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_alex);
 #endif              
     // conv_3
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
-        conv_3_params.batch_size, conv_3_params.in_dim, conv_3_params.in_channels,
-        conv_3_params.out_channels, conv_3_params.out_dim,
-        conv_3_params.stride, 1, conv_3_params.padding, conv_3_params.kernel_size,
-        conv_3_params.out_stride,
+        conv_3_params_alex1.batch_size, conv_3_params_alex1.in_dim, conv_3_params_alex1.in_channels,
+        conv_3_params_alex1.out_channels, conv_3_params_alex1.out_dim,
+        conv_3_params_alex1.stride, 1, conv_3_params_alex1.padding, conv_3_params_alex1.kernel_size,
+        conv_3_params_alex1.out_stride,
 
-        (elem_t*)conv_2_out_pooled, (elem_t*)conv_3_w, (acc_t*)conv_3_b, (elem_t*)conv_3_out,
+        (elem_t*)conv_2_out_alex1_pooled, (elem_t*)conv_3_w_alex1, (acc_t*)conv_3_b_alex1, (elem_t*)conv_3_out_alex1,
 
-        RELU, conv_3_params.output_scale, 0,
-        conv_3_params.pool_size, 0, conv_3_params.pool_padding, false,
+        RELU, conv_3_params_alex1.output_scale, 0,
+        conv_3_params_alex1.pool_size, 0, conv_3_params_alex1.pool_padding, false,
 
         WS, orow_divide, batch_divide, cid, target_util);
 
@@ -136,15 +136,15 @@ uint64_t* alexnet_function(int cid, int orow_divide, int batch_divide, int targe
     // conv_4
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
-        conv_4_params.batch_size, conv_4_params.in_dim, conv_4_params.in_channels,
-        conv_4_params.out_channels, conv_4_params.out_dim,
-        conv_4_params.stride, 1, conv_4_params.padding, conv_4_params.kernel_size,
-        conv_4_params.out_stride,
+        conv_4_params_alex1.batch_size, conv_4_params_alex1.in_dim, conv_4_params_alex1.in_channels,
+        conv_4_params_alex1.out_channels, conv_4_params_alex1.out_dim,
+        conv_4_params_alex1.stride, 1, conv_4_params_alex1.padding, conv_4_params_alex1.kernel_size,
+        conv_4_params_alex1.out_stride,
 
-        (elem_t*)conv_3_out, (elem_t*)conv_4_w, (acc_t*)conv_4_b, (elem_t*)conv_4_out,
+        (elem_t*)conv_3_out_alex1, (elem_t*)conv_4_w_alex1, (acc_t*)conv_4_b_alex1, (elem_t*)conv_4_out_alex1,
 
-        RELU, conv_4_params.output_scale, 0,
-        conv_4_params.pool_size, 0, conv_4_params.pool_padding, false,
+        RELU, conv_4_params_alex1.output_scale, 0,
+        conv_4_params_alex1.pool_size, 0, conv_4_params_alex1.pool_padding, false,
 
         WS, orow_divide, batch_divide, cid, target_util);
 
@@ -158,16 +158,16 @@ uint64_t* alexnet_function(int cid, int orow_divide, int batch_divide, int targe
     // conv_5
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
-        conv_5_params.batch_size, conv_5_params.in_dim, conv_5_params.in_channels,
-        conv_5_params.out_channels, conv_5_params.out_dim,
-        conv_5_params.stride, 1, conv_5_params.padding, conv_5_params.kernel_size,
-        conv_5_params.out_stride,
+        conv_5_params_alex1.batch_size, conv_5_params_alex1.in_dim, conv_5_params_alex1.in_channels,
+        conv_5_params_alex1.out_channels, conv_5_params_alex1.out_dim,
+        conv_5_params_alex1.stride, 1, conv_5_params_alex1.padding, conv_5_params_alex1.kernel_size,
+        conv_5_params_alex1.out_stride,
 
-        (elem_t*)conv_4_out, (elem_t*)conv_5_w, (acc_t*)conv_5_b, (elem_t*)conv_5_out,
+        (elem_t*)conv_4_out_alex1, (elem_t*)conv_5_w_alex1, (acc_t*)conv_5_b_alex1, (elem_t*)conv_5_out_alex1,
 
-        RELU, conv_5_params.output_scale, 0,
+        RELU, conv_5_params_alex1.output_scale, 0,
         1, 1, 0, false,
-	//conv_5_params.pool_size, conv_5_params.pool_stride, conv_5_params.pool_padding, false,
+	//conv_5_params_alex1.pool_size, conv_5_params_alex1.pool_stride, conv_5_params_alex1.pool_padding, false,
 
         WS, orow_divide, batch_divide, cid, target_util);
 
@@ -180,14 +180,14 @@ uint64_t* alexnet_function(int cid, int orow_divide, int batch_divide, int targe
      
     start = read_cycles();
     tiled_pool_auto_cid(
-        conv_5_params.batch_size,
-        conv_5_params.out_channels, conv_5_params.out_dim, conv_5_params.out_dim_pooled,
-        conv_5_params.out_stride,
-        conv_5_params.pool_size, conv_5_params.pool_stride, conv_5_params.pool_padding,
+        conv_5_params_alex1.batch_size,
+        conv_5_params_alex1.out_channels, conv_5_params_alex1.out_dim, conv_5_params_alex1.out_dim_pooled,
+        conv_5_params_alex1.out_stride,
+        conv_5_params_alex1.pool_size, conv_5_params_alex1.pool_stride, conv_5_params_alex1.pool_padding,
 
-        (elem_t*)conv_5_out, (elem_t*)conv_5_out_pooled,
+        (elem_t*)conv_5_out_alex1, (elem_t*)conv_5_out_alex1_pooled,
 	orow_divide, batch_divide, cid, target_util);
-
+gemmini_fence();
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[2] = end - start;
@@ -200,8 +200,8 @@ uint64_t* alexnet_function(int cid, int orow_divide, int batch_divide, int targe
 
     start = read_cycles();
     if(cid == 0)
-        tiled_global_average_auto(conv_5_out_pooled, average, conv_5_params.batch_size,                         
-            conv_5_params.out_channels, conv_5_params.out_dim, WS);
+        tiled_global_average_auto(conv_5_out_alex1_pooled, average, conv_5_params_alex1.batch_size,                         
+            conv_5_params_alex1.out_channels, conv_5_params_alex1.out_dim, WS);
        
 
     end = read_cycles();
@@ -213,9 +213,9 @@ uint64_t* alexnet_function(int cid, int orow_divide, int batch_divide, int targe
     // fc_6
     start = read_cycles();
 
-    tiled_matmul_nn_auto_cid(fc_6_params.I, fc_6_params.J, fc_6_params.K, fc_6_params.out_stride,
-        (elem_t*)average, (elem_t*)fc_6_w, (acc_t*)fc_6_b, (elem_t*)fc_6_out,
-        RELU, fc_6_params.output_scale, 0, false,
+    tiled_matmul_nn_auto_cid(fc_6_params_alex1.I, fc_6_params_alex1.J, fc_6_params_alex1.K, fc_6_params_alex1.out_stride,
+        (elem_t*)average, (elem_t*)fc_6_w_alex1, (acc_t*)fc_6_b_alex1, (elem_t*)fc_6_out_alex1,
+        RELU, fc_6_params_alex1.output_scale, 0, false,
         WS, orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
@@ -228,9 +228,9 @@ uint64_t* alexnet_function(int cid, int orow_divide, int batch_divide, int targe
     // fc_7
     start = read_cycles();
 
-    tiled_matmul_nn_auto_cid(fc_7_params.I, fc_7_params.J, fc_7_params.K, fc_7_params.out_stride,
-        (elem_t*)fc_6_out, (elem_t*)fc_7_w, (acc_t*)fc_7_b, (elem_t*)fc_7_out,
-        RELU, fc_7_params.output_scale, 0, false,
+    tiled_matmul_nn_auto_cid(fc_7_params_alex1.I, fc_7_params_alex1.J, fc_7_params_alex1.K, fc_7_params_alex1.out_stride,
+        (elem_t*)fc_6_out_alex1, (elem_t*)fc_7_w_alex1, (acc_t*)fc_7_b_alex1, (elem_t*)fc_7_out_alex1,
+        RELU, fc_7_params_alex1.output_scale, 0, false,
         WS, orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
@@ -243,9 +243,9 @@ uint64_t* alexnet_function(int cid, int orow_divide, int batch_divide, int targe
     // fc_8
     start = read_cycles();
 
-    tiled_matmul_nn_auto_cid(fc_8_params.I, fc_8_params.J, fc_8_params.K, fc_8_params.out_stride,
-        (elem_t*)fc_7_out, (elem_t*)fc_8_w, (acc_t*)fc_8_b, (elem_t*)fc_8_out,
-        NO_ACTIVATION, fc_8_params.output_scale, 0, false,
+    tiled_matmul_nn_auto_cid(fc_8_params_alex1.I, fc_8_params_alex1.J, fc_8_params_alex1.K, fc_8_params_alex1.out_stride,
+        (elem_t*)fc_7_out_alex1, (elem_t*)fc_8_w_alex1, (acc_t*)fc_8_b_alex1, (elem_t*)fc_8_out_alex1,
+        NO_ACTIVATION, fc_8_params_alex1.output_scale, 0, false,
         WS, orow_divide, batch_divide, cid, target_util);
 
     end = read_cycles();
@@ -256,23 +256,23 @@ uint64_t* alexnet_function(int cid, int orow_divide, int batch_divide, int targe
 #endif   
 
 
-    for(int i = 0; i < num_layer; i++){
+    for(int i = 0; i < num_cycle; i++){
       if(i < 5){
-        cycles[i] = conv_cycles[i];
+        cycles[cid][i] = conv_cycles[i];
       }
       else if(i < 8){
-        cycles[i] = matmul_cycles[i - 5];
+        cycles[cid][i] = matmul_cycles[i - 5];
       }
       else if (i < 11){
-        cycles[i] = pool_cycles[i - 8];
+        cycles[cid][i] = pool_cycles[i - 8];
       }
       else{
-        if(i == 11) cycles[i] = total_conv_cycles;
-        if(i == 12) cycles[i] = total_matmul_cycles;
-        if(i == 13) cycles[i] = total_pool_cycles;
-        if(i == 14) cycles[i] = total_conv_cycles + total_matmul_cycles + total_pool_cycles;
+        if(i == 11) cycles[cid][i] = total_conv_cycles;
+        if(i == 12) cycles[cid][i] = total_matmul_cycles;
+        if(i == 13) cycles[cid][i] = total_pool_cycles;
+        if(i == 14) cycles[cid][i] = total_conv_cycles + total_matmul_cycles + total_pool_cycles;
       }
     }
-    return cycles;
+    return cycles[cid];
 #undef num_cycle
 }

@@ -20,7 +20,7 @@ uint64_t* fcnnet_function(int cid, int orow_divide, int batch_divide, int target
 
 #define num_cycle (19+36+16+4)
 
-  static uint64_t cycles[num_cycle];
+  static uint64_t cycles[num_proc][num_cycle];
     uint64_t start, end;
     uint64_t total_matmul_cycles = 0, total_conv_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, total_resadd_cycles = 0, other_cycles = 0;
     uint64_t conv_cycles[19];
@@ -1311,22 +1311,22 @@ uint64_t* fcnnet_function(int cid, int orow_divide, int batch_divide, int target
 
     for(int i = 0; i < num_cycle; i++){
       if(i < 19){
-        cycles[i] = conv_cycles[i];
+        cycles[cid][i] = conv_cycles[i];
       }
       else if(i < 55){
-        cycles[i] = matmul_cycles[i - 19];
+        cycles[cid][i] = matmul_cycles[i - 19];
       }
       else if (i < 71){
-        cycles[i] = resadd_cycles[i - 55];
+        cycles[cid][i] = resadd_cycles[i - 55];
       }
       else{
-        if(i == 71) cycles[i] = total_conv_cycles;
-        if(i == 72) cycles[i] = total_matmul_cycles;
-        if(i == 73) cycles[i] = total_resadd_cycles;
-        if(i == 74) cycles[i] = total_conv_cycles + total_matmul_cycles + total_resadd_cycles + other_cycles;
+        if(i == 71) cycles[cid][i] = total_conv_cycles;
+        if(i == 72) cycles[cid][i] = total_matmul_cycles;
+        if(i == 73) cycles[cid][i] = total_resadd_cycles;
+        if(i == 74) cycles[cid][i] = total_conv_cycles + total_matmul_cycles + total_resadd_cycles + other_cycles;
       }
     }
 
-    return cycles;
+    return cycles[cid];
 #undef num_cycle
 }

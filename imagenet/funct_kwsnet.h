@@ -21,7 +21,7 @@ uint64_t* kwsnet_function(int cid, int orow_divide, int batch_divide, int target
 
 #define num_cycle (25+1+11+4)
 
-  static uint64_t cycles[num_cycle];
+  static uint64_t cycles[num_proc][num_cycle];
     uint64_t start, end;
     uint64_t total_pool_cycles = 0, total_conv_cycles = 0, conv_dw_cycles = 0, total_resadd_cycles = 0, other_cycles = 0;
     uint64_t conv_cycles[25];
@@ -842,22 +842,22 @@ uint64_t* kwsnet_function(int cid, int orow_divide, int batch_divide, int target
     
     for(int i = 0; i < num_cycle; i++){
       if(i < 25){
-        cycles[i] = conv_cycles[i];
+        cycles[cid][i] = conv_cycles[i];
       }
       else if(i < 26){
-        cycles[i] = pool_cycles[i - 25];
+        cycles[cid][i] = pool_cycles[i - 25];
       }
       else if (i < 37){
-        cycles[i] = resadd_cycles[i - 26];
+        cycles[cid][i] = resadd_cycles[i - 26];
       }
       else{
-        if(i == 37) cycles[i] = total_conv_cycles;
-        if(i == 38) cycles[i] = total_pool_cycles;
-        if(i == 39) cycles[i] = total_resadd_cycles;
-        if(i == 40) cycles[i] = total_conv_cycles + total_pool_cycles + total_resadd_cycles;
+        if(i == 37) cycles[cid][i] = total_conv_cycles;
+        if(i == 38) cycles[cid][i] = total_pool_cycles;
+        if(i == 39) cycles[cid][i] = total_resadd_cycles;
+        if(i == 40) cycles[cid][i] = total_conv_cycles + total_pool_cycles + total_resadd_cycles;
       }
     }
 
-    return cycles;
+    return cycles[cid];
 #undef num_cycle
 }
