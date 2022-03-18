@@ -2174,7 +2174,7 @@ static void tiled_conv(
 }
 
 
-static void tiled_conv(
+static void tiled_conv_dw(
     int batch_size, int in_dim, int channels, int out_dim,
     int stride, int padding, int kernel_dim,
 
