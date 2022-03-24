@@ -1,6 +1,12 @@
 // code for each workload
-#define MAX_WORKLOAD 1000
-#define NUM_WORKLOAD (8*3) // 1, 2, 4 batches
+#include "funct_resnet_1.h"
+#include "funct_fcnnet_1.h"
+#include "funct_googlenet_1.h"
+#include "funct_squeezenet_1.h"
+#include "funct_kwsnet_1.h"
+#include "funct_alexnet_1.h"
+#include "funct_yolonet_1.h"
+#include "funct_yololitenet_1.h"
 #define FCNNET_1 0
 #define RESNET_1 1
 #define ALEXNET_1 2
@@ -10,6 +16,14 @@
 #define YOLONET_1 6
 #define YOLOLITENET_1 7
 
+#include "funct_resnet_2.h"
+#include "funct_fcnnet_2.h"
+#include "funct_googlenet_2.h"
+#include "funct_squeezenet_2.h"
+#include "funct_kwsnet_2.h"
+#include "funct_alexnet_2.h"
+#include "funct_yolonet_2.h"
+#include "funct_yololitenet_2.h"
 #define FCNNET_2 8
 #define RESNET_2 9
 #define ALEXNET_2 10
@@ -19,6 +33,14 @@
 #define YOLONET_2 14
 #define YOLOLITENET_2 15
 
+#include "funct_resnet_4.h"
+#include "funct_fcnnet_4.h"
+#include "funct_googlenet_4.h"
+#include "funct_squeezenet_4.h"
+#include "funct_kwsnet_4.h"
+#include "funct_alexnet_4.h"
+#include "funct_yolonet_4.h"
+#include "funct_yololitenet_4.h"
 #define FCNNET_4 16
 #define RESNET_4 17
 #define ALEXNET_4 18
@@ -27,6 +49,9 @@
 #define KWSNET_4 21
 #define YOLONET_4 22
 #define YOLOLITENET_4 23
+
+#define MAX_WORKLOAD 1000
+#define NUM_WORKLOAD (8*3) // 1, 2, 4 batches
 
 //[[119760510, 67024601, 40234597], [25727753, 16815039, 12475991], [17927216, 13401393, 9768785], [11874273, 7346737, 5416207], [4222239, 2793391, 1788653], [9195628, 5284644, 4081583], [17273935, 10529885, 9382349], [3847462, 3092522, 3199658]]
 //[[239950436, 129882609, 79363161], [50827889, 31787132, 22436942], [24796119, 18453904, 13685471], [23111997, 13703960, 12326887], [8340242, 4903209, 4366495], [18471732, 11301087, 8395059], [33626369, 20244540, 16272834], [7532796, 5960033, 8726273]]
@@ -55,7 +80,7 @@ static int smallest_pointer = 0; // before this pointer, finished executing (for
 
 int rand_seed(uint32_t seed) {
   static uint32_t x = 777;
-  x = x * (1664525+seed) + 1013904223;
+  x = x * (1664525 + seed) + 1013904223;
   return x >> 24;
 }
 
@@ -257,4 +282,40 @@ void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32
     }
   }
 }
- 
+
+uint64_t workload_function(int workload_id, int cid, int num_gemmini, pthread_barrier_t *barrier_funct){
+  uint64_t start = read_cycles();
+  if(workload_id < 8){
+    int orow_divide = num_gemmini;
+    int batch_divide = 1; // 1 batch workload
+    if(workload_id == 0){
+      resnet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+    }
+    else if(workload_id == 1){
+      fcnnet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+    }
+    else if(workload_id == 2){
+      alexnet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+    }
+    else if(workload_id == 3){
+      googlenet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+    }
+    else if(workload_id == 4){
+      squeezenet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+    }
+    else if(workload_id == 5){
+      kwsnet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+    }
+    else if(workload_id == 6){
+      yolonet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+    }
+    else if(workload_id == 7){
+      yololitenet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+    }
+  }
+
+
+  uint64_t runtime = read_cycles() - start;
+  return runtime;
+
+}
