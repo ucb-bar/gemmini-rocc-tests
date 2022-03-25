@@ -1,3 +1,4 @@
+#ifndef BAREMETAL
 // code for each workload
 #include "funct_resnet_1.h"
 #include "funct_fcnnet_1.h"
@@ -7,14 +8,6 @@
 #include "funct_alexnet_1.h"
 #include "funct_yolonet_1.h"
 #include "funct_yololitenet_1.h"
-#define FCNNET_1 0
-#define RESNET_1 1
-#define ALEXNET_1 2
-#define GOOGLENET_1 3
-#define SQUEEZENET_1 4
-#define KWSNET_1 5
-#define YOLONET_1 6
-#define YOLOLITENET_1 7
 
 #include "funct_resnet_2.h"
 #include "funct_fcnnet_2.h"
@@ -24,14 +17,6 @@
 #include "funct_alexnet_2.h"
 #include "funct_yolonet_2.h"
 #include "funct_yololitenet_2.h"
-#define FCNNET_2 8
-#define RESNET_2 9
-#define ALEXNET_2 10
-#define GOOGLENET_2 11
-#define SQUEEZENET_2 12
-#define KWSNET_2 13
-#define YOLONET_2 14
-#define YOLOLITENET_2 15
 
 #include "funct_resnet_4.h"
 #include "funct_fcnnet_4.h"
@@ -41,6 +26,26 @@
 #include "funct_alexnet_4.h"
 #include "funct_yolonet_4.h"
 #include "funct_yololitenet_4.h"
+#endif
+
+#define FCNNET_1 0
+#define RESNET_1 1
+#define ALEXNET_1 2
+#define GOOGLENET_1 3
+#define SQUEEZENET_1 4
+#define KWSNET_1 5
+#define YOLONET_1 6
+#define YOLOLITENET_1 7
+
+#define FCNNET_2 8
+#define RESNET_2 9
+#define ALEXNET_2 10
+#define GOOGLENET_2 11
+#define SQUEEZENET_2 12
+#define KWSNET_2 13
+#define YOLONET_2 14
+#define YOLOLITENET_2 15
+
 #define FCNNET_4 16
 #define RESNET_4 17
 #define ALEXNET_4 18
@@ -69,12 +74,15 @@ static uint64_t sp_cycles[NUM_WORKLOAD] =
 
 static int total_queue_type[MAX_WORKLOAD] = {-1};
 static uint64_t total_queue_dispatch[MAX_WORKLOAD] = {0}; // dispatched time (in order)
-static uint64_t total_queue_finish[MAX_WORKLOAD] = {0};
+static uint64_t total_queue_finish[NUM_CORE][MAX_WORKLOAD] = {0};
 static int total_queue_priority[MAX_WORKLOAD] = {-1}; // 0 - 11
 static int total_queue_qos[MAX_WORKLOAD] = {-1}; // latency sensitivity of workload (target: (qos + 1) * 1.2 * sp_cycles)
-static uint64_t total_queue_runtime[MAX_WORKLOAD] = {0}; // for checking purpose (end to end runtime)
+static uint64_t total_queue_runtime_thread[NUM_CORE][MAX_WORKLOAD] = {0}; // for checking purpose (end to end runtime)
+static uint64_t total_queue_runtime_total[NUM_CORE][MAX_WORKLOAD] = {0}; // for checking purpose (end to end runtime)
+
 
 static int gemmini_workload[NUM_CORE] = {-1};
+static int gemmini_runtime[NUM_CORE] = {0}; // to track real runtime without thread create overhead
 static int smallest_pointer = 0; // before this pointer, finished executing (for fast search, once the pointer reaches total number of workload, it is finished)
 
 
@@ -84,12 +92,9 @@ int rand_seed(uint32_t seed) {
   return x >> 24;
 }
 
-
-// mode 1 workload create function (SLA satisfaction)
-void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch4, uint32_t seed, float cap){
-  // qos < 0 -> mixed
-  // qos >= 0 -> workload dispatch qos apart, qos ways at once
-  int rand_mod = 8;
+int workload_type_assign(bool batch1, bool batch2, bool batch4, uint32_t seed){
+  // currently only batch1
+  int rand_mod = 160;
   int rand_base = 0;
   if (batch1 && batch2 && batch4) {
     rand_mod = NUM_WORKLOAD;
@@ -104,6 +109,39 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
     rand_base = 16;
   }
 
+  int id = rand_seed(seed) % rand_mod + rand_base;
+  if(id < 1){
+    id = 0;
+  }
+  else if(id < (1+8)){
+    id = 1;
+  }
+  else if(id < (1+8+12)){
+    id = 2;
+  }
+  else if(id < (1+8+12+17)){
+    id = 3;
+  }
+  else if(id < (1+8+12+17+45)){
+    id = 4;
+  }
+  else if(id < (1+8+12+17+45+24)){
+    id = 5;
+  }
+  else if(id < (1+8+12+17+45+24+12)){
+    id = 6;
+  }
+  else if(id < (1+8+12+17+45+24+12+41)){
+    id = 7;
+  }
+  return id;
+}
+
+// mode 1 workload create function (SLA satisfaction)
+void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch4, uint32_t seed, float cap){
+  // qos < 0 -> mixed
+  // qos >= 0 -> workload dispatch qos apart, qos ways at once
+
   if (qos == 0){ // mixed QoS
     // extremely high QoS (0) should come really rarely
     // 1: 30%, 2: 40%, 3: 30%
@@ -114,14 +152,17 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
         workload_qos = 3;
       else if (select >= 3)
         workload_qos = 2;
-      int workload_type = rand_base + rand_seed(seed) % rand_mod;
+      int workload_type = workload_type_assign(batch1, batch2, batch4, seed);//rand_base + rand_seed(seed) % rand_mod;
       total_queue_type[i] = workload_type;
-      total_queue_finish[i] = 0;
       total_queue_priority[i] = 5;
       total_queue_qos[i] = workload_qos;
-      total_queue_runtime[i] = 0;
+      for (int j = 0; j < NUM_CORE; j++){
+        total_queue_finish[j][i] = 0;
+        total_queue_runtime_thread[j][i] = 0;
+        total_queue_runtime_total[j][i] = 0;
+      }
       if(i < 3){
-        total_queue_dispatch[i] = 10000;
+        total_queue_dispatch[i] = 0;
       }
       else{
         total_queue_dispatch[i] = total_queue_dispatch[i - 3] + sp_cycles[total_queue_type[i - 3]] * 3 * cap; // is it enough?
@@ -143,14 +184,18 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
     for(int i = 0; i < num_workload_group; i++){
       for(int j = 0; j < (qos+1); j++){
         int index = qos * i + j;
-        int workload_type = rand_base + rand_seed(seed) % rand_mod;
+        int workload_type = workload_type_assign(batch1, batch2, batch4, seed);
+        //int workload_type = rand_base + rand_seed(seed) % rand_mod;
         total_queue_type[index] = workload_type; 
-        total_queue_finish[index] = 0;
         total_queue_priority[index] = 5; // mode 1 -> same priority 
         total_queue_qos[index] = qos;
-        total_queue_runtime[index] = 0;
+        for (int j = 0; j < NUM_CORE; j++){
+           total_queue_finish[j][index] = 0;
+           total_queue_runtime_thread[j][index] = 0;
+           total_queue_runtime_total[j][index] = 0;
+      	}
         if(i == 0){
-          total_queue_dispatch[index] = 10000;
+          total_queue_dispatch[index] = 0;
         }
         else{
           total_queue_dispatch[index] = total_queue_dispatch[index - qos - 1] + sp_cycles[total_queue_type[index - qos - 1]] * (qos+1) * cap; // is it enough?
@@ -180,12 +225,9 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
       }
     }
   }
-  uint64_t current_cycle = read_cycles();
 
-  for(int i = 0; i < workload; i++){
-    if(total_queue_type[i] != -1){
-      total_queue_dispatch[i] += current_cycle;
-    }
+  for(int i = 0; i < NUM_CORE; i++){
+    gemmini_runtime[i] = 0; // initialize time 
   }
 }
 
@@ -194,28 +236,14 @@ void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32
   int qos = 3; // to lowest QoS
   int group = 8;
 
-  int rand_mod = 8;
-  int rand_base = 0;
-  if (batch1 && batch2 && batch4) {
-    rand_mod = NUM_WORKLOAD;
-  }
-  else if (batch1 && batch2){
-    rand_mod = 8 * 2;
-  }
-  if(batch2){
-    rand_base = 8;
-  }
-  else if(batch4){
-    rand_base = 16;
-  }
   int num_workload_group = ceil_divide_int(workload, group);
 
   for(int i = 0; i < num_workload_group; i++){
     for(int j = 0; j < group; j++){
       int index = group * i + j;
-      int workload_type = rand_base + rand_seed(seed) % rand_mod;
+      int workload_type = workload_type_assign(batch1, batch2, batch4, seed);
+      //int workload_type = rand_base + rand_seed(seed) % rand_mod;
       total_queue_type[index] = workload_type; 
-      total_queue_finish[index] = 0;
       int priority_level = rand_seed(seed) % 100;
       if(priority_level < 15){
           priority_level = 0;
@@ -243,9 +271,13 @@ void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32
       }
       total_queue_priority[index] = priority_level; 
       total_queue_qos[index] = qos;
-      total_queue_runtime[index] = 0;
+      for (int j = 0; j < NUM_CORE; j++){
+   	total_queue_finish[j][index] = 0;
+   	total_queue_runtime_thread[j][index] = 0;
+   	total_queue_runtime_total[j][index] = 0;
+      }
       if(i == 0){
-        total_queue_dispatch[index] = 10000;
+        total_queue_dispatch[index] = 0;
       }
       else{
         total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * (group) * cap; // is it enough?
@@ -274,48 +306,59 @@ void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32
       }
     }
   }
-  uint64_t current_cycle = read_cycles();
 
-  for(int i = 0; i < workload; i++){
-    if(total_queue_type[i] != -1){
-      total_queue_dispatch[i] += current_cycle;
-    }
+  for(int i = 0; i < NUM_CORE; i++){
+    gemmini_runtime[i] = 0; // initialize time 
   }
 }
 
+#ifndef BAREMETAL
 uint64_t workload_function(int workload_id, int cid, int num_gemmini, pthread_barrier_t *barrier_funct){
-  uint64_t start = read_cycles();
+
+  uint64_t* cycles;
+  uint64_t total_runtime;
+
+  //uint64_t start = read_cycles();
   if(workload_id < 8){
     int orow_divide = num_gemmini;
     int batch_divide = 1; // 1 batch workload
     if(workload_id == 0){
-      resnet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = fcnnet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      total_runtime = *(cycles+73);
     }
     else if(workload_id == 1){
-      fcnnet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = resnet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      total_runtime = *(cycles+72);
     }
     else if(workload_id == 2){
-      alexnet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = alexnet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      total_runtime = *(cycles+14);
     }
     else if(workload_id == 3){
-      googlenet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = googlenet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      total_runtime = *(cycles+71);
     }
     else if(workload_id == 4){
-      squeezenet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = squeezenet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      total_runtime = *(cycles+29);
     }
     else if(workload_id == 5){
-      kwsnet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = kwsnet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      total_runtime = *(cycles+40);
     }
     else if(workload_id == 6){
-      yolonet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = yolonet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      total_runtime = *(cycles+26);
     }
     else if(workload_id == 7){
-      yololitenet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = yololitenet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      total_runtime = *(cycles+14);
     }
   }
 
 
-  uint64_t runtime = read_cycles() - start;
-  return runtime;
+  //uint64_t runtime = read_cycles() - start;
+  return total_runtime;
 
 }
+#endif

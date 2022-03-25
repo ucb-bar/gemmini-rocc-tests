@@ -9,14 +9,14 @@
 #include <sys/mman.h>
 #endif
 #define NUM_CORE 4
-
+#define num_proc NUM_CORE 
 #include "include/gemmini_testutils.h"
 #include "include/gemmini_nn.h"
 #include "workload.h"
 #include "util.h"
 
 #define workloads 100
-#define SEED 10
+#define SEED 100
 #define CAP 0.8 // 0 to 1 (smaller number: shorter time between workload dispatch time)
 
 void thread_entry(int cid, int nc)
@@ -33,8 +33,8 @@ void thread_entry(int cid, int nc)
 
   for(int j = 0; j < nc; j++){
     if(j == cid && j == 0){
-      // workload_mode_1(qos, workloads, true, false, false, SEED, CAP);
-      workload_mode_2(workloads, true, false, false, SEED, CAP);
+      workload_mode_1(qos, workloads, true, false, false, SEED, CAP);
+      //workload_mode_2(workloads, true, false, false, SEED, CAP);
     }
   }
   barrier(nc);
