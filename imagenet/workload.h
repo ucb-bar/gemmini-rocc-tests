@@ -1,14 +1,14 @@
 #ifndef BAREMETAL
 // code for each workload
 #include "funct_resnet_1.h"
-#include "funct_fcnnet_1.h"
 #include "funct_googlenet_1.h"
+#include "funct_fcnnet_1.h"
 #include "funct_squeezenet_1.h"
 #include "funct_kwsnet_1.h"
 #include "funct_alexnet_1.h"
 #include "funct_yolonet_1.h"
 #include "funct_yololitenet_1.h"
-
+/*
 #include "funct_resnet_2.h"
 #include "funct_fcnnet_2.h"
 #include "funct_googlenet_2.h"
@@ -26,6 +26,7 @@
 #include "funct_alexnet_4.h"
 #include "funct_yolonet_4.h"
 #include "funct_yololitenet_4.h"
+*/
 #endif
 
 #define FCNNET_1 0
@@ -55,7 +56,7 @@
 #define YOLONET_4 22
 #define YOLOLITENET_4 23
 
-#define MAX_WORKLOAD 1000
+#define MAX_WORKLOAD 200
 #define NUM_WORKLOAD (8*3) // 1, 2, 4 batches
 
 //[[119760510, 67024601, 40234597], [25727753, 16815039, 12475991], [17927216, 13401393, 9768785], [11874273, 7346737, 5416207], [4222239, 2793391, 1788653], [9195628, 5284644, 4081583], [17273935, 10529885, 9382349], [3847462, 3092522, 3199658]]
@@ -81,7 +82,8 @@ static uint64_t total_queue_runtime_thread[NUM_CORE][MAX_WORKLOAD] = {0}; // for
 static uint64_t total_queue_runtime_total[NUM_CORE][MAX_WORKLOAD] = {0}; // for checking purpose (end to end runtime)
 
 
-static int gemmini_workload[NUM_CORE] = {-1};
+static int gemmini_workload_assigned[NUM_CORE] = {-1};
+static int gemmini_workload_received[NUM_CORE] = {-1};
 static int gemmini_runtime[NUM_CORE] = {0}; // to track real runtime without thread create overhead
 static int smallest_pointer = 0; // before this pointer, finished executing (for fast search, once the pointer reaches total number of workload, it is finished)
 
@@ -94,7 +96,7 @@ int rand_seed(uint32_t seed) {
 
 int workload_type_assign(bool batch1, bool batch2, bool batch4, uint32_t seed){
   // currently only batch1
-  int rand_mod = 160;
+  int rand_mod = 159;
   int rand_base = 0;
   if (batch1 && batch2 && batch4) {
     rand_mod = NUM_WORKLOAD;
@@ -109,31 +111,34 @@ int workload_type_assign(bool batch1, bool batch2, bool batch4, uint32_t seed){
     rand_base = 16;
   }
 
-  int id = rand_seed(seed) % rand_mod + rand_base;
-  if(id < 1){
-    id = 0;
-  }
-  else if(id < (1+8)){
+  static int id = 1;
+  uint32_t rand_out = rand_seed(seed);
+  int r = rand_out % rand_mod + rand_base;
+  if(r < 8){
     id = 1;
   }
-  else if(id < (1+8+12)){
+  else if(r < (1+8)){
+    id = 0;
+  }
+  else if(r < (1+8+12)){
     id = 2;
   }
-  else if(id < (1+8+12+17)){
+  else if(r < (1+8+12+17)){
     id = 3;
   }
-  else if(id < (1+8+12+17+45)){
+  else if(r < (1+8+12+17+45)){
     id = 4;
   }
-  else if(id < (1+8+12+17+45+24)){
+  else if(r < (1+8+12+17+45+24)){
     id = 5;
   }
-  else if(id < (1+8+12+17+45+24+12)){
+  else if(r < (1+8+12+17+45+24+12)){
     id = 6;
   }
-  else if(id < (1+8+12+17+45+24+12+41)){
+  else if(r < (1+8+12+17+45+24+12+41)){
     id = 7;
   }
+  //printf("rand output: %zu, rand output value: %d, workload id: %d \n", rand_out, r, id);
   return id;
 }
 
@@ -183,10 +188,11 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
     int num_workload_group = ceil_divide_int(workload, qos+1);//(int)(workload / (qos+1));
     for(int i = 0; i < num_workload_group; i++){
       for(int j = 0; j < (qos+1); j++){
-        int index = qos * i + j;
+        int index = (qos+1) * i + j;
         int workload_type = workload_type_assign(batch1, batch2, batch4, seed);
         //int workload_type = rand_base + rand_seed(seed) % rand_mod;
         total_queue_type[index] = workload_type; 
+//printf("index: %d, output workload type: %d, stored type: %d\n", index, workload_type, total_queue_type[index]);
         total_queue_priority[index] = 5; // mode 1 -> same priority 
         total_queue_qos[index] = qos;
         for (int j = 0; j < NUM_CORE; j++){
@@ -225,6 +231,9 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
       }
     }
   }
+
+for(int i = 0; i < workload; i++)
+	//printf("after mixing entry %d, workload id %d\n", i, total_queue_type[i]);
 
   for(int i = 0; i < NUM_CORE; i++){
     gemmini_runtime[i] = 0; // initialize time 
@@ -314,7 +323,7 @@ void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32
 
 #ifndef BAREMETAL
 uint64_t workload_function(int workload_id, int cid, int num_gemmini, pthread_barrier_t *barrier_funct){
-
+  gemmini_flush(0);
   uint64_t* cycles;
   uint64_t total_runtime;
 
