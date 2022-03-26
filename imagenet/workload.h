@@ -69,7 +69,11 @@ static uint64_t sp_cycles[NUM_WORKLOAD] =
   79363161, 22436942, 13685471, 12326887, 4366495, 8395059, 16272834, 8726273, 
   158774922, 46741738, 20023558, 16289487, 6089778, 16040738, 39286233, 17485051};
 
+static uint64_t sp2_cycles[NUM_WORKLOAD] =
+ {67024601, 16815039, 13401393, 7346737, 2793391, 5284644, 10529885, 3092522,
+  129882609, 31787132, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};  
 
+//#define QUEUE_DEPTH 10
 //#define SEED 10 // to randomize workload more
 //#define CAP 0.8 // 0 to 1 (smaller number: shorter time between workload dispatch time)
 
@@ -81,12 +85,10 @@ static int total_queue_qos[MAX_WORKLOAD] = {-1}; // latency sensitivity of workl
 static uint64_t total_queue_runtime_thread[NUM_CORE][MAX_WORKLOAD] = {0}; // for checking purpose (end to end runtime)
 static uint64_t total_queue_runtime_total[NUM_CORE][MAX_WORKLOAD] = {0}; // for checking purpose (end to end runtime)
 
-
-static int gemmini_workload_assigned[NUM_CORE] = {-1};
-static int gemmini_workload_received[NUM_CORE] = {-1};
+#define MAX_ITER (int)(total_workloads / QUEUE_DEPTH)
+static int gemmini_workload_assigned[NUM_CORE][MAX_ITER][QUEUE_DEPTH] = {-1};
 static int gemmini_runtime[NUM_CORE] = {0}; // to track real runtime without thread create overhead
 static int smallest_pointer = 0; // before this pointer, finished executing (for fast search, once the pointer reaches total number of workload, it is finished)
-
 
 int rand_seed(uint32_t seed) {
   static uint32_t x = 777;
@@ -238,6 +240,10 @@ for(int i = 0; i < workload; i++)
   for(int i = 0; i < NUM_CORE; i++){
     gemmini_runtime[i] = 0; // initialize time 
   }
+  for(int c = 0; c < NUM_CORE; c++)
+    for(int i = 0; i < MAX_ITER; i++)
+      for(int j = 0; j < QUEUE_DEPTH; j++)
+        gemmini_workload_assigned[c][i][j] = -1;
 }
 
 void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32_t seed, float cap){
@@ -319,6 +325,70 @@ void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32
   for(int i = 0; i < NUM_CORE; i++){
     gemmini_runtime[i] = 0; // initialize time 
   }
+  for(int c = 0; c < NUM_CORE; c++)
+    for(int i = 0; i < MAX_ITER; i++)
+      for(int j = 0; j < QUEUE_DEPTH; j++)
+        gemmini_workload_assigned[c][i][j] = -1; 
+}
+
+// fcfs static partition of 2 cores each
+int workload_fcfs_mp_schedule(int num_group, int num_workload){
+  int index = 0;
+  int iter = 0;
+  int group[num_group];
+  int cycle[num_group];
+  for (int i = 0; i < num_group; i++){
+    cycle[i] = 0;
+    group[i] = 0;
+  }
+
+  while(index < num_workload){
+//    printf("iter: %d, index: %d, cycle0: %llu, cycle1: %llu, group0: %d, group1: %d\n", iter, index, cycle[0], cycle[1], group[0], group[1]);
+    bool full = false;
+    for(int i = 0; i < num_group; i++){
+      if(group[i] == QUEUE_DEPTH){
+        full = true;
+        break;
+      }
+    }
+
+    if(!full){
+      for(int k = 0; k < num_group; k++){
+        if(group[k] == 0){
+          gemmini_workload_assigned[k][iter][group[k]] = index;
+          int type = total_queue_type[index];
+          group[k] += 1;
+          index += 1;
+          cycle[k] += sp2_cycles[type];
+        }
+        else{
+          bool smallest = true;
+          for(int c = 0; c < num_group; c++){
+            if(cycle[k] > cycle[c]){
+              smallest = false;
+              break;
+            }
+          }
+          if(smallest){
+            gemmini_workload_assigned[k][iter][group[k]] = index;
+            int type = total_queue_type[index];
+            index += 1;
+            cycle[k] += sp2_cycles[type];
+            group[k] += 1;
+          }
+
+        }
+      }
+    }
+    else{
+      iter += 1;
+      for(int i = 0; i < num_group; i++){
+        cycle[i] = 0;
+        group[i] = 0;
+      }
+    }
+  }
+  return (iter+1); // number of queue group
 }
 
 #ifndef BAREMETAL
