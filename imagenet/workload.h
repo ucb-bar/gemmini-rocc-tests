@@ -426,7 +426,7 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
 
   // priority score initialization
   float score[num_workload];
-  int max_depth = QUEUE_DEPTH * 1.5;
+  int max_depth = QUEUE_DEPTH * 1.8;
 
   int iter = 0;
 
