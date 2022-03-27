@@ -73,13 +73,26 @@ static uint64_t sp2_cycles[NUM_WORKLOAD] =
  {67024601, 16815039, 13401393, 7346737, 2793391, 5284644, 10529885, 3092522,
   129882609, 31787132, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};  
 
+static uint64_t sp_prediction_cycles[NUM_CORE][NUM_WORKLOAD] =
+{{51998429, 11609760, 9775970, 4233402, 1554138, 3048772, 6483179, 1014052,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 4 cores
+ {78600899, 16342374, 11693769, 6374191, 1975373, 4398102, 9278409, 1361124,
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 2 cores
+ {136872531, 26509740, 15546486, 10819934, 2909057, 7122425, 15551184, 2204055,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 1 core
+ {2*136872531, 2*26509740, 2*15546486, 2*10819934, 2*2909057, 2*7122425, 2*15551184, 2*2204055,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 1 core
+};
 //#define QUEUE_DEPTH 10
 //#define SEED 10 // to randomize workload more
 //#define CAP 0.8 // 0 to 1 (smaller number: shorter time between workload dispatch time)
 
+//QoS 0: 4 cores, 1: 2 cores, 2: 1 core, 3: 0.5 x 1 core
+
 static int total_queue_type[MAX_WORKLOAD] = {-1};
 static uint64_t total_queue_dispatch[MAX_WORKLOAD] = {0}; // dispatched time (in order)
 static uint64_t total_queue_finish[NUM_CORE][MAX_WORKLOAD] = {0};
+static int total_queue_status[MAX_WORKLOAD] = {0}; // 0: not assigned, 1: in assigned queue, 2: running, 3: finished
 static int total_queue_priority[MAX_WORKLOAD] = {-1}; // 0 - 11
 static int total_queue_qos[MAX_WORKLOAD] = {-1}; // latency sensitivity of workload (target: (qos + 1) * 1.2 * sp_cycles)
 static uint64_t total_queue_runtime_thread[NUM_CORE][MAX_WORKLOAD] = {0}; // for checking purpose (end to end runtime)
@@ -175,7 +188,7 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
         total_queue_dispatch[i] = total_queue_dispatch[i - 3] + sp_cycles[total_queue_type[i - 3]] * 3 * cap; // is it enough?
       }
     }
-
+/*
     int num_qos_4 = workload / 100; // < 1% of workload 
     for(int i = 0; i < num_qos_4; i++){
       int qos_4_index = 0;
@@ -185,6 +198,7 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
       total_queue_qos[qos_4_index] = 0;
       total_queue_priority[qos_4_index] = 11;
     }
+    */
   }
   else{
     int num_workload_group = ceil_divide_int(workload, qos+1);//(int)(workload / (qos+1));
@@ -234,8 +248,8 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
     }
   }
 
-for(int i = 0; i < workload; i++)
-	//printf("after mixing entry %d, workload id %d\n", i, total_queue_type[i]);
+  //for(int i = 0; i < workload; i++)
+    //printf("after mixing entry %d, workload id %d\n", i, total_queue_type[i]);
 
   for(int i = 0; i < NUM_CORE; i++){
     gemmini_runtime[i] = 0; // initialize time 
@@ -287,9 +301,9 @@ void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32
       total_queue_priority[index] = priority_level; 
       total_queue_qos[index] = qos;
       for (int j = 0; j < NUM_CORE; j++){
-   	total_queue_finish[j][index] = 0;
-   	total_queue_runtime_thread[j][index] = 0;
-   	total_queue_runtime_total[j][index] = 0;
+        total_queue_finish[j][index] = 0;
+   	    total_queue_runtime_thread[j][index] = 0;
+   	    total_queue_runtime_total[j][index] = 0;
       }
       if(i == 0){
         total_queue_dispatch[index] = 0;
@@ -333,6 +347,11 @@ void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32
 
 // fcfs static partition of 2 cores each
 int workload_fcfs_mp_schedule(int num_group, int num_workload){
+  for(int c = 0; c < NUM_CORE; c++)
+    for(int i = 0; i < MAX_ITER; i++)
+      for(int j = 0; j < QUEUE_DEPTH; j++)
+        gemmini_workload_assigned[c][i][j] = -1;
+
   int index = 0;
   int iter = 0;
   int group[num_group];
@@ -389,6 +408,160 @@ int workload_fcfs_mp_schedule(int num_group, int num_workload){
     }
   }
   return (iter+1); // number of queue group
+}
+
+// priority scheduling
+int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t current_cycle){
+  for(int c = 0; c < NUM_CORE; c++)
+    for(int i = 0; i < MAX_ITER; i++)
+      for(int j = 0; j < QUEUE_DEPTH; j++)
+        gemmini_workload_assigned[c][i][j] = -1;
+
+  int group[num_group];
+  int cycle[num_group];
+  for (int i = 0; i < num_group; i++){
+    cycle[i] = current_cycle + 10000000;
+    group[i] = 0;
+  }
+
+  // priority score initialization
+  float score[num_workload];
+  int max_depth = QUEUE_DEPTH * 1.5;
+
+  int iter = 0;
+
+  // repeat from here
+  int pre_assign_queue[max_depth];
+  float pre_assign_score[max_depth]; // need this?
+
+  while (iter < num_iter){
+    for(int i = 0; i < max_depth; i++){
+      pre_assign_queue[i] = -1;
+      pre_assign_score[i] = -1;
+    }
+
+    uint64_t top_cycle = cycle[0];
+    // get max cycle
+    for(int i = 0; i < num_group; i++){
+      if(top_cycle > cycle[i]){
+        top_cycle = cycle[i];
+      }
+    }
+
+    int pointer = 0;
+    for(int i = 0; i < num_workload; i++){
+      if(total_queue_dispatch[i] > top_cycle){
+        pointer = i;
+        break;
+      }
+      else if(i == num_workload - 1){
+        pointer = num_workload;
+      }
+    }
+
+    bool done = true;
+    for (int i = 0; i < pointer; i++){
+      if(total_queue_status[i] == 0){ //only take the unassigned ones
+        score[i] = total_queue_priority[i];
+        done = false;
+      }
+      else
+        score[i] = -1;
+    }
+    if(done && (pointer == num_workload))
+      break;
+
+    //printf("iter: %d, cycle: %llu, cycle0: %llu, cycle1: %llu, dispatch queue pointer: %d\n", iter, top_cycle, cycle[0], cycle[1], pointer);
+    
+    // ToDo: QoS 0 (extreme priority)
+
+    // assign until num_iter
+    // based on expected cycles after num_iter
+    for(int i = 0; i < pointer; i++){
+      if(score[i] >= 0){
+        int qos = total_queue_qos[i];
+        score[i] = score[i] + (top_cycle - total_queue_dispatch[i]) / sp_prediction_cycles[qos][i];
+     //   printf("scorex1000: %d for i %d\n", (int)(score[i]*1000), i);
+      }
+    }
+
+    // first, pick candidate
+    // next, assign using cycle prediction
+    int queue_index = 0;
+    int max_index = -1;
+    float max_score = -1;
+    int pre_assign_length = 0;
+    while(queue_index < max_depth){
+      for(int i = 0; i < pointer; i++){
+        if(total_queue_status[i] == 0){
+          if(max_score < score[i]){
+            max_score = score[i];
+            max_index = i;
+          }
+        }
+      }
+      //printf("queue index: %d, max index: %d\n", queue_index, max_index);
+      if(max_index == -1){
+     //   pre_assign_length = queue_index;
+        break;
+      }
+      pre_assign_queue[queue_index] = max_index;
+      pre_assign_score[queue_index] = max_score;
+      queue_index ++;
+      total_queue_status[max_index] = 1;
+      max_index = -1;
+      max_score = -1;
+    }
+    pre_assign_length = queue_index;
+    //printf("pre assigned queue length: %d \n", pre_assign_length);
+    for(int i = 0; i < pre_assign_length; i++)
+      printf("%d, ", pre_assign_queue[i]); 
+    printf("\n");
+
+    for (int p = 0; p < pre_assign_length; ){
+  //    printf("iter: %d, index: %d, cycle0: %llu, cycle1: %llu, group0: %d, group1: %d\n", iter, index, cycle[0], cycle[1], group[0], group[1]);
+      bool full = false;
+      for(int i = 0; i < num_group; i++){
+        if(group[i] == QUEUE_DEPTH){
+          full = true;
+          break;
+        }
+      }
+
+      if(!full){
+        for(int k = 0; k < num_group; k++){
+          bool smallest = true;
+          for(int c = 0; c < num_group; c++){
+            if(cycle[k] > cycle[c]){
+              smallest = false;
+              break;
+            }
+          }
+          if(smallest && p < pre_assign_length){
+            int index = pre_assign_queue[p];
+            gemmini_workload_assigned[k][iter][group[k]] = index;
+            int type = total_queue_type[index];
+            cycle[k] += sp2_cycles[type];
+            group[k] += 1;
+            p++;
+          }
+        }
+      }
+      else{
+        // release status
+        int index = pre_assign_queue[p];
+        total_queue_status[index] = 0;
+        p++;
+      }
+    }
+    iter += 1;
+    for(int i = 0; i < num_group; i++){
+      group[i] = 0;
+    }
+  }
+
+  // if returned value is 0, then it is over
+  return (iter); // number of queue group
 }
 
 #ifndef BAREMETAL
