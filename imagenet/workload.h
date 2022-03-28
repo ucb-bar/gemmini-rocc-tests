@@ -81,12 +81,14 @@ static uint64_t sp_prediction_cycles[NUM_CORE][NUM_WORKLOAD] =
  {136872531, 26509740, 15546486, 10819934, 2909057, 7122425, 15551184, 2204055,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 1 core
  {2*136872531, 2*26509740, 2*15546486, 2*10819934, 2*2909057, 2*7122425, 2*15551184, 2*2204055,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 1 core
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 0.5 core
 };
 //#define QUEUE_DEPTH 10
 //#define SEED 10 // to randomize workload more
 //#define CAP 0.8 // 0 to 1 (smaller number: shorter time between workload dispatch time)
 
+//workload creating capacity: cap * sp_cycles * cap_scale(<1)
+//QoS target: cap * (qos+1) *  sp_cycles * target_scale(> 1, < 1)
 //QoS 0: 4 cores, 1: 2 cores, 2: 1 core, 3: 0.5 x 1 core
 
 static int total_queue_type[MAX_WORKLOAD] = {-1};
@@ -95,6 +97,7 @@ static uint64_t total_queue_finish[NUM_CORE][MAX_WORKLOAD] = {0};
 static int total_queue_status[MAX_WORKLOAD] = {0}; // 0: not assigned, 1: in assigned queue, 2: running, 3: finished
 static int total_queue_priority[MAX_WORKLOAD] = {-1}; // 0 - 11
 static int total_queue_qos[MAX_WORKLOAD] = {-1}; // latency sensitivity of workload (target: (qos + 1) * 1.2 * sp_cycles)
+static uint64_t total_queue_target[MAX_WORKLOAD] = {0};
 static uint64_t total_queue_runtime_thread[NUM_CORE][MAX_WORKLOAD] = {0}; // for checking purpose (end to end runtime)
 static uint64_t total_queue_runtime_total[NUM_CORE][MAX_WORKLOAD] = {0}; // for checking purpose (end to end runtime)
 
@@ -158,14 +161,14 @@ int workload_type_assign(bool batch1, bool batch2, bool batch4, uint32_t seed){
 }
 
 // mode 1 workload create function (SLA satisfaction)
-void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch4, uint32_t seed, float cap){
+void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch4, uint32_t seed, int cap, float target_scale, float cap_scale){ 
   // qos < 0 -> mixed
   // qos >= 0 -> workload dispatch qos apart, qos ways at once
-
+  int group = cap * (2+1);
   if (qos == 0){ // mixed QoS
     // extremely high QoS (0) should come really rarely
     // 1: 30%, 2: 40%, 3: 30%
-    for (int i = 0; i < workload; i++){
+    for (int i = 0; i < workload+group; i++){
       int select = rand_seed(seed) % 10;
       int workload_qos = 1;
       if(select >= 7)
@@ -176,16 +179,17 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
       total_queue_type[i] = workload_type;
       total_queue_priority[i] = 5;
       total_queue_qos[i] = workload_qos;
+      total_queue_target[i] = (workload_qos + 1) * target_scale * cap * sp_cycles[workload_type];
       for (int j = 0; j < NUM_CORE; j++){
         total_queue_finish[j][i] = 0;
         total_queue_runtime_thread[j][i] = 0;
         total_queue_runtime_total[j][i] = 0;
       }
-      if(i < 3){
-        total_queue_dispatch[i] = 0;
+      if(i < group){
+        total_queue_dispatch[i] = 10000*i;
       }
       else{
-        total_queue_dispatch[i] = total_queue_dispatch[i - 3] + sp_cycles[total_queue_type[i - 3]] * 3 * cap; // is it enough?
+        total_queue_dispatch[i] = total_queue_dispatch[i - group] + sp_cycles[total_queue_type[i - group]] * group * cap_scale; // is it enough?
       }
     }
 /*
@@ -201,37 +205,43 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
     */
   }
   else{
-    int num_workload_group = ceil_divide_int(workload, qos+1);//(int)(workload / (qos+1));
+    group = cap * (qos+1);
+    int num_workload_group = ceil_divide_int(workload+group, group);
     for(int i = 0; i < num_workload_group; i++){
-      for(int j = 0; j < (qos+1); j++){
-        int index = (qos+1) * i + j;
+      for(int j = 0; j < group; j++){
+        int index = group * i + j;
         int workload_type = workload_type_assign(batch1, batch2, batch4, seed);
         //int workload_type = rand_base + rand_seed(seed) % rand_mod;
         total_queue_type[index] = workload_type; 
 //printf("index: %d, output workload type: %d, stored type: %d\n", index, workload_type, total_queue_type[index]);
         total_queue_priority[index] = 5; // mode 1 -> same priority 
         total_queue_qos[index] = qos;
+        total_queue_target[i] = (qos + 1) * target_scale * cap * sp_cycles[workload_type];
         for (int j = 0; j < NUM_CORE; j++){
            total_queue_finish[j][index] = 0;
            total_queue_runtime_thread[j][index] = 0;
            total_queue_runtime_total[j][index] = 0;
       	}
         if(i == 0){
-          total_queue_dispatch[index] = 0;
+          total_queue_dispatch[index] = 10000*j;
         }
         else{
-          total_queue_dispatch[index] = total_queue_dispatch[index - qos - 1] + sp_cycles[total_queue_type[index - qos - 1]] * (qos+1) * cap; // is it enough?
+          total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * group * cap_scale; // is it enough?
         }
       }
     }
   }  
 
   for(int i = 0; i < workload; i++){
-    for(int j = i+1; j < workload; j++){
+    for(int j = i+1; j < workload+group; j++){
       if(total_queue_dispatch[i] > total_queue_dispatch[j]){
         uint64_t a = total_queue_dispatch[i];
         total_queue_dispatch[i] = total_queue_dispatch[j];
         total_queue_dispatch[j] = a;
+ 
+        a = total_queue_target[i];
+        total_queue_target[i] = total_queue_target[j];
+        total_queue_target[j] = a;
  
         int b = total_queue_priority[i];
         total_queue_priority[i] = total_queue_priority[j];
@@ -247,6 +257,12 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
       }
     }
   }
+  for(int i = workload; i < workload+group; i++){
+    total_queue_dispatch[i] = 0;
+    total_queue_priority[i] = -1;
+    total_queue_type[i] = -1;
+    total_queue_qos[i] = -1;
+  }
 
   //for(int i = 0; i < workload; i++)
     //printf("after mixing entry %d, workload id %d\n", i, total_queue_type[i]);
@@ -260,12 +276,12 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
         gemmini_workload_assigned[c][i][j] = -1;
 }
 
-void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32_t seed, float cap){
+void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32_t seed, int cap, float target_scale, float cap_scale){
   // priority (0: 15, 1: 18 / 2: 10, 4: 15, 6: 15, 8: 15 / 9: 10, 11: 2)
   int qos = 3; // to lowest QoS
-  int group = 8;
+  int group = (qos+1)*cap;//8;
 
-  int num_workload_group = ceil_divide_int(workload, group);
+  int num_workload_group = ceil_divide_int(workload+group, group);
 
   for(int i = 0; i < num_workload_group; i++){
     for(int j = 0; j < group; j++){
@@ -300,26 +316,31 @@ void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32
       }
       total_queue_priority[index] = priority_level; 
       total_queue_qos[index] = qos;
+      total_queue_target[index] = (qos+1)*cap*target_scale*sp_cycles[workload_type];
       for (int j = 0; j < NUM_CORE; j++){
         total_queue_finish[j][index] = 0;
    	    total_queue_runtime_thread[j][index] = 0;
    	    total_queue_runtime_total[j][index] = 0;
       }
       if(i == 0){
-        total_queue_dispatch[index] = 0;
+        total_queue_dispatch[index] = 10000*j;
       }
       else{
-        total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * (group) * cap; // is it enough?
+        total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * (group) * cap_scale; // is it enough?
       }
     }
   }
  
   for(int i = 0; i < workload; i++){
-    for(int j = i+1; j < workload; j++){
+    for(int j = i+1; j < workload+group; j++){
       if(total_queue_dispatch[i] > total_queue_dispatch[j]){
         uint64_t a = total_queue_dispatch[i];
         total_queue_dispatch[i] = total_queue_dispatch[j];
         total_queue_dispatch[j] = a;
+ 
+        a = total_queue_target[i];
+        total_queue_target[i] = total_queue_target[j];
+        total_queue_target[j] = a;
  
         int b = total_queue_priority[i];
         total_queue_priority[i] = total_queue_priority[j];
@@ -336,6 +357,12 @@ void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32
     }
   }
 
+  for(int i = workload; i < workload+group; i++){
+    total_queue_dispatch[i] = 0;
+    total_queue_priority[i] = -1;
+    total_queue_type[i] = -1;
+    total_queue_qos[i] = -1;
+  }
   for(int i = 0; i < NUM_CORE; i++){
     gemmini_runtime[i] = 0; // initialize time 
   }
@@ -420,7 +447,7 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
   int group[num_group];
   int cycle[num_group];
   for (int i = 0; i < num_group; i++){
-    cycle[i] = current_cycle + 10000000;
+    cycle[i] = current_cycle + 500000;
     group[i] = 0;
   }
 
