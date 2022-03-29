@@ -168,7 +168,7 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
   if (qos == 0){ // mixed QoS
     // extremely high QoS (0) should come really rarely
     // 1: 30%, 2: 40%, 3: 30%
-    for (int i = 0; i < workload+group; i++){
+    for (int i = 0; i < workload+2*group; i++){
       int select = rand_seed(seed) % 10;
       int workload_qos = 1;
       if(select >= 7)
@@ -206,7 +206,7 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
   }
   else{
     group = cap * (qos+1);
-    int num_workload_group = ceil_divide_int(workload+group, group);
+    int num_workload_group = ceil_divide_int(workload+2*group, group);
     for(int i = 0; i < num_workload_group; i++){
       for(int j = 0; j < group; j++){
         int index = group * i + j;
@@ -216,7 +216,7 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
 //printf("index: %d, output workload type: %d, stored type: %d\n", index, workload_type, total_queue_type[index]);
         total_queue_priority[index] = 5; // mode 1 -> same priority 
         total_queue_qos[index] = qos;
-        total_queue_target[i] = (qos + 1) * target_scale * cap * sp_cycles[workload_type];
+        total_queue_target[index] = (qos + 1) * target_scale * cap * sp_cycles[workload_type];
         for (int j = 0; j < NUM_CORE; j++){
            total_queue_finish[j][index] = 0;
            total_queue_runtime_thread[j][index] = 0;
@@ -233,7 +233,7 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
   }  
 
   for(int i = 0; i < workload; i++){
-    for(int j = i+1; j < workload+group; j++){
+    for(int j = i+1; j < workload+2*group; j++){
       if(total_queue_dispatch[i] > total_queue_dispatch[j]){
         uint64_t a = total_queue_dispatch[i];
         total_queue_dispatch[i] = total_queue_dispatch[j];
@@ -257,7 +257,7 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
       }
     }
   }
-  for(int i = workload; i < workload+group; i++){
+  for(int i = workload; i < workload+2*group; i++){
     total_queue_dispatch[i] = 0;
     total_queue_priority[i] = -1;
     total_queue_type[i] = -1;
