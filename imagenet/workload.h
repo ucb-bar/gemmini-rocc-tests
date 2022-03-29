@@ -452,14 +452,14 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
   }
 
   // priority score initialization
-  float score[num_workload];
+  int64_t score[num_workload];
   int max_depth = QUEUE_DEPTH * 1.8;
 
   int iter = 0;
 
   // repeat from here
   int pre_assign_queue[max_depth];
-  float pre_assign_score[max_depth]; // need this?
+  int64_t pre_assign_score[max_depth]; // need this?
 
   while (iter < num_iter){
     for(int i = 0; i < max_depth; i++){
@@ -507,8 +507,10 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
     for(int i = 0; i < pointer; i++){
       if(score[i] >= 0){
         int qos = total_queue_qos[i];
-        score[i] = score[i] + (top_cycle - total_queue_dispatch[i]) / sp_prediction_cycles[qos][i];
-     //   printf("scorex1000: %d for i %d\n", (int)(score[i]*1000), i);
+        int type = total_queue_type[i];
+        uint64_t after_dispatch = (top_cycle - total_queue_dispatch[i]);
+        score[i] = score[i]*1000000 + ((1000000*after_dispatch) / sp_prediction_cycles[qos][type]);
+//        printf("prediction: %llu, after_dispatch: %llu, scorex1000000: %d for i %d\n", sp_prediction_cycles[qos][type], after_dispatch, (int)(score[i]), i);//(score[i]*10000000), i);
       }
     }
 
@@ -516,7 +518,7 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
     // next, assign using cycle prediction
     int queue_index = 0;
     int max_index = -1;
-    float max_score = -1;
+    int64_t max_score = -1;
     int pre_assign_length = 0;
     while(queue_index < max_depth){
       for(int i = 0; i < pointer; i++){
@@ -540,10 +542,12 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
       max_score = -1;
     }
     pre_assign_length = queue_index;
-    //printf("pre assigned queue length: %d \n", pre_assign_length);
+    /*
+    printf("pre assigned queue length: %d \n", pre_assign_length);
     for(int i = 0; i < pre_assign_length; i++)
       printf("%d, ", pre_assign_queue[i]); 
     printf("\n");
+    */
 
     for (int p = 0; p < pre_assign_length; ){
   //    printf("iter: %d, index: %d, cycle0: %llu, cycle1: %llu, group0: %d, group1: %d\n", iter, index, cycle[0], cycle[1], group[0], group[1]);
