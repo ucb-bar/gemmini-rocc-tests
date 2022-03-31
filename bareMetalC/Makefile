@@ -31,6 +31,8 @@ tests = \
 	conv_trans_input_3120_with_kernel_dilation \
 	conv_first_layer \
 	conv_dw \
+	conv_perf \
+	conv_dw_perf \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_ws_At \
@@ -45,7 +47,7 @@ tests = \
 	resadd \
 	global_average \
 	template \
-	gemmini_counter
+	gemmini_counter \
 
 tests_baremetal = $(tests:=-baremetal)
 
