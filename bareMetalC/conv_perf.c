@@ -35,7 +35,7 @@ int main (int argc, char * argv[]) {
     int STRIDE = 2;
     bool NO_BIAS = false;
 
-    if (argc == 8) {
+    if (argc == 9) {
       BATCH_SIZE = str2int(argv[1]);
       IN_DIM = str2int(argv[2]);
       IN_CHANNELS = str2int(argv[3]);

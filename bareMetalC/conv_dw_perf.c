@@ -37,11 +37,11 @@ int main (int argc, char * argv[]) {
     if (argc == 8) {
       BATCH_SIZE = str2int(argv[1]);
       IN_DIM = str2int(argv[2]);
-      CHANNELS = str2int(argv[4]);
-      KERNEL_DIM = str2int(argv[5]);
-      PADDING = str2int(argv[6]);
-      STRIDE = str2int(argv[7]);
-      NO_BIAS = str2int(argv[8]);
+      CHANNELS = str2int(argv[3]);
+      KERNEL_DIM = str2int(argv[4]);
+      PADDING = str2int(argv[5]);
+      STRIDE = str2int(argv[6]);
+      NO_BIAS = str2int(argv[7]);
     } else if (argc > 1) {
       printf("BATCH_SIZE IN_DIM CHANNELS KERNEL_DIM PADDING STRIDE NO_BIAS\n");
       exit(1);
