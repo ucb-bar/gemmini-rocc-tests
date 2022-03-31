@@ -51,6 +51,16 @@ int main (int argc, char * argv[]) {
 
     int OUT_DIM = ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1);
 
+    printf("BATCH_SIZE = %d\n", BATCH_SIZE);
+    printf("IN_DIM = %d\n", IN_DIM);
+    printf("IN_CHANNELS = %d\n", IN_CHANNELS);
+    printf("OUT_CHANNELS = %d\n", OUT_CHANNELS);
+    printf("KERNEL_DIM = %d\n", KERNEL_DIM);
+    printf("PADDING = %d\n", PADDING);
+    printf("STRIDE = %d\n", STRIDE);
+    printf("NO_BIAS = %d\n", NO_BIAS);
+    printf("Output dimension: %u\n\n", OUT_DIM);
+
     bool map_to_matmul = KERNEL_DIM == 1 && PADDING == 0 && STRIDE == 1;
     int I = BATCH_SIZE * OUT_DIM * OUT_DIM;
     int J = OUT_CHANNELS;
@@ -60,20 +70,9 @@ int main (int argc, char * argv[]) {
       printf("I = %d\n", I);
       printf("J = %d\n", J);
       printf("K = %d\n", K);
-    } else {
-      printf("BATCH_SIZE = %d\n", BATCH_SIZE);
-      printf("IN_DIM = %d\n", IN_DIM);
-      printf("IN_CHANNELS = %d\n", IN_CHANNELS);
-      printf("OUT_CHANNELS = %d\n", OUT_CHANNELS);
-      printf("KERNEL_DIM = %d\n", KERNEL_DIM);
-      printf("PADDING = %d\n", PADDING);
-      printf("STRIDE = %d\n", STRIDE);
-      printf("NO_BIAS = %d\n", NO_BIAS);
     }
 
     gemmini_flush(0);
-
-    printf("Output dimension: %u\n\n", OUT_DIM);
 
     static uint8_t heap[HEAP_SIZE];
 
