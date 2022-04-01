@@ -30,13 +30,13 @@
 #endif
 
 #define FCNNET_1 0
-#define RESNET_1 1
-#define ALEXNET_1 2
-#define GOOGLENET_1 3
-#define SQUEEZENET_1 4
-#define KWSNET_1 5
-#define YOLONET_1 6
-#define YOLOLITENET_1 7
+#define RESNET_1 1 // 4 blocks: [12, 25, 44, 54 (mem)]
+#define ALEXNET_1 2 // 2 blocks: conv, fc
+#define GOOGLENET_1 3 
+#define SQUEEZENET_1 4 
+#define KWSNET_1 5 // 2 blocks: [13, 25] just divided almost equally based on runtime
+#define YOLONET_1 6 // 3 blocks: [4, 13, 19 (mem)]
+#define YOLOLITENET_1 7 
 
 #define FCNNET_2 8
 #define RESNET_2 9
@@ -83,6 +83,10 @@ static uint64_t sp_prediction_cycles[NUM_CORE][NUM_WORKLOAD] =
  {2*136872531, 2*26509740, 2*15546486, 2*10819934, 2*2909057, 2*7122425, 2*15551184, 2*2204055,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 0.5 core
 };
+
+static int workload_group[NUM_WORKLOAD] = {1, 4, 2, 1, 1, 2, 3, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}; // for now only 1 batch
+
 //#define QUEUE_DEPTH 10
 //#define SEED 10 // to randomize workload more
 //#define CAP 0.8 // 0 to 1 (smaller number: shorter time between workload dispatch time)
@@ -94,7 +98,7 @@ static uint64_t sp_prediction_cycles[NUM_CORE][NUM_WORKLOAD] =
 static int total_queue_type[MAX_WORKLOAD] = {-1};
 static uint64_t total_queue_dispatch[MAX_WORKLOAD] = {0}; // dispatched time (in order)
 static uint64_t total_queue_finish[NUM_CORE][MAX_WORKLOAD] = {0};
-static int total_queue_status[MAX_WORKLOAD] = {0}; // 0: not assigned, 1: in assigned queue, 2: running, 3: finished
+static int total_queue_status[MAX_WORKLOAD] = {-1}; // -1: not assigned, 0: in assigned queue, >= 1: part
 static int total_queue_priority[MAX_WORKLOAD] = {-1}; // 0 - 11
 static int total_queue_qos[MAX_WORKLOAD] = {-1}; // latency sensitivity of workload (target: (qos + 1) * 1.2 * sp_cycles)
 static uint64_t total_queue_target[MAX_WORKLOAD] = {0};
@@ -114,7 +118,7 @@ int rand_seed(uint32_t seed) {
 
 int workload_type_assign(bool batch1, bool batch2, bool batch4, uint32_t seed){
   // currently only batch1
-  int rand_mod = 159;
+  int rand_mod = 160;
   int rand_base = 0;
   if (batch1 && batch2 && batch4) {
     rand_mod = NUM_WORKLOAD;
@@ -141,19 +145,19 @@ int workload_type_assign(bool batch1, bool batch2, bool batch4, uint32_t seed){
   else if(r < (1+8+12)){
     id = 2;
   }
-  else if(r < (1+8+12+17)){
+  else if(r < (1+8+12+16)){
     id = 3;
   }
-  else if(r < (1+8+12+17+45)){
+  else if(r < (1+8+12+16+44)){
     id = 4;
   }
-  else if(r < (1+8+12+17+45+24)){
+  else if(r < (1+8+12+16+44+24)){
     id = 5;
   }
-  else if(r < (1+8+12+17+45+24+12)){
+  else if(r < (1+8+12+16+44+24+12)){
     id = 6;
   }
-  else if(r < (1+8+12+17+45+24+12+41)){
+  else{// if(r < (1+8+12+16+44+24+12+43)){
     id = 7;
   }
   //printf("rand output: %zu, rand output value: %d, workload id: %d \n", rand_out, r, id);
@@ -164,6 +168,8 @@ int workload_type_assign(bool batch1, bool batch2, bool batch4, uint32_t seed){
 void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch4, uint32_t seed, int cap, float target_scale, float cap_scale){ 
   // qos < 0 -> mixed
   // qos >= 0 -> workload dispatch qos apart, qos ways at once
+  for(int i = 0; i < MAX_WORKLOAD; i++)
+    total_queue_status[i]= -1;
   int group = cap * (2+1);
   if (qos == 0){ // mixed QoS
     // extremely high QoS (0) should come really rarely
@@ -261,6 +267,7 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
     total_queue_dispatch[i] = 0;
     total_queue_priority[i] = -1;
     total_queue_type[i] = -1;
+    total_queue_status[i] = -1;
     total_queue_qos[i] = -1;
   }
 
@@ -278,6 +285,8 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
 
 void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32_t seed, int cap, float target_scale, float cap_scale){
   // priority (0: 15, 1: 18 / 2: 10, 4: 15, 6: 15, 8: 15 / 9: 10, 11: 2)
+  for(int i = 0; i < MAX_WORKLOAD; i++)
+    total_queue_status[i]= -1;
   int qos = 3; // to lowest QoS
   int group = (qos+1)*cap;//8;
 
@@ -361,6 +370,7 @@ void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32
     total_queue_dispatch[i] = 0;
     total_queue_priority[i] = -1;
     total_queue_type[i] = -1;
+    total_queue_status[i] = -1;
     total_queue_qos[i] = -1;
   }
   for(int i = 0; i < NUM_CORE; i++){
@@ -488,7 +498,7 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
 
     bool done = true;
     for (int i = 0; i < pointer; i++){
-      if(total_queue_status[i] == 0){ //only take the unassigned ones
+      if(total_queue_status[i] == -1){ //only take the unassigned ones
         score[i] = total_queue_priority[i];
         done = false;
       }
@@ -522,7 +532,7 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
     int pre_assign_length = 0;
     while(queue_index < max_depth){
       for(int i = 0; i < pointer; i++){
-        if(total_queue_status[i] == 0){
+        if(total_queue_status[i] == -1){
           if(max_score < score[i]){
             max_score = score[i];
             max_index = i;
@@ -537,7 +547,7 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
       pre_assign_queue[queue_index] = max_index;
       pre_assign_score[queue_index] = max_score;
       queue_index ++;
-      total_queue_status[max_index] = 1;
+      total_queue_status[max_index] = 0;
       max_index = -1;
       max_score = -1;
     }
@@ -581,7 +591,7 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
       else{
         // release status
         int index = pre_assign_queue[p];
-        total_queue_status[index] = 0;
+        total_queue_status[index] = -1;
         p++;
       }
     }
@@ -610,11 +620,11 @@ uint64_t workload_function(int workload_id, int cid, int num_gemmini, pthread_ba
       total_runtime = *(cycles+73);
     }
     else if(workload_id == 1){
-      cycles = resnet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = resnet_function_1(cid, true, true, true, true, orow_divide, batch_divide, 0, barrier_funct);
       total_runtime = *(cycles+72);
     }
     else if(workload_id == 2){
-      cycles = alexnet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = alexnet_function_1(cid, true, true, orow_divide, batch_divide, 0, barrier_funct);
       total_runtime = *(cycles+14);
     }
     else if(workload_id == 3){
@@ -626,11 +636,11 @@ uint64_t workload_function(int workload_id, int cid, int num_gemmini, pthread_ba
       total_runtime = *(cycles+29);
     }
     else if(workload_id == 5){
-      cycles = kwsnet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = kwsnet_function_1(cid, true, true, orow_divide, batch_divide, 0, barrier_funct);
       total_runtime = *(cycles+40);
     }
     else if(workload_id == 6){
-      cycles = yolonet_function_1(cid, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = yolonet_function_1(cid, true, true, true, orow_divide, batch_divide, 0, barrier_funct);
       total_runtime = *(cycles+26);
     }
     else if(workload_id == 7){
