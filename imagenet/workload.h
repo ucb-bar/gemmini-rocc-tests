@@ -680,7 +680,7 @@ void workload_grouping(int num_iter, int num_group){
               }
             }
           }
-          else if(workload_type == RESNET_1){ // if it is resnet
+          else if(workload_type == YOLONET_1){ // if it is resnet
             bool groupped = false;
             for(int i_next = i; i_next < QUEUE_DEPTH; i_next++){
               int next_queue_id = gemmini_workload_assigned[group][iter][i_next];
@@ -725,6 +725,12 @@ uint64_t workload_function(int queue_id, int workload_id, int cid, int num_gemmi
   uint64_t* cycles;
   uint64_t total_runtime;
 
+  int group_status = total_queue_status[queue_id];
+  bool part1 = group_status < 1;
+  bool part2 = group_status < 2;
+  bool part3 = group_status < 3;
+  bool part4 = group_status < 4;
+
   //uint64_t start = read_cycles();
   if(workload_id < 8){
     int orow_divide = num_gemmini;
@@ -734,11 +740,11 @@ uint64_t workload_function(int queue_id, int workload_id, int cid, int num_gemmi
       total_runtime = *(cycles+73);
     }
     else if(workload_id == 1){
-      cycles = resnet_function_1(cid, true, true, true, true, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = resnet_function_1(cid, part1, part2, part3, part4, orow_divide, batch_divide, 0, barrier_funct);
       total_runtime = *(cycles+72);
     }
     else if(workload_id == 2){
-      cycles = alexnet_function_1(cid, true, true, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = alexnet_function_1(cid, part1, part2, orow_divide, batch_divide, 0, barrier_funct);
       total_runtime = *(cycles+14);
     }
     else if(workload_id == 3){
@@ -750,11 +756,11 @@ uint64_t workload_function(int queue_id, int workload_id, int cid, int num_gemmi
       total_runtime = *(cycles+29);
     }
     else if(workload_id == 5){
-      cycles = kwsnet_function_1(cid, true, true, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = kwsnet_function_1(cid, part1, part2, orow_divide, batch_divide, 0, barrier_funct);
       total_runtime = *(cycles+40);
     }
     else if(workload_id == 6){
-      cycles = yolonet_function_1(cid, true, true, true, orow_divide, batch_divide, 0, barrier_funct);
+      cycles = yolonet_function_1(cid, part1, part2, part3, orow_divide, batch_divide, 0, barrier_funct);
       total_runtime = *(cycles+26);
     }
     else if(workload_id == 7){
@@ -769,4 +775,111 @@ uint64_t workload_function(int queue_id, int workload_id, int cid, int num_gemmi
   return total_runtime;
 
 }
+
+uint64_t workload_group_function(int queue_id, int group_queue_id, int original_workload_id, int grouped_workload_id, int cid, int num_gemmini, pthread_barrier_t *barrier_funct){
+  gemmini_flush(0);
+  uint64_t* cycles;
+  uint64_t total_runtime;
+
+  int group_status = total_queue_status[queue_id];
+  bool part1 = group_status < 1;
+  bool part2 = group_status < 2;
+  bool part3 = group_status < 3;
+  bool part4 = group_status < 4;
+
+ 
+  //uint64_t start = read_cycles();
+  if(original_workload_id < 8){
+    int orow_divide = num_gemmini;
+    int batch_divide = 1; // 1 batch workload
+    if(original_workload_id == 1){
+      cycles = resnet_function_1(cid, part1, part2, part3, false, orow_divide, batch_divide, 0, barrier_funct);
+      total_runtime = *(cycles+72);
+      if(cid == 0){
+        cycles = resnet_block_function_1(0, false, false, false, true, 1, 1, 0);
+        total_runtime += *(cycles+72);
+      }
+      else{
+        if(grouped_workload_id == SQUEEZENET_1){
+          cycles = squeezenet_block_function_1(0, 1, 1, 0); 
+          total_runtime = *(cycles+29);
+          total_queue_status[group_queue_id] = 50;
+        }
+        else if(grouped_workload_id == YOLOLITENET_1){
+          cycles = yololitenet_block_function_1(0, 1, 1, 0);
+          total_runtime = *(cycles + 14);
+          total_queue_status[grouped_queue_id] = 50;
+        }
+        else if(grouped_workload_id == KWSNET_1){
+          cycles = kwsnet_block_function_1(0, true, false, 1, 1, 0);
+          total_runtime = *(cycles + 40);
+          total_queue_status[grouped_queue_id] = 1;
+        }
+      }
+    }
+    else if(original_workload_id == 2){
+      cycles = alexnet_function_1(cid, part1, false, orow_divide, batch_divide, 0, barrier_funct);
+      total_runtime = *(cycles+14);
+      if(cid == 0){
+        cycles = alexnet_block_function_1(0, false, true, 1, 1, 0);
+        total_runtime += *(cycles+14);
+      }
+      else{
+        if(grouped_workload_id == GOOGLENET_1){
+          cycles = googlenet_block_function_1(0, 1, 1, 0); 
+          total_runtime = *(cycles+71);
+          total_queue_status[group_queue_id] = 50;
+        }
+        else if(grouped_workload_id == YOLONET_1){
+          cycles = yolonet_block_function_1(0, true, true, false, 1, 1, 0);
+          total_runtime = *(cycles + 26);
+          total_queue_status[grouped_queue_id] = 2;
+        }
+        else if(grouped_workload_id == KWSNET_1){
+          cycles = kwsnet_block_function_1(0, true, true, 1, 1, 0);
+          total_runtime = *(cycles + 40);
+          total_queue_status[grouped_queue_id] = 50;
+        }
+        else if(grouped_workload_id == RESNET_1){
+          cycles = resnet_block_function_1(0, true, false, false, false, 1, 1, 0);
+          total_runtime = *(cycles + 72);
+          total_queue_status[grouped_queue_id] = 1;
+        }
+      }
+    }
+    else if(original_workload_id == 6){
+      cycles = yolonet_function_1(cid, part1, part2, false, orow_divide, batch_divide, 0, barrier_funct);
+      total_runtime = *(cycles+26);
+      if(cid == 0){
+        cycles = yolonet_block_function_1(0, false, false, true, 1, 1, 0);
+        total_runtime += *(cycles+26);
+      }
+      else{
+        if(grouped_workload_id == SQUEEZENET_1){
+          cycles = squeezenet_block_function_1(0, 1, 1, 0); 
+          total_runtime = *(cycles+29);
+          total_queue_status[group_queue_id] = 50;
+        }
+        else if(grouped_workload_id == YOLOLITENET_1){
+          cycles = yololitenet_block_function_1(0, 1, 1, 0);
+          total_runtime = *(cycles + 14);
+          total_queue_status[grouped_queue_id] = 50;
+        }
+        else if(grouped_workload_id == KWSNET_1){
+          cycles = kwsnet_block_function_1(0, true, false, 1, 1, 0);
+          total_runtime = *(cycles + 40);
+          total_queue_status[grouped_queue_id] = 1;
+        }
+      }
+    }
+  }
+
+
+  if(cid == 0) total_queue_status[queue_id] = 100; // just store big value (finished)
+  //uint64_t runtime = read_cycles() - start;
+  return total_runtime;
+
+}
+
+
 #endif
