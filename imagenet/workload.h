@@ -30,8 +30,8 @@
 #endif
 
 #define FCNNET_1 0
-#define RESNET_1 1 // 4 blocks: [12, 25, 44, 54 (mem)]
-#define ALEXNET_1 2 // 2 blocks: conv, fc
+#define RESNET_1 1 // 4 blocks: [12, 25, 44, 54 (mem)] -> with squeezenet(4), yololitenet(7), kwsnet group1(5)
+#define ALEXNET_1 2 // 2 blocks: conv, fc -> googlenet(3), resnet group1 (1), kwsnet (5), yolonet group1&2(6)
 #define GOOGLENET_1 3 
 #define SQUEEZENET_1 4 
 #define KWSNET_1 5 // 2 blocks: [13, 25] just divided almost equally based on runtime
@@ -109,6 +109,8 @@ static uint64_t total_queue_runtime_total[NUM_CORE][MAX_WORKLOAD] = {0}; // for 
 static int gemmini_workload_assigned[NUM_CORE][MAX_ITER][QUEUE_DEPTH] = {-1};
 static int gemmini_runtime[NUM_CORE] = {0}; // to track real runtime without thread create overhead
 static int smallest_pointer = 0; // before this pointer, finished executing (for fast search, once the pointer reaches total number of workload, it is finished)
+
+static int gemmini_workload_grouped[NUM_CORE][MAX_ITER][QUEUE_DEPTH] = {-1};
 
 int rand_seed(uint32_t seed) {
   static uint32_t x = 777;
@@ -386,8 +388,9 @@ void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32
 int workload_fcfs_mp_schedule(int num_group, int num_workload){
   for(int c = 0; c < NUM_CORE; c++)
     for(int i = 0; i < MAX_ITER; i++)
-      for(int j = 0; j < QUEUE_DEPTH; j++)
+      for(int j = 0; j < QUEUE_DEPTH; j++){
         gemmini_workload_assigned[c][i][j] = -1;
+      }
 
   int index = 0;
   int iter = 0;
@@ -451,8 +454,10 @@ int workload_fcfs_mp_schedule(int num_group, int num_workload){
 int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t current_cycle){
   for(int c = 0; c < NUM_CORE; c++)
     for(int i = 0; i < MAX_ITER; i++)
-      for(int j = 0; j < QUEUE_DEPTH; j++)
+      for(int j = 0; j < QUEUE_DEPTH; j++){
+        gemmini_workload_grouped[c][i][j] = -1;
         gemmini_workload_assigned[c][i][j] = -1;
+      }
 
   int group[num_group];
   int cycle[num_group];
@@ -605,8 +610,117 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
   return (iter); // number of queue group
 }
 
+void workload_grouping(int num_iter, int num_group){
+  for(int group = 0; group < num_group; group++){
+    for(int iter = 0; iter < num_iter; iter++){
+      for(int i = 0; i < QUEUE_DEPTH; i++){
+        int queue_id = gemmini_workload_assigned[group][iter][i];
+        if(queue_id != -1){
+          int workload_type = total_queue_type[queue_id];
+          if(workload_type == RESNET_1){ // if it is resnet
+            bool groupped = false;
+            for(int i_next = i; i_next < QUEUE_DEPTH; i_next++){
+              int next_queue_id = gemmini_workload_assigned[group][iter][i_next];
+              int next_type = total_queue_type[next_queue_id];
+              if(next_type == -1) break;
+              if(next_type == SQUEEZENET_1 || next_type == YOLOLITENET_1 || next_type == KWSNET_1){
+                if(gemmini_workload_grouped[group][iter][i_next] != -7){
+                  gemmini_workload_grouped[group][iter][i_next] = -7; // mark 0
+                 
+                  gemmini_workload_grouped[group][iter][i] = next_queue_id;
+                  groupped = true;
+                  break;
+                }
+              }
+            }
+            if(!groupped && iter != num_iter - 1){
+              for(int i_next = 0; i_next < QUEUE_DEPTH; i_next++){
+                int next_queue_id = gemmini_workload_assigned[group][iter+1][i_next];
+                int next_type = total_queue_type[next_queue_id];
+                if(next_type == -1) break;
+                if(next_type == SQUEEZENET_1 || next_type == YOLOLITENET_1 || next_type == KWSNET_1){
+                  if(gemmini_workload_grouped[group][iter+1][i_next] != -7){ 
+                    gemmini_workload_grouped[group][iter+1][i_next] = -7;
+                    gemmini_workload_grouped[group][iter][i] = next_queue_id; 
+                    groupped = true;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          else if(workload_type == ALEXNET_1){ // if it is resnet
+            bool groupped = false;
+            for(int i_next = i; i_next < QUEUE_DEPTH; i_next++){
+              int next_queue_id = gemmini_workload_assigned[group][iter][i_next];
+              int next_type = total_queue_type[next_queue_id];
+              if(next_type == -1) break;
+              if(next_type == GOOGLENET_1 || next_type == YOLONET_1 || next_type == KWSNET_1 || next_type == RESNET_1){
+                if(gemmini_workload_grouped[group][iter][i_next] != -7){
+                  gemmini_workload_grouped[group][iter][i_next] = -7; // mark 0
+                  gemmini_workload_grouped[group][iter][i] = next_queue_id;
+                  groupped = true;
+                  break;
+                }
+              }
+            }
+            if(!groupped && iter != num_iter - 1){
+              for(int i_next = 0; i_next < QUEUE_DEPTH; i_next++){
+                int next_queue_id = gemmini_workload_assigned[group][iter+1][i_next];
+                int next_type = total_queue_type[next_queue_id];
+                if(next_type == -1) break;
+                if(next_type == GOOGLENET_1 || next_type == YOLONET_1 || next_type == KWSNET_1 || next_type == RESNET_1 ){
+                  if(gemmini_workload_grouped[group][iter+1][i_next] != -7){ 
+                    gemmini_workload_grouped[group][iter+1][i_next] = -7;
+                    gemmini_workload_grouped[group][iter][i] = next_queue_id; 
+                    groupped = true;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          else if(workload_type == RESNET_1){ // if it is resnet
+            bool groupped = false;
+            for(int i_next = i; i_next < QUEUE_DEPTH; i_next++){
+              int next_queue_id = gemmini_workload_assigned[group][iter][i_next];
+              int next_type = total_queue_type[next_queue_id];
+              if(next_type == -1) break;
+              if(next_type == SQUEEZENET_1 || next_type == YOLOLITENET_1 || next_type == KWSNET_1){
+                if(gemmini_workload_grouped[group][iter][i_next] != -7){
+                  gemmini_workload_grouped[group][iter][i_next] = -7;
+                  gemmini_workload_grouped[group][iter][i] = next_queue_id;
+                  groupped = true;
+                  break;
+                }
+              }
+            }
+            if(!groupped && iter != num_iter - 1){
+              for(int i_next = 0; i_next < QUEUE_DEPTH; i_next++){
+                int next_queue_id = gemmini_workload_assigned[group][iter+1][i_next];
+                int next_type = total_queue_type[next_queue_id];
+                if(next_type == -1) break;
+                if(next_type == SQUEEZENET_1 || next_type == YOLOLITENET_1 || next_type == KWSNET_1){
+                  if(gemmini_workload_grouped[group][iter+1][i_next] != -7){
+                    gemmini_workload_grouped[group][iter+1][i_next] = -7;
+                    gemmini_workload_grouped[group][iter][i] = next_queue_id; 
+                    groupped = true;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        }
+        else break;
+      }
+    }
+  }
+
+
+}
 #ifndef BAREMETAL
-uint64_t workload_function(int workload_id, int cid, int num_gemmini, pthread_barrier_t *barrier_funct){
+uint64_t workload_function(int queue_id, int workload_id, int cid, int num_gemmini, pthread_barrier_t *barrier_funct){
   gemmini_flush(0);
   uint64_t* cycles;
   uint64_t total_runtime;
@@ -650,6 +764,7 @@ uint64_t workload_function(int workload_id, int cid, int num_gemmini, pthread_ba
   }
 
 
+  if(cid == 0) total_queue_status[queue_id] = 100; // just store big value (finished)
   //uint64_t runtime = read_cycles() - start;
   return total_runtime;
 
