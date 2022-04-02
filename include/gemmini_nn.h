@@ -619,6 +619,37 @@ int64_t* next_target_util(
 }
 */
 
+/************ python implementation for conv layer prediction model
+def conv_layer_runtime_predict(num_core, compute_ideal, l2_bw_util, dram_bw_util, total_mem, full_dram):
+    core_compute_ideal = compute_ideal / num_core
+    effective_l2_bw = min(l2_bw / num_core, 1) # ToDo: scale?
+    # memory does not scale
+    l2_mem = (total_mem - full_dram) / num_core
+    mem_ideal = full_dram / dram_bw + l2_mem / effective_l2_bw
+    
+    prediction = max(mem_ideal, core_compute_ideal) + min(mem_ideal, core_compute_ideal) * 0.5
+    # ToDo: add overhead?
+    return (core_compute_ideal, mem_ideal, prediction)
+***********/
+
+/*
+   1) if we have target cycle
+   target_cycle as prediction
+   mem_ideal = target_cycle - core_compute_ideal * 0.5  # core_compute_ideal is determined
+   dram_bw = (mem_ideal - l2_mem / effective_l2_bw) * full_dram # l2A_mem = (total_mem - full_dram) / num_core
+
+   load_rate = total_mem / target_cycle
+
+   2) if we have limited dram_bw (need to find balance with predicted performance)
+   set arbitrary dram_bw (considering co-located performance, or do available dram_bw / num_app)
+   while (prediction < min_target)
+     mem_ideal = full_dram / dram_bw + l2_mem / effective_l2_bw
+     prediction = max(mem_ideal, core_compute_ideal) + min(mem_ideal, core_compute_ideal) * 0.5
+   
+   load_rate = total_mem / prediction
+
+*/
+
 static void conv_dw(size_t I, size_t J,
     const size_t batch_size, const size_t channels, const size_t in_dim, const size_t out_dim, const size_t kernel_size,
     const elem_t input[batch_size][in_dim][in_dim][channels],
