@@ -103,7 +103,7 @@ int main (int argc, char * argv[]) {
           input, weights, NO_BIAS ? NULL : bias, output,
           K, J, J, J,
           MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-          NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, true,
+          NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, true,
           false, false,
           false, false,
           0,

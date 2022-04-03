@@ -209,7 +209,7 @@ int main() {
                         (elem_t*)full_A, (elem_t*)full_B, no_bias ? NULL : &full_D[0][0], (elem_t*)full_C,
                         stride_A, stride_B, MAT_DIM_J, MAT_DIM_J,
                         MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-                        activation, scale, relu6_shift, repeating_bias,
+                        activation, scale, 0, relu6_shift, repeating_bias,
                         a_transpose, b_transpose,
                         false, false,
                         0,

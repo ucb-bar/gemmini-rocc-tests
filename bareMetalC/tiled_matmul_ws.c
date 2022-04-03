@@ -151,7 +151,7 @@ int main() {
             (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, false,
             false, false,
             false, !FULL_BIAS_WIDTH,
             0,

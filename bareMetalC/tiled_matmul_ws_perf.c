@@ -86,7 +86,7 @@ int main() {
             (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
             A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, REPEATING_BIAS,
             A_TRANSPOSE, B_TRANSPOSE,
             false, false,
             0,
