@@ -21,16 +21,16 @@ typedef acc_t ACC_T;
 typedef elem_t ACC_T;
 #endif
 
-#define BERT_SCALE 0.0734
+#define BERT_SCALE 0.8
 
 #ifndef BAREMETAL
-#define MAT_DIM_I 512
-#define MAT_DIM_K 512
-#define MAT_DIM_J 512
+#define MAT_DIM_I 400
+#define MAT_DIM_K 400
+#define MAT_DIM_J 400
 #else
-#define MAT_DIM_I 64
-#define MAT_DIM_K 64
-#define MAT_DIM_J 64
+#define MAT_DIM_I 30
+#define MAT_DIM_K 30
+#define MAT_DIM_J 30
 #endif
 
 void full_printMatrix(elem_t m[MAT_DIM_I][MAT_DIM_J]) {
@@ -74,21 +74,21 @@ int main() {
     // printf("Init A\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
-        full_A[i][j] = rand() % 10 - 5;
+        full_A[i][j] = (rand() % 3) - 1;
       }
     }
 
     // printf("Init B\n");
     for (size_t i = 0; i < MAT_DIM_K; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_B[i][j] = rand() % 10 - 5;
+        full_B[i][j] = (rand() % 3) - 1;
       }
     }
 
     // printf("Init D\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_D[i][j] = NO_BIAS ? 0 : rand() % 10 - 5;
+        full_D[i][j] = NO_BIAS ? 0 : (rand() % 3) - 1;
       }
     }
 
@@ -99,7 +99,7 @@ int main() {
             (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)gold,
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-            IGELU, ACC_SCALE_IDENTITY, 0, 0, false,
+            IGELU, ACC_SCALE_IDENTITY, BERT_SCALE, 0, false,
             false, false,
             false, !FULL_BIAS_WIDTH,
             0,
@@ -117,7 +117,7 @@ int main() {
             (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-            IGELU, ACC_SCALE_IDENTITY, 0, 0, false,
+            IGELU, ACC_SCALE_IDENTITY, BERT_SCALE, 0, false,
             false, false,
             false, !FULL_BIAS_WIDTH,
             0,
