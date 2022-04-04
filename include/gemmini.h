@@ -4120,6 +4120,8 @@ static void tiled_pool_auto_cid(int batch_size, int channels, int in_dim,
   const int pochs = args[6];
   //printf("window: %d, target_load: %d \n", window, target_load);
 
+  window = 0;
+  target_load = 0; // for now, disable CALM on pooling
   //printf("C dram addr before pool: 0x%08lx\n", C);
   tiled_pool(batch_size, in_dim, channels, pool_out_dim,
 				batches, porows, pocols, pochs,
