@@ -15,7 +15,7 @@
 #include "include/gemmini_params.h"
 
 #define GEMMINI_ASSERTIONS
-#define PRINT_CALM 1
+#define PRINT_CALM 0
 
 // Accelerator interface
 #include "rocc-software/src/xcustom.h"
@@ -612,7 +612,8 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
 
   int window = prediction / num_tiles;
   int target_load = (int)((A_load + B_load + D_load)/num_tiles);
-  if(prediction < ideal_prediction || num_tiles < 4){
+ // if(prediction <= ideal_prediction || num_tiles < 4){
+  if(dram_util >= ideal_dram_util || num_tiles < 4){
     window = 0;
     target_load = 0;
   } // computation dominant
@@ -2363,7 +2364,8 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
   uint64_t prediction = (100 * total_from_dram) / (DRAM_BW * dram_util);
   int window = prediction / num_tiles;
   int target_load = (int)((weight_load + input_load + bias_load)/num_tiles);
-  if(prediction < ideal_prediction || num_tiles < 4){
+  //if(prediction <= ideal_prediction || num_tiles < 4){
+  if(dram_util >= ideal_dram_util || num_tiles < 4){
     window = 0;
     target_load = 0;
   } // computation dominant
@@ -3644,7 +3646,8 @@ int* tiled_resadd_bubble_calculate(
   uint64_t prediction = (100 * total_from_dram) / (DRAM_BW * dram_util);
   int window = prediction / num_tile;
   int target_load = (int)(total_load /num_tile);
-  if(prediction < ideal_prediction){
+  //if(prediction <= ideal_prediction){
+  if(dram_util >= ideal_dram_util){
     window = 0;
     target_load = 0;
   } // computation dominant
@@ -3894,7 +3897,7 @@ static void sp_tiled_pool(
 			 for (int poch = 0; poch < pochs; poch += DIM) {
 				  const int out_channels = poch + DIM >= pochs ? pochs - poch : DIM;
 
-				  elem_t * pout = output + (b * pool_out_dim * pool_out_dim)*stride + poch;
+				  elem_t * const pout = output + (b * pool_out_dim * pool_out_dim)*stride + poch;
 
 				  const uint32_t C_sp_addr = C_sp_addr_start + (poch / DIM) * batches * orows * ocols + b * orows * ocols;
 
