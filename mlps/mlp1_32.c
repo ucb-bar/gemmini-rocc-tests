@@ -57,7 +57,7 @@ int main (int argc, char * argv[]) {
 
     tiled_matmul_nn_auto(64, 2560, 832,
         input_mat, weights0, NULL, inter_results0,
-        RELU, 0, 0, false,
+        RELU, 0, false,
         tiled_matmul_type, check, "layer_0");
 
     end = read_cycles();
@@ -68,7 +68,7 @@ int main (int argc, char * argv[]) {
 
     tiled_matmul_nn_auto(64, 2048, 2560,
         inter_results0, weights1, NULL, inter_results1,
-        RELU, 0, 0, false,
+        RELU, 0, false,
         tiled_matmul_type, check, "layer_1");
 
     end = read_cycles();
@@ -79,7 +79,7 @@ int main (int argc, char * argv[]) {
 
     tiled_matmul_nn_auto(64, 1536, 2048,
         inter_results1, weights2, NULL, inter_results2,
-        RELU, 0, 0, false,
+        RELU, 0, false,
         tiled_matmul_type, check, "layer_2");
 
     end = read_cycles();
@@ -90,7 +90,7 @@ int main (int argc, char * argv[]) {
 
     tiled_matmul_nn_auto(64, 1024, 1536,
         inter_results2, weights3, NULL, inter_results3,
-        RELU, 0, 0, false,
+        RELU, 0, false,
         tiled_matmul_type, check, "layer_3");
 
     end = read_cycles();
@@ -101,7 +101,7 @@ int main (int argc, char * argv[]) {
 
     tiled_matmul_nn_auto(64, 512, 1024,
         inter_results3, weights4, NULL, inter_results4,
-        RELU, 0, 0, false,
+        RELU, 0, false,
         tiled_matmul_type, check, "layer_4");
 
     end = read_cycles();
@@ -112,7 +112,7 @@ int main (int argc, char * argv[]) {
 
     tiled_matmul_nn_auto(64, 64, 512,
         inter_results4, weights5, NULL, inter_results5,
-        RELU, 0, 0, false,
+        RELU, 0, false,
         tiled_matmul_type, check, "layer_5");
 
     end = read_cycles();

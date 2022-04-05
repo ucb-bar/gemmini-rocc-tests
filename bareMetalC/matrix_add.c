@@ -42,7 +42,7 @@ int main() {
       gemmini_extended2_config_ld(DIM * sizeof(elem_t), bscale, true);
       gemmini_mvin(B, B_acc_addr);
 
-      gemmini_config_ex(0, NO_ACTIVATION, 0, 0);
+      gemmini_config_ex(0, NO_ACTIVATION, 0);
       gemmini_config_st(DIM * sizeof(elem_t));
       gemmini_mvout(C, C_acc_addr);
 

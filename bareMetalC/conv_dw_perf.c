@@ -92,7 +92,7 @@ int main (int argc, char * argv[]) {
         (acc_t*)bias,
         (elem_t*)output,
 
-        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 1, 0, 0,
+        NO_ACTIVATION, ACC_SCALE_IDENTITY, 1, 0, 0,
 
         WS);
 

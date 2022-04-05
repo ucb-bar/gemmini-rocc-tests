@@ -224,7 +224,7 @@ int main() {
         NO_BIAS ? NULL : (acc_t*)bias,
         (elem_t*)output_mat,
 
-        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, 0,
+        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0,
 
         WS);
     uint64_t end_gemmini = read_cycles();

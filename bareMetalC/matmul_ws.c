@@ -13,11 +13,11 @@
 
 
 #ifdef FAST
-#define AINIT 2
+#define AINIT RELU
 #define SINIT 12
 #define N 1
 #else
-#define AINIT 0
+#define AINIT NO_ACTIVATION
 #define SINIT 0
 #define N 2
 #endif
@@ -46,7 +46,7 @@ int main() {
   gemmini_flush(0);
   gemmini_config_ld(DIM * sizeof(elem_t));
 
-  for (int activation = AINIT; activation <= 2; ++activation) {
+  for (int activation = AINIT; activation <= RELU; ++activation) {
 #ifdef ACC_SCALE_T_IS_FLOAT
     for (acc_scale_t scale = 0; scale <= 1.5; scale += 0.5) {
 #else
@@ -60,8 +60,6 @@ int main() {
       static elem_t C[N*N*N][DIM][DIM] row_align(1);
       static full_t gold_full[N*N*N][DIM][DIM];
       static elem_t gold[N*N*N][DIM][DIM];
-
-      int relu6_shift = scale+1;
 
       // ...taking into account whether we preload new weights or re-use the old ones
       static int preload[N*N*N] = {1};
@@ -137,8 +135,6 @@ int main() {
         matscale(gold_full[g], gold[g], scale);
         if (activation == RELU)
           matrelu(gold[g], gold[g]);
-        else if (activation == RELU6)
-          matrelu6(gold[g], gold[g], 1 << relu6_shift);
       }
 
       uint32_t A_addr = 0;
@@ -174,7 +170,7 @@ int main() {
         }
 
       // printf("Setting mode\n");
-      gemmini_config_ex(WEIGHT_STATIONARY, 0, 0, relu6_shift);
+      gemmini_config_ex(WEIGHT_STATIONARY, 0, 0);
       gemmini_extended_config_st(DIM * sizeof(elem_t), activation, scale);
 
       // printf("Matmulling\n");
