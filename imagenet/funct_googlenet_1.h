@@ -12,25 +12,25 @@
 #endif
 
 #ifndef BAREMETAL
-uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_google){
+uint64_t* googlenet_function_1(size_t cid, size_t group_id, bool part1, bool part2, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_google){
 #else
-uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int target_util){
+uint64_t* googlenet_function_1(size_t cid, size_t group_id, bool part1, bool part2, int orow_divide, int batch_divide, int target_util){
 #endif
 
 #define num_cycle (58+11+3)
 
-  static uint64_t cycles[num_proc][num_cycle];
+  static uint64_t cycles[NUM_CORE][num_cycle];
  
     uint64_t start, end;
     uint64_t total_matmul_cycles = 0, total_conv_cycles = 0, total_pool_cycles = 0, conv_dw_cycles = 0, other_cycles = 0;
     uint64_t conv_cycles[58];
     uint64_t pool_cycles[11];
 
+   if(part1){
     //uint64_t target_cycle = target_cycles;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_google);
-#endif
-  
+#endif  
     // conv_1
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -39,12 +39,12 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         conv_1_params_google1.stride, 1, conv_1_params_google1.padding, conv_1_params_google1.kernel_size,
         conv_1_params_google1.out_stride,
 
-        (elem_t*)images, (elem_t*)conv_1_w_google1, (acc_t*)conv_1_b_google1, (elem_t*)conv_1_out_google1_pooled,
+        (elem_t*)image1, (elem_t*)conv_1_w_google1, (acc_t*)conv_1_b_google1, (elem_t*)conv_1_out_google1_pooled,
 
         RELU, conv_1_params_google1.output_scale, 0,
         conv_1_params_google1.pool_size, conv_1_params_google1.pool_stride, conv_1_params_google1.pool_padding, true,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -59,7 +59,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*)conv_1_out_google1_pooled, (elem_t*)conv_2_w_google1, (acc_t*)conv_2_b_google1, (elem_t*)conv_2_out_google1,
         RELU, conv_2_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -81,27 +81,17 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         RELU, conv_3_params_google1.output_scale, 0,
         conv_3_params_google1.pool_size, 0, conv_3_params_google1.pool_padding, true,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[2] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_google);
-#endif       
-   // pool_9 for Inception 3a branch 4
-    start = read_cycles();
-    tiled_pool_auto_cid(pool_9_params_google1.batch_size, pool_9_params_google1.out_channels, pool_9_params_google1.out_dim, pool_9_params_google1.out_dim_pooled,
-		pool_9_params_google1.out_stride,
-      pool_9_params_google1.pool_size, pool_9_params_google1.pool_stride, pool_9_params_google1.pool_padding,	
-      (elem_t*) conv_3_out_google1_pooled, (elem_t*) pool_9_out_google1,
-		orow_divide, batch_divide, cid, target_util);
-    end = read_cycles();
-    total_pool_cycles += end - start;
-    pool_cycles[0] = end - start;
-#if THREAD_SYNC == 1
-    pthread_barrier_wait(barrier_google);
-#endif        
+#endif    
+    }
+
+    if(part2){   
     //Inception 3a
 	 //Branch 1
     // conv_4
@@ -110,7 +100,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*)conv_3_out_google1_pooled, (elem_t*)conv_4_w_google1, (acc_t*)conv_4_b_google1, (elem_t*) inception3a_out_google1,
         RELU, conv_4_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -125,7 +115,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*)conv_3_out_google1_pooled, (elem_t*)conv_5_w_google1, (acc_t*)conv_5_b_google1, (elem_t*)conv_5_out_google1,
         RELU, conv_5_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -147,7 +137,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			RELU, conv_6_params_google1.output_scale, 0,
 			conv_5_params_google1.pool_size, conv_5_params_google1.pool_stride, conv_5_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -163,7 +153,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			conv_7_params_google1.out_stride,
 			(elem_t*) conv_3_out_google1_pooled, (elem_t*) conv_7_w_google1, (acc_t*) conv_7_b_google1, (elem_t*) conv_7_out_google1,
 			RELU, conv_7_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -185,7 +175,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			RELU, conv_8_params_google1.output_scale, 0,
 			conv_8_params_google1.pool_size, conv_8_params_google1.pool_stride, conv_8_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -193,7 +183,20 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_google);
 #endif
-       
+          
+   // pool_9 for Inception 3a branch 4
+    start = read_cycles();
+    tiled_pool_auto_cid(pool_9_params_google1.batch_size, pool_9_params_google1.out_channels, pool_9_params_google1.out_dim, pool_9_params_google1.out_dim_pooled,
+		pool_9_params_google1.out_stride,
+      pool_9_params_google1.pool_size, pool_9_params_google1.pool_stride, pool_9_params_google1.pool_padding,	
+      (elem_t*) conv_3_out_google1_pooled, (elem_t*) pool_9_out_google1,
+		orow_divide, batch_divide, cid, group_id, target_util);
+    end = read_cycles();
+    total_pool_cycles += end - start;
+    pool_cycles[0] = end - start;
+#if THREAD_SYNC == 1
+    pthread_barrier_wait(barrier_google);
+#endif     
     // Branch 4
     // conv_10
     start = read_cycles();
@@ -201,27 +204,14 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*)pool_9_out_google1, (elem_t*)conv_10_w_google1, (acc_t*)conv_10_b_google1, (elem_t*)inception3a_out_google1 + 224,
         RELU, conv_10_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[8] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_google);
-#endif
-// pool_16 for Inception 3a branch 4
-    start = read_cycles();
-    tiled_pool_auto_cid(pool_16_params_google1.batch_size, pool_16_params_google1.out_channels, pool_16_params_google1.out_dim, pool_16_params_google1.out_dim_pooled,
-		pool_16_params_google1.out_stride,
-      pool_16_params_google1.pool_size, pool_16_params_google1.pool_stride, pool_16_params_google1.pool_padding,	
-      (elem_t*) inception3a_out_google1, (elem_t*) pool_16_out_google1,
-		orow_divide, batch_divide, cid, target_util);
-    end = read_cycles();
-    total_pool_cycles += end - start;
-    pool_cycles[1] = end - start;
-#if THREAD_SYNC == 1
-    pthread_barrier_wait(barrier_google);
-#endif        
+#endif      
 	 //Inception 3b
 	 //Branch 1
     // conv_11
@@ -231,7 +221,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*) inception3a_out_google1, (elem_t*)conv_11_w_google1, (acc_t*)conv_11_b_google1, (elem_t*) pool_18_in_google1,
         NO_ACTIVATION, conv_11_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -248,7 +238,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*) inception3a_out_google1, (elem_t*)conv_12_w_google1, (acc_t*)conv_12_b_google1, (elem_t*)conv_12_out_google1,
         NO_ACTIVATION, conv_12_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -271,7 +261,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			1, 1, 0, false,
       //pool_18_params_google1.pool_size, pool_18_params_google1.pool_stride, pool_18_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -288,7 +278,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			conv_14_params_google1.out_stride,
 			(elem_t*) inception3a_out_google1, (elem_t*) conv_14_w_google1, (acc_t*) conv_14_b_google1, (elem_t*) conv_14_out_google1,
 			RELU, conv_14_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -311,7 +301,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			//pool_18_params_google1.pool_size, pool_18_params_google1.pool_stride, pool_18_params_google1.pool_padding, true,
       1, 1, 0, false,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -319,7 +309,20 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_google);
 #endif
-        
+       
+// pool_16 for Inception 3a branch 4
+    start = read_cycles();
+    tiled_pool_auto_cid(pool_16_params_google1.batch_size, pool_16_params_google1.out_channels, pool_16_params_google1.out_dim, pool_16_params_google1.out_dim_pooled,
+		pool_16_params_google1.out_stride,
+      pool_16_params_google1.pool_size, pool_16_params_google1.pool_stride, pool_16_params_google1.pool_padding,	
+      (elem_t*) inception3a_out_google1, (elem_t*) pool_16_out_google1,
+		orow_divide, batch_divide, cid, group_id, target_util);
+    end = read_cycles();
+    total_pool_cycles += end - start;
+    pool_cycles[1] = end - start;
+#if THREAD_SYNC == 1
+    pthread_barrier_wait(barrier_google);
+#endif   
     // Branch 4
     // conv_17
     start = read_cycles();
@@ -328,7 +331,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*) pool_16_out_google1, (elem_t*)conv_17_w_google1, (acc_t*)conv_17_b_google1, (elem_t*) ((elem_t*) pool_18_in_google1 + 416),
         NO_ACTIVATION, conv_17_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -345,24 +348,10 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 		   pool_18_params_google1.out_stride,
         pool_18_params_google1.pool_size, pool_18_params_google1.pool_stride, pool_18_params_google1.pool_padding,
 			(elem_t*) pool_18_in_google1, (elem_t*) pool_18_out_google1,
-			orow_divide, batch_divide, cid, target_util);
+			orow_divide, batch_divide, cid, group_id, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[2] = end - start;
-#if THREAD_SYNC == 1
-    pthread_barrier_wait(barrier_google);
-#endif        
-
-	 //pool for inception 4a branch 4 input
-    start = read_cycles();
-    tiled_pool_auto_cid(pool_24_params_google1.batch_size, pool_24_params_google1.out_channels, pool_24_params_google1.out_dim, pool_24_params_google1.out_dim_pooled,
-		   pool_24_params_google1.out_stride,
-        pool_24_params_google1.pool_size, pool_24_params_google1.pool_stride, pool_24_params_google1.pool_padding,
-			(elem_t*) pool_18_out_google1, (elem_t*) pool_24_out_google1,
-			orow_divide, batch_divide, cid, target_util);
-    end = read_cycles();
-    total_pool_cycles += end - start;
-    pool_cycles[3] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_google);
 #endif        
@@ -375,7 +364,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*)pool_18_out_google1, (elem_t*)conv_19_w_google1, (acc_t*)conv_19_b_google1, (elem_t*)inception4a_out_google1,
         RELU, conv_19_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -391,7 +380,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*)pool_18_out_google1, (elem_t*)conv_20_w_google1, (acc_t*)conv_20_b_google1, (elem_t*)conv_20_out_google1,
         RELU, conv_20_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -413,7 +402,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			RELU, conv_21_params_google1.output_scale, 0,
 			conv_21_params_google1.pool_size, conv_21_params_google1.pool_stride, conv_21_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -430,7 +419,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			conv_22_params_google1.out_stride,
 			(elem_t*) pool_18_out_google1, (elem_t*) conv_22_w_google1, (acc_t*) conv_22_b_google1, (elem_t*) conv_22_out_google1,
 			RELU, conv_22_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -452,7 +441,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			RELU, conv_23_params_google1.output_scale, 0,
 			conv_23_params_google1.pool_size, conv_23_params_google1.pool_stride, conv_23_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -460,7 +449,21 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_google);
 #endif
-        
+     	//pool for inception 4a branch 4 input
+    start = read_cycles();
+    tiled_pool_auto_cid(pool_24_params_google1.batch_size, pool_24_params_google1.out_channels, pool_24_params_google1.out_dim, pool_24_params_google1.out_dim_pooled,
+		   pool_24_params_google1.out_stride,
+        pool_24_params_google1.pool_size, pool_24_params_google1.pool_stride, pool_24_params_google1.pool_padding,
+			(elem_t*) pool_18_out_google1, (elem_t*) pool_24_out_google1,
+			orow_divide, batch_divide, cid, group_id, target_util);
+    end = read_cycles();
+    total_pool_cycles += end - start;
+    pool_cycles[3] = end - start;
+#if THREAD_SYNC == 1
+    pthread_barrier_wait(barrier_google);
+#endif        
+
+
     // Branch 4
     // conv_25
     start = read_cycles();
@@ -468,7 +471,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*)pool_24_out_google1, (elem_t*)conv_25_w_google1, (acc_t*)conv_25_b_google1, (elem_t*)inception4a_out_google1 + 448,
         RELU, conv_25_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -478,19 +481,6 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 #endif        
 
     
-    // pool_31 for Inception 3a branch 4
-    start = read_cycles();
-    tiled_pool_auto_cid(pool_31_params_google1.batch_size, pool_31_params_google1.out_channels, pool_31_params_google1.out_dim, pool_31_params_google1.out_dim_pooled,
-		pool_31_params_google1.out_stride,
-      pool_31_params_google1.pool_size, pool_31_params_google1.pool_stride, pool_31_params_google1.pool_padding,	
-      (elem_t*) inception4a_out_google1, (elem_t*) pool_31_out_google1,
-		orow_divide, batch_divide, cid, target_util);
-    end = read_cycles();
-    total_pool_cycles += end - start;
-    pool_cycles[4] = end - start;
-#if THREAD_SYNC == 1
-    pthread_barrier_wait(barrier_google);
-#endif        
 	 //Inception 4b
 	 // Branch 1
     // conv_26
@@ -499,7 +489,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*)inception4a_out_google1, (elem_t*)conv_26_w_google1, (acc_t*)conv_26_b_google1, (elem_t*)inception4b_out_google1,
         RELU, conv_26_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -516,7 +506,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*)inception4a_out_google1, (elem_t*)conv_27_w_google1, (acc_t*)conv_27_b_google1, (elem_t*)conv_27_out_google1,
         NO_ACTIVATION, conv_27_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -537,7 +527,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			RELU, conv_28_params_google1.output_scale, 0,
 			conv_27_params_google1.pool_size, conv_27_params_google1.pool_stride, conv_27_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -554,7 +544,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			conv_29_params_google1.out_stride,
 			(elem_t*) inception4a_out_google1, (elem_t*) conv_29_w_google1, (acc_t*) conv_29_b_google1, (elem_t*) conv_29_out_google1,
 			RELU, conv_29_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -576,7 +566,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			RELU, conv_30_params_google1.output_scale, 0,
 			conv_30_params_google1.pool_size, conv_30_params_google1.pool_stride, conv_30_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 //pthread_barrier_wait(barrier_google);
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -585,6 +575,19 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
     pthread_barrier_wait(barrier_google);
 #endif
         
+    // pool_31 for Inception 3a branch 4
+    start = read_cycles();
+    tiled_pool_auto_cid(pool_31_params_google1.batch_size, pool_31_params_google1.out_channels, pool_31_params_google1.out_dim, pool_31_params_google1.out_dim_pooled,
+		pool_31_params_google1.out_stride,
+      pool_31_params_google1.pool_size, pool_31_params_google1.pool_stride, pool_31_params_google1.pool_padding,	
+      (elem_t*) inception4a_out_google1, (elem_t*) pool_31_out_google1,
+		orow_divide, batch_divide, cid, group_id, target_util);
+    end = read_cycles();
+    total_pool_cycles += end - start;
+    pool_cycles[4] = end - start;
+#if THREAD_SYNC == 1
+    pthread_barrier_wait(barrier_google);
+#endif        
     // Branch 4
     // conv_32
     start = read_cycles();
@@ -592,7 +595,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*)pool_31_out_google1, (elem_t*)conv_32_w_google1, (acc_t*)conv_32_b_google1, (elem_t*)inception4b_out_google1 + 448,
         RELU, conv_32_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -601,21 +604,6 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_google);
 #endif        
-
-// pool_38 for Inception 4b branch 4
-    start = read_cycles();
-    tiled_pool_auto_cid(pool_38_params_google1.batch_size, pool_38_params_google1.out_channels, pool_38_params_google1.out_dim, pool_38_params_google1.out_dim_pooled,
-		pool_38_params_google1.out_stride,
-      pool_38_params_google1.pool_size, pool_38_params_google1.pool_stride, pool_38_params_google1.pool_padding,	
-      (elem_t*) inception4b_out_google1, (elem_t*) pool_38_out_google1,
-		orow_divide, batch_divide, cid, target_util);
-    end = read_cycles();
-    total_pool_cycles += end - start;
-    pool_cycles[5] = end - start;
-#if THREAD_SYNC == 1
-    pthread_barrier_wait(barrier_google);
-#endif        
-
 	 //Inception 4c
 	 // Branch 1
     // conv_33
@@ -624,7 +612,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*)inception4b_out_google1, (elem_t*)conv_33_w_google1, (acc_t*)conv_33_b_google1, (elem_t*)inception4c_out_google1,
         RELU, conv_33_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -641,7 +629,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*)inception4b_out_google1, (elem_t*)conv_34_w_google1, (acc_t*)conv_34_b_google1, (elem_t*)conv_34_out_google1,
         NO_ACTIVATION, conv_34_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -663,7 +651,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			RELU, conv_35_params_google1.output_scale, 0,
 			conv_35_params_google1.pool_size, conv_35_params_google1.pool_stride, conv_35_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -680,7 +668,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			conv_36_params_google1.out_stride,
 			(elem_t*) inception4b_out_google1, (elem_t*) conv_36_w_google1, (acc_t*) conv_36_b_google1, (elem_t*) conv_36_out_google1,
 			RELU, conv_36_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -702,7 +690,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			RELU, conv_37_params_google1.output_scale, 0,
 			conv_37_params_google1.pool_size, conv_37_params_google1.pool_stride, conv_37_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 //pthread_barrier_wait(barrier_google);
 
     end = read_cycles();
@@ -712,6 +700,21 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
     pthread_barrier_wait(barrier_google);
 #endif
         
+// pool_38 for Inception 4b branch 4
+    start = read_cycles();
+    tiled_pool_auto_cid(pool_38_params_google1.batch_size, pool_38_params_google1.out_channels, pool_38_params_google1.out_dim, pool_38_params_google1.out_dim_pooled,
+		pool_38_params_google1.out_stride,
+      pool_38_params_google1.pool_size, pool_38_params_google1.pool_stride, pool_38_params_google1.pool_padding,	
+      (elem_t*) inception4b_out_google1, (elem_t*) pool_38_out_google1,
+		orow_divide, batch_divide, cid, group_id, target_util);
+    end = read_cycles();
+    total_pool_cycles += end - start;
+    pool_cycles[5] = end - start;
+#if THREAD_SYNC == 1
+    pthread_barrier_wait(barrier_google);
+#endif        
+
+
     // Branch 4
     // conv_39
     start = read_cycles();
@@ -719,7 +722,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*)pool_38_out_google1, (elem_t*)conv_39_w_google1, (acc_t*)conv_39_b_google1, (elem_t*)inception4c_out_google1 + 448,
         NO_ACTIVATION, conv_39_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -728,21 +731,6 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_google);
 #endif       
-
-// pool_45 for Inception 4c branch 4
-    start = read_cycles();
-    tiled_pool_auto_cid(pool_45_params_google1.batch_size, pool_45_params_google1.out_channels, pool_45_params_google1.out_dim, pool_45_params_google1.out_dim_pooled,
-		pool_45_params_google1.out_stride,
-      pool_45_params_google1.pool_size, pool_45_params_google1.pool_stride, pool_45_params_google1.pool_padding,	
-      (elem_t*) inception4c_out_google1, (elem_t*) pool_45_out_google1,
-		orow_divide, batch_divide, cid, target_util);
-    end = read_cycles();
-    total_pool_cycles += end - start;
-    pool_cycles[6] = end - start;
-#if THREAD_SYNC == 1
-    pthread_barrier_wait(barrier_google);
-#endif        
-
     //Inception 4d
 	 // Branch 1
     // conv_40
@@ -751,7 +739,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*)inception4c_out_google1, (elem_t*)conv_40_w_google1, (acc_t*)conv_40_b_google1, (elem_t*) inception4d_out_google1,
         NO_ACTIVATION, conv_40_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -767,7 +755,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
         (elem_t*)inception4c_out_google1, (elem_t*)conv_41_w_google1, (acc_t*)conv_41_b_google1, (elem_t*)conv_41_out_google1,
         RELU, conv_41_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -789,7 +777,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			RELU, conv_42_params_google1.output_scale, 0,
 			conv_42_params_google1.pool_size, conv_42_params_google1.pool_stride, conv_42_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -806,7 +794,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			conv_43_params_google1.out_stride,
 			(elem_t*) inception4c_out_google1, (elem_t*) conv_43_w_google1, (acc_t*) conv_43_b_google1, (elem_t*) conv_43_out_google1,
 			RELU, conv_43_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -828,7 +816,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			RELU, conv_44_params_google1.output_scale, 0,
 			conv_44_params_google1.pool_size, conv_44_params_google1.pool_stride, conv_44_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
    // pthread_barrier_wait(barrier_google);
 
 
@@ -839,6 +827,21 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
     pthread_barrier_wait(barrier_google);
 #endif
         
+// pool_45 for Inception 4c branch 4
+    start = read_cycles();
+    tiled_pool_auto_cid(pool_45_params_google1.batch_size, pool_45_params_google1.out_channels, pool_45_params_google1.out_dim, pool_45_params_google1.out_dim_pooled,
+		pool_45_params_google1.out_stride,
+      pool_45_params_google1.pool_size, pool_45_params_google1.pool_stride, pool_45_params_google1.pool_padding,	
+      (elem_t*) inception4c_out_google1, (elem_t*) pool_45_out_google1,
+		orow_divide, batch_divide, cid, group_id, target_util);
+    end = read_cycles();
+    total_pool_cycles += end - start;
+    pool_cycles[6] = end - start;
+#if THREAD_SYNC == 1
+    pthread_barrier_wait(barrier_google);
+#endif        
+
+
     // Branch 4
     // conv_46
     start = read_cycles();
@@ -846,7 +849,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 			528,
 			(elem_t*) pool_45_out_google1, (elem_t*) conv_46_w_google1, (acc_t*) conv_46_b_google1, (elem_t*) inception4d_out_google1 + 464,
 			RELU, conv_46_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -861,7 +864,7 @@ uint64_t* googlenet_function_1(int cid, int orow_divide, int batch_divide, int t
 		pool_52_params_google1.out_stride,
       pool_52_params_google1.pool_size, pool_52_params_google1.pool_stride, pool_52_params_google1.pool_padding,	
       (elem_t*) inception4d_out_google1, (elem_t*) pool_52_out_google1,
-		orow_divide, batch_divide, cid, target_util);
+		orow_divide, batch_divide, cid, group_id, target_util);
 gemmini_fence();
     end = read_cycles();
     total_pool_cycles += end - start;
@@ -886,13 +889,13 @@ gemmini_fence();
 			RELU, conv_47_params_google1.output_scale, 0,
 			pool_54_params_google1.pool_size, pool_54_params_google1.pool_stride, pool_54_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 */
     tiled_matmul_nn_auto_cid(conv_47_params_google1.I, conv_47_params_google1.J, conv_47_params_google1.K, 832,
         (elem_t*)inception4d_out_google1, (elem_t*)conv_47_w_google1, (acc_t*)conv_47_b_google1, (elem_t*) pool_54_in_google1,
         NO_ACTIVATION, conv_47_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -909,7 +912,7 @@ gemmini_fence();
         (elem_t*) inception4d_out_google1, (elem_t*)conv_48_w_google1, (acc_t*)conv_48_b_google1, (elem_t*)conv_48_out_google1,
         NO_ACTIVATION, conv_48_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -932,7 +935,7 @@ gemmini_fence();
 			1, 1, 0, false,
       //pool_54_params_google1.pool_size, pool_54_params_google1.pool_stride, pool_54_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -948,7 +951,7 @@ gemmini_fence();
 			conv_50_params_google1.out_stride,
 			(elem_t*) inception4d_out_google1, (elem_t*) conv_50_w_google1, (acc_t*) conv_50_b_google1, (elem_t*) conv_50_out_google1,
 			RELU, conv_50_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -971,7 +974,7 @@ gemmini_fence();
 			1, 1, 0, false,
       //pool_54_params_google1.pool_size, pool_54_params_google1.pool_stride, pool_54_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
  //pthread_barrier_wait(barrier_google);
 
 
@@ -996,13 +999,13 @@ gemmini_fence();
         RELU, conv_53_params_google1.output_scale, 0,
   		  pool_54_params_google1.pool_size, pool_54_params_google1.pool_stride, pool_54_params_google1.pool_padding, true,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 */
     tiled_matmul_nn_auto_cid(conv_53_params_google1.I, conv_53_params_google1.J, conv_53_params_google1.K, 832,
         (elem_t*)inception4d_out_google1, (elem_t*)conv_53_w_google1, (acc_t*)conv_53_b_google1, (elem_t*)((elem_t*) (pool_54_in_google1) + 704),
         NO_ACTIVATION, conv_53_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -1018,7 +1021,7 @@ gemmini_fence();
 		   pool_54_params_google1.out_stride,
         pool_54_params_google1.pool_size, pool_54_params_google1.pool_stride, pool_54_params_google1.pool_padding,
 			(elem_t*) pool_54_out_google1, (elem_t*) pool_54_out_google1,
-			orow_divide, batch_divide, cid, target_util);
+			orow_divide, batch_divide, cid, group_id, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[8] = end - start;
@@ -1033,7 +1036,7 @@ gemmini_fence();
 		   pool_60_params_google1.out_stride,
         pool_60_params_google1.pool_size, pool_60_params_google1.pool_stride, pool_60_params_google1.pool_padding,
 			(elem_t*) pool_54_out_google1, (elem_t*) pool_60_out_google1,
-			orow_divide, batch_divide, cid, target_util);
+			orow_divide, batch_divide, cid, group_id, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[9] = end - start;
@@ -1048,7 +1051,7 @@ gemmini_fence();
         (elem_t*) pool_60_out_google1, (elem_t*)conv_61_w_google1, (acc_t*)conv_61_b_google1, (elem_t*) inception5a_out_google1 + 704,
         NO_ACTIVATION, conv_61_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1065,7 +1068,7 @@ gemmini_fence();
 			832,
 			(elem_t*) pool_54_out_google1, (elem_t*) conv_55_w_google1, (acc_t*) conv_55_b_google1, (elem_t*) inception5a_out_google1,
 			RELU, conv_55_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -1081,7 +1084,7 @@ gemmini_fence();
         (elem_t*)pool_54_out_google1, (elem_t*)conv_56_w_google1, (acc_t*)conv_56_b_google1, (elem_t*)conv_56_out_google1,
         NO_ACTIVATION, conv_56_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1103,7 +1106,7 @@ gemmini_fence();
 			RELU, conv_57_params_google1.output_scale, 0,
 			conv_57_params_google1.pool_size, conv_57_params_google1.pool_stride, conv_57_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1119,7 +1122,7 @@ gemmini_fence();
 			conv_58_params_google1.out_stride,
 			(elem_t*) pool_54_out_google1, (elem_t*) conv_58_w_google1, (acc_t*) conv_58_b_google1, (elem_t*) conv_58_out_google1,
 			RELU, conv_58_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1141,7 +1144,7 @@ gemmini_fence();
 			RELU, conv_59_params_google1.output_scale, 0,
 			conv_59_params_google1.pool_size, conv_59_params_google1.pool_stride, conv_59_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
    //pthread_barrier_wait(barrier_google);
 
 
@@ -1157,7 +1160,7 @@ gemmini_fence();
 		pool_67_params_google1.out_stride,
       pool_67_params_google1.pool_size, pool_67_params_google1.pool_stride, pool_67_params_google1.pool_padding,	
       (elem_t*) inception5a_out_google1, (elem_t*) pool_67_out_google1,
-		orow_divide, batch_divide, cid, target_util);
+		orow_divide, batch_divide, cid, group_id, target_util);
 gemmini_fence();
     end = read_cycles();
     total_pool_cycles += end - start;
@@ -1173,7 +1176,7 @@ gemmini_fence();
         (elem_t*) inception5a_out_google1, (elem_t*)conv_62_w_google1, (acc_t*)conv_62_b_google1, (elem_t*)conv_62_out_google1,
         NO_ACTIVATION, conv_62_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1189,7 +1192,7 @@ gemmini_fence();
         (elem_t*) inception5a_out_google1, (elem_t*)conv_63_w_google1, (acc_t*)conv_63_b_google1, (elem_t*)conv_63_out_google1,
         NO_ACTIVATION, conv_63_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1211,7 +1214,7 @@ gemmini_fence();
 			RELU, conv_64_params_google1.output_scale, 0,
 			conv_64_params_google1.pool_size, conv_64_params_google1.pool_stride, conv_64_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1228,7 +1231,7 @@ gemmini_fence();
 			conv_65_params_google1.out_stride,
 			(elem_t*) inception5a_out_google1, (elem_t*) conv_65_w_google1, (acc_t*) conv_65_b_google1, (elem_t*) conv_65_out_google1,
 			RELU, conv_65_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1249,7 +1252,7 @@ gemmini_fence();
 			RELU, conv_66_params_google1.output_scale, 0,
 			conv_66_params_google1.pool_size, conv_66_params_google1.pool_stride, conv_66_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
    //pthread_barrier_wait(barrier_google);
 
 
@@ -1266,7 +1269,7 @@ gemmini_fence();
 			1024 + 64,
 			(elem_t*) pool_67_out_google12, (elem_t*) conv_68_w_google1, (acc_t*) conv_68_b_google1, (elem_t*) inception5b_out_google1 + 896,
 			RELU, conv_68_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1294,7 +1297,7 @@ gemmini_fence();
     tiled_matmul_nn_auto_cid(fc_69_params_google1.I, fc_69_params_google1.J, fc_69_params_google1.K, fc_69_params_google1.out_stride,
         (elem_t*)fc_69_w_google1, (elem_t*)average, (acc_t*)fc_69_b_google1, (elem_t*)fc_69_out_google1,
         NO_ACTIVATION, fc_69_params_google1.output_scale, 0, false,
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1302,6 +1305,7 @@ gemmini_fence();
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_google);
 #endif   
+    }
 
     for(int i = 0; i < num_cycle; i++){
       if(i < 58){
@@ -1320,10 +1324,10 @@ gemmini_fence();
 #undef num_cycle
 }
 
-uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide, int target_util){
+uint64_t* googlenet_block_function_1(size_t cid, size_t group_id, bool part1, bool part2, int orow_divide, int batch_divide, int target_util){
 #define num_cycle (58+11+3)
 
-  static uint64_t cycles[num_proc][num_cycle];
+  static uint64_t cycles[NUM_CORE][num_cycle];
  
     uint64_t start, end;
     uint64_t total_matmul_cycles = 0, total_conv_cycles = 0, total_pool_cycles = 0, conv_dw_cycles = 0, other_cycles = 0;
@@ -1334,7 +1338,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_google);
 #endif
-  
+   if(part1){  
     // conv_1
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -1343,12 +1347,12 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         conv_1_params_google1.stride, 1, conv_1_params_google1.padding, conv_1_params_google1.kernel_size,
         conv_1_params_google1.out_stride,
 
-        (elem_t*)images, (elem_t*)conv_1_w_google1, (acc_t*)conv_1_b_google1, (elem_t*)conv_1_out_google1_pooled,
+        (elem_t*)image1, (elem_t*)conv_1_w_google1, (acc_t*)conv_1_b_google1, (elem_t*)conv_1_out_google1_pooled,
 
         RELU, conv_1_params_google1.output_scale, 0,
         conv_1_params_google1.pool_size, conv_1_params_google1.pool_stride, conv_1_params_google1.pool_padding, true,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1363,7 +1367,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*)conv_1_out_google1_pooled, (elem_t*)conv_2_w_google1, (acc_t*)conv_2_b_google1, (elem_t*)conv_2_out_google1,
         RELU, conv_2_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1385,7 +1389,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         RELU, conv_3_params_google1.output_scale, 0,
         conv_3_params_google1.pool_size, 0, conv_3_params_google1.pool_padding, true,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1393,19 +1397,10 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_google);
 #endif       
-   // pool_9 for Inception 3a branch 4
-    start = read_cycles();
-    tiled_pool_auto_cid(pool_9_params_google1.batch_size, pool_9_params_google1.out_channels, pool_9_params_google1.out_dim, pool_9_params_google1.out_dim_pooled,
-		pool_9_params_google1.out_stride,
-      pool_9_params_google1.pool_size, pool_9_params_google1.pool_stride, pool_9_params_google1.pool_padding,	
-      (elem_t*) conv_3_out_google1_pooled, (elem_t*) pool_9_out_google1,
-		orow_divide, batch_divide, cid, target_util);
-    end = read_cycles();
-    total_pool_cycles += end - start;
-    pool_cycles[0] = end - start;
-#if THREAD_SYNC == 1
-    //pthread_barrier_wait(barrier_google);
-#endif        
+
+    }
+
+    if(part2){
     //Inception 3a
 	 //Branch 1
     // conv_4
@@ -1414,7 +1409,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*)conv_3_out_google1_pooled, (elem_t*)conv_4_w_google1, (acc_t*)conv_4_b_google1, (elem_t*) inception3a_out_google1,
         RELU, conv_4_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1429,7 +1424,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*)conv_3_out_google1_pooled, (elem_t*)conv_5_w_google1, (acc_t*)conv_5_b_google1, (elem_t*)conv_5_out_google1,
         RELU, conv_5_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1451,7 +1446,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			RELU, conv_6_params_google1.output_scale, 0,
 			conv_5_params_google1.pool_size, conv_5_params_google1.pool_stride, conv_5_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1467,7 +1462,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			conv_7_params_google1.out_stride,
 			(elem_t*) conv_3_out_google1_pooled, (elem_t*) conv_7_w_google1, (acc_t*) conv_7_b_google1, (elem_t*) conv_7_out_google1,
 			RELU, conv_7_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1489,7 +1484,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			RELU, conv_8_params_google1.output_scale, 0,
 			conv_8_params_google1.pool_size, conv_8_params_google1.pool_stride, conv_8_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1497,7 +1492,20 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_google);
 #endif
-       
+        
+   // pool_9 for Inception 3a branch 4
+    start = read_cycles();
+    tiled_pool_auto_cid(pool_9_params_google1.batch_size, pool_9_params_google1.out_channels, pool_9_params_google1.out_dim, pool_9_params_google1.out_dim_pooled,
+		pool_9_params_google1.out_stride,
+      pool_9_params_google1.pool_size, pool_9_params_google1.pool_stride, pool_9_params_google1.pool_padding,	
+      (elem_t*) conv_3_out_google1_pooled, (elem_t*) pool_9_out_google1,
+		orow_divide, batch_divide, cid, group_id, target_util);
+    end = read_cycles();
+    total_pool_cycles += end - start;
+    pool_cycles[0] = end - start;
+#if THREAD_SYNC == 1
+    //pthread_barrier_wait(barrier_google);
+#endif       
     // Branch 4
     // conv_10
     start = read_cycles();
@@ -1505,7 +1513,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*)pool_9_out_google1, (elem_t*)conv_10_w_google1, (acc_t*)conv_10_b_google1, (elem_t*)inception3a_out_google1 + 224,
         RELU, conv_10_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1519,7 +1527,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 		pool_16_params_google1.out_stride,
       pool_16_params_google1.pool_size, pool_16_params_google1.pool_stride, pool_16_params_google1.pool_padding,	
       (elem_t*) inception3a_out_google1, (elem_t*) pool_16_out_google1,
-		orow_divide, batch_divide, cid, target_util);
+		orow_divide, batch_divide, cid, group_id, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[1] = end - start;
@@ -1535,7 +1543,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*) inception3a_out_google1, (elem_t*)conv_11_w_google1, (acc_t*)conv_11_b_google1, (elem_t*) pool_18_in_google1,
         NO_ACTIVATION, conv_11_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -1552,7 +1560,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*) inception3a_out_google1, (elem_t*)conv_12_w_google1, (acc_t*)conv_12_b_google1, (elem_t*)conv_12_out_google1,
         NO_ACTIVATION, conv_12_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1575,7 +1583,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			1, 1, 0, false,
       //pool_18_params_google1.pool_size, pool_18_params_google1.pool_stride, pool_18_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1592,7 +1600,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			conv_14_params_google1.out_stride,
 			(elem_t*) inception3a_out_google1, (elem_t*) conv_14_w_google1, (acc_t*) conv_14_b_google1, (elem_t*) conv_14_out_google1,
 			RELU, conv_14_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1615,7 +1623,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			//pool_18_params_google1.pool_size, pool_18_params_google1.pool_stride, pool_18_params_google1.pool_padding, true,
       1, 1, 0, false,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1632,7 +1640,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*) pool_16_out_google1, (elem_t*)conv_17_w_google1, (acc_t*)conv_17_b_google1, (elem_t*) ((elem_t*) pool_18_in_google1 + 416),
         NO_ACTIVATION, conv_17_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -1649,7 +1657,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 		   pool_18_params_google1.out_stride,
         pool_18_params_google1.pool_size, pool_18_params_google1.pool_stride, pool_18_params_google1.pool_padding,
 			(elem_t*) pool_18_in_google1, (elem_t*) pool_18_out_google1,
-			orow_divide, batch_divide, cid, target_util);
+			orow_divide, batch_divide, cid, group_id, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[2] = end - start;
@@ -1663,7 +1671,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 		   pool_24_params_google1.out_stride,
         pool_24_params_google1.pool_size, pool_24_params_google1.pool_stride, pool_24_params_google1.pool_padding,
 			(elem_t*) pool_18_out_google1, (elem_t*) pool_24_out_google1,
-			orow_divide, batch_divide, cid, target_util);
+			orow_divide, batch_divide, cid, group_id, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[3] = end - start;
@@ -1679,7 +1687,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*)pool_18_out_google1, (elem_t*)conv_19_w_google1, (acc_t*)conv_19_b_google1, (elem_t*)inception4a_out_google1,
         RELU, conv_19_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1695,7 +1703,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*)pool_18_out_google1, (elem_t*)conv_20_w_google1, (acc_t*)conv_20_b_google1, (elem_t*)conv_20_out_google1,
         RELU, conv_20_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1717,7 +1725,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			RELU, conv_21_params_google1.output_scale, 0,
 			conv_21_params_google1.pool_size, conv_21_params_google1.pool_stride, conv_21_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1734,7 +1742,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			conv_22_params_google1.out_stride,
 			(elem_t*) pool_18_out_google1, (elem_t*) conv_22_w_google1, (acc_t*) conv_22_b_google1, (elem_t*) conv_22_out_google1,
 			RELU, conv_22_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1756,7 +1764,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			RELU, conv_23_params_google1.output_scale, 0,
 			conv_23_params_google1.pool_size, conv_23_params_google1.pool_stride, conv_23_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1772,7 +1780,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*)pool_24_out_google1, (elem_t*)conv_25_w_google1, (acc_t*)conv_25_b_google1, (elem_t*)inception4a_out_google1 + 448,
         RELU, conv_25_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1788,7 +1796,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 		pool_31_params_google1.out_stride,
       pool_31_params_google1.pool_size, pool_31_params_google1.pool_stride, pool_31_params_google1.pool_padding,	
       (elem_t*) inception4a_out_google1, (elem_t*) pool_31_out_google1,
-		orow_divide, batch_divide, cid, target_util);
+		orow_divide, batch_divide, cid, group_id, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[4] = end - start;
@@ -1803,7 +1811,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*)inception4a_out_google1, (elem_t*)conv_26_w_google1, (acc_t*)conv_26_b_google1, (elem_t*)inception4b_out_google1,
         RELU, conv_26_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -1820,7 +1828,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*)inception4a_out_google1, (elem_t*)conv_27_w_google1, (acc_t*)conv_27_b_google1, (elem_t*)conv_27_out_google1,
         NO_ACTIVATION, conv_27_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1841,7 +1849,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			RELU, conv_28_params_google1.output_scale, 0,
 			conv_27_params_google1.pool_size, conv_27_params_google1.pool_stride, conv_27_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1858,7 +1866,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			conv_29_params_google1.out_stride,
 			(elem_t*) inception4a_out_google1, (elem_t*) conv_29_w_google1, (acc_t*) conv_29_b_google1, (elem_t*) conv_29_out_google1,
 			RELU, conv_29_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1880,7 +1888,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			RELU, conv_30_params_google1.output_scale, 0,
 			conv_30_params_google1.pool_size, conv_30_params_google1.pool_stride, conv_30_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 ////pthread_barrier_wait(barrier_google);
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1896,7 +1904,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*)pool_31_out_google1, (elem_t*)conv_32_w_google1, (acc_t*)conv_32_b_google1, (elem_t*)inception4b_out_google1 + 448,
         RELU, conv_32_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -1912,7 +1920,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 		pool_38_params_google1.out_stride,
       pool_38_params_google1.pool_size, pool_38_params_google1.pool_stride, pool_38_params_google1.pool_padding,	
       (elem_t*) inception4b_out_google1, (elem_t*) pool_38_out_google1,
-		orow_divide, batch_divide, cid, target_util);
+		orow_divide, batch_divide, cid, group_id, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[5] = end - start;
@@ -1928,7 +1936,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*)inception4b_out_google1, (elem_t*)conv_33_w_google1, (acc_t*)conv_33_b_google1, (elem_t*)inception4c_out_google1,
         RELU, conv_33_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -1945,7 +1953,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*)inception4b_out_google1, (elem_t*)conv_34_w_google1, (acc_t*)conv_34_b_google1, (elem_t*)conv_34_out_google1,
         NO_ACTIVATION, conv_34_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -1967,7 +1975,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			RELU, conv_35_params_google1.output_scale, 0,
 			conv_35_params_google1.pool_size, conv_35_params_google1.pool_stride, conv_35_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1984,7 +1992,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			conv_36_params_google1.out_stride,
 			(elem_t*) inception4b_out_google1, (elem_t*) conv_36_w_google1, (acc_t*) conv_36_b_google1, (elem_t*) conv_36_out_google1,
 			RELU, conv_36_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -2006,7 +2014,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			RELU, conv_37_params_google1.output_scale, 0,
 			conv_37_params_google1.pool_size, conv_37_params_google1.pool_stride, conv_37_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 ////pthread_barrier_wait(barrier_google);
 
     end = read_cycles();
@@ -2023,7 +2031,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*)pool_38_out_google1, (elem_t*)conv_39_w_google1, (acc_t*)conv_39_b_google1, (elem_t*)inception4c_out_google1 + 448,
         NO_ACTIVATION, conv_39_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -2039,7 +2047,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 		pool_45_params_google1.out_stride,
       pool_45_params_google1.pool_size, pool_45_params_google1.pool_stride, pool_45_params_google1.pool_padding,	
       (elem_t*) inception4c_out_google1, (elem_t*) pool_45_out_google1,
-		orow_divide, batch_divide, cid, target_util);
+		orow_divide, batch_divide, cid, group_id, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[6] = end - start;
@@ -2055,7 +2063,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*)inception4c_out_google1, (elem_t*)conv_40_w_google1, (acc_t*)conv_40_b_google1, (elem_t*) inception4d_out_google1,
         NO_ACTIVATION, conv_40_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -2071,7 +2079,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
         (elem_t*)inception4c_out_google1, (elem_t*)conv_41_w_google1, (acc_t*)conv_41_b_google1, (elem_t*)conv_41_out_google1,
         RELU, conv_41_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -2093,7 +2101,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			RELU, conv_42_params_google1.output_scale, 0,
 			conv_42_params_google1.pool_size, conv_42_params_google1.pool_stride, conv_42_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -2110,7 +2118,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			conv_43_params_google1.out_stride,
 			(elem_t*) inception4c_out_google1, (elem_t*) conv_43_w_google1, (acc_t*) conv_43_b_google1, (elem_t*) conv_43_out_google1,
 			RELU, conv_43_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -2132,7 +2140,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			RELU, conv_44_params_google1.output_scale, 0,
 			conv_44_params_google1.pool_size, conv_44_params_google1.pool_stride, conv_44_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
    // //pthread_barrier_wait(barrier_google);
 
 
@@ -2150,7 +2158,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 			528,
 			(elem_t*) pool_45_out_google1, (elem_t*) conv_46_w_google1, (acc_t*) conv_46_b_google1, (elem_t*) inception4d_out_google1 + 464,
 			RELU, conv_46_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -2165,7 +2173,7 @@ uint64_t* googlenet_block_function_1(int cid, int orow_divide, int batch_divide,
 		pool_52_params_google1.out_stride,
       pool_52_params_google1.pool_size, pool_52_params_google1.pool_stride, pool_52_params_google1.pool_padding,	
       (elem_t*) inception4d_out_google1, (elem_t*) pool_52_out_google1,
-		orow_divide, batch_divide, cid, target_util);
+		orow_divide, batch_divide, cid, group_id, target_util);
 gemmini_fence();
     end = read_cycles();
     total_pool_cycles += end - start;
@@ -2190,13 +2198,13 @@ gemmini_fence();
 			RELU, conv_47_params_google1.output_scale, 0,
 			pool_54_params_google1.pool_size, pool_54_params_google1.pool_stride, pool_54_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 */
     tiled_matmul_nn_auto_cid(conv_47_params_google1.I, conv_47_params_google1.J, conv_47_params_google1.K, 832,
         (elem_t*)inception4d_out_google1, (elem_t*)conv_47_w_google1, (acc_t*)conv_47_b_google1, (elem_t*) pool_54_in_google1,
         NO_ACTIVATION, conv_47_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -2213,7 +2221,7 @@ gemmini_fence();
         (elem_t*) inception4d_out_google1, (elem_t*)conv_48_w_google1, (acc_t*)conv_48_b_google1, (elem_t*)conv_48_out_google1,
         NO_ACTIVATION, conv_48_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -2236,7 +2244,7 @@ gemmini_fence();
 			1, 1, 0, false,
       //pool_54_params_google1.pool_size, pool_54_params_google1.pool_stride, pool_54_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -2252,7 +2260,7 @@ gemmini_fence();
 			conv_50_params_google1.out_stride,
 			(elem_t*) inception4d_out_google1, (elem_t*) conv_50_w_google1, (acc_t*) conv_50_b_google1, (elem_t*) conv_50_out_google1,
 			RELU, conv_50_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -2275,7 +2283,7 @@ gemmini_fence();
 			1, 1, 0, false,
       //pool_54_params_google1.pool_size, pool_54_params_google1.pool_stride, pool_54_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
  ////pthread_barrier_wait(barrier_google);
 
 
@@ -2300,13 +2308,13 @@ gemmini_fence();
         RELU, conv_53_params_google1.output_scale, 0,
   		  pool_54_params_google1.pool_size, pool_54_params_google1.pool_stride, pool_54_params_google1.pool_padding, true,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 */
     tiled_matmul_nn_auto_cid(conv_53_params_google1.I, conv_53_params_google1.J, conv_53_params_google1.K, 832,
         (elem_t*)inception4d_out_google1, (elem_t*)conv_53_w_google1, (acc_t*)conv_53_b_google1, (elem_t*)((elem_t*) (pool_54_in_google1) + 704),
         NO_ACTIVATION, conv_53_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -2322,7 +2330,7 @@ gemmini_fence();
 		   pool_54_params_google1.out_stride,
         pool_54_params_google1.pool_size, pool_54_params_google1.pool_stride, pool_54_params_google1.pool_padding,
 			(elem_t*) pool_54_out_google1, (elem_t*) pool_54_out_google1,
-			orow_divide, batch_divide, cid, target_util);
+			orow_divide, batch_divide, cid, group_id, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[8] = end - start;
@@ -2337,7 +2345,7 @@ gemmini_fence();
 		   pool_60_params_google1.out_stride,
         pool_60_params_google1.pool_size, pool_60_params_google1.pool_stride, pool_60_params_google1.pool_padding,
 			(elem_t*) pool_54_out_google1, (elem_t*) pool_60_out_google1,
-			orow_divide, batch_divide, cid, target_util);
+			orow_divide, batch_divide, cid, group_id, target_util);
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[9] = end - start;
@@ -2352,7 +2360,7 @@ gemmini_fence();
         (elem_t*) pool_60_out_google1, (elem_t*)conv_61_w_google1, (acc_t*)conv_61_b_google1, (elem_t*) inception5a_out_google1 + 704,
         NO_ACTIVATION, conv_61_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -2369,7 +2377,7 @@ gemmini_fence();
 			832,
 			(elem_t*) pool_54_out_google1, (elem_t*) conv_55_w_google1, (acc_t*) conv_55_b_google1, (elem_t*) inception5a_out_google1,
 			RELU, conv_55_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -2385,7 +2393,7 @@ gemmini_fence();
         (elem_t*)pool_54_out_google1, (elem_t*)conv_56_w_google1, (acc_t*)conv_56_b_google1, (elem_t*)conv_56_out_google1,
         NO_ACTIVATION, conv_56_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -2407,7 +2415,7 @@ gemmini_fence();
 			RELU, conv_57_params_google1.output_scale, 0,
 			conv_57_params_google1.pool_size, conv_57_params_google1.pool_stride, conv_57_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -2423,7 +2431,7 @@ gemmini_fence();
 			conv_58_params_google1.out_stride,
 			(elem_t*) pool_54_out_google1, (elem_t*) conv_58_w_google1, (acc_t*) conv_58_b_google1, (elem_t*) conv_58_out_google1,
 			RELU, conv_58_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -2445,7 +2453,7 @@ gemmini_fence();
 			RELU, conv_59_params_google1.output_scale, 0,
 			conv_59_params_google1.pool_size, conv_59_params_google1.pool_stride, conv_59_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
    ////pthread_barrier_wait(barrier_google);
 
 
@@ -2461,7 +2469,7 @@ gemmini_fence();
 		pool_67_params_google1.out_stride,
       pool_67_params_google1.pool_size, pool_67_params_google1.pool_stride, pool_67_params_google1.pool_padding,	
       (elem_t*) inception5a_out_google1, (elem_t*) pool_67_out_google1,
-		orow_divide, batch_divide, cid, target_util);
+		orow_divide, batch_divide, cid, group_id, target_util);
 gemmini_fence();
     end = read_cycles();
     total_pool_cycles += end - start;
@@ -2477,7 +2485,7 @@ gemmini_fence();
         (elem_t*) inception5a_out_google1, (elem_t*)conv_62_w_google1, (acc_t*)conv_62_b_google1, (elem_t*)conv_62_out_google1,
         NO_ACTIVATION, conv_62_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -2493,7 +2501,7 @@ gemmini_fence();
         (elem_t*) inception5a_out_google1, (elem_t*)conv_63_w_google1, (acc_t*)conv_63_b_google1, (elem_t*)conv_63_out_google1,
         NO_ACTIVATION, conv_63_params_google1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -2515,7 +2523,7 @@ gemmini_fence();
 			RELU, conv_64_params_google1.output_scale, 0,
 			conv_64_params_google1.pool_size, conv_64_params_google1.pool_stride, conv_64_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -2532,7 +2540,7 @@ gemmini_fence();
 			conv_65_params_google1.out_stride,
 			(elem_t*) inception5a_out_google1, (elem_t*) conv_65_w_google1, (acc_t*) conv_65_b_google1, (elem_t*) conv_65_out_google1,
 			RELU, conv_65_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -2553,7 +2561,7 @@ gemmini_fence();
 			RELU, conv_66_params_google1.output_scale, 0,
 			conv_66_params_google1.pool_size, conv_66_params_google1.pool_stride, conv_66_params_google1.pool_padding, true,
 
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
    ////pthread_barrier_wait(barrier_google);
 
 
@@ -2570,7 +2578,7 @@ gemmini_fence();
 			1024 + 64,
 			(elem_t*) pool_67_out_google12, (elem_t*) conv_68_w_google1, (acc_t*) conv_68_b_google1, (elem_t*) inception5b_out_google1 + 896,
 			RELU, conv_68_params_google1.output_scale, 0, true,
-			WS, orow_divide, batch_divide, cid, target_util);
+			WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -2598,7 +2606,7 @@ gemmini_fence();
     tiled_matmul_nn_auto_cid(fc_69_params_google1.I, fc_69_params_google1.J, fc_69_params_google1.K, fc_69_params_google1.out_stride,
         (elem_t*)fc_69_w_google1, (elem_t*)average, (acc_t*)fc_69_b_google1, (elem_t*)fc_69_out_google1,
         NO_ACTIVATION, fc_69_params_google1.output_scale, 0, false,
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_matmul_cycles += end - start;
@@ -2606,6 +2614,8 @@ gemmini_fence();
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_google);
 #endif   
+
+    }
 
     for(int i = 0; i < num_cycle; i++){
       if(i < 58){

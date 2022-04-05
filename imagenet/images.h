@@ -5,6 +5,8 @@ static const elem_t image0[1][224][224][3] row_align(1);// =
 static const elem_t image1[1][224][224][3] row_align(1);// =
 static const elem_t image2[1][224][224][3] row_align(1);// =
 static const elem_t images[1][224][224][3] row_align(1);// =
+static const elem_t image3[1][224][224][3] row_align(1);// =
+static const elem_t image4[1][224][224][3] row_align(1);// =
 
 static const elem_t images_2[2][224][224][3] row_align(1);// =
 

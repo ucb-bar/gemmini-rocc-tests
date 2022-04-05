@@ -12,14 +12,14 @@
 #endif
 
 #ifndef BAREMETAL
-uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_yolo){
+uint64_t* yolonet_function_1(size_t cid, size_t group_id, bool part1, bool part2, bool part3, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_yolo){
 #else
-uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int orow_divide, int batch_divide, int target_util){
+uint64_t* yolonet_function_1(size_t cid, size_t group_id, bool part1, bool part2, bool part3, int orow_divide, int batch_divide, int target_util){
 #endif
 
 #define num_cycle (19+5+3)
 
-  static uint64_t cycles[num_proc][num_cycle];
+  static uint64_t cycles[NUM_CORE][num_cycle];
  
     uint64_t start, end;
     uint64_t total_matmul_cycles = 0, total_conv_cycles = 0, total_pool_cycles = 0, conv_dw_cycles = 0, other_cycles = 0;
@@ -46,7 +46,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           1, 1, 0, false,
     //conv_1_params_yolo.pool_size, conv_1_params_yolo.pool_stride, conv_1_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -63,7 +63,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           conv_1_params_yolo.pool_size, conv_1_params_yolo.pool_stride, conv_1_params_yolo.pool_padding,
 
           (elem_t*)conv_1_out_yolo, (elem_t*)conv_1_out_yolo_pooled,
-    orow_divide, batch_divide, cid, target_util);
+    orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_pool_cycles += end - start;
@@ -86,7 +86,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           1, 1, 0, false,
     //conv_2_params_yolo.pool_size, conv_2_params_yolo.pool_stride, conv_2_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -103,7 +103,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           conv_2_params_yolo.pool_size, conv_2_params_yolo.pool_stride, conv_2_params_yolo.pool_padding,
 
           (elem_t*)conv_2_out_yolo, (elem_t*)conv_2_out_yolo_pooled,
-    orow_divide, batch_divide, cid, target_util);
+    orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_pool_cycles += end - start;
@@ -124,7 +124,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           RELU, conv_3_params_yolo.output_scale, 0,
           conv_3_params_yolo.pool_size, 0, conv_3_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -139,7 +139,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
             (elem_t*)conv_3_out_yolo, (elem_t*)conv_4_w_yolo, (acc_t*)conv_4_b_yolo, (elem_t*)conv_4_out_yolo,
             NO_ACTIVATION, conv_4_params_yolo.output_scale, 0, true,
             WS,
-            orow_divide, batch_divide, cid, target_util);
+            orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -164,7 +164,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           1, 1, 0, false,
     //conv_5_params_yolo.pool_size, conv_5_params_yolo.pool_stride, conv_5_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -181,7 +181,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           conv_5_params_yolo.pool_size, conv_5_params_yolo.pool_stride, conv_5_params_yolo.pool_padding,
 
           (elem_t*)conv_5_out_yolo, (elem_t*)conv_5_out_yolo_pooled,
-    orow_divide, batch_divide, cid, target_util);
+    orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_pool_cycles += end - start;
@@ -203,7 +203,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           RELU, conv_6_params_yolo.output_scale, 0,
           conv_6_params_yolo.pool_size, 0, conv_6_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -218,7 +218,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
             (elem_t*)conv_6_out_yolo, (elem_t*)conv_7_w_yolo, (acc_t*)conv_7_b_yolo, (elem_t*)conv_7_out_yolo,
             NO_ACTIVATION, conv_7_params_yolo.output_scale, 0, true,
             WS,
-            orow_divide, batch_divide, cid, target_util);
+            orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -241,7 +241,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           1, 1, 0, false,
       //conv_8_params_yolo.pool_size, conv_8_params_yolo.pool_stride, conv_8_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -258,7 +258,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           conv_8_params_yolo.pool_size, conv_8_params_yolo.pool_stride, conv_8_params_yolo.pool_padding,
 
           (elem_t*)conv_8_out_yolo, (elem_t*)conv_8_out_yolo_pooled,
-      orow_divide, batch_divide, cid, target_util);
+      orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_pool_cycles += end - start;
@@ -280,7 +280,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           RELU, conv_9_params_yolo.output_scale, 0,
           conv_9_params_yolo.pool_size, 0, conv_9_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -295,7 +295,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
             (elem_t*)conv_9_out_yolo, (elem_t*)conv_10_w_yolo, (acc_t*)conv_10_b_yolo, (elem_t*)conv_10_out_yolo,
             NO_ACTIVATION, conv_10_params_yolo.output_scale, 0, true,
             WS,
-            orow_divide, batch_divide, cid, target_util);
+            orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -318,7 +318,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           RELU, conv_11_params_yolo.output_scale, 0,
           conv_11_params_yolo.pool_size, 0, conv_11_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -333,7 +333,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
             (elem_t*)conv_11_out_yolo, (elem_t*)conv_12_w_yolo, (acc_t*)conv_12_b_yolo, (elem_t*)conv_12_out_yolo,
             NO_ACTIVATION, conv_12_params_yolo.output_scale, 0, true,
             WS,
-            orow_divide, batch_divide, cid, target_util);
+            orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -357,7 +357,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           1, 1, 0, false,
       //conv_13_params_yolo.pool_size, conv_13_params_yolo.pool_stride, conv_13_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -374,7 +374,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           conv_13_params_yolo.pool_size, conv_13_params_yolo.pool_stride, conv_13_params_yolo.pool_padding,
 
           (elem_t*)conv_13_out_yolo, (elem_t*)conv_13_out_yolo_pooled,
-      orow_divide, batch_divide, cid, target_util);
+      orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_pool_cycles += end - start;
@@ -399,7 +399,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           RELU, conv_14_params_yolo.output_scale, 0,
           conv_14_params_yolo.pool_size, 0, conv_14_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -414,7 +414,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
             (elem_t*)conv_14_out_yolo, (elem_t*)conv_15_w_yolo, (acc_t*)conv_15_b_yolo, (elem_t*)conv_15_out_yolo,
             NO_ACTIVATION, conv_15_params_yolo.output_scale, 0, true,
             WS,
-            orow_divide, batch_divide, cid, target_util);
+            orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -437,7 +437,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           RELU, conv_16_params_yolo.output_scale, 0,
           conv_16_params_yolo.pool_size, 0, conv_16_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -452,7 +452,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
             (elem_t*)conv_16_out_yolo, (elem_t*)conv_17_w_yolo, (acc_t*)conv_17_b_yolo, (elem_t*)conv_17_out_yolo,
             NO_ACTIVATION, conv_17_params_yolo.output_scale, 0, true,
             WS,
-            orow_divide, batch_divide, cid, target_util);
+            orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -476,7 +476,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           1, 1, 0, false,
       //conv_18_params_yolo.pool_size, conv_18_params_yolo.pool_stride, conv_18_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -491,7 +491,7 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
           (elem_t*)conv_18_out_yolo, (elem_t*)conv_19_w_yolo, (acc_t*)conv_19_b_yolo, (elem_t*)conv_19_out_yolo,
           RELU, conv_19_params_yolo.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -519,10 +519,10 @@ uint64_t* yolonet_function_1(int cid, bool part1, bool part2, bool part3, int or
 #undef num_cycle
 }
 
-uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, int orow_divide, int batch_divide, int target_util){
+uint64_t* yolonet_block_function_1(size_t cid, size_t group_id, bool part1, bool part2, bool part3, int orow_divide, int batch_divide, int target_util){
 #define num_cycle (19+5+3)
 
-  static uint64_t cycles[num_proc][num_cycle];
+  static uint64_t cycles[NUM_CORE][num_cycle];
  
     uint64_t start, end;
     uint64_t total_matmul_cycles = 0, total_conv_cycles = 0, total_pool_cycles = 0, conv_dw_cycles = 0, other_cycles = 0;
@@ -549,7 +549,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           1, 1, 0, false,
     //conv_1_params_yolo.pool_size, conv_1_params_yolo.pool_stride, conv_1_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -566,7 +566,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           conv_1_params_yolo.pool_size, conv_1_params_yolo.pool_stride, conv_1_params_yolo.pool_padding,
 
           (elem_t*)conv_1_out_yolo, (elem_t*)conv_1_out_yolo_pooled,
-    orow_divide, batch_divide, cid, target_util);
+    orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_pool_cycles += end - start;
@@ -589,7 +589,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           1, 1, 0, false,
     //conv_2_params_yolo.pool_size, conv_2_params_yolo.pool_stride, conv_2_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -606,7 +606,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           conv_2_params_yolo.pool_size, conv_2_params_yolo.pool_stride, conv_2_params_yolo.pool_padding,
 
           (elem_t*)conv_2_out_yolo, (elem_t*)conv_2_out_yolo_pooled,
-    orow_divide, batch_divide, cid, target_util);
+    orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_pool_cycles += end - start;
@@ -627,7 +627,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           RELU, conv_3_params_yolo.output_scale, 0,
           conv_3_params_yolo.pool_size, 0, conv_3_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -642,7 +642,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
             (elem_t*)conv_3_out_yolo, (elem_t*)conv_4_w_yolo, (acc_t*)conv_4_b_yolo, (elem_t*)conv_4_out_yolo,
             NO_ACTIVATION, conv_4_params_yolo.output_scale, 0, true,
             WS,
-            orow_divide, batch_divide, cid, target_util);
+            orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -667,7 +667,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           1, 1, 0, false,
     //conv_5_params_yolo.pool_size, conv_5_params_yolo.pool_stride, conv_5_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -684,7 +684,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           conv_5_params_yolo.pool_size, conv_5_params_yolo.pool_stride, conv_5_params_yolo.pool_padding,
 
           (elem_t*)conv_5_out_yolo, (elem_t*)conv_5_out_yolo_pooled,
-    orow_divide, batch_divide, cid, target_util);
+    orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_pool_cycles += end - start;
@@ -706,7 +706,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           RELU, conv_6_params_yolo.output_scale, 0,
           conv_6_params_yolo.pool_size, 0, conv_6_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -721,7 +721,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
             (elem_t*)conv_6_out_yolo, (elem_t*)conv_7_w_yolo, (acc_t*)conv_7_b_yolo, (elem_t*)conv_7_out_yolo,
             NO_ACTIVATION, conv_7_params_yolo.output_scale, 0, true,
             WS,
-            orow_divide, batch_divide, cid, target_util);
+            orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -744,7 +744,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           1, 1, 0, false,
       //conv_8_params_yolo.pool_size, conv_8_params_yolo.pool_stride, conv_8_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -761,7 +761,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           conv_8_params_yolo.pool_size, conv_8_params_yolo.pool_stride, conv_8_params_yolo.pool_padding,
 
           (elem_t*)conv_8_out_yolo, (elem_t*)conv_8_out_yolo_pooled,
-      orow_divide, batch_divide, cid, target_util);
+      orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_pool_cycles += end - start;
@@ -783,7 +783,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           RELU, conv_9_params_yolo.output_scale, 0,
           conv_9_params_yolo.pool_size, 0, conv_9_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -798,7 +798,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
             (elem_t*)conv_9_out_yolo, (elem_t*)conv_10_w_yolo, (acc_t*)conv_10_b_yolo, (elem_t*)conv_10_out_yolo,
             NO_ACTIVATION, conv_10_params_yolo.output_scale, 0, true,
             WS,
-            orow_divide, batch_divide, cid, target_util);
+            orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -821,7 +821,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           RELU, conv_11_params_yolo.output_scale, 0,
           conv_11_params_yolo.pool_size, 0, conv_11_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -836,7 +836,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
             (elem_t*)conv_11_out_yolo, (elem_t*)conv_12_w_yolo, (acc_t*)conv_12_b_yolo, (elem_t*)conv_12_out_yolo,
             NO_ACTIVATION, conv_12_params_yolo.output_scale, 0, true,
             WS,
-            orow_divide, batch_divide, cid, target_util);
+            orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -860,7 +860,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           1, 1, 0, false,
       //conv_13_params_yolo.pool_size, conv_13_params_yolo.pool_stride, conv_13_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -877,7 +877,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           conv_13_params_yolo.pool_size, conv_13_params_yolo.pool_stride, conv_13_params_yolo.pool_padding,
 
           (elem_t*)conv_13_out_yolo, (elem_t*)conv_13_out_yolo_pooled,
-      orow_divide, batch_divide, cid, target_util);
+      orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_pool_cycles += end - start;
@@ -902,7 +902,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           RELU, conv_14_params_yolo.output_scale, 0,
           conv_14_params_yolo.pool_size, 0, conv_14_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -917,7 +917,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
             (elem_t*)conv_14_out_yolo, (elem_t*)conv_15_w_yolo, (acc_t*)conv_15_b_yolo, (elem_t*)conv_15_out_yolo,
             NO_ACTIVATION, conv_15_params_yolo.output_scale, 0, true,
             WS,
-            orow_divide, batch_divide, cid, target_util);
+            orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -940,7 +940,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           RELU, conv_16_params_yolo.output_scale, 0,
           conv_16_params_yolo.pool_size, 0, conv_16_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -955,7 +955,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
             (elem_t*)conv_16_out_yolo, (elem_t*)conv_17_w_yolo, (acc_t*)conv_17_b_yolo, (elem_t*)conv_17_out_yolo,
             NO_ACTIVATION, conv_17_params_yolo.output_scale, 0, true,
             WS,
-            orow_divide, batch_divide, cid, target_util);
+            orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -979,7 +979,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           1, 1, 0, false,
       //conv_18_params_yolo.pool_size, conv_18_params_yolo.pool_stride, conv_18_params_yolo.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -994,7 +994,7 @@ uint64_t* yolonet_block_function_1(int cid, bool part1, bool part2, bool part3, 
           (elem_t*)conv_18_out_yolo, (elem_t*)conv_19_w_yolo, (acc_t*)conv_19_b_yolo, (elem_t*)conv_19_out_yolo,
           RELU, conv_19_params_yolo.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;

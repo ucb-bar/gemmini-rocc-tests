@@ -15,7 +15,7 @@
 #include "include/gemmini_params.h"
 
 #define GEMMINI_ASSERTIONS
-#define PRINT_CALM 0
+#define PRINT_CALM 1
 
 // Accelerator interface
 #include "rocc-software/src/xcustom.h"
@@ -60,7 +60,21 @@
 #define RELU6 2
 
 #define CACHE_SIZE (1e6/DIM)
+#define DRAM_MAX_UTIL 120
 #define DRAM_BW 0.5
+
+#ifndef NUM_GROUP
+#define NUM_CORE 4
+#define NUM_GROUP 2
+#endif
+
+// dram_bw -1: disable bandwidth modulation (window, target load to 0)
+// dram_bw 0: monitor gemmini_dram_util and priority score 
+// dram_bw 0-100: use dram_bw given to compute window, target load 
+static int gemmini_dram_util[NUM_GROUP] = {0}; // only the cid == 0 updates it
+static int gemmini_score[NUM_GROUP] = {0}; // priority score scaled to 100 (for bw division when it gets over the limit)
+
+
 #define MAX(X, Y) (X > Y ? X : Y)
 #define MIN(X, Y) (X < Y ? X : Y)
 
@@ -345,7 +359,7 @@ static size_t tiled_matmul_total_acc_rows(size_t I, size_t J) {
 }
 
 size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, size_t dim_K_in,
-  size_t orow_divide, size_t batch_divide, size_t cid, size_t args[], int dram_util){
+  size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id, size_t args[], int dram_util){
 
   int num_core = orow_divide > batch_divide ? orow_divide : batch_divide;
   if (orow_divide > 1 && batch_divide > 1)
@@ -567,9 +581,35 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
   uint64_t mem_ideal = total_from_dram / DRAM_BW + (total_mem - total_from_dram/num_core);
   uint64_t ideal_prediction = MAX(mem_ideal, ideal_runtime) + MIN(mem_ideal, ideal_runtime) * 0.5;
 
-  uint64_t prediction = (100 * total_from_dram) / (DRAM_BW * dram_util);
+  if(cid == 0 && dram_util == -1) gemmini_dram_util[group_id] = 0;
 
   int ideal_dram_bw_exp = (100 * total_from_dram) / ideal_prediction;
+  int ideal_dram_util = (ideal_dram_bw_exp / DRAM_BW);
+
+  int other_dram_util = 0;
+  int other_score = 0;
+  int this_score = gemmini_score[group_id];
+  for(int i = 0; i < NUM_GROUP; i++)
+    if(i != group_id) {
+      other_score += gemmini_score[i];
+      other_dram_util += gemmini_dram_util[i];
+    }
+
+  if(dram_util == 0){
+    if(ideal_dram_util + other_dram_util > DRAM_MAX_UTIL){
+      int excess = ideal_dram_util + other_dram_util - DRAM_MAX_UTIL;
+      dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util)); 
+      //dram_util = (int)((DRAM_MAX_UTIL * ideal_dram_util * this_score) / (this_score * ideal_dram_util + other_score * other_dram_util));
+    }
+    else{
+      dram_util = -1; // don't really have to use memory modulation
+    }
+    if(cid == 0) gemmini_dram_util[group_id] = ideal_dram_util;
+  }
+
+
+  uint64_t prediction = (100 * total_from_dram) / (DRAM_BW * dram_util);
+
   int window = prediction / num_tiles;
   int target_load = (int)((A_load + B_load + D_load)/num_tiles);
   if(prediction < ideal_prediction || num_tiles < 4){
@@ -577,17 +617,20 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
     target_load = 0;
   } // computation dominant
 
+  window = (dram_util == -1) ? 0 : window;
+  target_load = (dram_util == -1) ? 0 : target_load;
+
 #if PRINT_CALM == 1
   printf("window: %d, target load: %d, prediction cycles: %llu \n", window, target_load, prediction);
   // for pre-compilation
-  printf("compute_ideal: %llu, mem_ideal: %llu, ideal prediction cycles: %llu, ideal dram bw usage: %d\n", ideal_runtime, mem_ideal, ideal_prediction, ideal_dram_bw_exp);
+  printf("compute_ideal: %llu, mem_ideal: %llu, ideal prediction cycles: %llu, ideal dram bw usage: %d, ideal dram bw util: %d, result dram bw util: %d\n", ideal_runtime, mem_ideal, ideal_prediction, ideal_dram_bw_exp, ideal_dram_util, dram_util);
   printf("total A load: %d, total B load: %d, total D load: %d \n", A_load, B_load, D_load);
   printf("A size: %d, B size: %d, C size: %d \n", A_size, B_size, C_size);
   printf("inner tile A: %d, inner tile B: %d, outer loop iteration A: %d, outer loop iteration B: %d \n", inner_tile_A, inner_tile_B, outer_loop_iter_A, outer_loop_iter_B);
   printf("number of tile: %d, target load per tile: %d, ideal runtime: %llu\n\n", num_tiles, (A_load + B_load + D_load) / num_tiles, ideal_runtime);
 #endif
-  args[0] = (dram_util == 0) ? 0 : window;
-  args[1] = (dram_util == 0) ? 0 : target_load;
+  args[0] = window;
+  args[1] = target_load;
   args[2] = ideal_prediction;
   return args;
 }
@@ -1985,7 +2028,7 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
     int stride, int dilation, int padding, int kernel_dim,
     int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
-    size_t orow_divide, size_t batch_divide, size_t cid){
+    size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id){
 
   const bool no_pool = pool_stride == 0;
   if (no_pool) { 
@@ -2291,8 +2334,33 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
   uint64_t mem_ideal = total_from_dram / DRAM_BW + (total_mem-total_from_dram/num_core);
   uint64_t ideal_prediction = MAX(mem_ideal, ideal_runtime) + MIN(mem_ideal, ideal_runtime) * 0.5;
 
-  uint64_t prediction = (100 * total_from_dram) / (DRAM_BW * dram_util);
   int ideal_dram_bw_exp = (100 * total_from_dram) / ideal_prediction;
+  int ideal_dram_util = (ideal_dram_bw_exp / DRAM_BW);
+
+  if(cid == 0 && dram_util == -1) gemmini_dram_util[group_id] = 0;
+
+  int other_dram_util = 0;
+  int other_score = 0;
+  int this_score = gemmini_score[group_id];
+  for(int i = 0; i < NUM_GROUP; i++)
+    if(i != group_id) {
+      other_score += gemmini_score[i];
+      other_dram_util += gemmini_dram_util[i];
+    }
+
+  if(dram_util == 0){
+    if(ideal_dram_util + other_dram_util > DRAM_MAX_UTIL){
+      int excess = ideal_dram_util + other_dram_util - DRAM_MAX_UTIL;
+      dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util)); 
+      //dram_util = (int)((DRAM_MAX_UTIL * ideal_dram_util * this_score) / (this_score * ideal_dram_util + other_score * other_dram_util));
+    }
+    else{
+      dram_util = -1; // don't really have to use memory modulation
+    }
+    if(cid == 0) gemmini_dram_util[group_id] = ideal_dram_util;
+  }
+
+  uint64_t prediction = (100 * total_from_dram) / (DRAM_BW * dram_util);
   int window = prediction / num_tiles;
   int target_load = (int)((weight_load + input_load + bias_load)/num_tiles);
   if(prediction < ideal_prediction || num_tiles < 4){
@@ -2300,10 +2368,14 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
     target_load = 0;
   } // computation dominant
 
+  window = (dram_util == -1) ? 0 : window;
+  target_load = (dram_util == -1) ? 0 : target_load;
+
+
 #if PRINT_CALM == 1 
   printf("window: %d, target load: %d, prediction cycles: %llu, num tiles: %d \n", window, target_load, prediction, num_tiles);
   // for pre-compilation
-  printf("compute_ideal: %llu, mem_ideal: %llu, ideal prediction cycles: %llu, ideal dram bw usage: %d\n", ideal_runtime, mem_ideal, ideal_prediction, ideal_dram_bw_exp);
+  printf("compute_ideal: %llu, mem_ideal: %llu, ideal prediction cycles: %llu, ideal dram bw usage: %d, ideal dram bw util: %d, result dram bw util: %d\n", ideal_runtime, mem_ideal, ideal_prediction, ideal_dram_bw_exp, ideal_dram_util, dram_util);
  
   // for pre-compilation
   printf("total A load: %d, total B load: %d, total D load: %d \n", input_load, weight_load, bias_load);
@@ -2311,6 +2383,7 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
   printf("inner tile A: %d, inner tile B: %d, outer loop iteration A: %d, outer loop iteration B: %d \n", inner_tile_A, inner_tile_B, outer_loop_iter_A, outer_loop_iter_B);
   printf("number of tile: %d, target load per tile: %d, ideal runtime: %llu\n\n", num_tiles_store, (input_load + weight_load + bias_load) / num_tiles_store, ideal_runtime);
 #endif
+
   args[0] = tile_args[0];
   args[1] = tile_args[1];
   args[2] = tile_args[2];
@@ -2319,14 +2392,11 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
   args[5] = tile_args[5];
   args[6] = tile_args[6];
   //return:  gemmini_config_calm(window, target_load);
-  args[7] = (dram_util == 0) ? 0 : (int) window;
-  args[8] = (dram_util == 0) ? 0 : (int) target_load;
+  args[7] = window;
+  args[8] = target_load;
   args[9] = ideal_prediction;
   return args;
 }
-
-
-
 
 static void conv_cpu_without_pool(
         int batch_size, int in_dim, int in_channels,
@@ -2784,7 +2854,7 @@ static void tiled_conv_A_stride_cid(
     int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
     enum tiled_matmul_type_t tiled_conv_type,
-    size_t och_divide, size_t orow_divide, size_t cid,
+    size_t och_divide, size_t orow_divide, size_t cid, size_t group_id,
     int window, int target_load){
 
   int input_dilation = 1;
@@ -2954,7 +3024,7 @@ static void tiled_conv_A_stride_auto_stride( // for sw padding
     int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
     enum tiled_matmul_type_t tiled_conv_type,
-    size_t orow_divide, size_t batch_divide, size_t cid, 
+    size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id, 
     int target_util){
 
   const bool no_pool = pool_stride == 0;
@@ -2972,7 +3042,7 @@ static void tiled_conv_A_stride_auto_stride( // for sw padding
 
    // tiling, calm configure
    int args_in[10] = {target_util, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-   int * args = tiled_conv_A_stride_bubble_calculate(args_in, batch_size, in_dim, in_channels, out_channels, out_dim, stride, dilation, padding, kernel_dim, pool_size, pool_stride, pool_padding, pool_ceil_dim, orow_divide, batch_divide, cid);
+   int * args = tiled_conv_A_stride_bubble_calculate(args_in, batch_size, in_dim, in_channels, out_channels, out_dim, stride, dilation, padding, kernel_dim, pool_size, pool_stride, pool_padding, pool_ceil_dim, orow_divide, batch_divide, cid, group_id);
 
   int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
   if (pool_ceil_dim)
@@ -3037,7 +3107,7 @@ static void tiled_conv_A_stride_auto_stride( // for sw padding
           act, scale, relu6_shift,
           pool_size, no_pool ? 0 : pool_stride, pool_padding, pool_ceil_dim,
 
-          tiled_conv_type, och_divide, orow_divide, orow_cid,
+          tiled_conv_type, och_divide, orow_divide, orow_cid, group_id,
           window, target_load);
 
   }else{
@@ -3060,7 +3130,7 @@ static void tiled_conv_A_stride_auto_stride( // for sw padding
         act, scale, relu6_shift,
         pool_size, no_pool ? 0 : pool_stride, pool_padding, pool_ceil_dim,
 
-        tiled_conv_type, och_divide, 1, orow_cid,
+        tiled_conv_type, och_divide, 1, orow_cid, group_id,
         window, target_load);
 
   }
@@ -3082,7 +3152,7 @@ static void tiled_conv_A_stride_auto_cid(
     int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
     enum tiled_matmul_type_t tiled_conv_type,
-    size_t orow_divide, size_t batch_divide, size_t cid,
+    size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id,
     int target_util){
 
   int in_stride = (in_channels % 128 == 0) ? in_channels + 64 : in_channels;
@@ -3104,7 +3174,7 @@ static void tiled_conv_A_stride_auto_cid(
      act, scale, relu6_shift,
      pool_size, pool_stride, pool_padding, pool_ceil_dim,
      tiled_conv_type,
-     orow_divide, batch_divide, cid,
+     orow_divide, batch_divide, cid, group_id,
 
      target_util);
 }
@@ -3486,7 +3556,7 @@ int* tiled_resadd_bubble_calculate(
     int out_args[], // window, bubble, ideal cycles, tiling factors
     size_t I, size_t J, 
     size_t orow_divide, size_t batch_divide,
-    int dram_util){
+    size_t group_id, int dram_util){
 
   uint64_t total_from_dram = I * (ceil_divide_int(J, DIM)) * 2;
   if (total_from_dram > CACHE_SIZE) total_from_dram += I * (ceil_divide_int(J, DIM));
@@ -3547,6 +3617,30 @@ int* tiled_resadd_bubble_calculate(
   int A_size = I * ceil_divide_int(J, DIM);
 
   int ideal_dram_bw_exp = (100 * total_from_dram) / ideal_prediction;
+  int ideal_dram_util = (ideal_dram_bw_exp / DRAM_BW);
+
+  int other_dram_util = 0;
+  int other_score = 0;
+  int this_score = gemmini_score[group_id];
+  for(int i = 0; i < NUM_GROUP; i++)
+    if(i != group_id) {
+      other_score += gemmini_score[i];
+      other_dram_util += gemmini_dram_util[i];
+    }
+  
+  if(dram_util == 0){
+    if(ideal_dram_util + other_dram_util > DRAM_MAX_UTIL){
+      int excess = ideal_dram_util + other_dram_util - DRAM_MAX_UTIL;
+      dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util)); 
+      //dram_util = (int)((DRAM_MAX_UTIL * ideal_dram_util * this_score) / (this_score * ideal_dram_util + other_score * other_dram_util));
+    }
+    else{
+      dram_util = -1; // don't really have to use memory modulation
+    }
+    // skip for resadd
+    //if(cid == 0) gemmini_dram_util[group_id] = ideal_dram_bw_exp;
+  }
+
   uint64_t prediction = (100 * total_from_dram) / (DRAM_BW * dram_util);
   int window = prediction / num_tile;
   int target_load = (int)(total_load /num_tile);
@@ -3559,13 +3653,13 @@ int* tiled_resadd_bubble_calculate(
 #if PRINT_CALM == 1
   printf("window: %d, target load: %d, prediction cycles: %llu \n", window, target_load, prediction);
   // for pre-compilation 
-  printf("ideal prediction cycles: %llu, expected dram bw x 100: %d \n", ideal_prediction, ideal_dram_bw_exp);
+  printf("ideal prediction cycles: %llu, expected dram bw x 100: %d, ideal dram bw util: %d, real dram util: %d \n", ideal_prediction, ideal_dram_bw_exp, ideal_dram_util, dram_util);
   printf("total from dram resadd: %d\n", total_from_dram);
   printf("resadd A size: %d, B size: %d, C size: %d, number of tile: %d, target load per tile: %d\n\n", A_size, A_size, A_size, num_tile, target_load);
 #endif
 
-  out_args[0] = (dram_util == 0) ? 0 : window;
-  out_args[1] = (dram_util == 0) ? 0 : target_load;
+  out_args[0] = (dram_util == -1) ? 0 : window;
+  out_args[1] = (dram_util == -1) ? 0 : target_load;
   out_args[2] = ideal_prediction;
   out_args[3] = tile_I;
   out_args[4] = tile_J;
@@ -3583,7 +3677,7 @@ static void tiled_resadd_auto_stride(size_t I, size_t J,
     elem_t * C,
     bool relu,
     enum tiled_matmul_type_t matadd_type,
-    size_t orow_divide, size_t batch_divide, size_t cid,
+    size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id,
     int target_util) {
   if (matadd_type == CPU) {
     resadd_cpu(I, J,
@@ -3595,7 +3689,7 @@ static void tiled_resadd_auto_stride(size_t I, size_t J,
   size_t orow_cid = (size_t)(cid % orow_divide);
 
   int args_in[] = {0, 0, 0, 0, 0};
-  int * args = tiled_resadd_bubble_calculate(args_in, I, J, orow_divide, batch_divide, target_util);
+  int * args = tiled_resadd_bubble_calculate(args_in, I, J, orow_divide, batch_divide, group_id, target_util);
 
   size_t batch_size = I / batch_divide;
   I = batch_size;
@@ -3685,7 +3779,7 @@ static void tiled_resadd_auto_cid(size_t I, size_t J,
     elem_t * C,
     bool relu,
     enum tiled_matmul_type_t matadd_type,
-    size_t orow_divide, size_t batch_divide, size_t cid,
+    size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id,
     int target_util) {
   
   size_t J_stride = (J % 128 == 0) ? J + 64 : J;
@@ -3693,7 +3787,7 @@ static void tiled_resadd_auto_cid(size_t I, size_t J,
       J_stride,
       A, B, C,
       relu, matadd_type,
-      orow_divide, batch_divide, cid,
+      orow_divide, batch_divide, cid, group_id,
 		  target_util);
 
 }
@@ -3825,7 +3919,7 @@ static void tiled_pool(
     int act, acc_scale_t scale, size_t relu6_shift,
     int pool_size, int pool_stride, int pool_padding,
 
-		size_t orow_divide, size_t cid, int window, int target_load) {
+		size_t orow_divide, size_t cid, size_t group_id, int window, int target_load) {
 
 	 //int out_stride = channels * och_divide;
 
@@ -3890,7 +3984,7 @@ int* tiled_pool_bubble_calculate(
     int batch_size, int in_dim, int channels,
     int out_dim,
     int pool_size, int pool_stride, int pool_padding,
-    bool row_divide, size_t och_divide, size_t batch_divide, size_t cid,
+    bool row_divide, size_t och_divide, size_t batch_divide, size_t cid, size_t group_id,
     int target_util){
   
   batch_size = batch_size/batch_divide;
@@ -4008,7 +4102,7 @@ static void tiled_pool_auto_cid(int batch_size, int channels, int in_dim,
     int pool_size, int pool_stride, int pool_padding,
     const elem_t * A,
     elem_t * C,
-    size_t och_divide, size_t batch_divide, size_t cid,
+    size_t och_divide, size_t batch_divide, size_t cid, size_t group_id,
     int target_util) {
   
   bool relu = true;
@@ -4017,7 +4111,7 @@ static void tiled_pool_auto_cid(int batch_size, int channels, int in_dim,
   bool row_divide = (och_divide > 1 && channels < 64);
   int * args;
   int args_in[] = {0, 0, 0, 0};
-  args = tiled_pool_bubble_calculate(args_in, batch_size, in_dim, channels, pool_out_dim, pool_size, pool_stride, pool_padding, row_divide, och_divide, batch_divide, cid, target_util);
+  args = tiled_pool_bubble_calculate(args_in, batch_size, in_dim, channels, pool_out_dim, pool_size, pool_stride, pool_padding, row_divide, och_divide, batch_divide, cid, group_id, target_util);
   
   size_t batch_cid = (size_t)(cid / och_divide);
   size_t och_cid = (size_t)(cid % och_divide);
@@ -4129,7 +4223,7 @@ static void tiled_pool_auto_cid(int batch_size, int channels, int in_dim,
         A + batch_in_offset + out_offset, C + batch_out_offset + out_offset,	
 				RELU, MVIN_SCALE_IDENTITY, 0,
 				pool_size, pool_stride, pool_padding,
-				och_divide, cid, window, target_load);
+				och_divide, cid, group_id, window, target_load);
   
   //printf("C dram addr after pool: 0x%08lx\n", C);
 }

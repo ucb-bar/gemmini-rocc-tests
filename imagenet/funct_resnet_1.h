@@ -13,13 +13,13 @@
 
 
 #ifndef BAREMETAL
-uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool part4, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_res){
+uint64_t* resnet_function_1(size_t cid, size_t group_id, bool part1, bool part2, bool part3, bool part4, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_res){
 #else
-uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool part4, int orow_divide, int batch_divide, int target_util){
+uint64_t* resnet_function_1(size_t cid, size_t group_id, bool part1, bool part2, bool part3, bool part4, int orow_divide, int batch_divide, int target_util){
 #endif
 
 #define num_cycle (20+34+16+3)
-  static uint64_t cycles[num_proc][num_cycle];
+  static uint64_t cycles[NUM_CORE][num_cycle];
     uint64_t start, end;
     uint64_t total_conv_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, total_resadd_cycles = 0, other_cycles = 0;
     uint64_t conv_cycles[54];//[20];
@@ -43,12 +43,12 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           conv_1_params_res1.stride, 1, conv_1_params_res1.padding, conv_1_params_res1.kernel_size,
           conv_1_params_res1.out_stride,
 
-          (elem_t*)images, (elem_t*)conv_1_w_res1, (acc_t*)conv_1_b_res1, (elem_t*)conv_1_out_res1_pooled,
+          (elem_t*)image3, (elem_t*)conv_1_w_res1, (acc_t*)conv_1_b_res1, (elem_t*)conv_1_out_res1_pooled,
 
           RELU, conv_1_params_res1.output_scale, 0,
           conv_1_params_res1.pool_size, conv_1_params_res1.pool_stride, conv_1_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -63,7 +63,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_1_out_res1_pooled, (elem_t*)conv_2_w_res1, (acc_t*)conv_2_b_res1, (elem_t*)conv_2_out_res1,
           RELU, conv_2_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -86,7 +86,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_3_params_res1.output_scale, 0,
           conv_3_params_res1.pool_size, 0, conv_3_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -102,7 +102,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_3_out_res1, (elem_t*)conv_4_w_res1, (acc_t*)conv_4_b_res1, (elem_t*)conv_4_out_res1,
           NO_ACTIVATION, conv_4_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -118,7 +118,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_1_out_res1_pooled, (elem_t*)conv_5_w_res1, (acc_t*)conv_5_b_res1, (elem_t*)conv_5_out_res1,
           NO_ACTIVATION, conv_5_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -137,7 +137,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_4_out_res1,
           (elem_t*)conv_4_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -152,7 +152,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_4_out_res1, (elem_t*)conv_6_w_res1, (acc_t*)conv_6_b_res1, (elem_t*)conv_6_out_res1,
           RELU, conv_6_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -174,7 +174,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_7_params_res1.output_scale, 0,
           conv_7_params_res1.pool_size, 0, conv_7_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -189,7 +189,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_7_out_res1, (elem_t*)conv_8_w_res1, (acc_t*)conv_8_b_res1, (elem_t*)conv_8_out_res1,
           NO_ACTIVATION, conv_8_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -208,7 +208,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_8_out_res1,
           (elem_t*)conv_8_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -223,7 +223,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_8_out_res1, (elem_t*)conv_9_w_res1, (acc_t*)conv_9_b_res1, (elem_t*)conv_9_out_res1,
           RELU, conv_9_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -245,7 +245,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_10_params_res1.output_scale, 0,
           conv_10_params_res1.pool_size, 0, conv_10_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -260,7 +260,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_10_out_res1, (elem_t*)conv_11_w_res1, (acc_t*)conv_11_b_res1, (elem_t*)conv_11_out_res1,
           NO_ACTIVATION, conv_11_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -279,7 +279,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_11_out_res1,
           (elem_t*)conv_11_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -294,7 +294,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_11_out_res1, (elem_t*)conv_12_w_res1, (acc_t*)conv_12_b_res1, (elem_t*)conv_12_out_res1,
           RELU, conv_12_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -318,7 +318,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_13_params_res1.output_scale, 0,
           conv_13_params_res1.pool_size, 0, conv_13_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -333,7 +333,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_13_out_res1, (elem_t*)conv_14_w_res1, (acc_t*)conv_14_b_res1, (elem_t*)conv_14_out_res1,
           NO_ACTIVATION, conv_14_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -356,7 +356,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           NO_ACTIVATION, conv_15_params_res1.output_scale, 0,
           conv_15_params_res1.pool_size, 0, conv_15_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -375,7 +375,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_14_out_res1,
           (elem_t*)conv_14_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -390,7 +390,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_14_out_res1, (elem_t*)conv_16_w_res1, (acc_t*)conv_16_b_res1, (elem_t*)conv_16_out_res1,
           RELU, conv_16_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -412,7 +412,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_17_params_res1.output_scale, 0,
           conv_17_params_res1.pool_size, 0, conv_17_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -427,7 +427,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_17_out_res1, (elem_t*)conv_18_w_res1, (acc_t*)conv_18_b_res1, (elem_t*)conv_18_out_res1,
           NO_ACTIVATION, conv_18_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -446,7 +446,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_18_out_res1,
           (elem_t*)conv_18_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -461,7 +461,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_18_out_res1, (elem_t*)conv_19_w_res1, (acc_t*)conv_19_b_res1, (elem_t*)conv_19_out_res1,
           RELU, conv_19_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -483,7 +483,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_20_params_res1.output_scale, 0,
           conv_20_params_res1.pool_size, 0, conv_20_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -498,7 +498,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_20_out_res1, (elem_t*)conv_21_w_res1, (acc_t*)conv_21_b_res1, (elem_t*)conv_21_out_res1,
           NO_ACTIVATION, conv_21_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -517,7 +517,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_21_out_res1,
           (elem_t*)conv_21_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -532,7 +532,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_21_out_res1, (elem_t*)conv_22_w_res1, (acc_t*)conv_22_b_res1, (elem_t*)conv_22_out_res1,
           RELU, conv_22_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -554,7 +554,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_23_params_res1.output_scale, 0,
           conv_23_params_res1.pool_size, 0, conv_23_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -569,7 +569,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_23_out_res1, (elem_t*)conv_24_w_res1, (acc_t*)conv_24_b_res1, (elem_t*)conv_24_out_res1,
           NO_ACTIVATION, conv_24_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -588,7 +588,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_24_out_res1,
           (elem_t*)conv_24_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -603,7 +603,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_24_out_res1, (elem_t*)conv_25_w_res1, (acc_t*)conv_25_b_res1, (elem_t*)conv_25_out_res1,
           RELU, conv_25_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -627,7 +627,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_26_params_res1.output_scale, 0,
           conv_26_params_res1.pool_size, 0, conv_26_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -642,7 +642,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_26_out_res1, (elem_t*)conv_27_w_res1, (acc_t*)conv_27_b_res1, (elem_t*)conv_27_out_res1,
           NO_ACTIVATION, conv_27_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -665,7 +665,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           NO_ACTIVATION, conv_28_params_res1.output_scale, 0,
           conv_28_params_res1.pool_size, 0, conv_28_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -684,7 +684,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_27_out_res1,
           (elem_t*)conv_27_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -699,7 +699,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_27_out_res1, (elem_t*)conv_29_w_res1, (acc_t*)conv_29_b_res1, (elem_t*)conv_29_out_res1,
           RELU, conv_29_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -721,7 +721,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_30_params_res1.output_scale, 0,
           conv_30_params_res1.pool_size, 0, conv_30_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -736,7 +736,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_30_out_res1, (elem_t*)conv_31_w_res1, (acc_t*)conv_31_b_res1, (elem_t*)conv_31_out_res1,
           NO_ACTIVATION, conv_31_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -755,7 +755,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_31_out_res1,
           (elem_t*)conv_31_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -770,7 +770,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_31_out_res1, (elem_t*)conv_32_w_res1, (acc_t*)conv_32_b_res1, (elem_t*)conv_32_out_res1,
           RELU, conv_32_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -792,7 +792,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_33_params_res1.output_scale, 0,
           conv_33_params_res1.pool_size, 0, conv_33_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -807,7 +807,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_33_out_res1, (elem_t*)conv_34_w_res1, (acc_t*)conv_34_b_res1, (elem_t*)conv_34_out_res1,
           NO_ACTIVATION, conv_34_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -826,7 +826,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_34_out_res1,
           (elem_t*)conv_34_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -841,7 +841,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_34_out_res1, (elem_t*)conv_35_w_res1, (acc_t*)conv_35_b_res1, (elem_t*)conv_35_out_res1,
           RELU, conv_35_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -863,7 +863,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_36_params_res1.output_scale, 0,
           conv_36_params_res1.pool_size, 0, conv_36_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -878,7 +878,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_36_out_res1, (elem_t*)conv_37_w_res1, (acc_t*)conv_37_b_res1, (elem_t*)conv_37_out_res1,
           NO_ACTIVATION, conv_37_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -897,7 +897,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_37_out_res1,
           (elem_t*)conv_37_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -912,7 +912,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_37_out_res1, (elem_t*)conv_38_w_res1, (acc_t*)conv_38_b_res1, (elem_t*)conv_38_out_res1,
           RELU, conv_38_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -934,7 +934,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_39_params_res1.output_scale, 0,
           conv_39_params_res1.pool_size, 0, conv_39_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -949,7 +949,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_39_out_res1, (elem_t*)conv_40_w_res1, (acc_t*)conv_40_b_res1, (elem_t*)conv_40_out_res1,
           NO_ACTIVATION, conv_40_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -968,7 +968,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_40_out_res1,
           (elem_t*)conv_40_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -983,7 +983,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_40_out_res1, (elem_t*)conv_41_w_res1, (acc_t*)conv_41_b_res1, (elem_t*)conv_41_out_res1,
           RELU, conv_41_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1005,7 +1005,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_42_params_res1.output_scale, 0,
           conv_42_params_res1.pool_size, 0, conv_42_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1020,7 +1020,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_42_out_res1, (elem_t*)conv_43_w_res1, (acc_t*)conv_43_b_res1, (elem_t*)conv_43_out_res1,
           NO_ACTIVATION, conv_43_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1039,7 +1039,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_43_out_res1,
           (elem_t*)conv_43_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -1054,7 +1054,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
             (elem_t*)conv_43_out_res1, (elem_t*)conv_44_w_res1, (acc_t*)conv_44_b_res1, (elem_t*)conv_44_out_res1,
             RELU, conv_44_params_res1.output_scale, 0, true,
             WS,
-            orow_divide, batch_divide, cid, target_util);
+            orow_divide, batch_divide, cid, group_id, target_util);
 
         end = read_cycles();
         total_conv_cycles += end - start;
@@ -1078,7 +1078,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_45_params_res1.output_scale, 0,
           conv_45_params_res1.pool_size, 0, conv_45_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1093,7 +1093,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_45_out_res1, (elem_t*)conv_46_w_res1, (acc_t*)conv_46_b_res1, (elem_t*)conv_46_out_res1,
           NO_ACTIVATION, conv_46_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1116,7 +1116,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           NO_ACTIVATION, conv_47_params_res1.output_scale, 0,
           conv_47_params_res1.pool_size, 0, conv_47_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1135,7 +1135,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_46_out_res1,
           (elem_t*)conv_46_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -1150,7 +1150,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_46_out_res1, (elem_t*)conv_48_w_res1, (acc_t*)conv_48_b_res1, (elem_t*)conv_48_out_res1,
           RELU, conv_48_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1172,7 +1172,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_49_params_res1.output_scale, 0,
           conv_49_params_res1.pool_size, 0, conv_49_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1187,7 +1187,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_49_out_res1, (elem_t*)conv_50_w_res1, (acc_t*)conv_50_b_res1, (elem_t*)conv_50_out_res1,
           NO_ACTIVATION, conv_50_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1206,7 +1206,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_50_out_res1,
           (elem_t*)conv_50_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -1221,7 +1221,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_50_out_res1, (elem_t*)conv_51_w_res1, (acc_t*)conv_51_b_res1, (elem_t*)conv_51_out_res1,
           RELU, conv_51_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1243,7 +1243,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           RELU, conv_52_params_res1.output_scale, 0,
           conv_52_params_res1.pool_size, 0, conv_52_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1258,7 +1258,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_52_out_res1, (elem_t*)conv_53_w_res1, (acc_t*)conv_53_b_res1, (elem_t*)conv_53_out_res1,
           NO_ACTIVATION, conv_53_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1277,7 +1277,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
           (elem_t*)conv_53_out_res1,
           (elem_t*)conv_53_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -1308,7 +1308,7 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
       tiled_matmul_nn_auto_cid(fc_54_params_res1.I, fc_54_params_res1.J, fc_54_params_res1.K, fc_54_params_res1.out_stride,
           (elem_t*)average, (elem_t*)fc_54_w_res1, (acc_t*)fc_54_b_res1, (elem_t*)fc_54_out_res1,
           NO_ACTIVATION, fc_54_params_res1.output_scale, 0, false,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1336,9 +1336,9 @@ uint64_t* resnet_function_1(int cid, bool part1, bool part2, bool part3, bool pa
 #undef num_cycle
 }
 
-uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, bool part4, int orow_divide, int batch_divide, int target_util){
+uint64_t* resnet_block_function_1(size_t cid, size_t group_id, bool part1, bool part2, bool part3, bool part4, int orow_divide, int batch_divide, int target_util){
 #define num_cycle (20+34+16+3)
-  static uint64_t cycles[num_proc][num_cycle];
+  static uint64_t cycles[NUM_CORE][num_cycle];
     uint64_t start, end;
     uint64_t total_conv_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, total_resadd_cycles = 0, other_cycles = 0;
     uint64_t conv_cycles[54];//[20];
@@ -1362,12 +1362,12 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           conv_1_params_res1.stride, 1, conv_1_params_res1.padding, conv_1_params_res1.kernel_size,
           conv_1_params_res1.out_stride,
 
-          (elem_t*)images, (elem_t*)conv_1_w_res1, (acc_t*)conv_1_b_res1, (elem_t*)conv_1_out_res1_pooled,
+          (elem_t*)image3, (elem_t*)conv_1_w_res1, (acc_t*)conv_1_b_res1, (elem_t*)conv_1_out_res1_pooled,
 
           RELU, conv_1_params_res1.output_scale, 0,
           conv_1_params_res1.pool_size, conv_1_params_res1.pool_stride, conv_1_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1382,7 +1382,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_1_out_res1_pooled, (elem_t*)conv_2_w_res1, (acc_t*)conv_2_b_res1, (elem_t*)conv_2_out_res1,
           RELU, conv_2_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1405,7 +1405,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_3_params_res1.output_scale, 0,
           conv_3_params_res1.pool_size, 0, conv_3_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1421,7 +1421,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_3_out_res1, (elem_t*)conv_4_w_res1, (acc_t*)conv_4_b_res1, (elem_t*)conv_4_out_res1,
           NO_ACTIVATION, conv_4_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1437,7 +1437,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_1_out_res1_pooled, (elem_t*)conv_5_w_res1, (acc_t*)conv_5_b_res1, (elem_t*)conv_5_out_res1,
           NO_ACTIVATION, conv_5_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1456,7 +1456,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_4_out_res1,
           (elem_t*)conv_4_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -1471,7 +1471,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_4_out_res1, (elem_t*)conv_6_w_res1, (acc_t*)conv_6_b_res1, (elem_t*)conv_6_out_res1,
           RELU, conv_6_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1493,7 +1493,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_7_params_res1.output_scale, 0,
           conv_7_params_res1.pool_size, 0, conv_7_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1508,7 +1508,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_7_out_res1, (elem_t*)conv_8_w_res1, (acc_t*)conv_8_b_res1, (elem_t*)conv_8_out_res1,
           NO_ACTIVATION, conv_8_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1527,7 +1527,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_8_out_res1,
           (elem_t*)conv_8_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -1542,7 +1542,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_8_out_res1, (elem_t*)conv_9_w_res1, (acc_t*)conv_9_b_res1, (elem_t*)conv_9_out_res1,
           RELU, conv_9_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1564,7 +1564,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_10_params_res1.output_scale, 0,
           conv_10_params_res1.pool_size, 0, conv_10_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1579,7 +1579,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_10_out_res1, (elem_t*)conv_11_w_res1, (acc_t*)conv_11_b_res1, (elem_t*)conv_11_out_res1,
           NO_ACTIVATION, conv_11_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1598,7 +1598,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_11_out_res1,
           (elem_t*)conv_11_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -1613,7 +1613,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_11_out_res1, (elem_t*)conv_12_w_res1, (acc_t*)conv_12_b_res1, (elem_t*)conv_12_out_res1,
           RELU, conv_12_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1637,7 +1637,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_13_params_res1.output_scale, 0,
           conv_13_params_res1.pool_size, 0, conv_13_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1652,7 +1652,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_13_out_res1, (elem_t*)conv_14_w_res1, (acc_t*)conv_14_b_res1, (elem_t*)conv_14_out_res1,
           NO_ACTIVATION, conv_14_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1675,7 +1675,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           NO_ACTIVATION, conv_15_params_res1.output_scale, 0,
           conv_15_params_res1.pool_size, 0, conv_15_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1694,7 +1694,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_14_out_res1,
           (elem_t*)conv_14_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -1709,7 +1709,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_14_out_res1, (elem_t*)conv_16_w_res1, (acc_t*)conv_16_b_res1, (elem_t*)conv_16_out_res1,
           RELU, conv_16_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1731,7 +1731,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_17_params_res1.output_scale, 0,
           conv_17_params_res1.pool_size, 0, conv_17_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1746,7 +1746,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_17_out_res1, (elem_t*)conv_18_w_res1, (acc_t*)conv_18_b_res1, (elem_t*)conv_18_out_res1,
           NO_ACTIVATION, conv_18_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1765,7 +1765,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_18_out_res1,
           (elem_t*)conv_18_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -1780,7 +1780,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_18_out_res1, (elem_t*)conv_19_w_res1, (acc_t*)conv_19_b_res1, (elem_t*)conv_19_out_res1,
           RELU, conv_19_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1802,7 +1802,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_20_params_res1.output_scale, 0,
           conv_20_params_res1.pool_size, 0, conv_20_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1817,7 +1817,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_20_out_res1, (elem_t*)conv_21_w_res1, (acc_t*)conv_21_b_res1, (elem_t*)conv_21_out_res1,
           NO_ACTIVATION, conv_21_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1836,7 +1836,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_21_out_res1,
           (elem_t*)conv_21_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -1851,7 +1851,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_21_out_res1, (elem_t*)conv_22_w_res1, (acc_t*)conv_22_b_res1, (elem_t*)conv_22_out_res1,
           RELU, conv_22_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1873,7 +1873,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_23_params_res1.output_scale, 0,
           conv_23_params_res1.pool_size, 0, conv_23_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1888,7 +1888,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_23_out_res1, (elem_t*)conv_24_w_res1, (acc_t*)conv_24_b_res1, (elem_t*)conv_24_out_res1,
           NO_ACTIVATION, conv_24_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1907,7 +1907,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_24_out_res1,
           (elem_t*)conv_24_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -1922,7 +1922,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_24_out_res1, (elem_t*)conv_25_w_res1, (acc_t*)conv_25_b_res1, (elem_t*)conv_25_out_res1,
           RELU, conv_25_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1946,7 +1946,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_26_params_res1.output_scale, 0,
           conv_26_params_res1.pool_size, 0, conv_26_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1961,7 +1961,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_26_out_res1, (elem_t*)conv_27_w_res1, (acc_t*)conv_27_b_res1, (elem_t*)conv_27_out_res1,
           NO_ACTIVATION, conv_27_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -1984,7 +1984,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           NO_ACTIVATION, conv_28_params_res1.output_scale, 0,
           conv_28_params_res1.pool_size, 0, conv_28_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2003,7 +2003,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_27_out_res1,
           (elem_t*)conv_27_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -2018,7 +2018,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_27_out_res1, (elem_t*)conv_29_w_res1, (acc_t*)conv_29_b_res1, (elem_t*)conv_29_out_res1,
           RELU, conv_29_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2040,7 +2040,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_30_params_res1.output_scale, 0,
           conv_30_params_res1.pool_size, 0, conv_30_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2055,7 +2055,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_30_out_res1, (elem_t*)conv_31_w_res1, (acc_t*)conv_31_b_res1, (elem_t*)conv_31_out_res1,
           NO_ACTIVATION, conv_31_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2074,7 +2074,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_31_out_res1,
           (elem_t*)conv_31_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -2089,7 +2089,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_31_out_res1, (elem_t*)conv_32_w_res1, (acc_t*)conv_32_b_res1, (elem_t*)conv_32_out_res1,
           RELU, conv_32_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2111,7 +2111,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_33_params_res1.output_scale, 0,
           conv_33_params_res1.pool_size, 0, conv_33_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2126,7 +2126,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_33_out_res1, (elem_t*)conv_34_w_res1, (acc_t*)conv_34_b_res1, (elem_t*)conv_34_out_res1,
           NO_ACTIVATION, conv_34_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2145,7 +2145,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_34_out_res1,
           (elem_t*)conv_34_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -2160,7 +2160,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_34_out_res1, (elem_t*)conv_35_w_res1, (acc_t*)conv_35_b_res1, (elem_t*)conv_35_out_res1,
           RELU, conv_35_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2182,7 +2182,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_36_params_res1.output_scale, 0,
           conv_36_params_res1.pool_size, 0, conv_36_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2197,7 +2197,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_36_out_res1, (elem_t*)conv_37_w_res1, (acc_t*)conv_37_b_res1, (elem_t*)conv_37_out_res1,
           NO_ACTIVATION, conv_37_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2216,7 +2216,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_37_out_res1,
           (elem_t*)conv_37_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -2231,7 +2231,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_37_out_res1, (elem_t*)conv_38_w_res1, (acc_t*)conv_38_b_res1, (elem_t*)conv_38_out_res1,
           RELU, conv_38_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2253,7 +2253,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_39_params_res1.output_scale, 0,
           conv_39_params_res1.pool_size, 0, conv_39_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2268,7 +2268,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_39_out_res1, (elem_t*)conv_40_w_res1, (acc_t*)conv_40_b_res1, (elem_t*)conv_40_out_res1,
           NO_ACTIVATION, conv_40_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2287,7 +2287,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_40_out_res1,
           (elem_t*)conv_40_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -2302,7 +2302,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_40_out_res1, (elem_t*)conv_41_w_res1, (acc_t*)conv_41_b_res1, (elem_t*)conv_41_out_res1,
           RELU, conv_41_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2324,7 +2324,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_42_params_res1.output_scale, 0,
           conv_42_params_res1.pool_size, 0, conv_42_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2339,7 +2339,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_42_out_res1, (elem_t*)conv_43_w_res1, (acc_t*)conv_43_b_res1, (elem_t*)conv_43_out_res1,
           NO_ACTIVATION, conv_43_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2358,7 +2358,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_43_out_res1,
           (elem_t*)conv_43_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -2373,7 +2373,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
             (elem_t*)conv_43_out_res1, (elem_t*)conv_44_w_res1, (acc_t*)conv_44_b_res1, (elem_t*)conv_44_out_res1,
             RELU, conv_44_params_res1.output_scale, 0, true,
             WS,
-            orow_divide, batch_divide, cid, target_util);
+            orow_divide, batch_divide, cid, group_id, target_util);
 
         end = read_cycles();
         total_conv_cycles += end - start;
@@ -2397,7 +2397,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_45_params_res1.output_scale, 0,
           conv_45_params_res1.pool_size, 0, conv_45_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2412,7 +2412,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_45_out_res1, (elem_t*)conv_46_w_res1, (acc_t*)conv_46_b_res1, (elem_t*)conv_46_out_res1,
           NO_ACTIVATION, conv_46_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2435,7 +2435,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           NO_ACTIVATION, conv_47_params_res1.output_scale, 0,
           conv_47_params_res1.pool_size, 0, conv_47_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2454,7 +2454,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_46_out_res1,
           (elem_t*)conv_46_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -2469,7 +2469,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_46_out_res1, (elem_t*)conv_48_w_res1, (acc_t*)conv_48_b_res1, (elem_t*)conv_48_out_res1,
           RELU, conv_48_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2491,7 +2491,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_49_params_res1.output_scale, 0,
           conv_49_params_res1.pool_size, 0, conv_49_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2506,7 +2506,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_49_out_res1, (elem_t*)conv_50_w_res1, (acc_t*)conv_50_b_res1, (elem_t*)conv_50_out_res1,
           NO_ACTIVATION, conv_50_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2525,7 +2525,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_50_out_res1,
           (elem_t*)conv_50_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -2540,7 +2540,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_50_out_res1, (elem_t*)conv_51_w_res1, (acc_t*)conv_51_b_res1, (elem_t*)conv_51_out_res1,
           RELU, conv_51_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2562,7 +2562,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           RELU, conv_52_params_res1.output_scale, 0,
           conv_52_params_res1.pool_size, 0, conv_52_params_res1.pool_padding, false,
 
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2577,7 +2577,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_52_out_res1, (elem_t*)conv_53_w_res1, (acc_t*)conv_53_b_res1, (elem_t*)conv_53_out_res1,
           NO_ACTIVATION, conv_53_params_res1.output_scale, 0, true,
           WS,
-          orow_divide, batch_divide, cid, target_util);
+          orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;
@@ -2596,7 +2596,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
           (elem_t*)conv_53_out_res1,
           (elem_t*)conv_53_out_res1,
           true,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_resadd_cycles += end - start;
@@ -2627,7 +2627,7 @@ uint64_t* resnet_block_function_1(int cid, bool part1, bool part2, bool part3, b
       tiled_matmul_nn_auto_cid(fc_54_params_res1.I, fc_54_params_res1.J, fc_54_params_res1.K, fc_54_params_res1.out_stride,
           (elem_t*)average, (elem_t*)fc_54_w_res1, (acc_t*)fc_54_b_res1, (elem_t*)fc_54_out_res1,
           NO_ACTIVATION, fc_54_params_res1.output_scale, 0, false,
-          WS, orow_divide, batch_divide, cid, target_util);
+          WS, orow_divide, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_conv_cycles += end - start;

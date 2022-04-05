@@ -12,14 +12,14 @@
 #endif
 
 #ifndef BAREMETAL
-uint64_t* squeezenet_function_1(int cid, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_squeeze){
+uint64_t* squeezenet_function_1(size_t cid, size_t group_id, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_squeeze){
 #else
-uint64_t* squeezenet_function_1(int cid, int orow_divide, int batch_divide, int target_util){
+uint64_t* squeezenet_function_1(size_t cid, size_t group_id, int orow_divide, int batch_divide, int target_util){
 #endif
 
 #define num_cycle (26+1+3)
 
-  static uint64_t cycles[num_proc][num_cycle];
+  static uint64_t cycles[NUM_CORE][num_cycle];
     uint64_t start, end;
     uint64_t total_conv_cycles = 0, total_pool_cycles = 0, conv_dw_cycles = 0, other_cycles = 0;
     uint64_t conv_cycles[26];
@@ -33,12 +33,12 @@ uint64_t* squeezenet_function_1(int cid, int orow_divide, int batch_divide, int 
         conv_1_params_squeeze1.stride, 1, conv_1_params_squeeze1.padding, conv_1_params_squeeze1.kernel_size,
         conv_1_params_squeeze1.out_stride,
 
-        (elem_t*)images, (elem_t*)conv_1_w_squeeze1, (acc_t*)conv_1_b_squeeze1, (elem_t*)conv_1_out_squeeze1,
+        (elem_t*)image0, (elem_t*)conv_1_w_squeeze1, (acc_t*)conv_1_b_squeeze1, (elem_t*)conv_1_out_squeeze1,
 
         RELU, conv_1_params_squeeze1.output_scale, 0,
         1, 0, 0, false,
 	//conv_1_params_squeeze1.pool_size, conv_1_params_squeeze1.pool_stride, conv_1_params_squeeze1.pool_padding, false,
-	WS, orow_divide, batch_divide, cid, target_util);
+	WS, orow_divide, batch_divide, cid, group_id, target_util);
         //WS, 2* orow_divide, batch_divide,  cid, target_util);
 
     end = read_cycles();
@@ -59,7 +59,7 @@ uint64_t* squeezenet_function_1(int cid, int orow_divide, int batch_divide, int 
         conv_1_params_squeeze1.stride, 1, conv_1_params_squeeze1.padding, conv_1_params_squeeze1.kernel_size,
         conv_1_params_squeeze1.out_stride,
 
-        (elem_t*)images, (elem_t*)conv_1_w_squeeze1, (acc_t*)conv_1_b_squeeze1, (elem_t*)conv_1_out_squeeze1,
+        (elem_t*)image0, (elem_t*)conv_1_w_squeeze1, (acc_t*)conv_1_b_squeeze1, (elem_t*)conv_1_out_squeeze1,
 
         RELU, conv_1_params_squeeze1.output_scale, 0,
         1, 1, 0, false,
@@ -82,7 +82,7 @@ uint64_t* squeezenet_function_1(int cid, int orow_divide, int batch_divide, int 
         conv_1_params_squeeze1.pool_size, conv_1_params_squeeze1.pool_stride, conv_1_params_squeeze1.pool_padding,
 
         (elem_t*)conv_1_out_squeeze1, (elem_t*)conv_1_out_squeeze1_pooled,
-	orow_divide, batch_divide, cid, target_util);
+	orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_pool_cycles += end - start;
@@ -97,10 +97,11 @@ uint64_t* squeezenet_function_1(int cid, int orow_divide, int batch_divide, int 
         (elem_t*)conv_1_out_squeeze1_pooled, (elem_t*)conv_2_w_squeeze1, (acc_t*)conv_2_b_squeeze1, (elem_t*)conv_2_out_squeeze1,
         RELU, conv_2_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
-pthread_barrier_wait(barrier_squeeze);
-
-
+        orow_divide, batch_divide, cid, group_id, target_util);
+#if THREAD_SYNC == 1
+    pthread_barrier_wait(barrier_squeeze);
+#endif
+ 
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[1] = end - start;
@@ -114,7 +115,7 @@ pthread_barrier_wait(barrier_squeeze);
         (elem_t*)conv_2_out_squeeze1, (elem_t*)conv_3_w_squeeze1, (acc_t*)conv_3_b_squeeze1, (elem_t*)conv_4_out_squeeze1,
         RELU, conv_3_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -138,7 +139,7 @@ pthread_barrier_wait(barrier_squeeze);
         RELU, conv_4_params_squeeze1.output_scale, 0,
         conv_4_params_squeeze1.pool_size, 0, conv_4_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -155,7 +156,7 @@ pthread_barrier_wait(barrier_squeeze);
         (elem_t*)conv_4_out_squeeze1, (elem_t*)conv_5_w_squeeze1, (acc_t*)conv_5_b_squeeze1, (elem_t*)conv_5_out_squeeze1,
         RELU, conv_5_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -176,7 +177,7 @@ pthread_barrier_wait(barrier_squeeze);
         RELU, conv_6_params_squeeze1.output_scale, 0,
         conv_6_params_squeeze1.pool_size, conv_6_params_squeeze1.pool_stride, conv_6_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -200,7 +201,7 @@ pthread_barrier_wait(barrier_squeeze);
         RELU, conv_7_params_squeeze1.output_scale, 0,
         conv_7_params_squeeze1.pool_size, conv_7_params_squeeze1.pool_stride, conv_7_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -217,7 +218,7 @@ pthread_barrier_wait(barrier_squeeze);
         (elem_t*)conv_7_out_squeeze1_pooled, (elem_t*)conv_8_w_squeeze1, (acc_t*)conv_8_b_squeeze1, (elem_t*)conv_8_out_squeeze1,
         RELU, conv_8_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -232,7 +233,7 @@ pthread_barrier_wait(barrier_squeeze);
         (elem_t*)conv_8_out_squeeze1, (elem_t*)conv_9_w_squeeze1, (acc_t*)conv_9_b_squeeze1, (elem_t*)conv_10_out_squeeze1,
         RELU, conv_9_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -256,7 +257,7 @@ pthread_barrier_wait(barrier_squeeze);
         RELU, conv_10_params_squeeze1.output_scale, 0,
         conv_10_params_squeeze1.pool_size, 0, conv_10_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -273,7 +274,7 @@ pthread_barrier_wait(barrier_squeeze);
         (elem_t*)conv_10_out_squeeze1, (elem_t*)conv_11_w_squeeze1, (acc_t*)conv_11_b_squeeze1, (elem_t*)conv_11_out_squeeze1,
         RELU, conv_11_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -294,7 +295,7 @@ pthread_barrier_wait(barrier_squeeze);
         RELU, conv_12_params_squeeze1.output_scale, 0,
         conv_12_params_squeeze1.pool_size, conv_12_params_squeeze1.pool_stride, conv_12_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -318,7 +319,7 @@ pthread_barrier_wait(barrier_squeeze);
         RELU, conv_13_params_squeeze1.output_scale, 0,
         conv_13_params_squeeze1.pool_size, conv_13_params_squeeze1.pool_stride, conv_13_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -335,7 +336,7 @@ pthread_barrier_wait(barrier_squeeze);
         (elem_t*)conv_13_out_squeeze1_pooled, (elem_t*)conv_14_w_squeeze1, (acc_t*)conv_14_b_squeeze1, (elem_t*)conv_14_out_squeeze1,
         RELU, conv_14_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -350,7 +351,7 @@ pthread_barrier_wait(barrier_squeeze);
         (elem_t*)conv_14_out_squeeze1, (elem_t*)conv_15_w_squeeze1, (acc_t*)conv_15_b_squeeze1, (elem_t*)conv_16_out_squeeze1,
         RELU, conv_15_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -374,10 +375,12 @@ pthread_barrier_wait(barrier_squeeze);
         RELU, conv_16_params_squeeze1.output_scale, 0,
         conv_16_params_squeeze1.pool_size, 0, conv_16_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
+#if THREAD_SYNC == 1
+    pthread_barrier_wait(barrier_squeeze);
+#endif  
 
-pthread_barrier_wait(barrier_squeeze);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -393,7 +396,7 @@ pthread_barrier_wait(barrier_squeeze);
         (elem_t*)conv_16_out_squeeze1, (elem_t*)conv_17_w_squeeze1, (acc_t*)conv_17_b_squeeze1, (elem_t*)conv_17_out_squeeze1,
         RELU, conv_17_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -408,7 +411,7 @@ pthread_barrier_wait(barrier_squeeze);
         (elem_t*)conv_17_out_squeeze1, (elem_t*)conv_18_w_squeeze1, (acc_t*)conv_18_b_squeeze1, (elem_t*)conv_19_out_squeeze1,
         RELU, conv_18_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -432,10 +435,12 @@ pthread_barrier_wait(barrier_squeeze);
         RELU, conv_19_params_squeeze1.output_scale, 0,
         conv_19_params_squeeze1.pool_size, 0, conv_19_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
+#if THREAD_SYNC == 1
+    pthread_barrier_wait(barrier_squeeze);
+#endif  
 
 
-pthread_barrier_wait(barrier_squeeze);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -451,7 +456,7 @@ pthread_barrier_wait(barrier_squeeze);
         (elem_t*)conv_19_out_squeeze1, (elem_t*)conv_20_w_squeeze1, (acc_t*)conv_20_b_squeeze1, (elem_t*)conv_20_out_squeeze1,
         RELU, conv_20_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -466,7 +471,7 @@ pthread_barrier_wait(barrier_squeeze);
         (elem_t*)conv_20_out_squeeze1, (elem_t*)conv_21_w_squeeze1, (acc_t*)conv_21_b_squeeze1, (elem_t*)conv_22_out_squeeze1,
         RELU, conv_21_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -490,7 +495,7 @@ pthread_barrier_wait(barrier_squeeze);
         RELU, conv_22_params_squeeze1.output_scale, 0,
         conv_22_params_squeeze1.pool_size, 0, conv_22_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -507,7 +512,7 @@ pthread_barrier_wait(barrier_squeeze);
         (elem_t*)conv_22_out_squeeze1, (elem_t*)conv_23_w_squeeze1, (acc_t*)conv_23_b_squeeze1, (elem_t*)conv_23_out_squeeze1,
         RELU, conv_23_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -522,7 +527,7 @@ pthread_barrier_wait(barrier_squeeze);
         (elem_t*)conv_23_out_squeeze1, (elem_t*)conv_24_w_squeeze1, (acc_t*)conv_24_b_squeeze1, (elem_t*)conv_25_out_squeeze1,
         RELU, conv_24_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -546,7 +551,7 @@ pthread_barrier_wait(barrier_squeeze);
         RELU, conv_25_params_squeeze1.output_scale, 0,
         conv_25_params_squeeze1.pool_size, 0, conv_25_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -563,7 +568,7 @@ pthread_barrier_wait(barrier_squeeze);
         (elem_t*)conv_25_out_squeeze1, (elem_t*)conv_26_w_squeeze1, (acc_t*)conv_26_b_squeeze1, (elem_t*)conv_26_out_squeeze1,
         RELU, conv_26_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -593,11 +598,11 @@ pthread_barrier_wait(barrier_squeeze);
 
 // single block for squeezenet
 
-uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide, int target_util){
+uint64_t* squeezenet_block_function_1(size_t cid, size_t group_id, int orow_divide, int batch_divide, int target_util){
 
 #define num_cycle (26+1+3)
 
-  static uint64_t cycles[num_proc][num_cycle];
+  static uint64_t cycles[NUM_CORE][num_cycle];
     uint64_t start, end;
     uint64_t total_conv_cycles = 0, total_pool_cycles = 0, conv_dw_cycles = 0, other_cycles = 0;
     uint64_t conv_cycles[26];
@@ -611,12 +616,12 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         conv_1_params_squeeze1.stride, 1, conv_1_params_squeeze1.padding, conv_1_params_squeeze1.kernel_size,
         conv_1_params_squeeze1.out_stride,
 
-        (elem_t*)images, (elem_t*)conv_1_w_squeeze1, (acc_t*)conv_1_b_squeeze1, (elem_t*)conv_1_out_squeeze1,
+        (elem_t*)image0, (elem_t*)conv_1_w_squeeze1, (acc_t*)conv_1_b_squeeze1, (elem_t*)conv_1_out_squeeze1,
 
         RELU, conv_1_params_squeeze1.output_scale, 0,
         1, 0, 0, false,
 	//conv_1_params_squeeze1.pool_size, conv_1_params_squeeze1.pool_stride, conv_1_params_squeeze1.pool_padding, false,
-	WS, orow_divide, batch_divide, cid, target_util);
+	WS, orow_divide, batch_divide, cid, group_id, target_util);
         //WS, 2* orow_divide, batch_divide,  cid, target_util);
 
     end = read_cycles();
@@ -637,7 +642,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         conv_1_params_squeeze1.stride, 1, conv_1_params_squeeze1.padding, conv_1_params_squeeze1.kernel_size,
         conv_1_params_squeeze1.out_stride,
 
-        (elem_t*)images, (elem_t*)conv_1_w_squeeze1, (acc_t*)conv_1_b_squeeze1, (elem_t*)conv_1_out_squeeze1,
+        (elem_t*)image0, (elem_t*)conv_1_w_squeeze1, (acc_t*)conv_1_b_squeeze1, (elem_t*)conv_1_out_squeeze1,
 
         RELU, conv_1_params_squeeze1.output_scale, 0,
         1, 1, 0, false,
@@ -660,7 +665,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         conv_1_params_squeeze1.pool_size, conv_1_params_squeeze1.pool_stride, conv_1_params_squeeze1.pool_padding,
 
         (elem_t*)conv_1_out_squeeze1, (elem_t*)conv_1_out_squeeze1_pooled,
-	orow_divide, batch_divide, cid, target_util);
+	orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_pool_cycles += end - start;
@@ -675,7 +680,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         (elem_t*)conv_1_out_squeeze1_pooled, (elem_t*)conv_2_w_squeeze1, (acc_t*)conv_2_b_squeeze1, (elem_t*)conv_2_out_squeeze1,
         RELU, conv_2_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 //pthread_barrier_wait(barrier_squeeze);
 
 
@@ -692,7 +697,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         (elem_t*)conv_2_out_squeeze1, (elem_t*)conv_3_w_squeeze1, (acc_t*)conv_3_b_squeeze1, (elem_t*)conv_4_out_squeeze1,
         RELU, conv_3_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -716,7 +721,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         RELU, conv_4_params_squeeze1.output_scale, 0,
         conv_4_params_squeeze1.pool_size, 0, conv_4_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -733,7 +738,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         (elem_t*)conv_4_out_squeeze1, (elem_t*)conv_5_w_squeeze1, (acc_t*)conv_5_b_squeeze1, (elem_t*)conv_5_out_squeeze1,
         RELU, conv_5_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -754,7 +759,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         RELU, conv_6_params_squeeze1.output_scale, 0,
         conv_6_params_squeeze1.pool_size, conv_6_params_squeeze1.pool_stride, conv_6_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -778,7 +783,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         RELU, conv_7_params_squeeze1.output_scale, 0,
         conv_7_params_squeeze1.pool_size, conv_7_params_squeeze1.pool_stride, conv_7_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -795,7 +800,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         (elem_t*)conv_7_out_squeeze1_pooled, (elem_t*)conv_8_w_squeeze1, (acc_t*)conv_8_b_squeeze1, (elem_t*)conv_8_out_squeeze1,
         RELU, conv_8_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -810,7 +815,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         (elem_t*)conv_8_out_squeeze1, (elem_t*)conv_9_w_squeeze1, (acc_t*)conv_9_b_squeeze1, (elem_t*)conv_10_out_squeeze1,
         RELU, conv_9_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -834,7 +839,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         RELU, conv_10_params_squeeze1.output_scale, 0,
         conv_10_params_squeeze1.pool_size, 0, conv_10_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -851,7 +856,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         (elem_t*)conv_10_out_squeeze1, (elem_t*)conv_11_w_squeeze1, (acc_t*)conv_11_b_squeeze1, (elem_t*)conv_11_out_squeeze1,
         RELU, conv_11_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -872,7 +877,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         RELU, conv_12_params_squeeze1.output_scale, 0,
         conv_12_params_squeeze1.pool_size, conv_12_params_squeeze1.pool_stride, conv_12_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -896,7 +901,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         RELU, conv_13_params_squeeze1.output_scale, 0,
         conv_13_params_squeeze1.pool_size, conv_13_params_squeeze1.pool_stride, conv_13_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -913,7 +918,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         (elem_t*)conv_13_out_squeeze1_pooled, (elem_t*)conv_14_w_squeeze1, (acc_t*)conv_14_b_squeeze1, (elem_t*)conv_14_out_squeeze1,
         RELU, conv_14_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -928,7 +933,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         (elem_t*)conv_14_out_squeeze1, (elem_t*)conv_15_w_squeeze1, (acc_t*)conv_15_b_squeeze1, (elem_t*)conv_16_out_squeeze1,
         RELU, conv_15_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -952,7 +957,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         RELU, conv_16_params_squeeze1.output_scale, 0,
         conv_16_params_squeeze1.pool_size, 0, conv_16_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
 //pthread_barrier_wait(barrier_squeeze);
@@ -971,7 +976,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         (elem_t*)conv_16_out_squeeze1, (elem_t*)conv_17_w_squeeze1, (acc_t*)conv_17_b_squeeze1, (elem_t*)conv_17_out_squeeze1,
         RELU, conv_17_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -986,7 +991,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         (elem_t*)conv_17_out_squeeze1, (elem_t*)conv_18_w_squeeze1, (acc_t*)conv_18_b_squeeze1, (elem_t*)conv_19_out_squeeze1,
         RELU, conv_18_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1010,7 +1015,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         RELU, conv_19_params_squeeze1.output_scale, 0,
         conv_19_params_squeeze1.pool_size, 0, conv_19_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
 //pthread_barrier_wait(barrier_squeeze);
@@ -1029,7 +1034,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         (elem_t*)conv_19_out_squeeze1, (elem_t*)conv_20_w_squeeze1, (acc_t*)conv_20_b_squeeze1, (elem_t*)conv_20_out_squeeze1,
         RELU, conv_20_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1044,7 +1049,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         (elem_t*)conv_20_out_squeeze1, (elem_t*)conv_21_w_squeeze1, (acc_t*)conv_21_b_squeeze1, (elem_t*)conv_22_out_squeeze1,
         RELU, conv_21_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1068,7 +1073,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         RELU, conv_22_params_squeeze1.output_scale, 0,
         conv_22_params_squeeze1.pool_size, 0, conv_22_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -1085,7 +1090,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         (elem_t*)conv_22_out_squeeze1, (elem_t*)conv_23_w_squeeze1, (acc_t*)conv_23_b_squeeze1, (elem_t*)conv_23_out_squeeze1,
         RELU, conv_23_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1100,7 +1105,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         (elem_t*)conv_23_out_squeeze1, (elem_t*)conv_24_w_squeeze1, (acc_t*)conv_24_b_squeeze1, (elem_t*)conv_25_out_squeeze1,
         RELU, conv_24_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1124,7 +1129,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         RELU, conv_25_params_squeeze1.output_scale, 0,
         conv_25_params_squeeze1.pool_size, 0, conv_25_params_squeeze1.pool_padding, false,
 
-        WS, orow_divide, batch_divide, cid, target_util);
+        WS, orow_divide, batch_divide, cid, group_id, target_util);
 
 
     end = read_cycles();
@@ -1141,7 +1146,7 @@ uint64_t* squeezenet_block_function_1(int cid, int orow_divide, int batch_divide
         (elem_t*)conv_25_out_squeeze1, (elem_t*)conv_26_w_squeeze1, (acc_t*)conv_26_b_squeeze1, (elem_t*)conv_26_out_squeeze1,
         RELU, conv_26_params_squeeze1.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
