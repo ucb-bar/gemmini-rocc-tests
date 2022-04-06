@@ -61,7 +61,7 @@
 
 #define NO_ACTIVATION 0
 #define RELU 1
-#define LAYERNORM_OR_SOFTMAX 2
+#define LAYERNORM 2
 #define IGELU 3
 
 #ifdef ELEM_T_IS_FLOAT
@@ -377,7 +377,7 @@ static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const void * 
         bool a_transpose, bool b_transpose,
         bool full_C, bool low_D,
         bool no_bias, bool repeating_bias,
-        uint8_t weightA) {
+        int act) {
 
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
@@ -499,7 +499,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         bool a_transpose, bool b_transpose,
         bool full_C, bool low_D,
         bool no_bias, bool repeating_bias,
-        uint8_t weightA) {
+        int act) {
 
   /*
   const uint32_t A_sp_addr_start = 0;
@@ -533,8 +533,8 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
     }
   }
 
-  for (size_t j = 0; j < J; j++) {
-    for (size_t k = 0; k < K; k++) {
+  for (size_t k = 0; k < K; k++) {
+    for (size_t j = 0; j < J; j++) {
       for (size_t i = 0; i < I; i++) {
         const uint32_t A_sp_addr = a_transpose ? (A_sp_addr_start + (k*I + i)*DIM) :
           (A_sp_addr_start + (i*K + k)*DIM);
@@ -559,7 +559,6 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
             const size_t rows = DIM - (i == I-1 ? pad_I : 0);
             gemmini_extended_mvin(A_dram_addr, A_sp_addr, cols, rows);
           }
-
         }
 
         // Mvin B
@@ -609,18 +608,50 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
           }
         }
 
-        // Move-out C
-        if (C != NULL && k == K-1 && (j == J-1 || j % C_blocks == C_blocks-1)) {
-          const size_t rounded_j = (j / C_blocks) * C_blocks;
+        if (C != NULL && k == K-1) {
+          // Move-out C (if not normalizing)
+          if (act != LAYERNORM && (j == J-1 || j % C_blocks == C_blocks-1)) {
+            const size_t rounded_j = (j / C_blocks) * C_blocks;
 
-          const uint32_t rounded_C_sp_addr = C_sp_addr_start + (i*J + rounded_j)*DIM;
-          void * const C_dram_addr = (int8_t*)C + (i*C_row_stride + rounded_j)*DIM*sizeof_C;
+            const uint32_t rounded_C_sp_addr = C_sp_addr_start + (i*J + rounded_j)*DIM;
+            void * const C_dram_addr = (int8_t*)C + (i*C_row_stride + rounded_j)*DIM*sizeof_C;
 
-          const size_t blocks = rounded_j + C_blocks <= J ? C_blocks : J-rounded_j;
-          const size_t cols = blocks * DIM - (rounded_j + blocks >= J ? pad_J : 0);
-          const size_t rows = DIM - (i == I - 1 ? pad_I : 0);
+            const size_t blocks = rounded_j + C_blocks <= J ? C_blocks : J-rounded_j;
+            const size_t cols = blocks * DIM - (rounded_j + blocks >= J ? pad_J : 0);
+            const size_t rows = DIM - (i == I - 1 ? pad_I : 0);
 
-          gemmini_extended_mvout(C_dram_addr, rounded_C_sp_addr, cols, rows);
+            gemmini_extended_mvout(C_dram_addr, rounded_C_sp_addr, cols, rows);
+          }
+
+          // Move-out C (if normalizing)
+          if (act == LAYERNORM && j == J - 1) {
+            uint32_t norm_cmds[][2] = {{2,3},{4,5},{1,0}};
+            const int norm_cmds_size = sizeof(norm_cmds) / sizeof(norm_cmds[0]);
+
+            const size_t rows = DIM - (i == I-1 ? pad_I : 0);
+
+            for (size_t row = 0; row < rows; row++) {
+              for (int cmd = 0; cmd < norm_cmds_size; cmd++) {
+                for (size_t jj = 0; jj < J; jj += C_blocks) {
+                  uint32_t norm_C_sp_addr = C_sp_addr_start + (i*J + jj)*DIM + row;
+                  if (jj + C_blocks >= J) {
+                    norm_C_sp_addr |= (norm_cmds[cmd][1] << 26); // Final mean/inv-std-dev calculation
+                  } else {
+                    norm_C_sp_addr |= (norm_cmds[cmd][0] << 26); // Accumulate sum/variance
+                  }
+
+                  void * const C_dram_addr = (int8_t*)C +
+                    (i*C_row_stride + jj) * DIM * sizeof_C +
+                    row * C_row_stride * sizeof_C;
+
+                  const size_t blocks = jj + C_blocks <= J ? C_blocks : J-jj;
+                  const size_t cols = blocks * DIM - (jj + blocks >= J ? pad_J : 0);
+
+                  gemmini_extended_mvout(C_dram_addr, norm_C_sp_addr, cols, 1);
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -632,7 +663,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
     A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
     a_transpose, b_transpose,
     full_C, low_D, !no_bias || D == NULL,
-    weightA);
+    0);
 }
 
 
@@ -702,7 +733,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         bool, bool,
         bool, bool,
         bool, bool,
-        uint8_t);
+        int);
 
   if (dataflow == OUTPUT_STATIONARY) {
     inner = &sp_tiled_matmul_os;
@@ -747,10 +778,27 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
             a_transpose, b_transpose,
             full_C, low_D,
             no_bias, repeating_bias,
-            weightA);
+            act);
       }
 
   gemmini_fence();
+}
+
+
+static acc_t int_sqrt(acc_t n) {
+  if (n == 0) return 0;
+
+  int bits = 0;
+  for (acc_t x = n; x > 0; x /= 2)
+    bits++;
+
+  acc_t x_prev = 1 << ((bits + 1) / 2);
+
+  while (1) {
+    acc_t x_next = (x_prev + n / x_prev) / 2;
+    if (x_next >= x_prev) return x_prev;
+    x_prev = x_next;
+  };
 }
 
 
@@ -807,7 +855,7 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
         int act, acc_scale_t scale, acc_scale_t bert_scale, bool repeating_bias) {
 
   const int no_bias = D == NULL;
-  if (act != IGELU && !transA && !transB && DIM_I % 4 == 0 && DIM_J % 4 == 0) {
+  if (act != LAYERNORM && !transA && !transB && DIM_I % 4 == 0 && DIM_J % 4 == 0) {
     for (size_t i = 0; i < DIM_I; i += 4) {
       for (size_t j = 0; j < DIM_J; j += 4) {
 
@@ -872,42 +920,51 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
         }
 
         *(C + i*stride_C + j) =
-             scale_and_sat(result[0][0], act, scale, 0);
+             scale_and_sat(result[0][0], act, scale, bert_scale);
         *(C + i*stride_C + j+1) =
-             scale_and_sat(result[0][1], act, scale, 0);
+             scale_and_sat(result[0][1], act, scale, bert_scale);
         *(C + i*stride_C + j+2) =
-             scale_and_sat(result[0][2], act, scale, 0);
+             scale_and_sat(result[0][2], act, scale, bert_scale);
         *(C + i*stride_C + j+3) =
-             scale_and_sat(result[0][3], act, scale, 0);
+             scale_and_sat(result[0][3], act, scale, bert_scale);
         *(C + (i+1)*stride_C + j) =
-             scale_and_sat(result[1][0], act, scale, 0);
+             scale_and_sat(result[1][0], act, scale, bert_scale);
         *(C + (i+1)*stride_C + j+1) =
-             scale_and_sat(result[1][1], act, scale, 0);
+             scale_and_sat(result[1][1], act, scale, bert_scale);
         *(C + (i+1)*stride_C + j+2) =
-             scale_and_sat(result[1][2], act, scale, 0);
+             scale_and_sat(result[1][2], act, scale, bert_scale);
         *(C + (i+1)*stride_C + j+3) =
-             scale_and_sat(result[1][3], act, scale, 0);
+             scale_and_sat(result[1][3], act, scale, bert_scale);
         *(C + (i+2)*stride_C + j) =
-             scale_and_sat(result[2][0], act, scale, 0);
+             scale_and_sat(result[2][0], act, scale, bert_scale);
         *(C + (i+2)*stride_C + j+1) =
-             scale_and_sat(result[2][1], act, scale, 0);
+             scale_and_sat(result[2][1], act, scale, bert_scale);
         *(C + (i+2)*stride_C + j+2) =
-             scale_and_sat(result[2][2], act, scale, 0);
+             scale_and_sat(result[2][2], act, scale, bert_scale);
         *(C + (i+2)*stride_C + j+3) =
-             scale_and_sat(result[2][3], act, scale, 0);
+             scale_and_sat(result[2][3], act, scale, bert_scale);
         *(C + (i+3)*stride_C + j) =
-             scale_and_sat(result[3][0], act, scale, 0);
+             scale_and_sat(result[3][0], act, scale, bert_scale);
         *(C + (i+3)*stride_C + j+1) =
-             scale_and_sat(result[3][1], act, scale, 0);
+             scale_and_sat(result[3][1], act, scale, bert_scale);
         *(C + (i+3)*stride_C + j+2) =
-             scale_and_sat(result[3][2], act, scale, 0);
+             scale_and_sat(result[3][2], act, scale, bert_scale);
         *(C + (i+3)*stride_C + j+3) =
-             scale_and_sat(result[3][3], act, scale, 0);
+             scale_and_sat(result[3][3], act, scale, bert_scale);
       }
     }
   } else {
     size_t A_dim_strides[2] = {!transA ? stride_A : 1, !transA ? 1 : stride_A}; // i, j stride
     size_t B_dim_strides[2] = {!transB ? 1 : stride_B, !transB ? stride_B : 1}; // j, k stride
+
+    // We also create a buffer that we can use for layernorms and softmaxes
+    static acc_t c_buffer[1024];
+    const size_t c_buffer_sz = sizeof(c_buffer)/sizeof(c_buffer[0]);
+    if (act == LAYERNORM && DIM_J > c_buffer_sz) {
+      printf("Matmul is too large to normalize\n");
+      exit(1);
+    }
+
     for (size_t i = 0; i < DIM_I; i++) {
       for (size_t j = 0; j < DIM_J; j++) {
         elem_t* c = C + (i * stride_C) + j;
@@ -920,7 +977,34 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
           const elem_t* b = B + j * B_dim_strides[0] + k * B_dim_strides[1];
           sum += (GEMMINI_SCALE(*a, A_scale_factor) * GEMMINI_SCALE(*b, B_scale_factor));
         }
-        *c = scale_and_sat(sum, act, scale, bert_scale);
+
+        if (act == LAYERNORM)
+          c_buffer[j] = sum;
+        else
+          *c = scale_and_sat(sum, act, scale, bert_scale);
+      }
+
+      if (act == LAYERNORM) {
+        acc_t sum = 0;
+        for (size_t j = 0; j < DIM_J; j++)
+          sum += c_buffer[j];
+        acc_t mean = sum / (acc_t)DIM_J;
+
+        acc_t total_err_sq = 0;
+        for (size_t j = 0; j < DIM_J; j++)
+          total_err_sq += (c_buffer[j] - mean)*(c_buffer[j] - mean);
+        acc_t variance = total_err_sq / (acc_t)DIM_J;
+
+        acc_t stddev = int_sqrt(variance);
+        if (variance == 0) stddev = 1;
+
+        for (size_t j = 0; j < DIM_J; j++) {
+          c_buffer[j] -= mean;
+          c_buffer[j] /= stddev;
+
+          elem_t* c = C + (i * stride_C) + j;
+          *c = scale_and_sat(c_buffer[j], act, scale, bert_scale);
+        }
       }
     }
   }
@@ -1015,6 +1099,15 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
   if ((tiled_matmul_type == CPU && (full_C || low_D)) ||
       (tiled_matmul_type == OS && low_D)) {
     printf("Not implemented: %s matmul, full_C=%d, low_D=%d\n", matmul_type_str[tiled_matmul_type], full_C, low_D);
+  }
+
+  if (act == LAYERNORM) {
+    if (tiled_matmul_type == OS) {
+      printf("Not implemented: %s matmul, act=%d\n", matmul_type_str[tiled_matmul_type], act);
+    }
+    if (tile_J * DIM < dim_J) {
+      printf("When doing layernorm, the full J dimension of the matrix must fit in the accumulator\n");
+    }
   }
 #endif
 

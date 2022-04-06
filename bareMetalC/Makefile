@@ -40,9 +40,10 @@ tests = \
 	tiled_matmul_ws_full_C \
 	tiled_matmul_ws_low_D \
 	tiled_matmul_ws_igelu \
+	tiled_matmul_ws_layernorm \
+	tiled_matmul_ws_perf \
 	tiled_matmul_cpu \
 	tiled_matmul_option \
-	tiled_matmul_ws_perf \
 	transpose \
 	matrix_add \
 	resadd \
