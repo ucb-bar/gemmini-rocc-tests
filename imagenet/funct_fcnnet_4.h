@@ -13,14 +13,14 @@
 
 
 #ifndef BAREMETAL
-uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_fcnnet){
+uint64_t* fcnnet_function_4(size_t cid, size_t group_id, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_fcnnet){
 #else
-uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int target_util){
+uint64_t* fcnnet_function_4(size_t cid, size_t group_id, int orow_divide, int batch_divide, int target_util){
 #endif
 
 #define num_cycle (19+36+16+3)
 
-  static uint64_t cycles[num_proc][num_cycle];
+  static uint64_t cycles[NUM_CORE][num_cycle];
     uint64_t start, end;
     uint64_t total_conv_cycles = 0, pool_cycles = 0, conv_dw_cycles = 0, total_resadd_cycles = 0, other_cycles = 0;
     uint64_t conv_cycles[55];
@@ -38,12 +38,12 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         conv_1_params_fcn4.stride, conv_1_params_fcn4.dilation, conv_1_params_fcn4.padding, conv_1_params_fcn4.kernel_size,
         conv_1_params_fcn4.out_stride,
 
-        (elem_t*)images_4, (elem_t*)conv_1_w_fcn4, (acc_t*)conv_1_b_fcn4, (elem_t*)conv_1_out_fcn4_pooled,
+        (elem_t*)image4_s, (elem_t*)conv_1_w_fcn4, (acc_t*)conv_1_b_fcn4, (elem_t*)conv_1_out_fcn4_pooled,
 
         RELU, conv_1_params_fcn4.output_scale, 0,
         conv_1_params_fcn4.pool_size, conv_1_params_fcn4.pool_stride, conv_1_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -58,7 +58,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_1_out_fcn4_pooled, (elem_t*)conv_2_w_fcn4, (acc_t*)conv_2_b_fcn4, (elem_t*)conv_2_out_fcn4,
         NO_ACTIVATION, conv_2_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -80,7 +80,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_3_params_fcn4.output_scale, 0,
         conv_3_params_fcn4.pool_size, 0, conv_3_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -95,7 +95,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_3_out_fcn4, (elem_t*)conv_4_w_fcn4, (acc_t*)conv_4_b_fcn4, (elem_t*)conv_4_out_fcn4,
         RELU, conv_4_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -111,7 +111,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_1_out_fcn4_pooled, (elem_t*)conv_5_w_fcn4, (acc_t*)conv_5_b_fcn4, (elem_t*)conv_5_out_fcn4,
         NO_ACTIVATION, conv_5_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -130,7 +130,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_4_out_fcn4,
         (elem_t*)conv_4_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -145,7 +145,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_4_out_fcn4, (elem_t*)conv_6_w_fcn4, (acc_t*)conv_6_b_fcn4, (elem_t*)conv_6_out_fcn4,
         NO_ACTIVATION, conv_6_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -167,7 +167,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_7_params_fcn4.output_scale, 0,
         conv_7_params_fcn4.pool_size, 0, conv_7_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -182,7 +182,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_7_out_fcn4, (elem_t*)conv_8_w_fcn4, (acc_t*)conv_8_b_fcn4, (elem_t*)conv_8_out_fcn4,
         RELU, conv_8_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -201,7 +201,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_8_out_fcn4,
         (elem_t*)conv_8_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -216,7 +216,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_8_out_fcn4, (elem_t*)conv_9_w_fcn4, (acc_t*)conv_9_b_fcn4, (elem_t*)conv_9_out_fcn4,
         NO_ACTIVATION, conv_9_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -238,7 +238,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_10_params_fcn4.output_scale, 0,
         conv_10_params_fcn4.pool_size, 0, conv_10_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -253,7 +253,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_10_out_fcn4, (elem_t*)conv_11_w_fcn4, (acc_t*)conv_11_b_fcn4, (elem_t*)conv_11_out_fcn4,
         RELU, conv_11_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -272,7 +272,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_11_out_fcn4,
         (elem_t*)conv_11_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -287,7 +287,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_11_out_fcn4, (elem_t*)conv_12_w_fcn4, (acc_t*)conv_12_b_fcn4, (elem_t*)conv_12_out_fcn4,
         NO_ACTIVATION, conv_12_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -309,7 +309,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_13_params_fcn4.output_scale, 0,
         conv_13_params_fcn4.pool_size, 0, conv_13_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -324,7 +324,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_13_out_fcn4, (elem_t*)conv_14_w_fcn4, (acc_t*)conv_14_b_fcn4, (elem_t*)conv_14_out_fcn4,
         RELU, conv_14_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -347,7 +347,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_15_params_fcn4.output_scale, 0,
         conv_15_params_fcn4.pool_size, 0, conv_15_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -366,7 +366,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_14_out_fcn4,
         (elem_t*)conv_14_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -381,7 +381,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_14_out_fcn4, (elem_t*)conv_16_w_fcn4, (acc_t*)conv_16_b_fcn4, (elem_t*)conv_16_out_fcn4,
         NO_ACTIVATION, conv_16_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -403,7 +403,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_17_params_fcn4.output_scale, 0,
         conv_17_params_fcn4.pool_size, 0, conv_17_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -418,7 +418,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_17_out_fcn4, (elem_t*)conv_18_w_fcn4, (acc_t*)conv_18_b_fcn4, (elem_t*)conv_18_out_fcn4,
         RELU, conv_18_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -437,7 +437,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_18_out_fcn4,
         (elem_t*)conv_18_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -452,7 +452,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_18_out_fcn4, (elem_t*)conv_19_w_fcn4, (acc_t*)conv_19_b_fcn4, (elem_t*)conv_19_out_fcn4,
         NO_ACTIVATION, conv_19_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -474,7 +474,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_20_params_fcn4.output_scale, 0,
         conv_20_params_fcn4.pool_size, 0, conv_20_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -489,7 +489,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_20_out_fcn4, (elem_t*)conv_21_w_fcn4, (acc_t*)conv_21_b_fcn4, (elem_t*)conv_21_out_fcn4,
         RELU, conv_21_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -508,7 +508,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_21_out_fcn4,
         (elem_t*)conv_21_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -523,7 +523,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_21_out_fcn4, (elem_t*)conv_22_w_fcn4, (acc_t*)conv_22_b_fcn4, (elem_t*)conv_22_out_fcn4,
         NO_ACTIVATION, conv_22_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -545,7 +545,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_23_params_fcn4.output_scale, 0,
         conv_23_params_fcn4.pool_size, 0, conv_23_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -560,7 +560,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_23_out_fcn4, (elem_t*)conv_24_w_fcn4, (acc_t*)conv_24_b_fcn4, (elem_t*)conv_24_out_fcn4,
         RELU, conv_24_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -579,7 +579,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_24_out_fcn4,
         (elem_t*)conv_24_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -594,7 +594,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_24_out_fcn4, (elem_t*)conv_25_w_fcn4, (acc_t*)conv_25_b_fcn4, (elem_t*)conv_25_out_fcn4,
         NO_ACTIVATION, conv_25_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -616,7 +616,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_26_params_fcn4.output_scale, 0,
         conv_26_params_fcn4.pool_size, 0, conv_26_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -631,7 +631,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_26_out_fcn4, (elem_t*)conv_27_w_fcn4, (acc_t*)conv_27_b_fcn4, (elem_t*)conv_27_out_fcn4,
         RELU, conv_27_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -647,7 +647,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_24_out_fcn4, (elem_t*)conv_28_w_fcn4, (acc_t*)conv_28_b_fcn4, (elem_t*)conv_28_out_fcn4,
         NO_ACTIVATION, conv_28_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -666,7 +666,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_27_out_fcn4,
         (elem_t*)conv_27_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -681,7 +681,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_27_out_fcn4, (elem_t*)conv_29_w_fcn4, (acc_t*)conv_29_b_fcn4, (elem_t*)conv_29_out_fcn4,
         NO_ACTIVATION, conv_29_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -703,7 +703,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_30_params_fcn4.output_scale, 0,
         conv_30_params_fcn4.pool_size, 0, conv_30_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -718,7 +718,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_30_out_fcn4, (elem_t*)conv_31_w_fcn4, (acc_t*)conv_31_b_fcn4, (elem_t*)conv_31_out_fcn4,
         RELU, conv_31_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -737,7 +737,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_31_out_fcn4,
         (elem_t*)conv_31_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -752,7 +752,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_31_out_fcn4, (elem_t*)conv_32_w_fcn4, (acc_t*)conv_32_b_fcn4, (elem_t*)conv_32_out_fcn4,
         NO_ACTIVATION, conv_32_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -774,7 +774,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_33_params_fcn4.output_scale, 0,
         conv_33_params_fcn4.pool_size, 0, conv_33_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -789,7 +789,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_33_out_fcn4, (elem_t*)conv_34_w_fcn4, (acc_t*)conv_34_b_fcn4, (elem_t*)conv_34_out_fcn4,
         RELU, conv_34_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -808,7 +808,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_34_out_fcn4,
         (elem_t*)conv_34_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -823,7 +823,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_34_out_fcn4, (elem_t*)conv_35_w_fcn4, (acc_t*)conv_35_b_fcn4, (elem_t*)conv_35_out_fcn4,
         NO_ACTIVATION, conv_35_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -845,7 +845,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_36_params_fcn4.output_scale, 0,
         conv_36_params_fcn4.pool_size, 0, conv_36_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -860,7 +860,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_36_out_fcn4, (elem_t*)conv_37_w_fcn4, (acc_t*)conv_37_b_fcn4, (elem_t*)conv_37_out_fcn4,
         RELU, conv_37_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -879,7 +879,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_37_out_fcn4,
         (elem_t*)conv_37_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -894,7 +894,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_37_out_fcn4, (elem_t*)conv_38_w_fcn4, (acc_t*)conv_38_b_fcn4, (elem_t*)conv_38_out_fcn4,
         NO_ACTIVATION, conv_38_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -916,7 +916,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_39_params_fcn4.output_scale, 0,
         conv_39_params_fcn4.pool_size, 0, conv_39_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -931,7 +931,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_39_out_fcn4, (elem_t*)conv_40_w_fcn4, (acc_t*)conv_40_b_fcn4, (elem_t*)conv_40_out_fcn4,
         RELU, conv_40_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -950,7 +950,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_40_out_fcn4,
         (elem_t*)conv_40_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -965,7 +965,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_40_out_fcn4, (elem_t*)conv_41_w_fcn4, (acc_t*)conv_41_b_fcn4, (elem_t*)conv_41_out_fcn4,
         NO_ACTIVATION, conv_41_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -987,7 +987,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_42_params_fcn4.output_scale, 0,
         conv_42_params_fcn4.pool_size, 0, conv_42_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1002,7 +1002,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_42_out_fcn4, (elem_t*)conv_43_w_fcn4, (acc_t*)conv_43_b_fcn4, (elem_t*)conv_43_out_fcn4,
         RELU, conv_43_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1021,7 +1021,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_43_out_fcn4,
         (elem_t*)conv_43_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -1036,7 +1036,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_43_out_fcn4, (elem_t*)conv_44_w_fcn4, (acc_t*)conv_44_b_fcn4, (elem_t*)conv_44_out_fcn4,
         NO_ACTIVATION, conv_44_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1058,7 +1058,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_45_params_fcn4.output_scale, 0,
         conv_45_params_fcn4.pool_size, 0, conv_45_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1073,7 +1073,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_45_out_fcn4, (elem_t*)conv_46_w_fcn4, (acc_t*)conv_46_b_fcn4, (elem_t*)conv_46_out_fcn4,
         RELU, conv_46_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1089,7 +1089,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_43_out_fcn4, (elem_t*)conv_47_w_fcn4, (acc_t*)conv_47_b_fcn4, (elem_t*)conv_47_out_fcn4,
         NO_ACTIVATION, conv_47_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1108,7 +1108,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_46_out_fcn4,
         (elem_t*)conv_46_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -1123,7 +1123,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_46_out_fcn4, (elem_t*)conv_48_w_fcn4, (acc_t*)conv_48_b_fcn4, (elem_t*)conv_48_out_fcn4,
         NO_ACTIVATION, conv_48_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1145,7 +1145,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_49_params_fcn4.output_scale, 0,
         conv_49_params_fcn4.pool_size, 0, conv_49_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1160,7 +1160,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_49_out_fcn4, (elem_t*)conv_50_w_fcn4, (acc_t*)conv_50_b_fcn4, (elem_t*)conv_50_out_fcn4,
         RELU, conv_50_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1179,7 +1179,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_50_out_fcn4,
         (elem_t*)conv_50_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -1194,7 +1194,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_50_out_fcn4, (elem_t*)conv_51_w_fcn4, (acc_t*)conv_51_b_fcn4, (elem_t*)conv_51_out_fcn4,
         NO_ACTIVATION, conv_51_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1216,7 +1216,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         NO_ACTIVATION, conv_52_params_fcn4.output_scale, 0,
         conv_52_params_fcn4.pool_size, 0, conv_52_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1231,7 +1231,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_52_out_fcn4, (elem_t*)conv_53_w_fcn4, (acc_t*)conv_53_b_fcn4, (elem_t*)conv_53_out_fcn4,
         RELU, conv_53_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1250,7 +1250,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_53_out_fcn4,
         (elem_t*)conv_53_out_fcn4,
         false,
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_resadd_cycles += end - start;
@@ -1272,7 +1272,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         RELU, conv_54_params_fcn4.output_scale, 0,
         conv_54_params_fcn4.pool_size, 0, conv_54_params_fcn4.pool_padding, false,
 
-         WS, orow_divide, batch_divide, cid, target_util);
+         WS, orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
@@ -1287,7 +1287,7 @@ uint64_t* fcnnet_function_4(int cid, int orow_divide, int batch_divide, int targ
         (elem_t*)conv_54_out_fcn4, (elem_t*)conv_55_w_fcn4, (acc_t*)conv_55_b_fcn4, (elem_t*)conv_55_out_fcn4,
         NO_ACTIVATION, conv_55_params_fcn4.output_scale, 0, true,
         WS,
-        orow_divide, batch_divide, cid, target_util);
+        orow_divide, batch_divide, cid, group_id, target_util);
 
     end = read_cycles();
     total_conv_cycles += end - start;
