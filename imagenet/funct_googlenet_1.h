@@ -1277,21 +1277,22 @@ gemmini_fence();
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_google);
 #endif        
-       
     // Global averaging
     
     static elem_t average[1024][1] row_align(MAX_BLOCK_LEN);
 
     start = read_cycles();
-    if(cid == 0)
+    if(cid == 1)
        tiled_global_average_auto((elem_t*) inception5b_out_google1, (elem_t*) average, 1, 1024, 7, WS);
-
+    else
+	gemmini_dram_util[group_id] = 0;
 
     end = read_cycles();
     other_cycles = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_google);
 #endif
+   target_util = -1;
    // fc_69
     start = read_cycles();
     tiled_matmul_nn_auto_cid(fc_69_params_google1.I, fc_69_params_google1.J, fc_69_params_google1.K, fc_69_params_google1.out_stride,
@@ -2586,7 +2587,8 @@ gemmini_fence();
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_google);
 #endif        
-       
+ 
+	//gemmini_dram_util[group_id] = 0;      
     // Global averaging
     
     static elem_t average[1024][1] row_align(MAX_BLOCK_LEN);
@@ -2601,6 +2603,7 @@ gemmini_fence();
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_google);
 #endif
+   //target_util = -1;
    // fc_69
     start = read_cycles();
     tiled_matmul_nn_auto_cid(fc_69_params_google1.I, fc_69_params_google1.J, fc_69_params_google1.K, fc_69_params_google1.out_stride,

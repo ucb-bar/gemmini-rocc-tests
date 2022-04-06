@@ -1285,23 +1285,24 @@ uint64_t* resnet_function_1(size_t cid, size_t group_id, bool part1, bool part2,
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_res);
 #endif
-          
+      
       // Global averaging
       
       static elem_t average[1][2048] row_align(MAX_BLOCK_LEN);
 
       start = read_cycles();
-      if(cid == 0)
+      if(cid == 1)
           tiled_global_average_auto(conv_53_out_res1, average, conv_53_params_res1.batch_size,                         
               conv_53_params_res1.out_channels, conv_53_params_res1.out_dim, WS);
-         
+      else
+	gemmini_dram_util[group_id] = 0;    
 
       end = read_cycles();
       other_cycles = end - start;
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_res);
 #endif
-
+	target_util = -1; // for last layer  
       // fc_54
       start = read_cycles();
 
@@ -2604,7 +2605,8 @@ uint64_t* resnet_block_function_1(size_t cid, size_t group_id, bool part1, bool 
 #if THREAD_SYNC == 1
       //pthread_barrier_wait(barrier_res);
 #endif
-          
+ 
+	gemmini_dram_util[group_id] = 0;         
       // Global averaging
       
       static elem_t average[1][2048] row_align(MAX_BLOCK_LEN);
@@ -2620,7 +2622,7 @@ uint64_t* resnet_block_function_1(size_t cid, size_t group_id, bool part1, bool 
 #if THREAD_SYNC == 1
       //pthread_barrier_wait(barrier_res);
 #endif
-
+	target_util = -1;
       // fc_54
       start = read_cycles();
 

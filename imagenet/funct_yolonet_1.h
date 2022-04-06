@@ -54,8 +54,9 @@ uint64_t* yolonet_function_1(size_t cid, size_t group_id, bool part1, bool part2
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_yolo);
 #endif        
-   
+//printf("before pool1\n");   
       start = read_cycles();
+  if(cid == 0)
       tiled_pool_auto_cid(
           conv_1_params_yolo.batch_size,
           conv_1_params_yolo.out_channels, conv_1_params_yolo.out_dim, conv_1_params_yolo.out_dim_pooled,
@@ -63,7 +64,7 @@ uint64_t* yolonet_function_1(size_t cid, size_t group_id, bool part1, bool part2
           conv_1_params_yolo.pool_size, conv_1_params_yolo.pool_stride, conv_1_params_yolo.pool_padding,
 
           (elem_t*)conv_1_out_yolo, (elem_t*)conv_1_out_yolo_pooled,
-    orow_divide, batch_divide, cid, group_id, target_util);
+    1,  batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_pool_cycles += end - start;
@@ -94,7 +95,8 @@ uint64_t* yolonet_function_1(size_t cid, size_t group_id, bool part1, bool part2
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_yolo);
 #endif        
-    
+//printf("before pool2\n");
+  if(cid == 0 )  
       start = read_cycles();
       tiled_pool_auto_cid(
           conv_2_params_yolo.batch_size,
@@ -103,7 +105,7 @@ uint64_t* yolonet_function_1(size_t cid, size_t group_id, bool part1, bool part2
           conv_2_params_yolo.pool_size, conv_2_params_yolo.pool_stride, conv_2_params_yolo.pool_padding,
 
           (elem_t*)conv_2_out_yolo, (elem_t*)conv_2_out_yolo_pooled,
-    orow_divide, batch_divide, cid, group_id, target_util);
+    1,  batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_pool_cycles += end - start;
@@ -173,7 +175,9 @@ uint64_t* yolonet_function_1(size_t cid, size_t group_id, bool part1, bool part2
       pthread_barrier_wait(barrier_yolo);
 #endif        
        
+//printf("before pool3\n");
       start = read_cycles();
+   if(cid == 0)
       tiled_pool_auto_cid(
           conv_5_params_yolo.batch_size,
           conv_5_params_yolo.out_channels, conv_5_params_yolo.out_dim, conv_5_params_yolo.out_dim_pooled,
@@ -181,7 +185,7 @@ uint64_t* yolonet_function_1(size_t cid, size_t group_id, bool part1, bool part2
           conv_5_params_yolo.pool_size, conv_5_params_yolo.pool_stride, conv_5_params_yolo.pool_padding,
 
           (elem_t*)conv_5_out_yolo, (elem_t*)conv_5_out_yolo_pooled,
-    orow_divide, batch_divide, cid, group_id, target_util);
+    1, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_pool_cycles += end - start;
@@ -249,8 +253,10 @@ uint64_t* yolonet_function_1(size_t cid, size_t group_id, bool part1, bool part2
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_yolo);
 #endif
+//printf("before pool4\n");
        
       start = read_cycles();
+   if(cid == 0)
       tiled_pool_auto_cid(
           conv_8_params_yolo.batch_size,
           conv_8_params_yolo.out_channels, conv_8_params_yolo.out_dim, conv_8_params_yolo.out_dim_pooled,
@@ -258,7 +264,7 @@ uint64_t* yolonet_function_1(size_t cid, size_t group_id, bool part1, bool part2
           conv_8_params_yolo.pool_size, conv_8_params_yolo.pool_stride, conv_8_params_yolo.pool_padding,
 
           (elem_t*)conv_8_out_yolo, (elem_t*)conv_8_out_yolo_pooled,
-      orow_divide, batch_divide, cid, group_id, target_util);
+      1, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_pool_cycles += end - start;
@@ -367,6 +373,7 @@ uint64_t* yolonet_function_1(size_t cid, size_t group_id, bool part1, bool part2
 #endif
        
       start = read_cycles();
+   if(cid == 0)
       tiled_pool_auto_cid(
           conv_13_params_yolo.batch_size,
           conv_13_params_yolo.out_channels, conv_13_params_yolo.out_dim, conv_13_params_yolo.out_dim_pooled,
@@ -374,7 +381,7 @@ uint64_t* yolonet_function_1(size_t cid, size_t group_id, bool part1, bool part2
           conv_13_params_yolo.pool_size, conv_13_params_yolo.pool_stride, conv_13_params_yolo.pool_padding,
 
           (elem_t*)conv_13_out_yolo, (elem_t*)conv_13_out_yolo_pooled,
-      orow_divide, batch_divide, cid, group_id, target_util);
+      1, batch_divide, cid, group_id, target_util);
 
       end = read_cycles();
       total_pool_cycles += end - start;
@@ -559,6 +566,7 @@ uint64_t* yolonet_block_function_1(size_t cid, size_t group_id, bool part1, bool
 #endif        
    
       start = read_cycles();
+
       tiled_pool_auto_cid(
           conv_1_params_yolo.batch_size,
           conv_1_params_yolo.out_channels, conv_1_params_yolo.out_dim, conv_1_params_yolo.out_dim_pooled,
