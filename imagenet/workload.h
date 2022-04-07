@@ -240,7 +240,7 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
         total_queue_runtime_total[j][i] = 0;
       }
       if(i < group){
-        total_queue_dispatch[i] = 150000*i;
+        total_queue_dispatch[i] = 50000*i;
       }
       else{
         total_queue_dispatch[i] = total_queue_dispatch[i - group] + sp_cycles[total_queue_type[i - group]] * group * cap_scale; // is it enough?
@@ -277,7 +277,7 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
            total_queue_runtime_total[j][index] = 0;
       	}
         if(i == 0){
-          total_queue_dispatch[index] = 150000*j;
+          total_queue_dispatch[index] = 50000*j;
         }
         else{
           total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * group * cap_scale; // is it enough?
@@ -380,7 +380,7 @@ void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32
    	    total_queue_runtime_total[j][index] = 0;
       }
       if(i == 0){
-        total_queue_dispatch[index] = 150000*j;
+        total_queue_dispatch[index] = 50000*j;
       }
       else{
         total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * (group) * cap_scale; // is it enough?
@@ -508,7 +508,7 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
   int group[num_group];
   int cycle[num_group];
   for (int i = 0; i < num_group; i++){
-    cycle[i] = current_cycle + 800000;
+    cycle[i] = current_cycle + 500000;
     group[i] = 0;
     gemmini_dram_util[i] = 0;
   }
@@ -522,7 +522,7 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
   // repeat from here
   int pre_assign_queue[max_depth];
   int64_t pre_assign_score[max_depth]; // need this?
-
+  int pre_assign_length = 0;
   while (iter < num_iter){
     for(int i = 0; i < max_depth; i++){
       pre_assign_queue[i] = -1;
@@ -582,7 +582,6 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
     int queue_index = 0;
     int max_index = -1;
     int64_t max_score = -1;
-    int pre_assign_length = 0;
     while(queue_index < max_depth){
       for(int i = 0; i < pointer; i++){
         if(total_queue_status[i] == -1){
@@ -604,8 +603,10 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
       max_index = -1;
       max_score = -1;
     }
+    if(queue_index == 0 && ((iter == 0 && pre_assign_length == 0) || (iter == 1 && pre_assign_length == 1))) break;
+ //   printf("queue_index: %d, pre_assign_length: %d, iter: %d\n", queue_index, pre_assign_length, iter);
     pre_assign_length = queue_index;
-    /*
+   /*
     printf("pre assigned queue length: %d \n", pre_assign_length);
     for(int i = 0; i < pre_assign_length; i++)
       printf("%d, ", pre_assign_queue[i]); 
