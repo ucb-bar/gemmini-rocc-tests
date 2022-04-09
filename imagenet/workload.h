@@ -1112,5 +1112,62 @@ uint64_t workload_group_function(int queue_id, int group_queue_id, int original_
 
 }
 
+uint64_t workload_function(int queue_id, int workload_id, size_t cid, size_t group_id, int num_gemmini, int dram_util, pthread_barrier_t *barrier_funct){
+  gemmini_flush(0);
+  uint64_t* cycles;
+  uint64_t total_runtime;
 
+  int group_status = total_queue_status[queue_id];
+  bool part1 = group_status < 1;
+  bool part2 = group_status < 2;
+  bool part3 = group_status < 3;
+  bool part4 = group_status < 4;
+  
+  
+  if(workload_id < 16){
+    int orow_divide = 1;
+    int batch_divide = num_gemmini; // 4 batch workload 
+    if(workload_id == 8 + 0){
+      cycles = fcnnet_batch_function_4(cid, group_id, part1, part2, part3, dram_util, barrier_funct);
+      total_runtime = *(cycles+73);
+    }
+    else if(workload_id == 8 + 1){
+      cycles = resnet_batch_function_4(cid, group_id, part1, part2, part3, dram_util, barrier_funct);
+      total_runtime = *(cycles+72);
+    }
+    else if(workload_id == 8 + 2){
+      cycles = alexnet_batch_function_4(cid, group_id, part1, part2, dram_util, barrier_funct);
+      total_runtime = *(cycles+14);
+    }
+    else if(workload_id == 8 + 3){
+      cycles = googlenet_function_4(cid, group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      total_runtime = *(cycles+71);
+    }
+    else if(workload_id == 8 + 4){
+      cycles = squeezenet_function_4(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      total_runtime = *(cycles+29);
+    }
+    else if(workload_id == 8 + 5){
+      cycles = kwsnet_batch_function_4(cid, group_id, part1, part2, dram_util, barrier_funct);
+      total_runtime = *(cycles+40);
+    }
+    else if(workload_id == 8 + 6){
+      cycles = yolonet_batch_function_4(cid, group_id, part1, part2, dram_util, barrier_funct);
+      total_runtime = *(cycles+26);
+    }
+    else if(workload_id == 8 + 7){
+      cycles = yololitenet_function_4(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      total_runtime = *(cycles+14);
+    }
+  }
+  if(cid == 0) {
+    gemmini_dram_util[group_id] = 0;
+    total_queue_status[queue_id] = 100; // just store big value (finished)
+  }
+
+  //if(cid == 0) total_queue_status[queue_id] = 100; // just store big value (finished)
+  //uint64_t runtime = read_cycles() - start;
+  return total_runtime;
+
+}
 #endif
