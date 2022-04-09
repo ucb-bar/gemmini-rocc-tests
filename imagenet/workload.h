@@ -8,15 +8,15 @@
 #include "funct_alexnet_1.h"
 #include "funct_yolonet_1.h"
 #include "funct_yololitenet_1.h"
-/*
-#include "funct_resnet_2.h"
-#include "funct_fcnnet_2.h"
-#include "funct_googlenet_2.h"
-#include "funct_squeezenet_2.h"
-#include "funct_kwsnet_2.h"
-#include "funct_alexnet_2.h"
-#include "funct_yolonet_2.h"
-#include "funct_yololitenet_2.h"
+
+#include "funct_resnet_8.h"
+#include "funct_fcnnet_8.h"
+#include "funct_googlenet_8.h"
+#include "funct_squeezenet_8.h"
+#include "funct_kwsnet_8.h"
+#include "funct_alexnet_8.h"
+#include "funct_yolonet_8.h"
+#include "funct_yololitenet_8.h"
 
 #include "funct_resnet_4.h"
 #include "funct_fcnnet_4.h"
@@ -26,7 +26,7 @@
 #include "funct_alexnet_4.h"
 #include "funct_yolonet_4.h"
 #include "funct_yololitenet_4.h"
-*/
+
 #endif
 
 #define FCNNET_1 0
@@ -38,23 +38,23 @@
 #define YOLONET_1 6 // 3 blocks: [4, 13, 19 (mem)] same as ResNet
 #define YOLOLITENET_1 7 
 
-#define FCNNET_2 8
-#define RESNET_2 9
-#define ALEXNET_2 10
-#define GOOGLENET_2 11
-#define SQUEEZENET_2 12
-#define KWSNET_2 13
-#define YOLONET_2 14
-#define YOLOLITENET_2 15
+#define FCNNET_4 8
+#define RESNET_4 9
+#define ALEXNET_4 10
+#define GOOGLENET_4 11
+#define SQUEEZENET_4 12
+#define KWSNET_4 13
+#define YOLONET_4 14
+#define YOLOLITENET_4 15
 
-#define FCNNET_4 16
-#define RESNET_4 17
-#define ALEXNET_4 18
-#define GOOGLENET_4 19
-#define SQUEEZENET_4 20
-#define KWSNET_4 21
-#define YOLONET_4 22
-#define YOLOLITENET_4 23
+#define FCNNET_8 16
+#define RESNET_8 17
+#define ALEXNET_8 18
+#define GOOGLENET_8 19
+#define SQUEEZENET_8 20
+#define KWSNET_8 21
+#define YOLONET_8 22
+#define YOLOLITENET_8 23
 
 #define MAX_WORKLOAD 300
 #define NUM_WORKLOAD (8*3) // 1, 2, 4 batches
@@ -65,8 +65,9 @@
 #endif
 
 //[[120778499, 67655896, 40484174], [26048228, 16871159, 13302457], [18153183, 13480880, 9734783], [12059398, 7194660, 6382764], [4325949, 2853555, 2790373], [9193046, 5219157, 4111254], [17391717, 10483108, 8413386], [3859186, 3137930, 3222616]]
-//[[239950436, 129882609, 79363161], [50827889, 31787132, 22436942], [24796119, 18453904, 13685471], [23111997, 13703960, 12326887], [8340242, 4903209, 4366495], [18471732, 11301087, 8395059], [33626369, 20244540, 16272834], [7532796, 5960033, 8726273]]
-//[[48cap7855, 258891996, 158774922], [102468011, 64136386, 46741738], [38304694, 26072816, 20023558], [45576644, 26416274, 16289487], [16274246, 9360352, 6089778], [39172097, 23574881, 16040738], [66543598, 39096729, 39286233], [14897266, 11421865, 17485051]]
+//[[485011422, 260614658, 161822568], [103707389, 64801233, 47448663], [36628263, 23877088, 18234202], [46343352, 27089661, 27971820], [16748058, 9558922, 8751179], [38773439, 23131212, 17656532], [67136866, 38408465, 24478347], [15076962, 11593273, 12049913]]
+//[[967833971, 519399762, 327567928], [208302990, 129435130, 101819975], [64386337, 39288987, 32103729], [92824678, 52921143, 55384159], [32989741, 18761773, 16752679], [78456021, 46963714, 34225754], [134271000, 75566170, 55725139], [29750804, 22687359, 34942369]]
+
 
 static uint64_t mem_cycles[NUM_WORKLOAD] = 
 {0, 4464256, 9184240, 0, 0, 0, 4231271, 0,
@@ -75,23 +76,28 @@ static uint64_t mem_cycles[NUM_WORKLOAD] =
 // single program (isolated run) cycles
 static uint64_t sp_cycles[NUM_WORKLOAD] = 
  {40484174, 13302457, 9734783, 6382764, 2790373, 4111254, 9382349, 3222616,
-  79363161, 22436942, 13685471, 12326887, 4366495, 8395059, 16272834, 8726273, 
-  158774922, 46741738, 20023558, 16289487, 6089778, 16040738, 39286233, 17485051};
+  161822568, 47448663, 18234202, 27971820, 8751179, 17656532, 24478347, 12049913,
+  327567928, 101819975, 32103729, 55384159, 16752679, 34225754, 55725139, 34942369};
 
 static uint64_t sp2_cycles[NUM_WORKLOAD] =
  {67655896, 16871159, 13480880, 7194660, 2853555, 5219157, 10483108, 3137930,
-  129882609, 31787132, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};  
+  260614658, 64801233, 23877088, 27089661, 9558922, 23131212, 38408465, 11593273,
+  519399762, 129435130, 39288987, 52921143,18761773, 46963714, 75566170, 22687359};  
 
 static uint64_t sp_prediction_cycles[NUM_CORE][NUM_WORKLOAD] =
-{{51998429, 11609760, 9775970, 4233402, 1554138, 3048772, 6483179, 1014052,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 4 cores
- {78600899, 16342374, 11693769, 6374191, 1975373, 4398102, 9278409, 1361124,
-   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 2 cores
+{{51998429, 11609760, 9775970, 4233402, 1554138, 3048772, 6483179, 2*1014052,
+ 219697314, 53193614, 15264781, 15560770, 6302614, 15107557, 20218408, 2*3894960,
+ 460570438, 131508421, 32794135, 47788049, 13463166, 31048562, 41018163, 2*8411099},// 4 cores
+ {78600899, 16342374, 11693769, 6374191, 1975373, 4398102, 9278409, 1.5*1361124,
+  323379193, 70932031, 21652658, 24382388, 7975050, 20436384, 32979430, 1.5*5325365,
+  688920519, 187435173, 56257474, 85237598, 20613232, 43801771, 73829109, 1.5*14932039},// 2 cores
  {136872531, 26509740, 15546486, 10819934, 2909057, 7122425, 15551184, 2204055,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 1 core
+  552344088, 109148570, 34428412, 42708002, 11587648, 31196813, 59534474, 8744576,
+  1189319719, 304024301, 103184153, 161397053, 35484840, 69308189, 139969715, 28259508},// 1 core
  {2*136872531, 2*26509740, 2*15546486, 2*10819934, 2*2909057, 2*7122425, 2*15551184, 2*2204055,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // 0.5 core
-};
+  2*552344088, 2*109148570, 2*34428412, 2*42708002, 2*11587648, 2*31196813, 2*59534474, 2*8744576,
+  2*1189319719, 2*304024301, 2*103184153, 2*161397053, 2*35484840, 2*69308189, 2*139969715, 2*28259508}// 0.5 core
+ };
 
 static int workload_group[NUM_WORKLOAD] = {1, 4, 2, 2, 1, 2, 3, 1,
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}; // for now only 1 batch
@@ -135,49 +141,47 @@ int rand_seed(uint32_t seed) {
   return x >> 24;
 }
 
-int workload_type_assign(bool batch1, bool batch2, bool batch4, uint32_t seed){
+int workload_type_assign(bool batch1, bool batch4, bool batch8, uint32_t seed){
   // currently only batch1
   int rand_mod = 160;
   int rand_base = 0;
-  if (batch1 && batch2 && batch4) {
-    rand_mod = NUM_WORKLOAD;
+
+  if(batch4){
+    rand_base = 0;
+    rand_mod = 130;
   }
-  else if (batch1 && batch2){
-    rand_mod = 8 * 2;
-  }
-  if(batch2){
-    rand_base = 8;
-  }
-  else if(batch4){
+  else if(batch8){
     rand_base = 16;
   }
 
   static int id = 1;
   uint32_t rand_out = rand_seed(seed);
   int r = rand_out % rand_mod + rand_base;
-  if(r < 8){
-    id = 1;
-  }
-  else if(r < (1+7)){
-    id = 0;
-  }
-  else if(r < (1+7+14)){
-    id = 2;
-  }
-  else if(r < (1+7+14+16)){
-    id = 3;
-  }
-  else if(r < (1+7+14+16+44)){
-    id = 4;
-  }
-  else if(r < (1+7+14+16+44+21)){
-    id = 5;
-  }
-  else if(r < (1+7+14+16+44+21+13)){
-    id = 6;
-  }
-  else{// if(r < (1+5+11+18+44+24+11+43)){
-    id = 7;
+  if(batch1){
+    if(r < 8){
+      id = 1;
+    }
+    else if(r < (1+7)){
+      id = 0;
+    }
+    else if(r < (1+7+14)){
+      id = 2;
+    }
+    else if(r < (1+7+14+16)){
+      id = 3;
+    }
+    else if(r < (1+7+14+16+44)){
+      id = 4;
+    }
+    else if(r < (1+7+14+16+44+21)){
+      id = 5;
+    }
+    else if(r < (1+7+14+16+44+21+13)){
+      id = 6;
+    }
+    else{// if(r < (1+5+11+18+44+24+11+43)){
+      id = 7;
+    }
   }
 /*
   if(r < 8){
@@ -205,17 +209,75 @@ int workload_type_assign(bool batch1, bool batch2, bool batch4, uint32_t seed){
     id = 7;
   }
 */
-
+  if(batch4){
+    if(r < 2){
+      id = FCNNET_4;
+    }
+    else if(r < (2+7)){
+      id = RESNET_4;
+    }
+    else if(r < (2+7+17)){
+      id = ALEXNET_4;
+    }
+    else if(r < (2+7+17+11)){
+      id = GOOGLENET_4;
+    }
+    else if(r < (2+7+17+11+36)){
+      id = SQUEEZENET_4;
+    }
+    else if(r < (2+7+17+11+36+18)){
+      id = KWSNET_4;
+    }
+    else if(r < (2+7+17+11+36+18+13)){
+      id = YOLONET_4;
+    }
+    else if(r < (2+7+17+11+36+18+13+26)){
+      id = YOLOLITENET_4;
+    }
+  }
+  /*
+  if(batch8){
+    if(r < 2){
+      id = FCNNET_8;
+    }
+    else if(r < (2+7)){
+      id = RESNET_8;
+    }
+    else if(r < (2+7+17)){
+      id = ALEXNET_8;
+    }
+    else if(r < (2+7+17+11)){
+      id = GOOGLENET_8;
+    }
+    else if(r < (2+7+17+11+36)){
+      id = SQUEEZENET_8;
+    }
+    else if(r < (2+7+17+11+36+18)){
+      id = KWSNET_8;
+    }
+    else if(r < (2+7+17+11+36+18+13)){
+      id = YOLONET_8;
+    }
+    else if(r < (2+7+17+11+36+18+13+26)){
+      id = YOLOLITENET_8;
+    }
+  }
+*/
   //printf("rand output: %zu, rand output value: %d, workload id: %d \n", rand_out, r, id);
   return id;
 }
 
 // mode 1 workload create function (SLA satisfaction)
-void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch4, uint32_t seed, int cap, float target_scale, float cap_scale){ 
+void workload_mode_1(int qos, int workload, bool batch1, bool batch4, bool batch8, uint32_t seed, int cap, float target_scale, float cap_scale){ 
   // qos < 0 -> mixed
   // qos >= 0 -> workload dispatch qos apart, qos ways at once
   for(int i = 0; i < MAX_WORKLOAD; i++)
     total_queue_status[i]= -1;
+  
+  int first_dispatch_interval = 50000;
+  if (batch4) first_dispatch_interval *= 4;
+  if (batch8) first_dispatch_interval *= 8;
+
   int group = cap * (2+1);
   if (qos == 0){ // mixed QoS
     // extremely high QoS (0) should come really rarely
@@ -228,8 +290,9 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
       else if (select >= 15)
         workload_qos = 2;
       else if(select <= 1)
-	workload_qos = 0;
-      int workload_type = workload_type_assign(batch1, batch2, batch4, seed);//rand_base + rand_seed(seed) % rand_mod;
+        workload_qos = 0;
+
+      int workload_type = workload_type_assign(batch1, batch4, batch8, seed);//rand_base + rand_seed(seed) % rand_mod;
       total_queue_type[i] = workload_type;
       total_queue_priority[i] = (workload_qos == 0) ? 10 : 5;
       total_queue_qos[i] = workload_qos;
@@ -240,7 +303,7 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
         total_queue_runtime_total[j][i] = 0;
       }
       if(i < group){
-        total_queue_dispatch[i] = 50000*i;
+        total_queue_dispatch[i] = first_dispatch_interval*i;
       }
       else{
         total_queue_dispatch[i] = total_queue_dispatch[i - group] + sp_cycles[total_queue_type[i - group]] * group * cap_scale; // is it enough?
@@ -264,7 +327,7 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
     for(int i = 0; i < num_workload_group; i++){
       for(int j = 0; j < group; j++){
         int index = group * i + j;
-        int workload_type = workload_type_assign(batch1, batch2, batch4, seed);
+        int workload_type = workload_type_assign(batch1, batch4, batch8, seed);
         //int workload_type = rand_base + rand_seed(seed) % rand_mod;
         total_queue_type[index] = workload_type; 
 //printf("index: %d, output workload type: %d, stored type: %d\n", index, workload_type, total_queue_type[index]);
@@ -277,7 +340,7 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
            total_queue_runtime_total[j][index] = 0;
       	}
         if(i == 0){
-          total_queue_dispatch[index] = 50000*j;
+          total_queue_dispatch[index] = first_dispatch_interval*j;
         }
         else{
           total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * group * cap_scale; // is it enough?
@@ -331,19 +394,23 @@ void workload_mode_1(int qos, int workload, bool batch1, bool batch2, bool batch
         gemmini_workload_assigned[c][i][j] = -1;
 }
 
-void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32_t seed, int cap, float target_scale, float cap_scale){
+void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32_t seed, int cap, float target_scale, float cap_scale){
   // priority (0: 15, 1: 18 / 2: 10, 4: 15, 6: 15, 8: 15 / 9: 10, 11: 2)
   for(int i = 0; i < MAX_WORKLOAD; i++)
     total_queue_status[i]= -1;
   int qos = 2; // to lowest QoS
   int group = (qos+1)*cap;//8;
 
+  int first_dispatch_interval = 50000;
+  if (batch4) first_dispatch_interval *= 4;
+  if (batch8) first_dispatch_interval *= 8;
+
   int num_workload_group = ceil_divide_int(workload+group, group);
 
   for(int i = 0; i < num_workload_group; i++){
     for(int j = 0; j < group; j++){
       int index = group * i + j;
-      int workload_type = workload_type_assign(batch1, batch2, batch4, seed);
+      int workload_type = workload_type_assign(batch1, batch4, batch8, seed);
       //int workload_type = rand_base + rand_seed(seed) % rand_mod;
       total_queue_type[index] = workload_type; 
       int priority_level = rand_seed(seed) % 100;
@@ -380,7 +447,7 @@ void workload_mode_2(int workload, bool batch1, bool batch2, bool batch4, uint32
    	    total_queue_runtime_total[j][index] = 0;
       }
       if(i == 0){
-        total_queue_dispatch[index] = 50000*j;
+        total_queue_dispatch[index] = first_dispatch_interval*j;
       }
       else{
         total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * (group) * cap_scale; // is it enough?
@@ -505,10 +572,14 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
         gemmini_workload_assigned[c][i][j] = -1;
       }
 
+  int num_batch = 1;
+  if(total_queue_type[0] >= FCNNET_4)  num_batch = 4;
+  if(total_queue_type[0] >= FCNNET_8)  num_batch = 8;
+
   int group[num_group];
   int cycle[num_group];
   for (int i = 0; i < num_group; i++){
-    cycle[i] = current_cycle + 500000;
+    cycle[i] = current_cycle + 500000 * num_batch;
     group[i] = 0;
     gemmini_dram_util[i] = 0;
   }
@@ -833,6 +904,42 @@ uint64_t workload_function(int queue_id, int workload_id, size_t cid, size_t gro
     }
   }
 
+  else if(workload_id < 16){
+    int orow_divide = 1;
+    int batch_divide = num_gemmini; // 4 batch workload 
+    if(workload_id == 8 + 0){
+      cycles = fcnnet_function_4(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      total_runtime = *(cycles+73);
+    }
+    else if(workload_id == 8 + 1){
+      cycles = resnet_function_4(cid, group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
+      total_runtime = *(cycles+72);
+    }
+    else if(workload_id == 8 + 2){
+      cycles = alexnet_function_4(cid, group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      total_runtime = *(cycles+14);
+    }
+    else if(workload_id == 8 + 3){
+      cycles = googlenet_function_4(cid, group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      total_runtime = *(cycles+71);
+    }
+    else if(workload_id == 8 + 4){
+      cycles = squeezenet_function_4(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      total_runtime = *(cycles+29);
+    }
+    else if(workload_id == 8 + 5){
+      cycles = kwsnet_function_4(cid, group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      total_runtime = *(cycles+40);
+    }
+    else if(workload_id == 8 + 6){
+      cycles = yolonet_function_4(cid, group_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
+      total_runtime = *(cycles+26);
+    }
+    else if(workload_id == 8 + 7){
+      cycles = yololitenet_function_4(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      total_runtime = *(cycles+14);
+    }
+  }
   if(cid == 0) {
     gemmini_dram_util[group_id] = 0;
     total_queue_status[queue_id] = 100; // just store big value (finished)
@@ -876,32 +983,32 @@ uint64_t workload_group_function(int queue_id, int group_queue_id, int original_
       }
       else{
         if(grouped_workload_id == SQUEEZENET_1){
-	  dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
           cycles = squeezenet_block_function_1(0, group_id, 1, 1, dram_util); 
           total_runtime = *(cycles+29);
           total_queue_status[group_queue_id] = 50;
         }
         else if(grouped_workload_id == YOLOLITENET_1){
-	  dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
 //	  dram_util = 10;
           cycles = yololitenet_block_function_1(0, group_id, 1, 1, dram_util);
           total_runtime = *(cycles + 14);
           total_queue_status[group_queue_id] = 50;
         }
         else if(grouped_workload_id == KWSNET_1){
-	  dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
           cycles = kwsnet_block_function_1(0, group_id, true, false, 1, 1, dram_util);
           total_runtime = *(cycles + 40);
           total_queue_status[group_queue_id] = 1;
         }
         else if(grouped_workload_id == ALEXNET_1){
-	  dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
           cycles = alexnet_block_function_1(0, group_id, true, false, 1, 1, dram_util);
           total_runtime = *(cycles + 14);
           total_queue_status[group_queue_id] = 1;
         }
         else if(grouped_workload_id == GOOGLENET_1){
-	  dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
           cycles = googlenet_block_function_1(0, group_id, true, false, 1, 1, dram_util); 
           total_runtime = *(cycles+71);
           total_queue_status[group_queue_id] = 1;
@@ -920,25 +1027,25 @@ uint64_t workload_group_function(int queue_id, int group_queue_id, int original_
       }
       else{
         if(grouped_workload_id == GOOGLENET_1){
-	  dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
           cycles = googlenet_block_function_1(0, group_id, true, true, 1, 1, dram_util); 
           total_runtime = *(cycles+71);
           total_queue_status[group_queue_id] = 50;
         }
         else if(grouped_workload_id == YOLONET_1){
-	  dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
           cycles = yolonet_block_function_1(0, group_id, true, true, false, 1, 1, dram_util);
           total_runtime = *(cycles + 26);
           total_queue_status[group_queue_id] = 2;
         }
         else if(grouped_workload_id == KWSNET_1){
-	  dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
           cycles = kwsnet_block_function_1(0, group_id, true, true, 1, 1, dram_util);
           total_runtime = *(cycles + 40);
           total_queue_status[group_queue_id] = 50;
         }
         else if(grouped_workload_id == RESNET_1){
-	  dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
           cycles = resnet_block_function_1(0, group_id, true, true, false, false, 1, 1, dram_util);
           total_runtime = *(cycles + 72);
           total_queue_status[group_queue_id] = 2;
@@ -960,33 +1067,33 @@ uint64_t workload_group_function(int queue_id, int group_queue_id, int original_
       }
       else{
         if(grouped_workload_id == SQUEEZENET_1){
-	  dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
 //	  dram_util = 10;
           cycles = squeezenet_block_function_1(0, group_id, 1, 1, dram_util); 
           total_runtime = *(cycles+29);
           total_queue_status[group_queue_id] = 50;
         }
         else if(grouped_workload_id == YOLOLITENET_1){
-	  dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
 //	  dram_util = 10;
           cycles = yololitenet_block_function_1(0, group_id, 1, 1, dram_util);
           total_runtime = *(cycles + 14);
           total_queue_status[group_queue_id] = 50;
         }
         else if(grouped_workload_id == KWSNET_1){
-	  dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
           cycles = kwsnet_block_function_1(0, group_id, true, false, 1, 1, dram_util);
           total_runtime = *(cycles + 40);
           total_queue_status[group_queue_id] = 1;
         }
         else if(grouped_workload_id == ALEXNET_1){
-	  dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
           cycles = alexnet_block_function_1(0, group_id, true, false, 1, 1, dram_util);
           total_runtime = *(cycles + 14);
           total_queue_status[group_queue_id] = 1;
         }
         else if(grouped_workload_id == GOOGLENET_1){
-	  dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
           cycles = googlenet_block_function_1(0, group_id, true, false, 1, 1, dram_util); 
           total_runtime = *(cycles+71);
           total_queue_status[group_queue_id] = 1;
