@@ -280,8 +280,8 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define gemmini_config_st(stride) \
     gemmini_extended_config_st(stride, NO_ACTIVATION, ACC_SCALE_IDENTITY)
 
-#define gemmini_config_bert(igelu_qb, igelu_qc) \
-    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_BERT, ((uint64_t)((uint32_t)(igelu_qc)) << 32) | ((uint64_t)((uint32_t)(igelu_qb))), k_CONFIG)
+#define gemmini_config_bert(stat_id, igelu_qb, igelu_qc) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)stat_id << 8) | CONFIG_BERT, ((uint64_t)((uint32_t)(igelu_qc)) << 32) | ((uint64_t)((uint32_t)(igelu_qb))), k_CONFIG)
 
 // flush
 #define gemmini_flush(skip) \
@@ -339,14 +339,14 @@ static void counter_reset() {
 }
 
 // weight-stationary matmul loop
-#define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, A_transpose, B_transpose, full_C, low_D, ex_accumulate, weightA) \
+#define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, A_transpose, B_transpose, full_C, low_D, ex_accumulate, act) \
   { \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(pad_K) << 32) | ((uint64_t)(pad_J) << 16) | (uint64_t)(pad_I), ((uint64_t)(K) << 32) | ((uint64_t)(J) << 16) | (uint64_t)(I), k_LOOP_WS_CONFIG_BOUNDS) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_LOOP_WS_CONFIG_ADDRS_AB) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D, C, k_LOOP_WS_CONFIG_ADDRS_DC) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A_stride, B_stride, k_LOOP_WS_CONFIG_STRIDES_AB) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D_stride, C_stride, k_LOOP_WS_CONFIG_STRIDES_DC) \
-    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(weightA) << 8) | ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((B_transpose) << 1) | (A_transpose), k_LOOP_WS) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(act) << 8) | ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((B_transpose) << 1) | (A_transpose), k_LOOP_WS) \
   }
 
 // weight-stationary conv loop
@@ -500,7 +500,6 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         bool full_C, bool low_D,
         bool no_bias, bool repeating_bias,
         int act) {
-
   /*
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
@@ -625,29 +624,37 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
 
           // Move-out C (if normalizing)
           if (act == LAYERNORM && j == J - 1) {
-            uint32_t norm_cmds[][2] = {{2,3},{4,5},{1,0}};
+            uint32_t norm_cmds[][2] = {{1,2},{3,4},{0,0}};
             const int norm_cmds_size = sizeof(norm_cmds) / sizeof(norm_cmds[0]);
 
             const size_t rows = DIM - (i == I-1 ? pad_I : 0);
 
-            for (size_t row = 0; row < rows; row++) {
+            for (size_t row = 0; row < rows; row += NORM_STAT_IDS) {
+              const size_t stat_ids = rows - row > NORM_STAT_IDS ?
+                NORM_STAT_IDS : rows - row;
+
               for (int cmd = 0; cmd < norm_cmds_size; cmd++) {
-                for (size_t jj = 0; jj < J; jj += C_blocks) {
-                  uint32_t norm_C_sp_addr = C_sp_addr_start + (i*J + jj)*DIM + row;
-                  if (jj + C_blocks >= J) {
-                    norm_C_sp_addr |= (norm_cmds[cmd][1] << 26); // Final mean/inv-std-dev calculation
-                  } else {
-                    norm_C_sp_addr |= (norm_cmds[cmd][0] << 26); // Accumulate sum/variance
+                for (size_t stat_id = 0; stat_id < stat_ids; stat_id++) {
+                  gemmini_config_bert(stat_id, 0, 0);
+                  const size_t r = row + stat_id;
+
+                  for (size_t jj = 0; jj < J; jj += C_blocks) {
+                    uint32_t norm_C_sp_addr = C_sp_addr_start + (i*J + jj)*DIM + r;
+                    if (jj + C_blocks >= J) {
+                      norm_C_sp_addr |= (norm_cmds[cmd][1] << 26); // Final mean/inv-std-dev calculation
+                    } else {
+                      norm_C_sp_addr |= (norm_cmds[cmd][0] << 26); // Accumulate sum/variance
+                    }
+
+                    void * const C_dram_addr = (int8_t*)C +
+                      (i*C_row_stride + jj) * DIM * sizeof_C +
+                      r * C_row_stride * sizeof_C;
+
+                    const size_t blocks = jj + C_blocks <= J ? C_blocks : J-jj;
+                    const size_t cols = blocks * DIM - (jj + blocks >= J ? pad_J : 0);
+
+                    gemmini_extended_mvout(C_dram_addr, norm_C_sp_addr, cols, 1);
                   }
-
-                  void * const C_dram_addr = (int8_t*)C +
-                    (i*C_row_stride + jj) * DIM * sizeof_C +
-                    row * C_row_stride * sizeof_C;
-
-                  const size_t blocks = jj + C_blocks <= J ? C_blocks : J-jj;
-                  const size_t cols = blocks * DIM - (jj + blocks >= J ? pad_J : 0);
-
-                  gemmini_extended_mvout(C_dram_addr, norm_C_sp_addr, cols, 1);
                 }
               }
             }
@@ -663,7 +670,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
     A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
     a_transpose, b_transpose,
     full_C, low_D, !no_bias || D == NULL,
-    0);
+    act);
 }
 
 
@@ -723,7 +730,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
     const acc_t qb = -1.769 / (S / sqrt_2);
     const acc_t qc = 1.0 / S_erf;
 
-    gemmini_config_bert(qb, qc);
+    gemmini_config_bert(0, qb, qc);
   }
 
   void (*inner)(const elem_t *, const elem_t *, const void *, void *,
@@ -1181,7 +1188,11 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 
     size_t tile_I, tile_J, tile_K;
 
-    if (double_buffered) {
+    if (act == LAYERNORM) {
+       tile_I = 1;
+       tile_J = dim_J_padded/DIM;
+       tile_K = dim_K_padded/DIM < db_max_tile_k ? dim_K_padded/DIM : db_max_tile_k;
+    } else if (double_buffered) {
        tile_I = dim_I_padded/DIM < db_max_tile_i_j ? dim_I_padded/DIM : db_max_tile_i_j;
        tile_J = dim_J_padded/DIM < db_max_tile_i_j ? dim_J_padded/DIM : db_max_tile_i_j;
        tile_K = dim_K_padded/DIM < db_max_tile_k ? dim_K_padded/DIM : db_max_tile_k;
