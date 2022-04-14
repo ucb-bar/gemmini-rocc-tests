@@ -9,6 +9,7 @@
 #endif
 #include "include/gemmini_testutils.h"
 
+
 int main() {
 
   printf("running a very basic matrix add -- from matrix_add.c\n");
@@ -21,8 +22,8 @@ int main() {
 
   for (size_t i = 0; i < DIM; i++)
     for (size_t j = 0; j < DIM; j++) {
-      A[i][j] = 1;
-      B[i][j] = 1;
+      A[i][j] = (rand() % 16) - 8;
+      B[i][j] = (rand() % 16) - 8;
     }
 
 
@@ -32,13 +33,16 @@ int main() {
   // golden model
   for (size_t i = 0; i < DIM; i++) {
     for (size_t j = 0; j < DIM; j++) {
-      acc_t sum = MVIN_SCALE(A[i][j], ascale) + MVIN_SCALE(B[i][j], bscale); // acc_t?
+      acc_t sum = MVIN_SCALE(A[i][j], ascale) + MVIN_SCALE(B[i][j], bscale); // typedef int32_t acc_t from gemmini_param.h
       gold[i][j] = sum > elem_t_max ? elem_t_max :
         (sum < elem_t_min ? elem_t_min : sum); // where is elem_t_max/min defined?
     }
   }
 
   // calling gemmini ISA
+  
+  printf("Starting gemmini mat add\n");
+  unsigned long start = read_cycles();
   uint32_t A_acc_addr = 1 << (ADDR_LEN - 1); // ADDR_LEN=32 from gemmini_param.h
   uint32_t B_acc_addr = (1 << (ADDR_LEN - 1)) | (1 << (ADDR_LEN - 2)); // why?
   uint32_t C_acc_addr = 1 << (ADDR_LEN - 1);
@@ -55,10 +59,13 @@ int main() {
   // how is the accumulator operating to do the matrix sum? C = A + B or spad[1<<31] <= spad[1<<31] + spad[1<<31+1<<30]
 
 
-  gemmini_config_st(DIM * sizeof(elem_t));
-  gemmini_mvout(C, C_acc_addr);
+  gemmini_config_st(DIM * sizeof(elem_t)); // (stride) or (stride, NO_ACTIVATION, ACC_SCALE_IDENTITY) 
+  gemmini_mvout(C, C_acc_addr); // (dram_addr, spad_addr)
 
   gemmini_fence();
+  
+  unsigned long end = read_cycles();
+  printf("Cycles taken: %u\n", end-start);
 
   if (!is_equal(C, gold)) {
     printf("you're wrong\n");
@@ -70,5 +77,5 @@ int main() {
   }
 
 
-	
+  
 }
