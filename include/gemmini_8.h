@@ -60,7 +60,7 @@
 #define RELU6 2
 
 //#define CACHE_SIZE (1e6/DIM)
-#define DRAM_MAX_UTIL 120
+#define DRAM_MAX_UTIL 150
 //#define DRAM_BW 0.5
 
 //#define NUM_CORE 8
@@ -72,8 +72,10 @@
 #define NUM_CORE 8
 #endif
 
+#define WORKLOAD_CORE 2
 #define SUB_CORE 4 // 8 -> 4 + 4
 #define SUB_GROUP 2 // 4 -> 2 + 2
+#define NUM_SUB_GROUP 4 // total 4 sub groups
 
 #if NUM_CORE == 8
 #define DRAM_BW 1
@@ -87,9 +89,9 @@
 // dram_bw -1: disable bandwidth modulation (window, target load to 0)
 // dram_bw 0: monitor gemmini_dram_util and priority score 
 // dram_bw 0-100: use dram_bw given to compute window, target load 
-static int gemmini_dram_util[NUM_CORE] = {0};
+static int gemmini_dram_util[NUM_SUB_GROUP] = {0};
 //static int gemmini_dram_util[NUM_GROUP][SUB_GROUP] = {0}; // only the cid == 0 updates it
-static int gemmini_score[NUM_GROUP] = {0}; // priority score scaled to 100 (for bw division when it gets over the limit)
+static int gemmini_score[NUM_SUB_GROUP] = {0}; // priority score scaled to 100 (for bw division when it gets over the limit)
 
 
 #define MAX(X, Y) (X > Y ? X : Y)
@@ -611,18 +613,21 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
 
   int other_dram_util = 0;
   int other_score = 0;
+  int other_weight_sum = 0;
   int this_score = gemmini_score[group_id];
-  for(int i = 0; i < NUM_GROUP; i++)
+  for(int i = 0; i < NUM_SUB_GROUP; i++)
     if(i != group_id) {
       other_score += gemmini_score[i];
       other_dram_util += gemmini_dram_util[i];
+      other_weight_sum += gemmini_score[i] * gemmini_dram_util[i];
     }
 
   if(dram_util == 0){
     if(ideal_dram_util + other_dram_util > DRAM_MAX_UTIL){
       int excess = ideal_dram_util + other_dram_util - DRAM_MAX_UTIL;
-      dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util));
-      dram_util = MAX(50, dram_util); 
+      dram_util = ideal_dram_util - (int)((excess * other_weight_sum) / (this_score * ideal_dram_util + other_weight_sum));
+      //dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util));
+      dram_util = MAX(35, dram_util); 
       //dram_util = (int)((DRAM_MAX_UTIL * ideal_dram_util * this_score) / (this_score * ideal_dram_util + other_score * other_dram_util));
      // printf("matmul ideal dram util: %d, other dram util: %d, dram util: %d, this score: %d, other score: %d\n", ideal_dram_util, other_dram_util, dram_util, this_score, other_score);
     }
@@ -2372,17 +2377,20 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
   int other_dram_util = 0;
   int other_score = 0;
   int this_score = gemmini_score[group_id];
-  for(int i = 0; i < NUM_GROUP; i++)
+  int other_weight_sum = 0;
+  for(int i = 0; i < NUM_SUB_GROUP; i++)
     if(i != group_id) {
       other_score += gemmini_score[i];
       other_dram_util += gemmini_dram_util[i];
+      other_weight_sum += gemmini_score[i] * gemmini_dram_util[i];
     }
 
   if(dram_util == 0){
     if(ideal_dram_util + other_dram_util > DRAM_MAX_UTIL){
       int excess = ideal_dram_util + other_dram_util - DRAM_MAX_UTIL;
-      dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util)); 
-      dram_util = MAX(50, dram_util); 
+      dram_util = ideal_dram_util - (int)((excess * other_weight_sum) / (this_score * ideal_dram_util + other_weight_sum));
+      //dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util)); 
+      dram_util = MAX(35, dram_util); 
       //dram_util = (int)((DRAM_MAX_UTIL * ideal_dram_util * this_score) / (this_score * ideal_dram_util + other_score * other_dram_util));
       //printf("conv ideal dram util: %d, other dram util: %d, dram util: %d, this score: %d, other score: %d\n", ideal_dram_util, other_dram_util, dram_util, this_score, other_score);
     }
@@ -3655,18 +3663,21 @@ int* tiled_resadd_bubble_calculate(
 
   int other_dram_util = 0;
   int other_score = 0;
+  int other_weight_sum = 0;
   int this_score = gemmini_score[group_id];
-  for(int i = 0; i < NUM_GROUP; i++)
+  for(int i = 0; i < NUM_SUB_GROUP; i++)
     if(i != group_id) {
       other_score += gemmini_score[i];
       other_dram_util += gemmini_dram_util[i];
+      other_weight_sum += gemmini_score[i] * gemmini_dram_util[i];
     }
   
   if(dram_util == 0){
     if(ideal_dram_util + other_dram_util > DRAM_MAX_UTIL){
       int excess = ideal_dram_util + other_dram_util - DRAM_MAX_UTIL;
-      dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util)); 
-      dram_util = MAX(50, dram_util); 
+      dram_util = ideal_dram_util - (int)((excess * other_weight_sum) / (this_score * ideal_dram_util + other_weight_sum));
+      //dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util)); 
+      dram_util = MAX(35, dram_util); 
       //dram_util = (int)((DRAM_MAX_UTIL * ideal_dram_util * this_score) / (this_score * ideal_dram_util + other_score * other_dram_util));
       //printf("resadd ideal dram util: %d, other dram util: %d, dram util: %d, this score: %d, other score: %d\n", ideal_dram_util, other_dram_util, dram_util, this_score, other_score);
     }
