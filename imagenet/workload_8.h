@@ -74,6 +74,9 @@
 #define QUEUE_DEPTH 10
 #endif
 
+#ifndef planaria_scale
+#define planaria_scale 1.2
+#endif
 
 //[[120778499, 67655896, 40484174], [26048228, 16871159, 13302457], [18153183, 13480880, 9734783], [12059398, 7194660, 6382764], [4325949, 2853555, 2790373], [9193046, 5219157, 4111254], [17391717, 10483108, 8413386], [3859186, 3137930, 3222616]]
 //[[485011422, 260614658, 161822568], [103707389, 64801233, 47448663], [36628263, 23877088, 18234202], [46343352, 27089661, 27971820], [16748058, 9558922, 8751179], [38773439, 23131212, 17656532], [67136866, 38408465, 24478347], [15076962, 11593273, 12049913]]
@@ -122,6 +125,9 @@ static uint64_t sp_prediction_cycles[NUM_WORKLOAD] =
 static int workload_group[NUM_WORKLOAD] = {1, 4, 2, 2, 1, 2, 3, 1,
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}; // for now only 1 batch
 
+static int planaria_group[NUM_WORKLOAD] = 
+ {1, 10, 4, 5, 2, 4, 4, 2,
+   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 //#define QUEUE_DEPTH 10
 //#define SEED 10 // to randomize workload more
 //#define CAP 0.8 // 0 to 1 (smaller number: shorter time between workload dispatch time)
@@ -146,7 +152,8 @@ static uint64_t gemmini_runtime[NUM_CORE] = {0}; // to track real runtime withou
 
 static int gemmini_workload_grouped[NUM_GROUP][SUB_GROUP][MAX_ITER][QUEUE_DEPTH] = {-1};
 static bool gemmini_done[NUM_GROUP][SUB_GROUP] = {0};
-
+static bool gemmini_terminate[NUM_SUB_GROUP] = {0};
+static bool gemmini_terminate_receive[NUM_SUB_GROUP] = {0};
 static uint64_t global_time[NUM_GROUP] = {0};
 
 // dram_bw -1: disable bandwidth modulation (window, target load to 0)
@@ -969,37 +976,37 @@ uint64_t workload_function(int queue_id, int workload_id, size_t cid, size_t gro
       total_runtime = *(cycles+73);
     }
     else if(workload_id == 1){
-      if(group_id == 0) cycles = resnet_function_1(cid, sub_group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = resnet_function_1(cid, sub_group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = resnet_function_11(cid, sub_group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+72);
     }
     else if(workload_id == 2){
-      if(group_id == 0) cycles = alexnet_function_1(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = alexnet_function_1(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = alexnet_function_11(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+14);
     }
     else if(workload_id == 3){
-      if(group_id == 0) cycles = googlenet_function_1(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = googlenet_function_1(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = googlenet_function_11(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+71);
     }
     else if(workload_id == 4){
-      if(group_id == 0) cycles = squeezenet_function_1(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = squeezenet_function_1(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = squeezenet_function_11(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+29);
     }
     else if(workload_id == 5){
-      if(group_id == 0) cycles = kwsnet_function_1(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = kwsnet_function_1(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = kwsnet_function_11(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+40);
     }
     else if(workload_id == 6){
-      if(group_id == 0) cycles = yolonet_function_1(cid, sub_group_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = yolonet_function_1(cid, sub_group_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = yolonet_function_11(cid, sub_group_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+26);
     }
     else if(workload_id == 7){
-      if(group_id == 0) cycles = yololitenet_function_1(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = yololitenet_function_1(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = yololitenet_function_11(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+14);
     }
@@ -1108,7 +1115,7 @@ uint64_t workload_group_function(int queue_id, int group_queue_id, int original_
   bool part4 = group_status < 4;
 #if BATCH1 == true
   //int dram_util_half = (cid == 0) ? dram_util : (dram_util / 2) - 10;
-  if(group_id == 0){
+  if(sub_group_id % 2 == 0){
     //uint64_t start = read_cycles();
     if(original_workload_id < 8){
       int orow_divide = num_gemmini;
@@ -1397,6 +1404,246 @@ uint64_t workload_group_function(int queue_id, int group_queue_id, int original_
   return total_runtime;
 
 }
+
+
+// for planaria
+// barrier_funct2: for subgroup (between 2), barrier_funct4: for group (between 4)
+uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, size_t group_id, size_t sub_group_id, int num_gemmini, uint64_t slack_time,  pthread_barrier_t *barrier_funct){
+  gemmini_flush(0);
+  uint64_t* cycles;
+  uint64_t total_runtime = 0;
+
+  if(cid == 0){
+    gemmini_terminate_receive[sub_group_id] = false;
+    gemmini_terminate[other_sub_group_id] = false;
+  }
+  pthread_barrier_wait(barrier_funct);
+  int other_sub_group_id = group_id * WORKLOAD_CORE + (sub_group_id % 2 == 0 ? 1 : 0);   
+  //size_t sub_group_id = group_id * NUM_GROUP + sub_group; // out of total sub-group
+  int group_status = total_queue_status[group_id][queue_id]; // need to update when terminated, check this if it finshed outer loop
+
+  bool part[30];
+  for(int i = 0; i < 30; i++){
+    part[i] = group_status < (i+1);
+  }
+#if BATCH1 == true
+  if(workload_id < 8){
+    int orow_divide = num_gemmini;
+    int batch_divide = 1; // 1 batch workload
+    if(workload_id == 0){
+      cycles = fcnnet_function_1(cid, sub_group_id, orow_divide, batch_divide, -1, barrier_funct);
+      total_runtime = *(cycles+73);
+    }
+    else if(workload_id == 1){
+      uint64_t slack = 20000000;
+//      int other_sub_group_id = group_id * WORKLOAD_CORE + (sub_group_id % 2 == 0 ? 1 : 0);      
+      for(int i = 0; i < 10; i++){
+        uint64_t start = read_cycles();
+        if(num_gemmini <= 2){
+          if(gemmini_score[other_sub_group_id] < gemmini_score[sub_group_id]){    
+            if(cid == 0 && slack_time < (slack - 2000000*i) * planaria_scale){
+              gemmini_terminate[other_sub_group_id] == true;
+            }
+          }
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            gemmini_terminate_recieve[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+          if(gemmini_terminate_recieve[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        }
+        if(part[i]){
+          if(sub_group_id % 2 == 0) cycles = resnet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          else cycles = resnet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          total_runtime += *(cycles+72);
+          if(cid == 0) total_queue_status[group_id][queue_id] = (i+1); 
+        }
+        uint64_t end = read_cycles();
+        slack_time = slack_time - (end - start);
+      }
+
+    }
+    else if(workload_id == 2){
+      uint64_t slack = {12522781, 6429112, 2297240, 459726}; 
+      for(int i = 0; i < 4; i++){
+        uint64_t start = read_cycles(); 
+        if(num_gemmini <= 2){ 
+          if(gemmini_score[other_sub_group_id] < gemmini_score[sub_group_id]){    
+            if(cid == 0 && slack_time < slack[i] * planaria_scale){
+              gemmini_terminate[other_sub_group_id] == true;
+            }
+          }
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            gemmini_terminate_recieve[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+          if(gemmini_terminate_recieve[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        }
+        if(part[i]){
+          if(sub_group_id % 2 == 0) cycles = alexnet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          else cycles = alexnet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          total_runtime += *(cycles+14);
+          if(cid == 0) total_queue_status[group_id][queue_id] = (i+1); 
+        }
+        uint64_t end = read_cycles();
+        slack_time = slack_time - (end - start);
+      }
+    }
+    else if(workload_id == 3){
+      uint64_t slack = 10000000;
+  //    int other_sub_group_id = group_id * WORKLOAD_CORE + (sub_group_id % 2 == 0 ? 1 : 0);      
+      for(int i = 0; i < 5; i++){
+        uint64_t start = read_cycles();
+        if(num_gemmini <= 2){
+          if(gemmini_score[other_sub_group_id] < gemmini_score[sub_group_id]){    
+            if(cid == 0 && slack_time < (slack - 2000000*i) * planaria_scale){
+              gemmini_terminate[other_sub_group_id] == true;
+            }
+          }
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            gemmini_terminate_recieve[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+          if(gemmini_terminate_recieve[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        }
+        if(part[i]){
+          if(sub_group_id % 2 == 0) cycles = googlenet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          else cycles = googlenet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          total_runtime += *(cycles+71);
+          if(cid == 0) total_queue_status[group_id][queue_id] = (i+1); 
+        }
+        uint64_t end = read_cycles();
+        slack_time = slack_time - (end - start);
+      }
+
+    }
+    else if(workload_id == 4){
+      uint64_t slack = 2400000;
+      for(int i = 0; i < 2; i++){
+        uint64_t start = read_cycles();
+        if(num_gemmini <= 2){
+          if(gemmini_score[other_sub_group_id] < gemmini_score[sub_group_id]){
+            if(cid == 0 && slack_time < ((slack - 1200000*i) * planaria_scale)){
+              gemmini_terminate[other_sub_group_id] == true;
+            }
+          }
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            gemmini_terminate_recieve[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+          if(gemmini_terminate_recieve[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        }
+        if(part[i]){
+          if(sub_group_id % 2 == 0) cycles = squeezenet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          else cycles = squeezenet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          total_runtime = *(cycles+29);
+          if(cid == 0) total_queue_status[group_id][queue_id] = i+1;
+        }
+        uint64_t end = read_cycles();
+        slack_time = slack_time - (end - start);
+      }
+    }
+    else if(workload_id == 5){
+      uint64_t slack = 4000000;
+      for(int i = 0; i < 4; i++){
+        uint64_t start = read_cycles();
+        if(num_gemmini <= 2){
+          if(gemmini_score[other_sub_group_id] < gemmini_score[sub_group_id]){
+            if(cid == 0 && slack_time < ((slack - 1000000*i) * planaria_scale)){
+              gemmini_terminate[other_sub_group_id] == true;
+            }
+          }
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            gemmini_terminate_recieve[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+          if(gemmini_terminate_recieve[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        }
+        if(part[i]){
+          if(sub_group_id % 2 == 0) cycles = kwsnet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          else cycles = kwsnet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          total_runtime = *(cycles+40);
+          if(cid == 0) total_queue_status[group_id][queue_id] = i+1;
+        }
+        uint64_t end = read_cycles();
+        slack_time = slack_time - (end - start);
+      }
+        
+    }
+    else if(workload_id == 6){
+      uint64_t slack = 10000000;
+      for(int i = 0; i < 4; i++){
+        uint64_t start = read_cycles();
+        if(num_gemmini <= 2){
+          if(gemmini_score[other_sub_group_id] < gemmini_score[sub_group_id]){
+            if(cid == 0 && slack_time < ((slack - 2000000*i) * planaria_scale)){
+              gemmini_terminate[other_sub_group_id] == true;
+            }
+          }
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            gemmini_terminate_recieve[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+          if(gemmini_terminate_recieve[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        }
+        if(part[i]){
+          if(sub_group_id % 2 == 0) cycles = yolonet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          else cycles = yolonet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          total_runtime = *(cycles+26);
+          if(cid == 0) total_queue_status[group_id][queue_id] = i+1;
+        }
+        uint64_t end = read_cycles();
+        slack_time = slack_time - (end - start);
+      }
+  
+    }
+    else if(workload_id == 7){
+      uint64_t slack = 2000000;
+      for(int i = 0; i < 2; i++){
+        uint64_t start = read_cycles();
+        if(num_gemmini <= 2){
+          if(gemmini_score[other_sub_group_id] < gemmini_score[sub_group_id]){
+            if(cid == 0 && slack_time < ((slack - 1000000*i) * planaria_scale)){
+              gemmini_terminate[other_sub_group_id] == true;
+            }
+          }
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            gemmini_terminate_recieve[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+          if(gemmini_terminate_recieve[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        }
+        if(part[i]){
+          if(sub_group_id % 2 == 0) cycles = yololitenet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          else cycles = yololitenet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          total_runtime = *(cycles+14);
+          if(cid == 0) total_queue_status[group_id][queue_id] = i+1;
+        }
+        uint64_t end = read_cycles();
+        slack_time = slack_time - (end - start);
+      }
+    
+    }
+  }
+#endif
+/*
+  if(cid == 0) {
+    gemmini_dram_util[sub_group_id] = 0;
+    total_queue_status[group_id][queue_id] = 100; // just store big value (finished)
+  }
+*/
+  //if(cid == 0) total_queue_status[queue_id] = 100; // just store big value (finished)
+  //uint64_t runtime = read_cycles() - start;
+  return total_runtime;
+
+}
+
 
 
 #endif

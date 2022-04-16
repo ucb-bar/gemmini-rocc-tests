@@ -93,7 +93,6 @@ static int gemmini_dram_util[NUM_SUB_GROUP] = {0};
 //static int gemmini_dram_util[NUM_GROUP][SUB_GROUP] = {0}; // only the cid == 0 updates it
 static int gemmini_score[NUM_SUB_GROUP] = {0}; // priority score scaled to 100 (for bw division when it gets over the limit)
 
-
 #define MAX(X, Y) (X > Y ? X : Y)
 #define MIN(X, Y) (X < Y ? X : Y)
 
