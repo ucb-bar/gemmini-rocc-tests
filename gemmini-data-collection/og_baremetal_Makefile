@@ -97,6 +97,7 @@ CFLAGS_BAREMETAL := \
 	-static \
 	-T $(BENCH_COMMON)/test.ld \
 	-DBAREMETAL=1 \
+	-DPRINT_TILE=0 \
 
 all: $(tests_baremetal) $(tests_linux) $(tests_pk)
 
