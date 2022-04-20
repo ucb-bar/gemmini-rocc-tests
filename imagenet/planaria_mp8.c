@@ -15,14 +15,14 @@
 
 #define NUM_CORE 8
 #define SEED 0
-#define total_workloads 100 // 100 each
-#define QoS 0
+#define total_workloads 250 // 100 each
 #define WORKLOAD_CORE 2
 #define QUEUE_DEPTH 5
-#define NUM_ITER 4
+#define NUM_ITER 5
 #define CAP 5 // 0 to 1 (smaller number: shorter time between workload dispatch time)
-#define CAP_SCALE 0.5
+#define CAP_SCALE 0.9
 #define TARGET_SCALE 1
+
 
 #define BATCH1 true
 #define BATCH4 false
@@ -36,13 +36,30 @@
 
 #include "include/gemmini_8.h"
 #include "include/gemmini_nn.h"
+
+#define planaria_scale 2
+static uint64_t gemmini_planaria_score[NUM_SUB_GROUP] = {0};
 #include "workload_8.h"
 pthread_barrier_t barrier[NUM_SUB_GROUP]; // between two, total 4
 pthread_barrier_t barrier_sub[NUM_GROUP]; // between four, total 2
+pthread_barrier_t barrier_mid[NUM_SUB_GROUP]; // between two, total 4
+pthread_barrier_t barrier_start[NUM_SUB_GROUP]; // between two, total 4
+pthread_barrier_t barrier_sub_start[NUM_GROUP]; // between four, total 2
+pthread_barrier_t barrier_finish2[NUM_SUB_GROUP]; // between two, total 4
+pthread_barrier_t barrier_finish3[NUM_SUB_GROUP]; // between two, total 4
+pthread_barrier_t barrier_finish[NUM_SUB_GROUP]; // between two, total 4
+pthread_barrier_t barrier_sub_finish[NUM_GROUP]; // between four, total 2
+pthread_barrier_t barrier_sub_mid2[NUM_GROUP]; // between four, total 2
+pthread_barrier_t barrier_sub_mid3[NUM_GROUP]; // between four, total 2
+pthread_barrier_t barrier_sub_mid[NUM_GROUP]; // between four, total 2
+
+
 pthread_barrier_t barrier_global; // for all 8 cores
 
 bool done[NUM_GROUP] = {0};
 int queue_group[NUM_GROUP] = {0};
+static bool gemmini_last[NUM_GROUP][SUB_GROUP] = {0};
+static int curr_queue_id[NUM_SUB_GROUP] = {0};
 
 #define MAT_DIM_I 512
 #define MAT_DIM_J 512
@@ -61,10 +78,11 @@ struct thread_args{
 //	uint64_t conv_cycles[num_layer];
 //    uint64_t matmul_cycles[num_layer];
    int barrier_index;
-//   int workload_num_core; 
+   int workload_num_core; 
    int workload_id;
    int cid;
    int group_id;
+   int queue_group;
 };
 // random matmul to warm up thread
 void *thread_matmul0(void *arg){
@@ -93,120 +111,187 @@ void *thread_NN(void *arg){
   struct thread_args * nn_args = (struct thread_args *) arg;
   gemmini_flush(0);
   uint64_t* cycles;
-  int workload_num_core = 2;//nn_args->workload_num_core;
+  int workload_num_core = WORKLOAD_CORE;//nn_args->workload_num_core;
   int cid = nn_args->cid; // 0 or 1
   int group_id = nn_args->group_id; // 4 + 4 (0 or 1)
   done[group_id] = false;
-  pthread_barrier_wait(&barrier_sub[group_id]);
+  pthread_barrier_wait(&barrier_global);
   int total_sub_group_id = nn_args->barrier_index; // overall subgroup id 2 + 2 + 2 + 2 (0 to 3)
   int sub_group_id = (total_sub_group_id % NUM_GROUP); // inside each group's sub id 0 or 1
   int group_cid = cid + sub_group_id * SUB_GROUP; // cid inside group
+  int other_total_sub_group_id = group_id * WORKLOAD_CORE + (total_sub_group_id % 2 == 0 ? 1 : 0);
   printf("entered thread_NN - cid: %d, total_sub_group_id(barrier_index): %d, sub_group_id: %d, group_id: %d, real_cid: %d\n", cid, total_sub_group_id, sub_group_id, group_id, real_cid);
   uint64_t start, end;
-  while(!done[group_id]){
-   if(cid == 0) {
-      gemmini_done[group_id][sub_group_id] = false;
-   }
-   if(cid == 0 && sub_group_id == 0){
-// set global time
-      queue_group[group_id] = 1;
-      global_time[group_id] = gemmini_runtime[0+group_id*SUB_CORE];
-      for(int i = 0; i < SUB_CORE; i++) // SUB_CORE: 4
-	if(global_time[group_id] < gemmini_runtime[i+group_id*SUB_CORE]) 
-	   global_time[group_id] = gemmini_runtime[i+group_id*SUB_CORE]; 
-// workload 
-      queue_group[group_id] = workload_priority_mp(group_id, SUB_GROUP, total_workloads, NUM_ITER, global_time[group_id]);
-#if debug_print == 1
-       printf("group %d finished workload queue assignment, number of queue group: %d, gemmini runtime: %llu\n", group_id, queue_group[group_id], global_time[group_id]);
+  
+  uint64_t temp_cycles = global_time; //gemmini_runtime[real_cid];
 
-      for(int x = 0; x < queue_group[group_id]; x++){
-         for(int y = 0; y < SUB_GROUP; y++){ 
-            printf("queue %d, group %d: ", x, y);
-            for(int j = 0; j < QUEUE_DEPTH; j++)
-               printf("%d, ", gemmini_workload_assigned[group_id][y][x][j]);
-            printf("\n");
-         }
-      }
-#endif
-      done[group_id] = (queue_group[group_id] == 0) && (total_queue_status[group_id][total_workloads-1] != -1);
-   }
-   pthread_barrier_wait(&barrier_sub[group_id]);
-   uint64_t temp_cycles = global_time[group_id]; //gemmini_runtime[real_cid];
-   pthread_barrier_wait(&barrier[total_sub_group_id]);
+  bool all = false; // ToDo
+  start = read_cycles();
+  bool others_done = false;
+  pthread_barrier_wait(&barrier_sub_start[group_id]);
+  if(cid == 0) {
+    gemmini_done[group_id][sub_group_id] = false;
+    gemmini_last[group_id][sub_group_id] = false;
+  }
+   pthread_barrier_wait(&barrier_sub_mid[group_id]);
    start = read_cycles();
+   int workload_num = 0;
+   for(int x = 0; x < queue_group; x++)
+      for(int j = 0; j < QUEUE_DEPTH; j++)
+        if(gemmini_workload_assigned[group_id][sub_group_id][x][j] >= 0) workload_num ++;
+
+//    printf("rid %d group %d finished workload queue assignment, number of queue group: %d, number of workload: %d, gemmini runtime: %llu, done: %d, gemmini done: %d\n", real_cid, group_id, queue_group[group_id], workload_num, global_time[group_id], done[group_id], gemmini_done[group_id][sub_group_id]);
+
+   pthread_barrier_wait(&barrier_sub_start[group_id]);
+ 
+   uint64_t temp_cycles = global_time; //gemmini_runtime[real_cid];
+   pthread_barrier_wait(&barrier_start[total_sub_group_id]);
    bool others_done = false;
-   for(int g = 0; g < queue_group[group_id]; g++){
+   for(int g = 0; g < queue_group; g++){
      for(int i = 0; i < QUEUE_DEPTH; i++){
-       for(int o = 0; o < SUB_GROUP; o++){ // SUB_GROUP: 2
-         if(o != sub_group_id){
-           if(gemmini_done[group_id][o] && queue_group[group_id] == NUM_ITER) others_done = true;
+//       if(cid == 0 && workload_num == 1) gemmini_last[sub_group_id] = true;
+       for(int o = 0; o < NUM_SUB_GROUP; o++){ // SUB_GROUP: 2
+         //if(o != sub_group_id&& (i != 0 && g != 0)){
+         if(o != total_sub_group_id){
+           if(gemmini_done[o] && queue_group == NUM_ITER ) others_done = true;
          }
        }
        bool all = false;
        int queue_id = gemmini_workload_assigned[group_id][sub_group_id][g][i];
-       if(i == 0 && g == 0 && (gemmini_workload_assigned[group_id][0][0][0] == gemmini_workload_assigned[group_id][1][0][0])) all = true;
-       if(queue_id != -1){
-         if(!others_done){
-          int workload_id = total_queue_type[group_id][queue_id];
-	  // put score here
-          if(cid == 0) {
-            gemmini_score[total_sub_group_id] = (1 + total_queue_priority[group_id][queue_id]) / 4 + MAX(1, (int)(4 * (temp_cycles - total_queue_dispatch[group_id][queue_id]))/total_queue_target[group_id][queue_id]);
-          }
-          int group_queue_id = gemmini_workload_grouped[group_id][sub_group_id][g][i];
+  //     if(i == 0 && g == 0 && (gemmini_workload_assigned[group_id][0][0][0] == -1 ||  gemmini_workload_assigned[group_id][1][0][0] == -1)) all = true;
+       curr_queue_id[total_sub_group_id] = queue_id; 
+          int workload_id = total_queue_type[queue_id];
 #if debug_print == 1
-    	printf("rid: %d, workload id: %d, queue id: %d, group queue id: %d, score: %d\n", real_cid, workload_id, queue_id, group_queue_id, gemmini_score[total_sub_group_id]);
-#endif	
+       printf("rid: %d, workload id: %d, queue id: %d,  status: %d, others done: %d, all: %d, queue_group: %d, gemmini done: %d\n", real_cid, workload_id, queue_id, total_queue_status[queue_id], others_done, all, queue_group, gemmini_done[sub_group_id]);
+#endif
+       pthread_barrier_wait(&barrier_mid[total_sub_group_id]);
+       if(queue_id != -1){
+         workload_num --;
+         if(!others_done){
+	  // put score here
           uint64_t inner_start = read_cycles();
-          uint64_t total_riuntime = 0;
-          while(total_queue_status[group_id][queue_id] < planaria_group[workload_id]){
+          uint64_t total_runtime = 0;
+          if(cid == 0) {
+            //gemmini_planaria_score[total_sub_group_id] = (1 + total_queue_priority[group_id][queue_id]) / 4 + MAX(1, (int)(4 * (temp_cycles - total_queue_dispatch[group_id][queue_id]))/total_queue_target[group_id][queue_id]);
+            uint64_t after_dispatch = (temp_cycles > total_queue_dispatch[i]) ? (temp_cycles - total_queue_dispatch[i]) : 0;
+            uint64_t slack = total_queue_target[queue_id] > after_dispatch ? total_queue_target[queue_id] - after_dispatch : 10;
+            gemmini_planaria_score[i] = total_queue_priority[queue_id]*10000 + ((CAP*10000*after_dispatch) / (total_queue_target[queue_id]));
+ 	    //gemmini_planaria_score[i] = ((1+total_queue_priority[queue_id])*100000000) / slack; 
+          }
+          pthread_barrier_wait(&barrier_start[total_sub_group_id]);
+ //         int group_queue_id = gemmini_workload_grouped[group_id][sub_group_id][g][i];
+#if debug_print == 1
+    	printf("rid: %d, workload id: %d, queue id: %d,  status: %d, score: %llu\n", real_cid, workload_id, queue_id, total_queue_status[queue_id], gemmini_planaria_score[total_sub_group_id]);
+#endif	
+          while(total_queue_status[queue_id] < planaria_group[workload_id]){
             uint64_t temp_end = read_cycles();
-            uint64_t slack_time = (temp_cycles > (temp_end - inner_start + total_queue_dispatch[group_id][queue_id])) ? temp_cycles - (temp_end - inner_start) - total_queue_dispatch[group_id][queue_id] : 100000;
-            total_runtime += workload_planaria_function(queue_id, workload_id, all ? group_cid : cid, group_id, total_sub_group_id, all ? SUB_CORE : workload_num_core, -1, slack_time, all ? &barrier_sub[group_id] : &barrier[nn_args->barrier_index]);
-            pthread_barrier_wait(&barrier[total_sub_group_id]);
-            for(int o = 0; o < SUB_GROUP; o++){
-              if(o != sub_group_id){
-                if(gemmini_done[group_id][o]) inner_done = true;
-              }
+            bool inner_done = false;
+            uint64_t slack_time = (temp_cycles > (temp_end - inner_start + total_queue_dispatch[queue_id])) ? temp_cycles - (temp_end - inner_start) - total_queue_dispatch[queue_id] : 100000;
+            if(workload_num == 0) // for last one
+		total_runtime = workload_function(queue_id, workload_id, cid, group_id, total_sub_group_id, workload_num_core, slack_time, &barrier[total_sub_group_id]);
+            else
+              total_runtime += workload_planaria_function(queue_id, workload_id, cid, group_id, all ? total_sub_group_id / SUB_GROUP : total_sub_group_id, all ? SUB_CORE : workload_num_core, slack_time, &barrier[total_sub_group_id]);
+ //            total_runtime += workload_planaria_function(queue_id, workload_id, all ? group_cid : cid, group_id, all ? total_sub_group_id / SUB_GROUP : total_sub_group_id, all ? SUB_CORE : workload_num_core, slack_time, all ? &barrier_sub[group_id] : &barrier[total_sub_group_id]);
+            pthread_barrier_wait(&barrier_finish[total_sub_group_id]);
+            if(gemmini_done[other_total_sub_group_id]){
+              gemmini_terminate[other_total_sub_group_id] = false;
+              inner_done = true;
             }
             if(!inner_done && gemmini_terminate_receive[total_sub_group_id]){
               if(gemmini_terminate[total_sub_group_id]){ // other made it terminate
+                pthread_barrier_wait(&barrier_sub_mid2[group_id]);
+                gemmini_terminate_receive[total_sub_group_id] = false;
+                gemmini_terminate[total_sub_group_id] = false;
+                int other_queue_id = curr_queue_id[other_total_sub_group_id];
+                int other_workload_id = total_queue_type[other_queue_id];
+                workload_planaria_function(other_queue_id, other_workload_id, workload_num_core + cid, group_id, other_total_sub_group_id, SUB_CORE, 1000, &barrier_sub[group_id]);
 #if debug_print == 1
-                printf("rid: %d, workload id: %d, queue id: %d terminated - status: %d\n", real_cid, workload_id, queue_id, total_queue_status[group_id][queue_id]);
+                printf("rid: %d, workload id: %d, queue id: %d terminated - status: %d\n", real_cid, workload_id, queue_id, total_queue_status[queue_id]);
 #endif
-                pthread_barrier_wait(&barrier_sub[group_id]);
-                gemmini_terminate_receive[total_sub_group_id] = false;
-                gemmini_terminate[total_sub_group_id] = false;
+                pthread_barrier_wait(&barrier_sub_mid3[group_id]);
+  //	total_queue_planaria_status[group_id][queue_id] = 1;
               }
-              else{
-                totalruntime += workload_planaria_function(queue_id, workload_id, group_cid, total_sub_group_id, SUB_CORE, -1, slack_time, &barrier[nn_args->barrier_index]); // hack: has to be sub barrier
-                pthread_barrier_wait(&barrier_sub[group_id]);
-                gemmini_terminate_receive[total_sub_group_id] = false;
-                gemmini_terminate[total_sub_group_id] = false;
-              }
+              else if(gemmini_terminate[other_total_sub_group_id]){
+                pthread_barrier_wait(&barrier_finish[total_sub_group_id]);
+                inner_done = gemmini_done[other_total_sub_group_id];
+                if(!inner_done){
+                   pthread_barrier_wait(&barrier_sub_mid2[group_id]);
+               //    total_runtime += workload_planaria_function(queue_id, workload_id, cid, group_id, total_sub_group_id, 4, slack_time, &barrier[nn_args->barrier_index]); // hack: has to be sub barrier
+#if debug_print == 1
+                   printf("rid: %d, workload id: %d, queue id: %d finished - status: %d\n", real_cid, workload_id, queue_id, total_queue_status[queue_id]);
+#endif
+                   gemmini_terminate_receive[total_sub_group_id] = false;
+                   gemmini_terminate[total_sub_group_id] = false;
+                   gemmini_terminate[other_total_sub_group_id] = false; 
+                   total_runtime += workload_planaria_function(queue_id, workload_id, cid, group_id, other_total_sub_group_id, SUB_CORE, 1000, &barrier_sub[group_id]);
+                   pthread_barrier_wait(&barrier_sub_mid3[group_id]);
+                }
+               }
+            }
+            else if(inner_done && gemmini_terminate_receive[total_sub_group_id]){
+              total_runtime += workload_planaria_function(queue_id, workload_id, cid, group_id, total_sub_group_id, 2, 100000000, &barrier[nn_args->barrier_index]); // hack: has to be sub barrier
+#if debug_print == 1
+              printf("rid: %d, workload id: %d, queue id: %d finished - status: %d\n", real_cid, workload_id, queue_id, total_queue_status[queue_id]);
+#endif 
+              gemmini_terminate_receive[total_sub_group_id] = false;
+              gemmini_terminate[total_sub_group_id] = false;
+              pthread_barrier_wait(&barrier[total_sub_group_id]);
+            }
+            pthread_barrier_wait(&barrier_mid[total_sub_group_id]);
+          }
+            
+          if(workload_num == 0){
+            pthread_barrier_wait(&barrier_finish3[total_sub_group_id]);
+            if(gemmini_terminate[total_sub_group_id]){
+              pthread_barrier_wait(&barrier_sub_mid2[group_id]);
+              if(cid == 0) gemmini_done[total_sub_group_id] = true; 
+	     //gemmini_fence(); 
+	//printf("rid %d residue \n", real_cid);
+              gemmini_terminate_receive[total_sub_group_id] = false;
+              gemmini_terminate[total_sub_group_id] = false;
+              int other_queue_id = curr_queue_id[other_total_sub_group_id];
+              int other_workload_id = total_queue_type[other_queue_id];
+              workload_planaria_function(other_queue_id, other_workload_id, workload_num_core + cid, group_id, other_total_sub_group_id, SUB_CORE, 1000, &barrier_sub[group_id]);
+              pthread_barrier_wait(&barrier_sub_mid3[group_id]);
             }
           }
-         
-          pthread_barrier_wait(&barrier[total_sub_group_id]);
-
-          total_queue_runtime_total[group_id][group_cid][queue_id] = total_runtime;
+          total_queue_runtime_total[group_cid][queue_id] = total_runtime;
           uint64_t inner_end = read_cycles();
           uint64_t this_cycles = temp_cycles + inner_end - inner_start;
-          total_queue_finish[group_id][group_cid][queue_id] = (this_cycles > total_queue_dispatch[group_id][queue_id]) ? (this_cycles- total_queue_dispatch[group_id][queue_id]) : 1000;
+          total_queue_finish[group_cid][queue_id] = (this_cycles > total_queue_dispatch[queue_id]) ? (this_cycles- total_queue_dispatch[queue_id]) : 1000;
           //total_queue_finish[group_cid][queue_id] = ((temp_cycles + inner_end - start) - total_queue_dispatch[queue_id]);
 
-          total_queue_runtime_thread[group_id][group_cid][queue_id] = inner_end - inner_start;
+          total_queue_runtime_thread[group_cid][queue_id] = inner_end - inner_start;
           temp_cycles += (inner_end - inner_start);
+          pthread_barrier_wait(&barrier_finish2[total_sub_group_id]);
+
+
          }
-         else total_queue_status[group_id][queue_id] = -1; // release the queue 
+         else total_queue_status[queue_id] = -1; // release the queue 
        }
        else
           break;
      }
    }
-
-   if(cid == 0) gemmini_done[group_id][sub_group_id] = true;
+   pthread_barrier_wait(&barrier_finish3[total_sub_group_id]);
+   if(gemmini_terminate[total_sub_group_id]){
+     pthread_barrier_wait(&barrier_sub_mid2[group_id]);
+     if(cid == 0) gemmini_done[total_sub_group_id] = true; 
+     //gemmini_fence(); 
+//printf("rid %d residue \n", real_cid);
+     gemmini_terminate_receive[total_sub_group_id] = false;
+     gemmini_terminate[total_sub_group_id] = false;
+     int other_queue_id = curr_queue_id[other_total_sub_group_id];
+     int other_workload_id = total_queue_type[other_queue_id];
+     workload_planaria_function(other_queue_id, other_workload_id, workload_num_core + cid, group_id, other_total_sub_group_id, SUB_CORE, 1000, &barrier_sub[group_id]);
+     pthread_barrier_wait(&barrier_sub_mid3[group_id]);
+   } 
+   if(cid == 0) gemmini_done[total_sub_group_id] = true;
+   
+   pthread_barrier_wait(&barrier_sub_finish[group_id]);
    end = read_cycles();
-   if(!done[group_id]){
+   
+   //if(!done[group_id]){
      if(queue_group[group_id] == 0) gemmini_runtime[real_cid] += 1000000;
      else gemmini_runtime[real_cid] += (end - start);
      pthread_barrier_wait(&barrier_sub[group_id]);
@@ -214,8 +299,9 @@ void *thread_NN(void *arg){
      //   pthread_barrier_wait(&barrier[NUM_CORE]);
      //pthread_barrier_wait(&barrier[NUM_CORE]);
      //printf("idle cycle: %llu\n", gemmini_runtime[real_cid] - temp_cycles);
-   } 
+   //} 
   }
+//  printf("finished group id: %d, rid: %d\n", group_id, real_cid);
 }
 
 void *print_message(void *ptr){
@@ -274,73 +360,142 @@ int main (int argc, char * argv[]) {
     pthread_barrier_init(&barrier_global, NULL, NUM_CORE);
     
     for(int i = 0; i < NUM_GROUP; i++){
+      pthread_barrier_init(&barrier_sub_start[i], NULL, SUB_CORE); // between 4 cores
+    }
+    for(int i = 0; i < NUM_SUB_GROUP; i++){
+      pthread_barrier_init(&barrier_mid[i], NULL, WORKLOAD_CORE);
+    }
+    for(int i = 0; i < NUM_SUB_GROUP; i++){
+      pthread_barrier_init(&barrier_start[i], NULL, WORKLOAD_CORE);
+    }
+    for(int i = 0; i < NUM_GROUP; i++){
+      pthread_barrier_init(&barrier_sub_mid2[i], NULL, SUB_CORE); // between 4 cores
+    }
+    for(int i = 0; i < NUM_GROUP; i++){
+      pthread_barrier_init(&barrier_sub_mid3[i], NULL, SUB_CORE); // between 4 cores
+    }
+    for(int i = 0; i < NUM_GROUP; i++){
+      pthread_barrier_init(&barrier_sub_mid[i], NULL, SUB_CORE); // between 4 cores
+    }
+    for(int i = 0; i < NUM_GROUP; i++){
+      pthread_barrier_init(&barrier_sub_finish[i], NULL, SUB_CORE); // between 4 cores
+    }
+    for(int i = 0; i < NUM_SUB_GROUP; i++){
+      pthread_barrier_init(&barrier_finish2[i], NULL, WORKLOAD_CORE);
+    }
+    for(int i = 0; i < NUM_SUB_GROUP; i++){
+      pthread_barrier_init(&barrier_finish3[i], NULL, WORKLOAD_CORE);
+    }
+    for(int i = 0; i < NUM_SUB_GROUP; i++){
+      pthread_barrier_init(&barrier_finish[i], NULL, WORKLOAD_CORE);
+    }
+    for(int i = 0; i < NUM_GROUP; i++){
       pthread_barrier_init(&barrier_sub[i], NULL, SUB_CORE); // between 4 cores
     }
     for(int i = 0; i < NUM_SUB_GROUP; i++){
       pthread_barrier_init(&barrier[i], NULL, WORKLOAD_CORE);
     }
+
     printf("starting workload creation \n");
-    workload_mode_2(total_workloads+5, BATCH1, BATCH4, BATCH8, SEED, CAP, TARGET_SCALE, CAP_SCALE); 
+    workload_mode_2(total_workloads, BATCH1, BATCH4, BATCH8, SEED, TARGET_SCALE, CAP_SCALE); 
     printf("workload creation finished \n");
 
+    int queue_group = 1;
+    while((queue_group != 0) || (total_queue_status[total_workloads-1] == -1)){
+      global_time = gemmini_runtime[0];
+      for(int i = 0; i < NUM_CORE; i++)
+        if(global_time < gemmini_runtime[i]) 
+          global_time = gemmini_runtime[i];
+      queue_group = workload_priority_mp(total_workloads, NUM_ITER, global_time); // or instead use max cycle
+      //workload_grouping(queue_group, NUM_GROUP);
+      printf("finished workload queue assignment, number of queue group: %d, gemmini runtime: %d\n", queue_group, global_time);
 
-    for(int i = 0; i < NUM_GROUP; i++){
-      for(int j = 0; j < SUB_GROUP; j++)
-	gemmini_done[i][j] = false;
-      for(int j = 0; j < SUB_CORE; j++){
-    	int index = i * SUB_CORE + j;
-//	printf("index: %d\n", index);
-    	nn_args[index].barrier_index = (int)(index / WORKLOAD_CORE);
-    	nn_args[index].cid = j % WORKLOAD_CORE;
-    	nn_args[index].group_id = i;
-    	//pthread_create(&thread[index], &attr[index], thread_NN, &nn_args[index]);
+      for(int k = 0; k < NUM_GROUP; k++)
+        for(int x = 0; x < queue_group; x++){
+           for(int y = 0; y < SUB_GROUP; y++){ 
+              printf("group %d queue %d, sub-group %d: ", k, x, y);
+              for(int j = 0; j < QUEUE_DEPTH; j++)
+                 printf("%d, ", gemmini_workload_assigned[k][y][x][j]);
+              printf("\n");
+           }
+        }
+
+      for(int j = 0; j < NUM_SUB_GROUP; j++)
+        gemmini_done[j] = false;
+      if(queue_group != 0){
+        for(int i = 0; i < NUM_GROUP; i++){
+          for(int j = 0; j < SUB_CORE; j++){
+            int index = i * SUB_CORE + j;
+            nn_args[index].barrier_index = (int)(index / WORKLOAD_CORE);
+            nn_args[index].workload_num_core = WORKLOAD_CORE;
+            nn_args[index].cid = j % WORKLOAD_CORE;
+            nn_args[index].queue_group = queue_group;
+            nn_args[index].group_id = i;
+            pthread_create(&thread[index], &attr[index], thread_NN, &nn_args[index]);
+          }
+        }	
+        for(int i = 0; i < NUM_CORE; i++)
+          pthread_join(thread[i], NULL);
       }
+      else{
+        for(int i = 0; i < NUM_CORE; i++)
+          gemmini_runtime[i] += 1000000;
+      }	
     }
-    for(int i = 0; i < NUM_CORE; i++)
-	pthread_create(&thread[i], &attr[i], thread_NN, &nn_args[i]);	
-    for(int i = 0; i < NUM_CORE; i++)
-  	pthread_join(thread[i], NULL);
-
-
 
 // check total_queue_finish, total_queue_runtime_thread, total_queue_runtime_total of each workload (total_queue_type)
 // also check gemmini_runtime 
 
-  for(int group = 0; group < NUM_GROUP; group ++){
   for(int i = 0; i < total_workloads; i++){
-    uint64_t max = 0;   
+    uint64_t max = 0;     
     for(int j = 0; j < SUB_CORE; j++){
-      max = max > total_queue_finish[group][j][i] ? max : total_queue_finish[group][j][i]; 
+      max = max > total_queue_finish[j][i] ? max : total_queue_finish[j][i]; 
     }
-	  printf("group %d queue id %d workload type: %d\n", group, i, total_queue_type[group][i]);
-	  printf("group %d queue id %d dispatch to finish time: %llu\n", group, i, max);
-    
-    printf("group %d queue id %d priority: %d\n", group, i, total_queue_priority[group][i]);
-    printf("group %d queue id %d qos: %d\n", group, i, total_queue_qos[group][i]);
-    printf("group %d queue id %d dispatched time: %llu\n", group, i, total_queue_dispatch[group][i]);
-    printf("group %d queue id %d target: %llu\n", group, i, total_queue_target[group][i]);
-
-/*
+	  printf("queue id %d workload type: %d\n", i, total_queue_type[i]);
+	  printf("queue id %d dispatch to finish time: %llu\n", i, max); 
+    printf("queue id %d priority: %d\n", i, total_queue_priority[i]);
+    printf("queue id %d dispatched time: %llu\n", i, total_queue_dispatch[i]);
+    printf("queue id %d target: %llu\n", i, total_queue_target[i]);
 
     max = 0;
-    for(int j = 0; j < NUM_CORE; j++){
+    for(int j = 0; j < SUB_CORE; j++){
       max = max > total_queue_runtime_thread[j][i] ? max : total_queue_runtime_thread[j][i]; 
     }
     printf("queue id %d thread runtime: %llu\n", i, max);
 
     max = 0;
-    for(int j = 0; j < NUM_CORE; j++){
+    for(int j = 0; j < SUB_CORE; j++){
        max = max > total_queue_runtime_total[j][i] ? max : total_queue_runtime_total[j][i]; 
     }
     printf("queue id %d total runtime: %llu\n", i, max);
   }
-*/
-  }
-  }
+
   for(int i = 0; i < NUM_CORE; i++){
-     printf("gemmini core id %d runtime: %llu\n", i, gemmini_runtime[i]);
+	  printf("gemmini core id %d runtime: %llu\n", i, gemmini_runtime[i]);
   }
 
+  exit(0);
+
+  for(int i = 0; i < NUM_SUB_GROUP; i++)
+    pthread_barrier_destroy(&barrier_finish2[i]);
+  for(int i = 0; i < NUM_SUB_GROUP; i++)
+    pthread_barrier_destroy(&barrier_finish3[i]);
+  for(int i = 0; i < NUM_SUB_GROUP; i++)
+    pthread_barrier_destroy(&barrier_finish[i]);
+  for(int i = 0; i < NUM_GROUP; i++)
+    pthread_barrier_destroy(&barrier_sub_mid2[i]);
+  for(int i = 0; i < NUM_GROUP; i++)
+    pthread_barrier_destroy(&barrier_sub_mid3[i]);
+  for(int i = 0; i < NUM_GROUP; i++)
+    pthread_barrier_destroy(&barrier_sub_mid[i]);
+  for(int i = 0; i < NUM_GROUP; i++)
+    pthread_barrier_destroy(&barrier_sub_finish[i]);
+  for(int i = 0; i < NUM_SUB_GROUP; i++)
+    pthread_barrier_destroy(&barrier_mid[i]);
+  for(int i = 0; i < NUM_SUB_GROUP; i++)
+    pthread_barrier_destroy(&barrier_start[i]);
+  for(int i = 0; i < NUM_GROUP; i++)
+    pthread_barrier_destroy(&barrier_sub_start[i]);
   for(int i = 0; i < NUM_SUB_GROUP; i++)
     pthread_barrier_destroy(&barrier[i]);
   for(int i = 0; i < NUM_GROUP; i++)

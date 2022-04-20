@@ -84,11 +84,11 @@
 
 
 static uint64_t mem_cycles[NUM_WORKLOAD] = 
-{0, 4464256, 9184240, 0, 0, 0, 4231271, 0,
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+{0, 4464256, 9184240, 0, 0, 0, 4231271, 0};//
+//0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // single program (isolated run) cycles
-#ifdef WORKLOAD_CORE == 2
+#if WORKLOAD_CORE == 2
 static uint64_t sp_cycles[NUM_WORKLOAD] =
 {62623637,15070506,8382324,7070440,2608024,9458914,5132036,1978161};
 #elif WORKLOAD_CORE == 4
@@ -97,7 +97,7 @@ static uint64_t sp_cycles[NUM_WORKLOAD] =
 #endif
 
 //update more batches
-#ifdef WORKLOAD_CORE == 2
+#if WORKLOAD_CORE == 2
 static uint64_t sp_prediction_cycles[NUM_WORKLOAD] =
  {67958081,15279080,8789354, 7778090,1949208,9500000, 4600000, 1724694};
 #elif WORKLOAD_CORE == 4
@@ -109,8 +109,8 @@ static uint64_t sp_prediction_cycles[NUM_WORKLAOD] =
 static uint64_t target_cycles[NUM_WORKLOAD] = 
  {200000000, 50000000, 33333334,33333334,10000000,33333334,16666667,10000000};
 
-static int workload_group[NUM_WORKLOAD] = {1, 4, 2, 2, 1, 2, 3, 1,
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}; // for now only 1 batch
+static int workload_group[NUM_WORKLOAD] = {1, 4, 2, 2, 1, 2, 3, 1};
+//  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}; // for now only 1 batch
 
 static int planaria_group[NUM_WORKLOAD] = 
  {1, 10, 4, 5, 2, 4, 4, 2};
@@ -137,7 +137,8 @@ static int gemmini_workload_assigned[NUM_GROUP][SUB_GROUP][MAX_ITER][QUEUE_DEPTH
 static uint64_t gemmini_runtime[NUM_CORE] = {0}; // to track real runtime without thread create overhead
 
 static int gemmini_workload_grouped[NUM_GROUP][SUB_GROUP][MAX_ITER][QUEUE_DEPTH] = {-1};
-static bool gemmini_done[NUM_GROUP][SUB_GROUP] = {0};
+//static bool gemmini_done[NUM_GROUP][SUB_GROUP] = {0};
+static bool gemmini_done[NUM_SUB_GROUP] = {0};
 static bool gemmini_terminate[NUM_SUB_GROUP] = {0};
 static bool gemmini_terminate_receive[NUM_SUB_GROUP] = {0};
 static uint64_t global_time = {0};
@@ -176,22 +177,22 @@ int workload_type_assign(bool batch1, bool batch4, bool batch8, uint32_t seed){
     if(r < 0){
       id = 0;
     }
-    else if(r < (1+8)){
+    else if(r < (0+9)){
       id = 1;
     }
-    else if(r < (1+8+15)){
+    else if(r < (0+9+15)){
       id = 2;
     }
-    else if(r < (1+8+15+16)){
+    else if(r < (0+9+15+16)){
       id = 3;
     }
-    else if(r < (1+8+15+16+43)){
+    else if(r < (0+9+15+16+43)){
       id = 4;
     }
-    else if(r < (1+8+15+16+43+21)){
+    else if(r < (0+9+15+16+43+21)){
       id = 5;
     }
-    else if(r < (1+8+15+16+43+21+12)){
+    else if(r < (0+9+15+16+43+21+13)){
       id = 6;
     }
     else{// if(r < (1+5+11+18+44+24+11+43)){
@@ -1447,7 +1448,7 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
   }
   pthread_barrier_wait(barrier_funct);
   //size_t sub_group_id = group_id * NUM_GROUP + sub_group; // out of total sub-group
-  int group_status = total_queue_status[group_id][queue_id]; // need to update when terminated, check this if it finshed outer loop
+  int group_status = total_queue_status[queue_id]; // need to update when terminated, check this if it finshed outer loop
 
   bool part[30];
   for(int i = 0; i < 30; i++){
@@ -1492,7 +1493,7 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
           if(sub_group_id % 2 == 0) cycles = resnet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
           else cycles = resnet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
           total_runtime += *(cycles+72);
-          if(cid == 0) total_queue_status[group_id][queue_id] = (i+1); 
+          if(cid == 0) total_queue_status[queue_id] = (i+1); 
         }
         uint64_t end = read_cycles();
         slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
@@ -1506,7 +1507,7 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
       	if(sub_group_id % 2 == 0) cycles = alexnet_function_1(cid, sub_group_id, true, true, orow_divide, batch_divide, -1, barrier_funct);
       	else cycles = alexnet_function_11(cid, sub_group_id, true, true, orow_divide, batch_divide, -1, barrier_funct);
       	total_runtime = *(cycles+14);
-	if(cid == 0) total_queue_status[group_id][queue_id] = 100;
+        if(cid == 0) total_queue_status[queue_id] = 100;
       }
       else{
       
@@ -1536,7 +1537,7 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
             if(sub_group_id % 2 == 0) cycles = alexnet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
             else cycles = alexnet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
             total_runtime += *(cycles+14);
-            if(cid == 0) total_queue_status[group_id][queue_id] = (i+1); 
+            if(cid == 0) total_queue_status[queue_id] = (i+1); 
           }
           uint64_t end = read_cycles();
           slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
@@ -1571,7 +1572,7 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
           if(sub_group_id % 2 == 0) cycles = googlenet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
           else cycles = googlenet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
           total_runtime += *(cycles+71);
-          if(cid == 0) total_queue_status[group_id][queue_id] = (i+1); 
+          if(cid == 0) total_queue_status[queue_id] = (i+1); 
         }
         uint64_t end = read_cycles();
         slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
@@ -1607,7 +1608,7 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
           if(sub_group_id % 2 == 0) cycles = squeezenet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
           else cycles = squeezenet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
           total_runtime += *(cycles+29);
-          if(cid == 0) total_queue_status[group_id][queue_id] = i+1;
+          if(cid == 0) total_queue_status[queue_id] = i+1;
         }
         uint64_t end = read_cycles();
         slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
@@ -1640,7 +1641,7 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
           if(sub_group_id % 2 == 0) cycles = kwsnet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
           else cycles = kwsnet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
           total_runtime += *(cycles+40);
-          if(cid == 0) total_queue_status[group_id][queue_id] = i+1;
+          if(cid == 0) total_queue_status[queue_id] = i+1;
         }
         uint64_t end = read_cycles();
         slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
@@ -1677,7 +1678,7 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
           if(sub_group_id % 2 == 0) cycles = yolonet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
           else cycles = yolonet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
           total_runtime += *(cycles+26);
-          if(cid == 0) total_queue_status[group_id][queue_id] = i+1;
+          if(cid == 0) total_queue_status[queue_id] = i+1;
         }
         uint64_t end = read_cycles();
         slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
@@ -1713,7 +1714,7 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
           if(sub_group_id % 2 == 0) cycles = yololitenet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
           else cycles = yololitenet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
           total_runtime += *(cycles+14);
-          if(cid == 0) total_queue_status[group_id][queue_id] = i+1;
+          if(cid == 0) total_queue_status[queue_id] = i+1;
         }
         uint64_t end = read_cycles();
         slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
