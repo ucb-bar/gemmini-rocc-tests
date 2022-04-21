@@ -50,6 +50,10 @@ tests = \
 	global_average \
 	template \
 	gemmini_counter \
+	sandbox_buildtest \
+	sandbox_fleshnfence \
+	sandbox_matrix_add \
+	sandbox_tiled_matmul_resadd_ws \
 
 tests_baremetal = $(tests:=-baremetal)
 
