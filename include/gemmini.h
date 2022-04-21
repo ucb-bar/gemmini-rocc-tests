@@ -3305,6 +3305,132 @@ static void tiled_matmul_resadd(size_t dim_I, size_t dim_J, size_t dim_K,
 
 
 
+static void tiled_matmul_outer_resadd(size_t dim_I, size_t dim_J, size_t dim_K,
+        const elem_t* A, const elem_t* B,
+        const void * D, const void * E, void * C,
+        size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_E, size_t stride_C,
+        scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor, scale_acc_t E_scale_factor,
+        size_t tile_I, size_t tile_J, size_t tile_K,
+        int act, acc_scale_t scale, acc_scale_t bert_scale,
+        bool repeating_bias,
+        bool a_transpose, bool b_transpose,
+        bool full_C, bool low_D, bool low_E,
+        uint8_t weightA,
+        int dataflow) {
+
+  const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
+  const size_t dim_J_padded = (dim_J / DIM + (dim_J % DIM != 0)) * DIM;
+  const size_t dim_K_padded = (dim_K / DIM + (dim_K % DIM != 0)) * DIM;
+
+  const size_t I0 = dim_I_padded / (tile_I*DIM) + (dim_I_padded % (tile_I*DIM) != 0);
+  const size_t J0 = dim_J_padded / (tile_J*DIM) + (dim_J_padded % (tile_J*DIM) != 0);
+  const size_t K0 = dim_K_padded / (tile_K*DIM) + (dim_K_padded % (tile_K*DIM) != 0);
+
+  // These lines here are supposed to help us deal with when the dimensions of
+  // the systolic array aren't divisible by the tiling factors
+  const size_t last_I = dim_I_padded % (tile_I*DIM) == 0 ? tile_I : (dim_I_padded/DIM) % tile_I;
+  const size_t last_J = dim_J_padded % (tile_J*DIM) == 0 ? tile_J : (dim_J_padded/DIM) % tile_J;
+  const size_t last_K = dim_K_padded % (tile_K*DIM) == 0 ? tile_K : (dim_K_padded/DIM) % tile_K;
+
+  // These lines are supposed to figure out how much padding the hardware is
+  // supposed to add for the final tile
+  const size_t padding_I = dim_I_padded - dim_I;
+  const size_t padding_J = dim_J_padded - dim_J;
+  const size_t padding_K = dim_K_padded - dim_K;
+
+  const bool no_bias = D == NULL;
+
+  if (no_bias) {
+    D = (void*) 1; // Dummy address which isn't NULL
+  }
+
+  const size_t sizeof_D = low_D ? sizeof(elem_t) : sizeof(acc_t) ;
+  const size_t sizeof_C = full_C ? sizeof(acc_t) : sizeof(elem_t);
+  const size_t sizeof_E = low_E ? sizeof(elem_t) : sizeof(acc_t) ;
+
+  gemmini_extended_config_ex(dataflow, act, 0, 1, a_transpose, b_transpose);
+  gemmini_extended_config_st(stride_C * sizeof_C, act, scale);
+  gemmini_extended3_config_ld(stride_A * sizeof(elem_t), A_scale_factor, false, 0);
+  gemmini_extended3_config_ld(stride_B * sizeof(elem_t), B_scale_factor, false, 1)
+  gemmini_extended3_config_ld(repeating_bias ? 0 : (stride_D * sizeof_D), D_scale_factor, low_D, 2);
+  gemmini_extended3_config_ld(stride_E * sizeof_E, E_scale_factor, low_E, 3); // TODO: check if id can be 3
+
+  if (act == IGELU) {
+    const acc_scale_t sqrt_2 = 1.41421356237;
+    const acc_scale_t S = bert_scale;
+    const acc_scale_t S_erf = (-0.2888 * ((S*S) / 2));
+
+    const acc_t qb = -1.769 / (S / sqrt_2);
+    const acc_t qc = 1.0 / S_erf;
+
+    gemmini_config_bert(0, qb, qc);
+  }
+
+  void (*inner)(const elem_t *, const elem_t *, const void *, const void *, void *,
+        scale_t, scale_t, scale_acc_t, scale_acc_t,
+        size_t, size_t, size_t, size_t, size_t, size_t,
+        size_t, size_t, size_t, size_t, size_t,
+        bool, bool,
+        bool, bool, bool,
+        bool, bool,
+        int);
+
+//  if (dataflow == OUTPUT_STATIONARY) {
+//    inner = &sp_tiled_matmul_os;
+//  } else /* if (dataflow == WEIGHT_STATIONARY) */ {
+//    inner = &sp_tiled_matmul_ws;
+//  }
+
+  inner = &sp_tiled_matmul_resadd_ws; // currently only WS for resadd
+
+  for (size_t i0 = 0; i0 < I0; i0++)
+    for (size_t j0 = 0; j0 < J0; j0++)
+      for (size_t k0 = 0; k0 < K0; k0++) {
+
+        const void * pre;
+        if (k0 != 0) {
+          pre = NULL;
+        } else {
+          size_t bias_row = repeating_bias ? 0 : i0*tile_I*DIM;
+          // pre = &(((acc_t*)D)[bias_row * stride_D + j0 * tile_J * DIM]);
+          pre = (int8_t*)D + (bias_row * stride_D + j0 * tile_J * DIM)*sizeof_D;
+        }
+        
+        const void * res;
+        res = (int8_t*)E + (i0 * tile_I * DIM * stride_E + j0 * tile_J * DIM)*sizeof_E;
+
+        void * out = k0 == K0-1 ? (int8_t*)C + (i0*tile_I*DIM*stride_C + j0*tile_J*DIM)*sizeof_C : NULL;
+
+        const size_t I = i0 < I0-1 ? tile_I : last_I;
+        const size_t J = j0 < J0-1 ? tile_J : last_J;
+        const size_t K = k0 < K0-1 ? tile_K : last_K;
+
+        const size_t pad_I = i0 == I0-1 ? padding_I : 0;
+        const size_t pad_J = j0 == J0-1 ? padding_J : 0;
+        const size_t pad_K = k0 == K0-1 ? padding_K : 0;
+
+        const elem_t * a = a_transpose ? (A + k0*tile_K*DIM*stride_A + i0*tile_I*DIM)
+          : (A + i0*tile_I*DIM*stride_A + k0*tile_K*DIM);
+
+        const elem_t * b = b_transpose ? (B + j0*tile_J*DIM*stride_B + k0*tile_K*DIM)
+          : (B + k0*tile_K*DIM*stride_B + j0*tile_J*DIM);
+
+        (*inner)(a, b, pre, res, out,
+            A_scale_factor, B_scale_factor, D_scale_factor, E_scale_factor,
+            I, J, K,
+            pad_I, pad_J, pad_K,
+            stride_A, stride_B, stride_D, stride_E, stride_C,
+            a_transpose, b_transpose,
+            full_C, low_D, low_E,
+            no_bias, repeating_bias,
+            act);
+      }
+
+  gemmini_fence();
+}
+
+
+
 static void sp_tiled_matmul_resadd_ws(const elem_t * A, const elem_t * B,
         const void * D, const void * E, void * C,
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor, scale_acc_t E_scale_factor,
