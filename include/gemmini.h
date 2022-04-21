@@ -3185,6 +3185,125 @@ static void tiled_matmul_resadd_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #undef max_tile_k
 }
 
+// This function runs a tiled matrix multiplication, with hardcoded tiling
+// factors
+static void tiled_matmul_resadd(size_t dim_I, size_t dim_J, size_t dim_K,
+        const elem_t* A, const elem_t* B,
+        const void * D, const void * E, void* C,
+        size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_E, size_t stride_C,
+        scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor, scale_acc_t E_scale_factor,
+        int act, acc_scale_t scale, acc_scale_t bert_scale,
+        bool repeating_bias,
+        size_t tile_I, size_t tile_J, size_t tile_K,
+        bool transpose_A, bool transpose_B,
+        bool full_C, bool low_D, bool low_E,
+        uint8_t weightA,
+        enum tiled_matmul_type_t tiled_matmul_type) {
+
+#ifdef GEMMINI_ASSERTIONS
+  // Make sure that the tiling factors make sense
+  if (tile_I <= 0) {
+    printf("tile_I is non-positive\n");
+    exit(1);
+  } else if (tile_J <= 0) {
+    printf("tile_J is non-positive\n");
+    exit(1);
+  } else if (tile_K <= 0) {
+    printf("tile_K is non-positive\n");
+    exit(1);
+  }
+
+  const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
+  const size_t dim_J_padded = (dim_J / DIM + (dim_J % DIM != 0)) * DIM;
+  const size_t dim_K_padded = (dim_K / DIM + (dim_K % DIM != 0)) * DIM;
+
+  if (tile_I * DIM > dim_I_padded) {
+    printf("tile_I is too large (tile_I * DIM > dim_I_padded)\n");
+    exit(1);
+  } else if (tile_J * DIM > dim_J_padded) {
+    printf("tile_J is too large (tile_J * DIM > dim_J_padded)\n");
+    exit(1);
+  } else if (tile_K * DIM > dim_K_padded) {
+    printf("tile_K is too large (tile_K * DIM > dim_K_padded)\n");
+    exit(1);
+  }
+
+  const bool double_buffered = tiled_matmul_type == WS;
+
+  const size_t total_spad_size = double_buffered ? BANK_NUM * BANK_ROWS / 2 :
+      BANK_NUM * BANK_ROWS;
+  const size_t total_acc_size = double_buffered ? ACC_ROWS / 2 : ACC_ROWS;
+
+  const size_t total_spad_rows =
+      (tile_I * tile_K * DIM) +   // Rows to store A
+      (tile_K * tile_J * DIM);    // Rows to store B
+
+  if (total_spad_rows > total_spad_size) {
+    printf("Not enough space in scratchpad to store A and B matrices\n");
+    exit(1);
+  }
+
+  const size_t total_acc_rows =
+      tile_I * tile_J * DIM;      // Rows to store C
+
+  if (total_acc_rows > total_acc_size) {
+    printf("Not enough space in accumulator to store C\n");
+    exit(1);
+  }
+
+  if (tile_I > 65535 || tile_J > 65535 || tile_K > 65535) {
+    printf("I, J, and K tiling factors must be less than 65535, to fit within the bounds of the LOOP_WS function");
+    exit(1);
+  }
+
+  char matmul_type_str[][4] = {"OS", "WS", "CPU"};
+
+  // Check if transpose options are correct
+  if (((tiled_matmul_type == OS) && (transpose_A || transpose_B)) ||
+    (tiled_matmul_type == WS && transpose_A && transpose_B)) {
+    printf("Not implemented: %s matmul, a_transpose=%d, b_transpose=%d\n", matmul_type_str[tiled_matmul_type], transpose_A, transpose_B);
+    exit(1);
+  }
+
+  // Check if full_C options are correct
+  if ((tiled_matmul_type == CPU && (full_C || low_D)) ||
+      (tiled_matmul_type == OS && low_D)) {
+    printf("Not implemented: %s matmul, full_C=%d, low_D=%d\n", matmul_type_str[tiled_matmul_type], full_C, low_D);
+  }
+
+  if (act == LAYERNORM) {
+    if (tiled_matmul_type == OS) {
+      printf("Not implemented: %s matmul, act=%d\n", matmul_type_str[tiled_matmul_type], act);
+    }
+    if (tile_J * DIM < dim_J) {
+      printf("When doing layernorm, the full J dimension of the matrix must fit in the accumulator\n");
+    }
+  }
+#endif
+
+  // Run a tiled matrix multiplication on either Gemmini or the CPU
+  if (tiled_matmul_type == OS || tiled_matmul_type == WS) {
+    tiled_matmul_resadd_outer(dim_I, dim_J, dim_K,
+        A, B, D, E, C,
+        stride_A, stride_B, stride_D, stride_E, stride_C,
+        A_scale_factor, B_scale_factor, D_scale_factor, E_scale_factor,
+        tile_I, tile_J, tile_K,
+        act, scale, bert_scale, repeating_bias,
+        transpose_A, transpose_B,
+        full_C, low_D, low_E,
+        weightA,
+        (int)tiled_matmul_type);
+  } /*else -- if (tiled_matmul_type == CPU) -- {
+    matmul_cpu(transpose_A, transpose_B, dim_I, dim_J, dim_K,
+            A, B, (const acc_t*) D, (elem_t*)C,
+            stride_A, stride_B, stride_D, stride_C,
+            A_scale_factor, B_scale_factor, D_scale_factor,
+            act, scale, bert_scale, repeating_bias);
+  } */
+  // remove comment after implementing matmul_cpu_resadd
+}
+
+
 
 static void sp_tiled_matmul_resadd_ws(const elem_t * A, const elem_t * B,
         const void * D, const void * E, void * C,
