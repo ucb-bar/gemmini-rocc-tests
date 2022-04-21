@@ -3117,7 +3117,7 @@ static void sp_tiled_matmul_resadd_ws(const elem_t * A, const elem_t * B,
   }
 
 // Loading E right after D using the same mvin3, accumulator address, whatever is not effective
-// For some reason, E is not accumulated on top of D, TODO: why?
+// For some reason, E is not accumulated on top of D, TODO: debug, operator orders?
 //  // Move-in E and add on top of D 
 //  if (E != NULL) {
 //    for (size_t i = 0; i < I; i++) {
@@ -3212,7 +3212,7 @@ static void sp_tiled_matmul_resadd_ws(const elem_t * A, const elem_t * B,
   }
 
 
-  // TODO: combine tiling loops
+  // combine tiling loops? -- no need
   // Move-in E and add on top of D; TODO: why should this be inserted here?
   if (E != NULL) {
     for (size_t i = 0; i < I; i++) {
@@ -3340,16 +3340,16 @@ static void tiled_matmul_resadd_outer(size_t dim_I, size_t dim_J, size_t dim_K,
 
   const size_t sizeof_D = low_D ? sizeof(elem_t) : sizeof(acc_t) ;
   const size_t sizeof_C = full_C ? sizeof(acc_t) : sizeof(elem_t);
-  const size_t sizeof_E = low_E ? sizeof(elem_t) : sizeof(acc_t) ;
+  const size_t sizeof_E = low_E ? sizeof(elem_t) : sizeof(acc_t) ; // by default low_D, low_E are all false
 
   gemmini_extended_config_ex(dataflow, act, 0, 1, a_transpose, b_transpose);
   gemmini_extended_config_st(stride_C * sizeof_C, act, scale);
   gemmini_extended3_config_ld(stride_A * sizeof(elem_t), A_scale_factor, false, 0);
   gemmini_extended3_config_ld(stride_B * sizeof(elem_t), B_scale_factor, false, 1)
   gemmini_extended3_config_ld(repeating_bias ? 0 : (stride_D * sizeof_D), D_scale_factor, low_D, 2);
-//  gemmini_extended3_config_ld(stride_E * sizeof_E, E_scale_factor, low_E, 2); // TODO: check if id can be 3 -- can't be 3, std::out_of_range, configuring mvin3? 
-//  TODO: should reconfigure ldqueue for E load after D load is complete
-//  Currently they are the same
+//  gemmini_extended3_config_ld(stride_E * sizeof_E, E_scale_factor, low_E, 2); // max id is 2 (mvin,mvin1,mvin2)
+//  TODO: should reconfigure ldqueue for E load after D load is complete -- later we can implement mvin3
+//  assuming E having the same stride/scaling factor as D, repeating_bias in bert by default 0
 
   if (act == IGELU) {
     const acc_scale_t sqrt_2 = 1.41421356237;
