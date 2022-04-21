@@ -3084,7 +3084,7 @@ static void sp_tiled_matmul_resadd_ws(const elem_t * A, const elem_t * B,
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
   const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
-  const uint32_t E_sp_addr_start = 3 << (ADDR_LEN-2);
+  const uint32_t E_sp_addr_start = (1 << (ADDR_LEN-1)) | (1 << (ADDR_LEN-2));
   const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2) | (full_C << (ADDR_LEN-3));
 
   const int A_blocks = a_transpose ? (I <= MAX_BLOCK_LEN ? I : MAX_BLOCK_LEN) :
@@ -3116,20 +3116,22 @@ static void sp_tiled_matmul_resadd_ws(const elem_t * A, const elem_t * B,
     }
   }
 
-  // Move-in E and add on top of D
-  if (E != NULL) {
-    for (size_t i = 0; i < I; i++) {
-      const size_t rows = DIM - (i == I-1 ? pad_I : 0);
-      for (size_t j = 0; j < J; j += E_blocks) {
-        const size_t bias_row = repeating_bias ? 0 : i;
-        const void * const E_dram_addr = (int8_t *)E + (bias_row * E_row_stride + j)*DIM*sizeof_E;
-        const uint32_t E_sp_addr_acc = E_sp_addr_start + (i*J + j)*DIM;
-        size_t blocks = j + E_blocks <= J ? E_blocks : J-j;
-        const size_t cols = blocks * DIM - (j + blocks >= J ? pad_J : 0);
-        gemmini_extended_mvin3(E_dram_addr, E_sp_addr_acc, cols, rows);
-      }
-    }
-  }
+// Loading E right after D using the same mvin3, accumulator address, whatever is not effective
+// For some reason, E is not accumulated on top of D, TODO: why?
+//  // Move-in E and add on top of D 
+//  if (E != NULL) {
+//    for (size_t i = 0; i < I; i++) {
+//      const size_t rows = DIM - (i == I-1 ? pad_I : 0);
+//      for (size_t j = 0; j < J; j += E_blocks) {
+//        const size_t bias_row = repeating_bias ? 0 : i;
+//        const void * const E_dram_addr = (int8_t *)E + (bias_row * E_row_stride + j)*DIM*sizeof_E;
+//        const uint32_t E_sp_addr_acc = E_sp_addr_start + (i*J + j)*DIM;
+//        size_t blocks = j + E_blocks <= J ? E_blocks : J-j;
+//        const size_t cols = blocks * DIM - (j + blocks >= J ? pad_J : 0);
+//        gemmini_extended_mvin3(E_dram_addr, E_sp_addr_acc, cols, rows);
+//      }
+//    }
+//  }
 
   for (size_t k = 0; k < K; k++) {
     for (size_t j = 0; j < J; j++) {
@@ -3205,7 +3207,30 @@ static void sp_tiled_matmul_resadd_ws(const elem_t * A, const elem_t * B,
             gemmini_extended_compute_accumulated(A_sp_addr, GARBAGE_ADDR, A_cols, A_rows, DIM, DIM);
           }
         }
+      }
+    }
+  }
 
+
+  // TODO: combine tiling loops
+  // Move-in E and add on top of D; TODO: why should this be inserted here?
+  if (E != NULL) {
+    for (size_t i = 0; i < I; i++) {
+      const size_t rows = DIM - (i == I-1 ? pad_I : 0);
+      for (size_t j = 0; j < J; j += E_blocks) {
+        const size_t bias_row = repeating_bias ? 0 : i;
+        const void * const E_dram_addr = (int8_t *)E + (bias_row * E_row_stride + j)*DIM*sizeof_E;
+        const uint32_t E_sp_addr_acc = E_sp_addr_start + (i*J + j)*DIM;
+        size_t blocks = j + E_blocks <= J ? E_blocks : J-j;
+        const size_t cols = blocks * DIM - (j + blocks >= J ? pad_J : 0);
+        gemmini_extended_mvin3(E_dram_addr, E_sp_addr_acc, cols, rows);
+      }
+    }
+  }
+
+  for (size_t k = 0; k < K; k++) {
+    for (size_t j = 0; j < J; j++) {
+      for (size_t i = 0; i < I; i++) {
         if (C != NULL && k == K-1) {
           // Move-out C (if not normalizing)
           if (act != LAYERNORM && (j == J-1 || j % C_blocks == C_blocks-1)) {
@@ -3322,7 +3347,9 @@ static void tiled_matmul_resadd_outer(size_t dim_I, size_t dim_J, size_t dim_K,
   gemmini_extended3_config_ld(stride_A * sizeof(elem_t), A_scale_factor, false, 0);
   gemmini_extended3_config_ld(stride_B * sizeof(elem_t), B_scale_factor, false, 1)
   gemmini_extended3_config_ld(repeating_bias ? 0 : (stride_D * sizeof_D), D_scale_factor, low_D, 2);
-  gemmini_extended3_config_ld(stride_E * sizeof_E, E_scale_factor, low_E, 3); // TODO: check if id can be 3
+//  gemmini_extended3_config_ld(stride_E * sizeof_E, E_scale_factor, low_E, 2); // TODO: check if id can be 3 -- can't be 3, std::out_of_range, configuring mvin3? 
+//  TODO: should reconfigure ldqueue for E load after D load is complete
+//  Currently they are the same
 
   if (act == IGELU) {
     const acc_scale_t sqrt_2 = 1.41421356237;
