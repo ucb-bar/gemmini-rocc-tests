@@ -1708,12 +1708,7 @@ printf("group id %d workload %d part %d - my score: %d, others score: %d, slack:
       
         for(int i = 0; i < 5; i++){
           uint64_t start = read_cycles(); 
-          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){    
-            if(cid == 0 && slack_time <= slack[i] * planaria_scale){
-              gemmini_terminate[other_sub_group_id] = true;
-//printf("group id %d need to terminate others\n", sub_group_id);
-            }
-          }
+          if(cid == 0) gemmini_terminate[other_sub_group_id] = false;
         /*  else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
             if(cid == 0 && slack_time*2 <= (slack[i]) * planaria_scale){
               gemmini_terminate[other_sub_group_id] = true;
@@ -1784,12 +1779,7 @@ printf("group id %d workload %d part %d - my score: %d, others score: %d, slack:
       for(int i = 0; i < 2; i++){
         uint64_t start = read_cycles();
         if(num_gemmini <= 2){
-          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){
-            if(cid == 0 && slack_time <= ((slack - 1000000*i) * planaria_scale)){
-              gemmini_terminate[other_sub_group_id] = true;
-//printf("group id %d need to terminate others\n", sub_group_id);
-            }
-          }
+          if(cid == 0) gemmini_terminate[other_sub_group_id] = false;
          /* else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
             if(cid == 0 && slack_time*2 <= (slack - 1000000*i) * planaria_scale){
               gemmini_terminate[other_sub_group_id] = true;
@@ -1896,12 +1886,7 @@ printf("group id %d workload %d part %d - my score: %d, others score: %d, slack:
       for(int i = 0; i < 2; i++){
         uint64_t start = read_cycles();
         if(num_gemmini <= 2){
-          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){
-            if(cid == 0 && slack_time <= ((slack - 900000*i) * planaria_scale)){
-              gemmini_terminate[other_sub_group_id] = true;
-//printf("group id %d need to terminate others\n", sub_group_id);
-            }
-          }
+          if(cid == 0) gemmini_terminate[other_sub_group_id] = false;
          /* else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
             if(cid == 0 && slack_time*2 <= (slack - 900000*i) * planaria_scale){
               gemmini_terminate[other_sub_group_id] = true;
