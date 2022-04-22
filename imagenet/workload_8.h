@@ -113,7 +113,7 @@ static int workload_group[NUM_WORKLOAD] = {1, 4, 2, 2, 1, 2, 3, 1};
 //  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}; // for now only 1 batch
 
 static int planaria_group[NUM_WORKLOAD] = 
- {1, 10, 5, 5, 2, 5, 5, 2};
+ {18, 10, 5, 5, 2, 5, 5, 2};
 //   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 //#define QUEUE_DEPTH 10
 //#define SEED 10 // to randomize workload more
@@ -284,113 +284,274 @@ int workload_type_assign(bool batch1, bool batch4, bool batch8, uint32_t seed){
   //printf("rand output: %zu, rand output value: %d, workload id: %d \n", rand_out, r, id);
   return id;
 }
-/*
-// mode 1 workload create function (SLA satisfaction)
-void workload_mode_1(int qos, int workload, bool batch1, bool batch4, bool batch8, uint32_t seed, int cap, float target_scale, float cap_scale){ 
-  // qos < 0 -> mixed
-  // qos >= 0 -> workload dispatch qos apart, qos ways at once
-  for(int k = 0; k < NUM_GROUP; k++)
-    for(int i = 0; i < MAX_WORKLOAD; i++)
-      total_queue_status[k][i]= -1;
+
+// to test fairness
+void workload_mode_1(int workload, bool batch1, bool batch4, bool batch8, uint32_t seed, float target_scale, float cap_scale){
+  // priority (0: 15, 1: 18 / 2: 10, 4: 15, 6: 15, 8: 15 / 9: 10, 11: 2)
+  for(int i = 0; i < MAX_WORKLOAD; i++)
+    total_queue_status[i]= -1;
   
   int first_dispatch_interval = 50000;
   if (batch4) first_dispatch_interval *= 4;
   if (batch8) first_dispatch_interval *= 8;
 
-  int group = cap * (2+1);
-  // extremely high QoS (0) should come really rarely
-    // 1: 30%, 2: 40%, 3: 30%
-    for (int i = 0; i < workload+2*group; i++){
-      int select = rand_seed(seed) % 50;
-      int workload_qos = 0;
+  int group = CAP; // set this to 4 for 2 cores
+  int num_workload_group = ceil_divide_int(workload+group, group);
 
-      group = cap * (workload_qos + 1);
-      int workload_type = workload_type_assign(batch1, batch4, batch8, seed);//rand_base + rand_seed(seed) % rand_mod;
-      total_queue_type[0][i] = workload_type;
-      total_queue_priority[0][i] = (workload_qos == 0) ? 10 : 4;
-      total_queue_qos[0][i] = workload_qos;
-      total_queue_target[0][i] = (workload_qos + 1) * target_scale * cap * sp_cycles[workload_type];
-
-      for(int k = 0; k < NUM_GROUP; k++){
-        for (int j = 0; j < SUB_CORE; j++){
-          total_queue_finish[k][j][i] = 0;
-          total_queue_runtime_thread[k][j][i] = 0;
-          total_queue_runtime_total[k][j][i] = 0;
-        }
+  for(int i = 0; i < num_workload_group; i++){
+    for(int j = 0; j < group; j++){
+      int index = group * i + j;
+      int workload_type = workload_type_assign(batch1, batch4, batch8, seed);
+      //int workload_type = rand_base + rand_seed(seed) % rand_mod;
+      total_queue_type[index] = workload_type; 
+      int priority_level = 5; // fixed level priority 
+      total_queue_priority[index] = priority_level;
+      total_queue_target[index] = target_cycles[workload_type] * target_scale;
+      for (int j = 0; j < SUB_CORE; j++){
+        total_queue_finish[j][index] = 0;
+        total_queue_runtime_thread[j][index] = 0;
+        total_queue_runtime_total[j][index] = 0;
       }
-      if(i < group){
-        total_queue_dispatch[0][i] = first_dispatch_interval*i;
+      if(i == 0){
+        total_queue_dispatch[index] = first_dispatch_interval*j;
       }
       else{
-        total_queue_dispatch[0][i] = total_queue_dispatch[0][i - group] + sp_cycles[total_queue_type[0][i - group]] * group * cap_scale; // is it enough?
+        total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * cap_scale;// + 45000*(rand()%20); 
       }
     }
-
-  for (int i = 0; i < workload; i++){
-    int workload_qos = total_queue_qos[0][workload - i - 1];
-
-    int workload_type = total_queue_type[0][workload - i - 1];
-    total_queue_type[1][i] = workload_type;
-    total_queue_priority[1][i] = (workload_qos == 0) ? 10 : 4;
-    total_queue_qos[1][i] = workload_qos;
-    total_queue_target[1][i] = (workload_qos + 1) * target_scale * cap * sp_cycles[workload_type];
-
-    if(i < group){
-      total_queue_dispatch[1][i] = first_dispatch_interval*i;
-    }
-    else{
-      total_queue_dispatch[1][i] = total_queue_dispatch[1][i - group] + sp_cycles[total_queue_type[1][i - group]] * group * cap_scale; // is it enough?
-    }
   }
-
+ 
   for(int i = 0; i < workload; i++){
-    for(int j = i+1; j < workload; j++){
-      if(total_queue_dispatch[1][i] > total_queue_dispatch[1][j]){
-        uint64_t a = total_queue_dispatch[1][i];
-        total_queue_dispatch[1][i] = total_queue_dispatch[1][j];
-        total_queue_dispatch[1][j] = a;
+    for(int j = i+1; j < workload+group; j++){
+      if(total_queue_dispatch[i] > total_queue_dispatch[j]){
+        uint64_t a = total_queue_dispatch[i];
+        total_queue_dispatch[i] = total_queue_dispatch[j];
+        total_queue_dispatch[j] = a;
  
-        a = total_queue_target[1][i];
-        total_queue_target[1][i] = total_queue_target[1][j];
-        total_queue_target[1][j] = a;
+        a = total_queue_target[i];
+        total_queue_target[i] = total_queue_target[j];
+        total_queue_target[j] = a;
  
-        int b = total_queue_priority[1][i];
-        total_queue_priority[1][i] = total_queue_priority[1][j];
-        total_queue_priority[1][j] = b;
+        int b = total_queue_priority[i];
+        total_queue_priority[i] = total_queue_priority[j];
+        total_queue_priority[j] = b;
   
-        b = total_queue_type[1][i];
-        total_queue_type[1][i] = total_queue_type[1][j];
-        total_queue_type[1][j] = b;
- 
-        b = total_queue_qos[1][i];
-        total_queue_qos[1][i] = total_queue_qos[1][j];
-        total_queue_qos[1][j] = b;                    
+        b = total_queue_type[i];
+        total_queue_type[i] = total_queue_type[j];
+        total_queue_type[j] = b;
+                     
       }
     }
   }
-  for(int k = 0; k < NUM_GROUP; k++){
-    for(int i = workload; i < workload+2*group; i++){
-      total_queue_dispatch[k][i] = 0;
-      total_queue_priority[k][i] = -1;
-      total_queue_type[k][i] = -1;
-      total_queue_status[k][i] = -1;
-      total_queue_qos[k][i] = -1;
-    }
-  }
 
-  //for(int i = 0; i < workload; i++)
-    //printf("after mixing entry %d, workload id %d\n", i, total_queue_type[i]);
+  
+  for(int i = workload; i < workload+group; i++){
+    total_queue_dispatch[i] = 0;
+    total_queue_priority[i] = -1;
+    total_queue_type[i] = -1;
+    total_queue_status[i] = -1;
+  }
 
   for(int i = 0; i < NUM_CORE; i++){
       gemmini_runtime[i] = 0; // initialize time 
+    
   }
   for(int c = 0; c < NUM_GROUP; c++)
     for(int k = 0; k < SUB_GROUP; k++)
       for(int i = 0; i < MAX_ITER; i++)
         for(int j = 0; j < QUEUE_DEPTH; j++)
           gemmini_workload_assigned[c][k][i][j] = -1;
+
+
 }
-*/
+
+// priority scheduling
+// num_sub_group: SUB_CORE (2), or 1 if doing 4+4 partitioning
+int workload_priority_mp(int num_workload, int num_iter, uint64_t current_cycle){
+  for(int group; group < NUM_GROUP; group++)
+    for(int c = 0; c < SUB_GROUP; c++)
+      for(int i = 0; i < MAX_ITER; i++)
+        for(int j = 0; j < QUEUE_DEPTH; j++){
+          gemmini_workload_grouped[group][c][i][j] = -1;
+          gemmini_workload_assigned[group][c][i][j] = -1;
+        }
+
+  int num_batch = 1;
+  if(total_queue_type[0] >= FCNNET_4)  num_batch = 4;
+  if(total_queue_type[0] >= FCNNET_8)  num_batch = 8;
+//  printf("workload_priority_mp current cycles: %llu\n", current_cycle);
+
+  // 4 entries if grouping 2 cores
+  int group_temp[NUM_SUB_GROUP];
+  uint64_t cycle[NUM_SUB_GROUP];
+  for (int i = 0; i < NUM_SUB_GROUP; i++){
+    cycle[i] = current_cycle + 500000 * num_batch;
+    group_temp[i] = 0;
+    gemmini_dram_util[i] = 0;
+  }
+
+  // priority score initialization
+  int64_t score[num_workload];
+  int max_depth = QUEUE_DEPTH * NUM_SUB_GROUP;
+
+  int iter = 0;
+
+  // repeat from here
+  int pre_assign_queue[max_depth];
+  int64_t pre_assign_score[max_depth]; // need this?
+  int pre_assign_length = 0;
+  while (iter < num_iter){
+    for(int i = 0; i < max_depth; i++){
+      pre_assign_queue[i] = -1;
+      pre_assign_score[i] = -1;
+    }
+
+    uint64_t top_cycle = cycle[0];
+    // get max cycle
+    for(int i = 0; i < NUM_SUB_GROUP; i++){
+      if(top_cycle > cycle[i]){
+        top_cycle = cycle[i];
+      }
+    }
+
+    int pointer = 0;
+    for(int i = 0; i < num_workload; i++){
+      if(total_queue_dispatch[i] > top_cycle){
+        pointer = i;
+        break;
+      }
+      else if(i == num_workload - 1){
+        pointer = num_workload;
+      }
+    }
+    pointer = (pointer >= num_workload - 5) ? num_workload : pointer; 
+
+    bool done = true;
+    for (int i = 0; i < pointer; i++){
+      if(total_queue_status[i] == -1){ //only take the unassigned ones
+        score[i] = total_queue_priority[i];
+        done = false;
+      }
+      else
+        score[i] = -1;
+    }
+    if(done && (pointer == num_workload))
+      break;
+
+   // printf("iter: %d, cycle: %llu, cycle0: %llu, cycle1: %llu, dispatch queue pointer: %d\n", iter, top_cycle, cycle[0], cycle[1], pointer);
+    
+    // ToDo: QoS 0 (extreme priority)
+
+    // assign until num_iter
+    // based on expected cycles after num_iter
+    for(int i = 0; i < pointer; i++){
+      if(score[i] >= 0){
+        int type = total_queue_type[i];
+        uint64_t after_dispatch = (top_cycle > total_queue_dispatch[i]) ? (top_cycle - total_queue_dispatch[i]) : 0;
+        score[i] = score[i]*100000 + ((100000*after_dispatch) / (sp_prediction_cycles[type]));
+      }
+    }
+
+    // first, pick candidate
+    // next, assign using cycle predictio 
+    int queue_index = 0;
+    int max_index = -1;
+    int64_t max_score = -1;
+    while(queue_index < max_depth){
+      for(int i = 0; i < pointer; i++){
+        if(total_queue_status[i] == -1){
+          if(max_score < score[i]){
+            max_score = score[i];
+            max_index = i;
+          }
+        }
+      }
+      //printf("queue index: %d, max index: %d\n", queue_index, max_index);
+      if(max_index == -1){
+     //   pre_assign_length = queue_index;
+        break;
+      }
+      pre_assign_queue[queue_index] = max_index;
+      pre_assign_score[queue_index] = max_score;
+      queue_index ++;
+      total_queue_status[max_index] = 0;
+      max_index = -1;
+      max_score = -1;
+    }
+    if(queue_index == 0 && ((iter == 0 && pre_assign_length == 0) || (iter == 1 && pre_assign_length == 1))) break;
+   // printf("queue_index: %d, pre_assign_length: %d, iter: %d\n", queue_index, pre_assign_length, iter);
+   pre_assign_length = queue_index;
+   /*
+    printf("pre assigned queue length: %d \n", pre_assign_length);
+    for(int i = 0; i < pre_assign_length; i++)
+      printf("%d, ", pre_assign_queue[i]); 
+    printf("\n");
+    */
+
+    for (int p = 0; p < pre_assign_length; ){
+  //    printf("iter: %d, index: %d, cycle0: %llu, cycle1: %llu, group0: %d, group1: %d\n", iter, index, cycle[0], cycle[1], group_temp[0], group_temp[1]);
+      bool full = false;
+      for(int i = 0; i < NUM_SUB_GROUP; i++){
+        if(group_temp[i] == QUEUE_DEPTH){
+          full = true;
+          break;
+        }
+      }
+
+      if(!full){
+/*
+        // check iter == 1 and first entries are same when executing
+        if (pre_assign_length == 1 && iter == 0){
+          int index = pre_assign_queue[0];
+          int type = total_queue_type[group][index];
+          for(int k=0; k < num_sub_group; k++){
+            gemmini_workload_assigned[group][k][iter][group_temp[k]] = index;
+            cycle[k] += sp2_cycles[type];
+            group_temp[k] += 1;
+            p++;
+          }
+          iter = num_iter;
+          break;
+        }
+  */        
+        for(int k = 0; k < NUM_SUB_GROUP; k++){
+          bool smallest = true;
+          for(int c = 0; c < NUM_SUB_GROUP; c++){
+            if(cycle[k] > cycle[c]){
+              smallest = false;
+              break;
+            }
+          }
+          if(smallest && p < pre_assign_length){
+            int index = pre_assign_queue[p];
+            int group_index = k / NUM_GROUP;
+            int sub_group_index = k % NUM_GROUP;
+            gemmini_workload_assigned[group_index][sub_group_index][iter][group_temp[k]] = index;
+            int type = total_queue_type[index];
+            cycle[k] += (sp_cycles[type] * (CAP_SCALE+0.1));
+            group_temp[k] += 1;
+            p++;
+          }
+        }
+      }
+      else{
+        // release status
+        int index = pre_assign_queue[p];
+        total_queue_status[index] = -1;
+        p++;
+      }
+    }
+    iter += 1;
+    for(int i = 0; i < NUM_SUB_GROUP; i++){
+      group_temp[i] = 0;
+    }
+  }
+
+  // if returned value is 0, then it is over
+  return (iter); // number of queue group
+}
+
+
 void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32_t seed, float target_scale, float cap_scale){
   // priority (0: 15, 1: 18 / 2: 10, 4: 15, 6: 15, 8: 15 / 9: 10, 11: 2)
   for(int i = 0; i < MAX_WORKLOAD; i++)
@@ -1458,8 +1619,42 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
     int orow_divide = num_gemmini;
     int batch_divide = 1; // 1 batch workload
     if(workload_id == 0){
-      cycles = fcnnet_function_1(cid, sub_group_id, orow_divide, batch_divide, -1, barrier_funct);
-      total_runtime = *(cycles+73);
+
+      uint64_t slack = 60000000;
+      for(int i = 0; i < 18; i++){
+        uint64_t start = read_cycles();
+        if(num_gemmini <= 2){
+          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){
+            if(cid == 0 && slack_time <= ((slack - 3000000*i) * planaria_scale)){
+              gemmini_terminate[other_sub_group_id] = true;
+//printf("group id %d need to terminate others\n", sub_group_id);
+            }
+          }
+         /* else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
+            if(cid == 0 && slack_time*2 <= (slack - 1000000*i) * planaria_scale){
+              gemmini_terminate[other_sub_group_id] = true;
+//printf("group id %d need to terminate others\n", sub_group_id);
+            }
+          }*/
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif
+         if(gemmini_terminate_receive[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        }
+        if(part[i]){
+          cycles = fcnnet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          total_runtime += *(cycles+73);
+          if(cid == 0) total_queue_status[queue_id] = i+1;
+        }
+        uint64_t end = read_cycles();
+        slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
+      }
+    
     }
     else if(workload_id == 1){
       uint64_t slack = 20000000;
