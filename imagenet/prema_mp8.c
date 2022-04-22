@@ -16,13 +16,14 @@
 #define NUM_CORE 8
 #define SUB_CORE 8
 #define SEED 0
-#define total_workloads 100
-#define QoS 0
+#define total_workloads 250 // 100 each
+#define WORKLOAD_CORE 2
 #define QUEUE_DEPTH 5
-#define NUM_GROUP 2
-#define CAP 5 // 0 to 1 (smaller number: shorter time between workload dispatch time)
-#define CAP_SCALE 0.5
-#define TARGET_SCALE 1
+#define NUM_ITER 4
+#define CAP 4 // 0 to 1 (smaller number: shorter time between workload dispatch time)
+#define CAP_SCALE 1.4
+#define TARGET_SCALE 1.2
+
 
 #define BATCH1 true
 #define BATCH4 false
@@ -34,7 +35,7 @@
 
 #include "include/gemmini.h"
 #include "include/gemmini_nn.h"
-#include "workload.h"
+#include "workload_8.h"
 pthread_barrier_t barrier_global;
 
 #define MAT_DIM_I 512
@@ -57,7 +58,7 @@ struct thread_args{
    int workload_num_core; 
    int workload_id;
    int cid;
-   int queue_group;
+   int queue_length;
 };
 // random matmul to warm up thread
 void *thread_matmul0(void *arg){
@@ -97,10 +98,9 @@ void *thread_NN(void *arg){
   //printf("barrier working - group_id: %d\n", group_id);
   start = read_cycles();
   for(int i = 0; i < QUEUE_DEPTH; i++){
-     int queue_id = gemmini_workload_assigned[0][0][i];
+     int queue_id = gemmini_workload_assigned[0][0][0][i];
      if(queue_id != -1){
         uint64_t inner_start = read_cycles();
-        int index = queue_id % total_workloads;
 
         int workload_id = total_queue_type[queue_id];
 
@@ -109,11 +109,11 @@ void *thread_NN(void *arg){
 //          pthread_barrier_wait(&barrier_global);
      
         //temp_cycles += (inner_end - inner_start);
-        total_queue_runtime_total[0][real_cid][queue_id] = total_runtime;
+        total_queue_runtime_total[real_cid][queue_id] = total_runtime;
         uint64_t inner_end = read_cycles();
-        total_queue_runtime_thread[0][real_cid][queue_id] = inner_end - inner_start;
+        total_queue_runtime_thread[real_cid][queue_id] = inner_end - inner_start;
         uint64_t this_cycles = temp_cycles + inner_end - start;
-        total_queue_finish[0][real_cid][queue_id] = (this_cycles > total_queue_dispatch[group][index]) ? (this_cycles- total_queue_dispatch[group][index]) : 1000;
+        total_queue_finish[real_cid][queue_id] = (this_cycles > total_queue_dispatch[queue_id]) ? (this_cycles- total_queue_dispatch[queue_id]) : 1000;
         pthread_barrier_wait(&barrier_global);
    
         //total_queue_finish[real_cid][queue_id] = ((temp_cycles + inner_end - start) - total_queue_dispatch[queue_id]);
@@ -197,7 +197,7 @@ int main (int argc, char * argv[]) {
 
     int queue_length = 1;
     while(queue_length != -1){
-      global_time = gemmini_runtime[0];
+      global_time = gemmini_runtime;
       for(int i = 0; i < NUM_CORE; i++)
         if(global_time < gemmini_runtime[i]) 
           global_time = gemmini_runtime[i];
@@ -212,9 +212,9 @@ int main (int argc, char * argv[]) {
       
       if(queue_length > 0){
         for(int j = 0; j < NUM_CORE; j++){
-          gemmini_done[i] = false;
+          //gemmini_done[j] = false;
           //nn_args[index].barrier_index = i;
-          nn_args[index].workload_num_core = WORKLOAD_CORE;
+          nn_args[j].workload_num_core = WORKLOAD_CORE;
           nn_args[j].cid = j;
           nn_args[j].queue_length = queue_length;
           pthread_create(&thread[j], &attr[j], thread_NN, &nn_args[j]);
@@ -228,41 +228,34 @@ int main (int argc, char * argv[]) {
       }	
     }
 
-// check total_queue_finish, total_queue_runtime_thread, total_queue_runtime_total of each workload (total_queue_type)
-// also check gemmini_runtime 
-
-    for(int g = 0; g < NUM_GROUP; g++){
-      for(int i = 0; i < total_workloads; i++){
-        int index = i + g * total_workloads;
-        uint64_t max = 0;   
-        for(int j = 0; j < NUM_CORE; j++){
-          max = max > total_queue_finish[0][j][index] ? max : total_queue_finish[0][j][index]; 
-        }
-        printf("queue id %d workload type: %d\n", index, total_queue_type[g][i]);
-        printf("queue id %d dispatch to finish time: %llu\n", index, max);
-        
-        printf("queue id %d priority: %d\n", index, total_queue_priority[g][i]);
-        printf("queue id %d qos: %d\n", index, total_queue_qos[g][i]);
-        printf("queue id %d dispatched time: %llu\n", index, total_queue_dispatch[g][i]);
-        printf("queue id %d target: %llu\n", index, total_queue_target[g][i]);
-
-        max = 0;
-        for(int j = 0; j < NUM_CORE; j++){
-          max = max > total_queue_runtime_thread[0][j][index] ? max : total_queue_runtime_thread[0][j][index]; 
-        }
-        printf("queue id %d thread runtime: %llu\n", index, max);
-
-        max = 0;
-        for(int j = 0; j < NUM_CORE; j++){
-           max = max > total_queue_runtime_total[0][j][index] ? max : total_queue_runtime_total[0][j][index]; 
-        }
-        printf("queue id %d total runtime: %llu\n", index, max);
-      }
+  for(int i = 0; i < total_workloads; i++){
+    uint64_t max = 0;     
+    for(int j = 0; j < SUB_CORE; j++){
+      max = max > total_queue_finish[j][i] ? max : total_queue_finish[j][i]; 
     }
+	  printf("queue id %d workload type: %d\n", i, total_queue_type[i]);
+	  printf("queue id %d dispatch to finish time: %llu\n", i, max); 
+    printf("queue id %d priority: %d\n", i, total_queue_priority[i]);
+    printf("queue id %d dispatched time: %llu\n", i, total_queue_dispatch[i]);
+    printf("queue id %d target: %llu\n", i, total_queue_target[i]);
+
+    max = 0;
+    for(int j = 0; j < SUB_CORE; j++){
+      max = max > total_queue_runtime_thread[j][i] ? max : total_queue_runtime_thread[j][i]; 
+    }
+    printf("queue id %d thread runtime: %llu\n", i, max);
+
+    max = 0;
+    for(int j = 0; j < SUB_CORE; j++){
+       max = max > total_queue_runtime_total[j][i] ? max : total_queue_runtime_total[j][i]; 
+    }
+    printf("queue id %d total runtime: %llu\n", i, max);
+  }
 
   for(int i = 0; i < NUM_CORE; i++){
 	  printf("gemmini core id %d runtime: %llu\n", i, gemmini_runtime[i]);
   }
+
 
   pthread_barrier_destroy(&barrier_global); 
   printf("==================================\n");

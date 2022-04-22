@@ -113,7 +113,7 @@ static int workload_group[NUM_WORKLOAD] = {1, 4, 2, 2, 1, 2, 3, 1};
 //  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}; // for now only 1 batch
 
 static int planaria_group[NUM_WORKLOAD] = 
- {1, 10, 4, 5, 2, 4, 4, 2};
+ {1, 10, 5, 5, 2, 5, 5, 2};
 //   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 //#define QUEUE_DEPTH 10
 //#define SEED 10 // to randomize workload more
@@ -446,7 +446,7 @@ void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32
         total_queue_dispatch[index] = first_dispatch_interval*j;
       }
       else{
-        total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * cap_scale; 
+        total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * cap_scale;// + 45000*(rand()%20); 
       }
     }
   }
@@ -658,7 +658,7 @@ int workload_priority_mp(int num_workload, int num_iter, uint64_t current_cycle)
             int sub_group_index = k % NUM_GROUP;
             gemmini_workload_assigned[group_index][sub_group_index][iter][group_temp[k]] = index;
             int type = total_queue_type[index];
-            cycle[k] += sp_cycles[type];
+            cycle[k] += (sp_cycles[type] * (CAP_SCALE+0.1));
             group_temp[k] += 1;
             p++;
           }
@@ -935,8 +935,7 @@ int workload_priority_sp(int num_workload, uint64_t current_cycle){
     pre_assign_queue[queue_index] = max_index;
     pre_assign_score[queue_index] = max_score;
     queue_index ++;
-    int group = max_index / num_workload;
-    total_queue_status[max_index%num_workload] = 0;
+    total_queue_status[max_index] = 0;
     max_index = -1;
     max_score = -1;
   }
@@ -1468,23 +1467,24 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
       for(int i = 0; i < 10; i++){
         uint64_t start = read_cycles();
         if(num_gemmini <= 2){
-          if(gemmini_planaria_score[other_sub_group_id] < gemmini_planaria_score[sub_group_id]){    
-            if(cid == 0 && slack_time < (slack - 2000000*i) * planaria_scale){
+          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){    
+            if(cid == 0 && slack_time <= (slack - 2000000*i) * planaria_scale){
               gemmini_terminate[other_sub_group_id] = true;
 //printf("group id %d need to terminate others\n", sub_group_id);
             }
           }
-          else if(gemmini_planaria_score[other_sub_group_id] < gemmini_planaria_score[sub_group_id] * 2){    
-            if(cid == 0 && slack_time*2 < (slack - 2000000*i) * planaria_scale){
+      /*    else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
+            if(cid == 0 && slack_time*2 <= (slack - 2000000*i) * planaria_scale){
               gemmini_terminate[other_sub_group_id] = true;
 //printf("group id %d need to terminate others\n", sub_group_id);
             }
-          }
+          }*/
           if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
             if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
           pthread_barrier_wait(barrier_funct);
-//printf("group id %d workload %d part %d - my score: %d, others score: %d, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
- 
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif 
           if(gemmini_terminate_receive[sub_group_id])
             break;
           pthread_barrier_wait(barrier_funct);
@@ -1501,7 +1501,7 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
 
     }
     else if(workload_id == 2){
-      uint64_t slack[4] = {12522781, 6429112, 2297240, 459726};
+      uint64_t slack[5] = {12522781, 10500000, 6429112, 2297240, 459726};
       if(num_gemmini == 4){ 
 //printf("executing alexnet with all 4cores\n");
       	if(sub_group_id % 2 == 0) cycles = alexnet_function_1(cid, sub_group_id, true, true, orow_divide, batch_divide, -1, barrier_funct);
@@ -1511,24 +1511,26 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
       }
       else{
       
-        for(int i = 0; i < 4; i++){
+        for(int i = 0; i < 5; i++){
           uint64_t start = read_cycles(); 
-          if(gemmini_planaria_score[other_sub_group_id] < gemmini_planaria_score[sub_group_id]){    
-            if(cid == 0 && slack_time < slack[i] * planaria_scale){
+          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){    
+            if(cid == 0 && slack_time <= slack[i] * planaria_scale){
               gemmini_terminate[other_sub_group_id] = true;
 //printf("group id %d need to terminate others\n", sub_group_id);
             }
           }
-          else if(gemmini_planaria_score[other_sub_group_id] < gemmini_planaria_score[sub_group_id] * 2){    
-            if(cid == 0 && slack_time*2 < (slack[i]) * planaria_scale){
+        /*  else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
+            if(cid == 0 && slack_time*2 <= (slack[i]) * planaria_scale){
               gemmini_terminate[other_sub_group_id] = true;
 //printf("group id %d need to terminate others\n", sub_group_id);
             }
-          }
+          }*/
           if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
             if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
           pthread_barrier_wait(barrier_funct);
-//printf("group id %d workload %d part %d - my score: %d, others score: %d, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif 
           if(gemmini_terminate_receive[sub_group_id])
             break;
           pthread_barrier_wait(barrier_funct);
@@ -1550,20 +1552,23 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
       for(int i = 0; i < 5; i++){
         uint64_t start = read_cycles();
         if(num_gemmini <= 2){
-          if(gemmini_planaria_score[other_sub_group_id] < gemmini_planaria_score[sub_group_id]){    
-            if(cid == 0 && slack_time < (slack - 2000000*i) * planaria_scale){
+          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){    
+            if(cid == 0 && slack_time <= (slack - 2000000*i) * planaria_scale){
               gemmini_terminate[other_sub_group_id] = true;
             }
           }
-          else if(gemmini_planaria_score[other_sub_group_id] < gemmini_planaria_score[sub_group_id] * 2){    
-            if(cid == 0 && slack_time*2 < (slack - 2000000*i) * planaria_scale){
+         /* else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
+            if(cid == 0 && slack_time*2 <= (slack - 2000000*i) * planaria_scale){
               gemmini_terminate[other_sub_group_id] = true;
 //printf("group id %d need to terminate others\n", sub_group_id);
             }
-          }
+          }*/
           if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
             if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
           pthread_barrier_wait(barrier_funct);
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif 
           if(gemmini_terminate_receive[sub_group_id])
             break;
           pthread_barrier_wait(barrier_funct);
@@ -1580,27 +1585,29 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
 
     }
     else if(workload_id == 4){
-      uint64_t slack = 2400000;
+      uint64_t slack = 2000000;
       for(int i = 0; i < 2; i++){
         uint64_t start = read_cycles();
         if(num_gemmini <= 2){
-          if(gemmini_planaria_score[other_sub_group_id] < gemmini_planaria_score[sub_group_id]){
-            if(cid == 0 && slack_time < ((slack - 1200000*i) * planaria_scale)){
+          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){
+            if(cid == 0 && slack_time <= ((slack - 1000000*i) * planaria_scale)){
               gemmini_terminate[other_sub_group_id] = true;
 //printf("group id %d need to terminate others\n", sub_group_id);
             }
           }
-          else if(gemmini_planaria_score[other_sub_group_id] < gemmini_planaria_score[sub_group_id] * 2){    
-            if(cid == 0 && slack_time*2 < (slack - 1200000*i) * planaria_scale){
+         /* else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
+            if(cid == 0 && slack_time*2 <= (slack - 1000000*i) * planaria_scale){
               gemmini_terminate[other_sub_group_id] = true;
 //printf("group id %d need to terminate others\n", sub_group_id);
             }
-          }
+          }*/
           if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
             if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
           pthread_barrier_wait(barrier_funct);
-//printf("group id %d workload %d part %d - my score: %d, others score: %d, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
-          if(gemmini_terminate_receive[sub_group_id])
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif
+         if(gemmini_terminate_receive[sub_group_id])
             break;
           pthread_barrier_wait(barrier_funct);
         }
@@ -1616,23 +1623,26 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
     }
     else if(workload_id == 5){
       uint64_t slack = 4000000;
-      for(int i = 0; i < 4; i++){
+      for(int i = 0; i < 5; i++){
         uint64_t start = read_cycles();
         if(num_gemmini <= 2){
-          if(gemmini_planaria_score[other_sub_group_id] < gemmini_planaria_score[sub_group_id]){
-            if(cid == 0 && slack_time < ((slack - 1000000*i) * planaria_scale)){
+          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){
+            if(cid == 0 && slack_time <= ((slack - 800000*i) * planaria_scale)){
               gemmini_terminate[other_sub_group_id] = true;
             }
           }
-          else if(gemmini_planaria_score[other_sub_group_id] < gemmini_planaria_score[sub_group_id] * 2){    
-            if(cid == 0 && slack_time*2 < (slack - 1000000*i) * planaria_scale){
+         /* else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
+            if(cid == 0 && slack_time*2 <= (slack - 800000*i) * planaria_scale){
               gemmini_terminate[other_sub_group_id] = true;
 //printf("group id %d need to terminate others\n", sub_group_id);
             }
-          }
+          }*/
           if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
             if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
           pthread_barrier_wait(barrier_funct);
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif 
           if(gemmini_terminate_receive[sub_group_id])
             break;
           pthread_barrier_wait(barrier_funct);
@@ -1650,26 +1660,27 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
     }
     else if(workload_id == 6){
       uint64_t slack = 10000000;
-      for(int i = 0; i < 4; i++){
+      for(int i = 0; i < 5; i++){
         uint64_t start = read_cycles();
         if(num_gemmini <= 2){
-          if(gemmini_planaria_score[other_sub_group_id] < gemmini_planaria_score[sub_group_id]){
-            if(cid == 0 && slack_time < ((slack - 2000000*i) * planaria_scale)){
+          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){
+            if(cid == 0 && slack_time <= ((slack - 2000000*i) * planaria_scale)){
               gemmini_terminate[other_sub_group_id] = true;
 //printf("group id %d need to terminate others\n", sub_group_id);
             }
           }
-          else if(gemmini_planaria_score[other_sub_group_id] < gemmini_planaria_score[sub_group_id] * 2){    
-            if(cid == 0 && slack_time*2 < (slack - 2000000*i) * planaria_scale){
+         /* else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
+            if(cid == 0 && slack_time*2 <= (slack - 2000000*i) * planaria_scale){
               gemmini_terminate[other_sub_group_id] = true;
 //printf("group id %d need to terminate others\n", sub_group_id);
             }
-          }
+          }*/
           if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
             if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
           pthread_barrier_wait(barrier_funct);
-//printf("group id %d workload %d part %d - my score: %d, others score: %d, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
- 
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif 
           if(gemmini_terminate_receive[sub_group_id])
             break;
           pthread_barrier_wait(barrier_funct);
@@ -1686,26 +1697,28 @@ uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, s
   
     }
     else if(workload_id == 7){
-      uint64_t slack = 2000000;
+      uint64_t slack = 1800000;
       for(int i = 0; i < 2; i++){
         uint64_t start = read_cycles();
         if(num_gemmini <= 2){
-          if(gemmini_planaria_score[other_sub_group_id] < gemmini_planaria_score[sub_group_id]){
-            if(cid == 0 && slack_time < ((slack - 1000000*i) * planaria_scale)){
+          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){
+            if(cid == 0 && slack_time <= ((slack - 900000*i) * planaria_scale)){
               gemmini_terminate[other_sub_group_id] = true;
 //printf("group id %d need to terminate others\n", sub_group_id);
             }
           }
-          else if(gemmini_planaria_score[other_sub_group_id] < gemmini_planaria_score[sub_group_id] * 2){    
-            if(cid == 0 && slack_time*2 < (slack - 1000000*i) * planaria_scale){
+         /* else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
+            if(cid == 0 && slack_time*2 <= (slack - 900000*i) * planaria_scale){
               gemmini_terminate[other_sub_group_id] = true;
 //printf("group id %d need to terminate others\n", sub_group_id);
             }
-          }
+          }*/
           if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
             if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
           pthread_barrier_wait(barrier_funct);
-//printf("group id %d workload %d part %d - my score: %d, others score: %d, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif 
           if(gemmini_terminate_receive[sub_group_id])
             break;
           pthread_barrier_wait(barrier_funct);
