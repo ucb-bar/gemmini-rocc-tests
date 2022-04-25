@@ -1,7 +1,8 @@
 #!/bin/bash
 
 cd ../../..
-sed -i "/val customConfig =/c\ val customConfig = $1" configs/GemminiCustomConfigs.scala
+sed -i "/val customConfig =/c\ val customConfig = $1" src/main/scala/gemmini/CustomConfigs.scala
+sed -i "/val customConfig =/c\ val customConfig = $1" configs/GemminiCustomConfigs.scala 
 ./scripts/build-vcs.sh
 ./scripts/build-spike.sh
 cd software/gemmini-rocc-tests/gemmini-data-collection

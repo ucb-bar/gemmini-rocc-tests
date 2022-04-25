@@ -1102,7 +1102,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 
     printf("tile_I: %d\n", tile_I);
     printf("tile_J: %d\n", tile_J);
-    printf("tile_K: %d\n\n", tile_J);
+    printf("tile_K: %d\n\n", tile_K);
 
     printf("spad_rows: %d\n", spad_rows);
     printf("acc_rows: %d\n\n", acc_rows);
