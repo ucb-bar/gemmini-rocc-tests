@@ -3070,7 +3070,7 @@ static void tiled_resadd_auto(const size_t I, const size_t J,
     }
 }
 
-// --- ADDED LINES ---
+
 static void sp_tiled_matmul_resadd_ws(const elem_t * A, const elem_t * B,
         const void * D, const void * E, void * C,
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor, scale_acc_t E_scale_factor,
@@ -3637,7 +3637,7 @@ static void tiled_matmul_resadd_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #undef max_tile_k
 
 }
-// --- ADDED LINES END ---
+
 
 static void global_average_cpu(const elem_t * input, elem_t * output,
     int batches, int channels, int dim) {
