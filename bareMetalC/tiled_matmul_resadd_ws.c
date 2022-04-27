@@ -12,7 +12,7 @@
 
 #define CHECK_RESULT 1
 
-#define NO_BIAS 0 // set this flag correctly... wasted several days
+#define NO_BIAS 0 
 #define FULL_BIAS_WIDTH 1
 
 #if FULL_BIAS_WIDTH
