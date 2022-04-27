@@ -131,7 +131,6 @@ int main() {
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
         full_A[i][j] = RAND % 2;
-        //full_A[i][j] = 0;
       }
     }
 
@@ -139,7 +138,6 @@ int main() {
     for (size_t i = 0; i < MAT_DIM_K; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
         full_B[i][j] = RAND % 2;
-        //full_B[i][j] = 0;
       }
     }
 
@@ -147,7 +145,6 @@ int main() {
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
         full_D[i][j] = NO_BIAS ? 0 : RAND % 2;
-        //full_D[i][j] = 0;
       }
     }
 
@@ -156,7 +153,6 @@ int main() {
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
         full_E[i][j] = RAND % 2;
-        //full_E[i][j] = 0; // test: E is not loaded properly
       }
     }
 
@@ -165,13 +161,12 @@ int main() {
 #ifdef FAST
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        gold_full[i][j] = MAT_DIM_K + (NO_BIAS ? 0 : (RAND % 2)); // TODO: change?
+        gold_full[i][j] = MAT_DIM_K + (NO_BIAS ? 0 : (RAND % 2)); 
       }
     }
 
 #else
     full_matmul_resadd(full_A, full_B, full_D, full_E, gold_full);
-//    full_matmul(full_A, full_B, full_D, gold_full);
 #endif
     unsigned long cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
@@ -189,8 +184,8 @@ int main() {
             NO_ACTIVATION, ACC_SCALE_IDENTITY, ACC_SCALE_IDENTITY, 
 			false,
             false, false,
-            false, !FULL_BIAS_WIDTH, false, // full_C, low_D, low_E; TODO: full_C false?
-            0,  // weight_A is not giving a difference, huh?
+            false, !FULL_BIAS_WIDTH, false, 
+            0, 
             WS);
 
     unsigned long end = read_cycles();
