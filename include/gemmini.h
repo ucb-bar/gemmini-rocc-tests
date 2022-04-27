@@ -3116,22 +3116,20 @@ static void sp_tiled_matmul_resadd_ws(const elem_t * A, const elem_t * B,
     }
   }
 
-// Loading E right after D using the same mvin3, accumulator address, whatever is not effective
-// For some reason, E is not accumulated on top of D, TODO: debug, operator orders?
-//  // Move-in E and add on top of D 
-//  if (E != NULL) {
-//    for (size_t i = 0; i < I; i++) {
-//      const size_t rows = DIM - (i == I-1 ? pad_I : 0);
-//      for (size_t j = 0; j < J; j += E_blocks) {
-//        const size_t bias_row = repeating_bias ? 0 : i;
-//        const void * const E_dram_addr = (int8_t *)E + (bias_row * E_row_stride + j)*DIM*sizeof_E;
-//        const uint32_t E_sp_addr_acc = E_sp_addr_start + (i*J + j)*DIM;
-//        size_t blocks = j + E_blocks <= J ? E_blocks : J-j;
-//        const size_t cols = blocks * DIM - (j + blocks >= J ? pad_J : 0);
-//        gemmini_extended_mvin3(E_dram_addr, E_sp_addr_acc, cols, rows);
-//      }
-//    }
-//  }
+  // Move-in E and add on top of D 
+  if (E != NULL) {
+    for (size_t i = 0; i < I; i++) {
+      const size_t rows = DIM - (i == I-1 ? pad_I : 0);
+      for (size_t j = 0; j < J; j += E_blocks) {
+        const size_t bias_row = repeating_bias ? 0 : i;
+        const void * const E_dram_addr = (int8_t *)E + (bias_row * E_row_stride + j)*DIM*sizeof_E;
+        const uint32_t E_sp_addr_acc = E_sp_addr_start + (i*J + j)*DIM;
+        size_t blocks = j + E_blocks <= J ? E_blocks : J-j;
+        const size_t cols = blocks * DIM - (j + blocks >= J ? pad_J : 0);
+        gemmini_extended_mvin3(E_dram_addr, E_sp_addr_acc, cols, rows);
+      }
+    }
+  }
 
   for (size_t k = 0; k < K; k++) {
     for (size_t j = 0; j < J; j++) {
@@ -3207,30 +3205,8 @@ static void sp_tiled_matmul_resadd_ws(const elem_t * A, const elem_t * B,
             gemmini_extended_compute_accumulated(A_sp_addr, GARBAGE_ADDR, A_cols, A_rows, DIM, DIM);
           }
         }
-      }
-    }
-  }
 
 
-  // combine tiling loops? -- no need
-  // Move-in E and add on top of D; TODO: why should this be inserted here?
-  if (E != NULL) {
-    for (size_t i = 0; i < I; i++) {
-      const size_t rows = DIM - (i == I-1 ? pad_I : 0);
-      for (size_t j = 0; j < J; j += E_blocks) {
-        const size_t bias_row = repeating_bias ? 0 : i;
-        const void * const E_dram_addr = (int8_t *)E + (bias_row * E_row_stride + j)*DIM*sizeof_E;
-        const uint32_t E_sp_addr_acc = E_sp_addr_start + (i*J + j)*DIM;
-        size_t blocks = j + E_blocks <= J ? E_blocks : J-j;
-        const size_t cols = blocks * DIM - (j + blocks >= J ? pad_J : 0);
-        gemmini_extended_mvin3(E_dram_addr, E_sp_addr_acc, cols, rows);
-      }
-    }
-  }
-
-  for (size_t k = 0; k < K; k++) {
-    for (size_t j = 0; j < J; j++) {
-      for (size_t i = 0; i < I; i++) {
         if (C != NULL && k == K-1) {
           // Move-out C (if not normalizing)
           if (act != LAYERNORM && (j == J-1 || j % C_blocks == C_blocks-1)) {
@@ -3297,7 +3273,6 @@ static void sp_tiled_matmul_resadd_ws(const elem_t * A, const elem_t * B,
     act);
   */
 }
-
 
 static void tiled_matmul_resadd_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t* A, const elem_t* B,
