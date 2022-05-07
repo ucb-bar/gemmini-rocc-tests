@@ -788,7 +788,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
             act);
       }
 
-  gemmini_fence();
+  // gemmini_fence();
 }
 
 
