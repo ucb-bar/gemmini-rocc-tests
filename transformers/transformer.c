@@ -221,10 +221,10 @@ uint64_t encoder_decoder(int hidden_dim, int expansion_dim, int num_heads, int c
 }
 
 #define ENCODER(hidden_dim, expansion_dim, num_heads, seq_len, input, output) ({ \
-    static elem_t Wqkvo[4][hidden_dim][hidden_dim]; \
-    static elem_t ff_w[2][hidden_dim*expansion_dim]; \
-    static acc_t ff1_b[seq_len][expansion_dim]; \
-    static acc_t ff2_b[seq_len][hidden_dim]; \
+    static const elem_t Wqkvo[4][hidden_dim][hidden_dim]; \
+    static const elem_t ff_w[2][hidden_dim*expansion_dim]; \
+    static const acc_t ff1_b[seq_len][expansion_dim]; \
+    static const acc_t ff2_b[seq_len][hidden_dim]; \
     \
     static elem_t QKV_buf[3][seq_len][hidden_dim];\
     static elem_t attn_buf[num_heads][seq_len][seq_len];\
@@ -247,12 +247,12 @@ uint64_t encoder_decoder(int hidden_dim, int expansion_dim, int num_heads, int c
     cycles; \
 })
 
-#define DECODER(hidden_dim, expansion_dim, num_heads, cross_num_heads, seq_len, input, output) ({ \
-    static elem_t Wqkvo[4][hidden_dim][hidden_dim]; \
-    static elem_t Wqkvo_cross[4][hidden_dim][hidden_dim]; \
-    static elem_t ff_w[2][hidden_dim*expansion_dim]; \
-    static acc_t ff1_b[seq_len][expansion_dim]; \
-    static acc_t ff2_b[seq_len][hidden_dim]; \
+#define DECODER(hidden_dim, expansion_dim, num_heads, cross_num_heads, seq_len, input, enc_out, output) ({ \
+    static const elem_t Wqkvo[4][hidden_dim][hidden_dim]; \
+    static const elem_t Wqkvo_cross[4][hidden_dim][hidden_dim]; \
+    static const elem_t ff_w[2][hidden_dim*expansion_dim]; \
+    static const acc_t ff1_b[seq_len][expansion_dim]; \
+    static const acc_t ff2_b[seq_len][hidden_dim]; \
     \
     static elem_t QKV_buf[3][seq_len][hidden_dim];\
     static elem_t attn_buf[num_heads][seq_len][seq_len];\
@@ -261,7 +261,7 @@ uint64_t encoder_decoder(int hidden_dim, int expansion_dim, int num_heads, int c
     static elem_t resadd2_buf[seq_len][hidden_dim];\
     \
     uint64_t cycles = encoder_decoder(hidden_dim, expansion_dim, num_heads, cross_num_heads, seq_len, \
-            input, NULL, output, \
+            input, enc_out, output, \
             Wqkvo[0], Wqkvo[1], Wqkvo[2], Wqkvo[3],\
             Wqkvo_cross[0], Wqkvo_cross[1], Wqkvo_cross[2], Wqkvo_cross[3],\
             ff_w[0], ff_w[1], \
@@ -276,7 +276,7 @@ uint64_t encoder_decoder(int hidden_dim, int expansion_dim, int num_heads, int c
 })
 
 #define PRINT_ENCODER(name, hidden_dim, expansion_dim, num_heads, seq_len) { \
-    static elem_t input[seq_len][hidden_dim]; \
+    static const elem_t input[seq_len][hidden_dim]; \
     static elem_t output[seq_len][hidden_dim]; \
     \
     uint64_t cycles = ENCODER(hidden_dim, expansion_dim, num_heads, seq_len, input, output); \
@@ -287,13 +287,14 @@ uint64_t encoder_decoder(int hidden_dim, int expansion_dim, int num_heads, int c
 }
 
 #define PRINT_DECODER(name, hidden_dim, expansion_dim, num_heads, cross_num_heads, seq_len) { \
-    static elem_t input[seq_len][hidden_dim]; \
+    static const elem_t input[seq_len][hidden_dim]; \
+    static const elem_t enc_out[seq_len][hidden_dim]; \
     static elem_t output[seq_len][hidden_dim]; \
     \
-    uint64_t cycles = DECODER(hidden_dim, expansion_dim, num_heads, cross_num_heads, seq_len, input, output); \
+    uint64_t cycles = DECODER(hidden_dim, expansion_dim, num_heads, cross_num_heads, seq_len, input, enc_out, output); \
     \
-    printf("%s stats: decoder, hidden_dim=%d, expansion_dim=%d, num_heads=%d, seq_len=%d\n", \
-            name, hidden_dim, expansion_dim, num_heads, seq_len); \
+    printf("%s stats: decoder, hidden_dim=%d, expansion_dim=%d, num_heads=%d, cross_num_heads=%d, seq_len=%d\n", \
+            name, hidden_dim, expansion_dim, num_heads, cross_num_heads, seq_len); \
     printf("%s cycles: %llu\n\n", name, cycles); \
 }
 
@@ -312,6 +313,114 @@ int main (int argc, char * argv[]) {
 
     PRINT_ENCODER("bert-base",
             /*hidden_dim=*/768, /*expansion_dim=*/3072, /*num_heads=*/12, /*seq_len=*/128);
+
+
+    PRINT_ENCODER("sehoon-0-enc-0",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/4, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-0-dec-0",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/4, /*cross_num_heads=*/4, /*seq_len=*/128);
+
+
+    PRINT_ENCODER("sehoon-1-enc-0",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/2, /*seq_len=*/128);
+
+    PRINT_ENCODER("sehoon-1-enc-1",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/4, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-1-dec-0",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/2, /*cross_num_heads=*/4, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-1-dec-1",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/2, /*cross_num_heads=*/2, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-1-dec-2",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/2, /*cross_num_heads=*/2, /*seq_len=*/128);
+
+
+    PRINT_ENCODER("sehoon-2-enc-0",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/2, /*seq_len=*/128);
+
+    PRINT_ENCODER("sehoon-2-enc-1",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/2, /*seq_len=*/128);
+
+    PRINT_ENCODER("sehoon-2-enc-2",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/4, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-2-dec-0",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/4, /*cross_num_heads=*/2, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-2-dec-1",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/2, /*cross_num_heads=*/4, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-2-dec-2",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/2, /*cross_num_heads=*/2, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-2-dec-3",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/2, /*cross_num_heads=*/2, /*seq_len=*/128);
+
+
+    PRINT_ENCODER("sehoon-3-enc-0",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/2, /*seq_len=*/128);
+
+    PRINT_ENCODER("sehoon-3-enc-1",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/2, /*seq_len=*/128);
+
+    PRINT_ENCODER("sehoon-3-enc-2",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/4, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-3-dec-0",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/4, /*cross_num_heads=*/2, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-3-dec-1",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/2, /*cross_num_heads=*/4, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-3-dec-2",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/2, /*cross_num_heads=*/2, /*seq_len=*/128);
+
+
+    PRINT_ENCODER("sehoon-4-enc-0",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/2, /*seq_len=*/128);
+
+    PRINT_ENCODER("sehoon-4-enc-1",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/2, /*seq_len=*/128);
+
+    PRINT_ENCODER("sehoon-4-enc-2",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/4, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-4-dec-0",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/4, /*cross_num_heads=*/4, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-4-dec-1",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/2, /*cross_num_heads=*/4, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-4-dec-2",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/2, /*cross_num_heads=*/2, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-4-dec-3",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/4, /*cross_num_heads=*/2, /*seq_len=*/128);
+
+
+    PRINT_ENCODER("sehoon-5-enc-0",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/4, /*seq_len=*/128);
+
+    PRINT_ENCODER("sehoon-5-enc-1",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/4, /*seq_len=*/128);
+
+    PRINT_ENCODER("sehoon-5-enc-2",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/2, /*seq_len=*/128);
+
+    PRINT_ENCODER("sehoon-5-enc-3",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/2, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-5-dec-0",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/4, /*cross_num_heads=*/4, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-5-dec-1",
+            /*hidden_dim=*/512, /*expansion_dim=*/512, /*num_heads=*/4, /*cross_num_heads=*/4, /*seq_len=*/128);
+
+    PRINT_DECODER("sehoon-5-dec-2",
+            /*hidden_dim=*/512, /*expansion_dim=*/1024, /*num_heads=*/2, /*cross_num_heads=*/2, /*seq_len=*/128);
 
     exit(0);
 }
