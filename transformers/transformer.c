@@ -134,7 +134,7 @@ void ffn(int hidden_dim, int expansion_dim, int seq_len,
         /*stride_A=*/hidden_dim, /*stride_B=*/expansion_dim, /*stride_D=*/expansion_dim, /*stride_C=*/expansion_dim,
         MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
         IGELU, /*scale=*/ ACC_SCALE_IDENTITY, /*bert_scale=*/ ACC_SCALE_IDENTITY,
-        /*repeating_bias=*/ false,
+        /*repeating_bias=*/ true,
         false, /*transpose_B=*/ false,
         false, false,
         0,
@@ -151,7 +151,7 @@ void ffn(int hidden_dim, int expansion_dim, int seq_len,
         /*stride_A=*/expansion_dim, /*stride_B=*/hidden_dim, /*stride_D=*/expansion_dim, /*stride_C=*/expansion_dim,
         MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
         LAYERNORM, /*scale=*/ ACC_SCALE_IDENTITY, /*bert_scale=*/ 0,
-        /*repeating_bias=*/ false,
+        /*repeating_bias=*/ true,
         false, /*transpose_B=*/ false,
         false, false,
         0,
@@ -223,8 +223,8 @@ uint64_t encoder_decoder(int hidden_dim, int expansion_dim, int num_heads, int c
 #define ENCODER(hidden_dim, expansion_dim, num_heads, seq_len, input, output) ({ \
     static const elem_t Wqkvo[4][hidden_dim][hidden_dim]; \
     static const elem_t ff_w[2][hidden_dim*expansion_dim]; \
-    static const acc_t ff1_b[seq_len][expansion_dim]; \
-    static const acc_t ff2_b[seq_len][hidden_dim]; \
+    static const acc_t ff1_b[expansion_dim]; \
+    static const acc_t ff2_b[hidden_dim]; \
     \
     static elem_t QKV_buf[3][seq_len][hidden_dim];\
     static elem_t attn_buf[num_heads][seq_len][seq_len];\
@@ -251,8 +251,8 @@ uint64_t encoder_decoder(int hidden_dim, int expansion_dim, int num_heads, int c
     static const elem_t Wqkvo[4][hidden_dim][hidden_dim]; \
     static const elem_t Wqkvo_cross[4][hidden_dim][hidden_dim]; \
     static const elem_t ff_w[2][hidden_dim*expansion_dim]; \
-    static const acc_t ff1_b[seq_len][expansion_dim]; \
-    static const acc_t ff2_b[seq_len][hidden_dim]; \
+    static const acc_t ff1_b[expansion_dim]; \
+    static const acc_t ff2_b[hidden_dim]; \
     \
     static elem_t QKV_buf[3][seq_len][hidden_dim];\
     static elem_t attn_buf[num_heads][seq_len][seq_len];\
