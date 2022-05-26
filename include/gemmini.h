@@ -63,6 +63,7 @@
 #define RELU 1
 #define LAYERNORM 2
 #define IGELU 3
+#define SOFTMAX 4
 
 #ifdef ELEM_T_IS_FLOAT
 elem_t elem_t_bits_to_elem_t(elem_t_bits x) {
@@ -280,8 +281,8 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define gemmini_config_st(stride) \
     gemmini_extended_config_st(stride, NO_ACTIVATION, ACC_SCALE_IDENTITY)
 
-#define gemmini_config_bert(igelu_qb, igelu_qc) \
-    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_BERT, ((uint64_t)((uint32_t)(igelu_qc)) << 32) | ((uint64_t)((uint32_t)(igelu_qb))), k_CONFIG)
+#define gemmini_config_bert(q_const, q_const_type, act_msb, stat_id, igelu_qb, igelu_qc) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (((uint64_t) ((uint32_t) q_const)) << 32) | ((q_const_type & 1) << 17) | ((act_msb & 1) << 16) | ((uint64_t)stat_id << 8) | CONFIG_BERT, ((uint64_t)((uint32_t)(igelu_qc)) << 32) | ((uint64_t)((uint32_t)(igelu_qb))), k_CONFIG)
 
 // flush
 #define gemmini_flush(skip) \
@@ -339,14 +340,14 @@ static void counter_reset() {
 }
 
 // weight-stationary matmul loop
-#define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, A_transpose, B_transpose, full_C, low_D, ex_accumulate, weightA) \
+#define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, A_transpose, B_transpose, full_C, low_D, ex_accumulate, act) \
   { \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(pad_K) << 32) | ((uint64_t)(pad_J) << 16) | (uint64_t)(pad_I), ((uint64_t)(K) << 32) | ((uint64_t)(J) << 16) | (uint64_t)(I), k_LOOP_WS_CONFIG_BOUNDS) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_LOOP_WS_CONFIG_ADDRS_AB) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D, C, k_LOOP_WS_CONFIG_ADDRS_DC) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A_stride, B_stride, k_LOOP_WS_CONFIG_STRIDES_AB) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D_stride, C_stride, k_LOOP_WS_CONFIG_STRIDES_DC) \
-    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(weightA) << 8) | ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((B_transpose) << 1) | (A_transpose), k_LOOP_WS) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(act) << 8) | ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((B_transpose) << 1) | (A_transpose), k_LOOP_WS) \
   }
 
 // weight-stationary conv loop
@@ -501,12 +502,10 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         bool no_bias, bool repeating_bias,
         int act) {
 
-  /*
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
   const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
   const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2) | (full_C << (ADDR_LEN-3));
-
   const int A_blocks = a_transpose ? (I <= MAX_BLOCK_LEN ? I : MAX_BLOCK_LEN) :
     (K <= MAX_BLOCK_LEN ? K : MAX_BLOCK_LEN);
   const int B_blocks = b_transpose ? (K <= MAX_BLOCK_LEN ? K : MAX_BLOCK_LEN) :
@@ -514,10 +513,8 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   const int D_blocks = low_D ? (J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN) :
     (J <= MAX_BLOCK_LEN_ACC ? J : MAX_BLOCK_LEN_ACC);
   const int C_blocks = full_C ? 1 : (J <= MAX_BLOCK_LEN ? J : MAX_BLOCK_LEN);
-
   const size_t sizeof_D = low_D ? sizeof(elem_t) : sizeof(acc_t);
   const size_t sizeof_C = full_C ? sizeof(acc_t) : sizeof(elem_t);
-
   // Move-in D
   if (D != NULL && !no_bias) {
     for (size_t i = 0; i < I; i++) {
@@ -532,7 +529,6 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
       }
     }
   }
-
   for (size_t k = 0; k < K; k++) {
     for (size_t j = 0; j < J; j++) {
       for (size_t i = 0; i < I; i++) {
@@ -541,7 +537,6 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         const uint32_t B_sp_addr = b_transpose ? (B_sp_addr_start + (j*K + k)*DIM) :
           (B_sp_addr_start + (k*J + j)*DIM);
         const uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
-
         // Mvin A
         if (a_transpose) {
           if (j == 0 && i % A_blocks == 0) {
@@ -560,7 +555,6 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
             gemmini_extended_mvin(A_dram_addr, A_sp_addr, cols, rows);
           }
         }
-
         // Mvin B
         if (b_transpose) {
           if (i == 0 && k % B_blocks == 0) {
@@ -579,75 +573,109 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
             gemmini_extended_mvin2(B_dram_addr, B_sp_addr, cols, rows);
           }
         }
-
         // Compute
         {
           uint32_t pre_sp_addr = i == 0 ? B_sp_addr : GARBAGE_ADDR;
           uint32_t out_sp_addr = C_sp_addr;
-
           // If we're not using a bias, then we want to overwrite what's in the
           // accumulator, rather than writing over it
           int no_bias_new_matrix = no_bias && D != NULL && k == 0;
           if (no_bias_new_matrix) {
             out_sp_addr &= ~(1 << (ADDR_LEN-2));
           }
-
           const size_t A_cols = DIM - (k == K - 1 ? pad_K : 0);
           const size_t A_rows = DIM - (i == I - 1 ? pad_I : 0);
           const size_t B_cols = DIM - (j == J - 1 ? pad_J : 0);
           const size_t B_rows = DIM - (k == K - 1 ? pad_K : 0);
           const size_t C_cols = DIM - (j == J - 1 ? pad_J : 0);
           const size_t C_rows = DIM - (i == I - 1 ? pad_I : 0);
-
           gemmini_extended_preload(pre_sp_addr, out_sp_addr, B_cols, B_rows, C_cols, C_rows);
-
           if (i == 0) { // First iteration
             gemmini_extended_compute_preloaded(A_sp_addr, GARBAGE_ADDR, A_cols, A_rows, DIM, DIM);
           } else { // All other iterations
             gemmini_extended_compute_accumulated(A_sp_addr, GARBAGE_ADDR, A_cols, A_rows, DIM, DIM);
           }
         }
-
         if (C != NULL && k == K-1) {
           // Move-out C (if not normalizing)
-          if (act != LAYERNORM && (j == J-1 || j % C_blocks == C_blocks-1)) {
+          if (((act != LAYERNORM) && (act != SOFTMAX)) && (j == J-1 || j % C_blocks == C_blocks-1)) {
             const size_t rounded_j = (j / C_blocks) * C_blocks;
-
             const uint32_t rounded_C_sp_addr = C_sp_addr_start + (i*J + rounded_j)*DIM;
             void * const C_dram_addr = (int8_t*)C + (i*C_row_stride + rounded_j)*DIM*sizeof_C;
-
             const size_t blocks = rounded_j + C_blocks <= J ? C_blocks : J-rounded_j;
             const size_t cols = blocks * DIM - (rounded_j + blocks >= J ? pad_J : 0);
             const size_t rows = DIM - (i == I - 1 ? pad_I : 0);
-
             gemmini_extended_mvout(C_dram_addr, rounded_C_sp_addr, cols, rows);
           }
-
           // Move-out C (if normalizing)
           if (act == LAYERNORM && j == J - 1) {
-            uint32_t norm_cmds[][2] = {{2,3},{4,5},{1,0}};
+            uint32_t norm_cmds[][2] = {{1,2},{3,4},{0,0}};
             const int norm_cmds_size = sizeof(norm_cmds) / sizeof(norm_cmds[0]);
-
             const size_t rows = DIM - (i == I-1 ? pad_I : 0);
-
-            for (size_t row = 0; row < rows; row++) {
+            for (size_t row = 0; row < rows; row += NORM_STAT_IDS) {
+              const size_t stat_ids = rows - row > NORM_STAT_IDS ?
+                NORM_STAT_IDS : rows - row;
               for (int cmd = 0; cmd < norm_cmds_size; cmd++) {
-                for (size_t jj = 0; jj < J; jj += C_blocks) {
-                  uint32_t norm_C_sp_addr = C_sp_addr_start + (i*J + jj)*DIM + row;
-                  if (jj + C_blocks >= J) {
-                    norm_C_sp_addr |= (norm_cmds[cmd][1] << 26); // Final mean/inv-std-dev calculation
-                  } else {
-                    norm_C_sp_addr |= (norm_cmds[cmd][0] << 26); // Accumulate sum/variance
+                for (size_t stat_id = 0; stat_id < stat_ids; stat_id++) {
+                  gemmini_config_bert(0, 0, 0, stat_id, 0, 0);
+                  const size_t r = row + stat_id;
+                  for (size_t jj = 0; jj < J; jj += C_blocks) {
+                    uint32_t norm_C_sp_addr = C_sp_addr_start + (i*J + jj)*DIM + r;
+                    if (jj + C_blocks >= J) {
+                      norm_C_sp_addr |= (norm_cmds[cmd][1] << 26); // Final mean/inv-std-dev calculation
+                    } else {
+                      norm_C_sp_addr |= (norm_cmds[cmd][0] << 26); // Accumulate sum/variance
+                    }
+                    void * const C_dram_addr = (int8_t*)C +
+                      (i*C_row_stride + jj) * DIM * sizeof_C +
+                      r * C_row_stride * sizeof_C;
+                    const size_t blocks = jj + C_blocks <= J ? C_blocks : J-jj;
+                    const size_t cols = blocks * DIM - (jj + blocks >= J ? pad_J : 0);
+                    gemmini_extended_mvout(C_dram_addr, norm_C_sp_addr, cols, 1);
                   }
+                }
+              }
+            }
+          } else if (act == SOFTMAX && j == J - 1) {
 
-                  void * const C_dram_addr = (int8_t*)C +
-                    (i*C_row_stride + jj) * DIM * sizeof_C +
-                    row * C_row_stride * sizeof_C;
+            const scale_t bert_scale = 0.05; // TODO: pass bert_scale from outer
+            const scale_t a = 0.3585;
+            const scale_t b = 1.353;
+            const scale_t c = 0.344;
 
-                  const size_t blocks = jj + C_blocks <= J ? C_blocks : J-jj;
-                  const size_t cols = blocks * DIM - (jj + blocks >= J ? pad_J : 0);
+            const acc_t qln2 = (int) (0.693147 / bert_scale);
+            const acc_t qln2_inv = (int) (1.44270 * (bert_scale * 65536.f));
+            const acc_t qb = b / bert_scale;
+            const acc_t qc = c / (a*bert_scale*bert_scale);
 
-                  gemmini_extended_mvout(C_dram_addr, norm_C_sp_addr, cols, 1);
+            gemmini_config_bert(qln2, 0, 1, 0, qb, qc);
+            gemmini_config_bert(qln2_inv, 1, 1, 0, qb, qc);
+
+            uint32_t norm_cmds[][2] = {{5,5},{6,7},{0,0}};
+            const int norm_cmds_size = sizeof(norm_cmds) / sizeof(norm_cmds[0]);
+            const size_t rows = 2; /*DIM - (i == I-1 ? pad_I : 0)*/;
+            for (size_t row = 0; row < rows; row += NORM_STAT_IDS) {
+              const size_t stat_ids = rows - row > NORM_STAT_IDS ?
+                NORM_STAT_IDS : rows - row;
+              for (int cmd = 0; cmd < norm_cmds_size; cmd++) {
+                for (size_t stat_id = 0; stat_id < stat_ids; stat_id++) {
+                  // TODO: we need a way to set stat id only
+                  gemmini_config_bert(qln2_inv, 1, 1, stat_id, qb, qc);
+                  const size_t r = row + stat_id;
+                  for (size_t jj = 0; jj < J; jj += C_blocks) {
+                    uint32_t norm_C_sp_addr = C_sp_addr_start + (i*J + jj)*DIM + r;
+                    if (jj + C_blocks >= J) {
+                      norm_C_sp_addr |= (norm_cmds[cmd][1] << 26); // Final mean/inv-std-dev calculation
+                    } else {
+                      norm_C_sp_addr |= (norm_cmds[cmd][0] << 26); // Accumulate sum/variance
+                    }
+                    void * const C_dram_addr = (int8_t*)C +
+                      (i*C_row_stride + jj) * DIM * sizeof_C +
+                      r * C_row_stride * sizeof_C;
+                    const size_t blocks = jj + C_blocks <= J ? C_blocks : J-jj;
+                    const size_t cols = blocks * DIM - (jj + blocks >= J ? pad_J : 0);
+                    gemmini_extended_mvout(C_dram_addr, norm_C_sp_addr, cols, 1);
+                  }
                 }
               }
             }
@@ -656,14 +684,13 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
       }
     }
   }
-  */
 
   // Combined loop
-  gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
-    A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
-    a_transpose, b_transpose,
-    full_C, low_D, !no_bias || D == NULL,
-    0);
+//  gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
+//    A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
+//    a_transpose, b_transpose,
+//    full_C, low_D, !no_bias || D == NULL,
+//    0);
 }
 
 
@@ -709,8 +736,8 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
   const size_t sizeof_D = low_D ? sizeof(elem_t) : sizeof(acc_t) ;
   const size_t sizeof_C = full_C ? sizeof(acc_t) : sizeof(elem_t);
 
-  gemmini_extended_config_ex(dataflow, act, 0, 1, a_transpose, b_transpose);
-  gemmini_extended_config_st(stride_C * sizeof_C, act, scale);
+  gemmini_extended_config_ex(dataflow, act & 3, 0, 1, a_transpose, b_transpose);
+  gemmini_extended_config_st(stride_C * sizeof_C, act & 3, scale);
   gemmini_extended3_config_ld(stride_A * sizeof(elem_t), A_scale_factor, false, 0);
   gemmini_extended3_config_ld(stride_B * sizeof(elem_t), B_scale_factor, false, 1)
   gemmini_extended3_config_ld(repeating_bias ? 0 : (stride_D * sizeof_D), D_scale_factor, low_D, 2);
@@ -723,7 +750,21 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
     const acc_t qb = -1.769 / (S / sqrt_2);
     const acc_t qc = 1.0 / S_erf;
 
-    gemmini_config_bert(qb, qc);
+    gemmini_config_bert(0, 0, 0, 0, qb, qc);
+  }
+
+  if (act == SOFTMAX) {
+    const scale_t a = 0.3585;
+    const scale_t b = 1.353;
+    const scale_t c = 0.344;
+
+    const acc_t qln2 = (int) (0.693147 / bert_scale);
+    const acc_t qln2_inv = (int) (1.44270 * (bert_scale * (1 << 16)));
+    const acc_t qb = b / bert_scale;
+    const acc_t qc = c / (a*bert_scale*bert_scale);
+
+    gemmini_config_bert(qln2, 0, 1, 0, qb, qc);
+    gemmini_config_bert(qln2_inv, 1, 1, 0, qb, qc);
   }
 
   void (*inner)(const elem_t *, const elem_t *, const void *, void *,
@@ -781,7 +822,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
             act);
       }
 
-  gemmini_fence();
+  // gemmini_fence();
 }
 
 
@@ -855,7 +896,7 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
         int act, acc_scale_t scale, acc_scale_t bert_scale, bool repeating_bias) {
 
   const int no_bias = D == NULL;
-  if (act != LAYERNORM && !transA && !transB && DIM_I % 4 == 0 && DIM_J % 4 == 0) {
+  if (act != LAYERNORM && act != SOFTMAX && !transA && !transB && DIM_I % 4 == 0 && DIM_J % 4 == 0) {
     for (size_t i = 0; i < DIM_I; i += 4) {
       for (size_t j = 0; j < DIM_J; j += 4) {
 
@@ -960,7 +1001,7 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
     // We also create a buffer that we can use for layernorms and softmaxes
     static acc_t c_buffer[1024];
     const size_t c_buffer_sz = sizeof(c_buffer)/sizeof(c_buffer[0]);
-    if (act == LAYERNORM && DIM_J > c_buffer_sz) {
+    if ((act == LAYERNORM || act == SOFTMAX) && DIM_J > c_buffer_sz) {
       printf("Matmul is too large to normalize\n");
       exit(1);
     }
@@ -978,7 +1019,7 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
           sum += (GEMMINI_SCALE(*a, A_scale_factor) * GEMMINI_SCALE(*b, B_scale_factor));
         }
 
-        if (act == LAYERNORM)
+        if (act == LAYERNORM || act == SOFTMAX)
           c_buffer[j] = sum;
         else
           *c = scale_and_sat(sum, act, scale, bert_scale);
@@ -1005,6 +1046,43 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
           elem_t* c = C + (i * stride_C) + j;
           *c = scale_and_sat(c_buffer[j], act, scale, bert_scale);
         }
+      } else if (act == SOFTMAX) {
+        const scale_t a = 0.3585;
+        const scale_t b = 1.353;
+        const scale_t c = 0.344;
+
+        // is SCALE supposed to be input scale?
+        const acc_t qln2 = (int) (0.693147 / bert_scale);
+        const acc_t qb = b / bert_scale;
+        const acc_t qc = c / (a*bert_scale*bert_scale);
+
+        // pass 1: get max_q
+        acc_t max_q = -2147483648;
+        for (size_t j = 0; j < DIM_J; j++) {
+          if (c_buffer[j] > max_q) max_q = c_buffer[j];
+        }
+
+        // pass 2: calculate iexp(q_tilde) and sum(q_tilde)
+        acc_t sum_exp = 0;
+        const scale_t qln2_inv = 1.f / qln2;
+        for (size_t j = 0; j < DIM_J; j++) {
+          acc_t q = c_buffer[j] - max_q;
+          acc_t z = -q * qln2_inv;
+          acc_t qp = q + z * qln2;
+          acc_t q_exp = (qp + qb)*(qp + qb) + qc;
+          c_buffer[j] = q_exp >> z;
+//          if (i == 0) printf("iexp %d\n", c_buffer[j]);
+          if (i == 0) printf("q %d, z %d, qp %d, q_exp %d, iexp %d\n", q, z, qp, q_exp, c_buffer[j]);
+          sum_exp += c_buffer[j];
+        }
+        printf("sum_exp %d\n", sum_exp);
+
+        // pass 3: divide by sum
+        scale_t factor = (127.f) / (float) sum_exp; // what corresponds to 1 in output?
+        for (size_t j = 0; j < DIM_J; j++) {
+          elem_t* c = C + (i * stride_C) + j;
+          *c = scale_and_sat(c_buffer[j], act, factor, bert_scale);
+        }
       }
     }
   }
@@ -1015,7 +1093,7 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
 // General matmul which can be run with different dataflows, or on the CPU
 enum tiled_matmul_type_t {OS, WS, CPU}; // TODO rename this so it's name also applies to convs
 
-// This function runs a tiled matrix multiplication, with hardcoded tiling
+// This function runs a tiled matrix mulctiplication, with hardcoded tiling
 // factors
 static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t* A, const elem_t* B,
@@ -1101,12 +1179,12 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
     printf("Not implemented: %s matmul, full_C=%d, low_D=%d\n", matmul_type_str[tiled_matmul_type], full_C, low_D);
   }
 
-  if (act == LAYERNORM) {
+  if (act == LAYERNORM || act == SOFTMAX) {
     if (tiled_matmul_type == OS) {
       printf("Not implemented: %s matmul, act=%d\n", matmul_type_str[tiled_matmul_type], act);
     }
     if (tile_J * DIM < dim_J) {
-      printf("When doing layernorm, the full J dimension of the matrix must fit in the accumulator\n");
+      printf("When doing layernorm or softmax, the full J dimension of the matrix must fit in the accumulator\n");
     }
   }
 #endif
