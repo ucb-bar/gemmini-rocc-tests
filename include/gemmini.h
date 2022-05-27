@@ -644,7 +644,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
             const scale_t c = 0.344;
 
             const acc_t qln2 = (int) (0.693147 / bert_scale);
-            const acc_t qln2_inv = (int) (1.44270 * (bert_scale * 65536.f));
+            const acc_t qln2_inv = 65536 / qln2; // (int) (1.44270 * (bert_scale * 65536.f));
             const acc_t qb = b / bert_scale;
             const acc_t qc = c / (a*bert_scale*bert_scale);
 
@@ -653,7 +653,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
 
             uint32_t norm_cmds[][2] = {{5,5},{6,7},{0,0}};
             const int norm_cmds_size = sizeof(norm_cmds) / sizeof(norm_cmds[0]);
-            const size_t rows = 2; /*DIM - (i == I-1 ? pad_I : 0)*/;
+            const size_t rows = DIM - (i == I-1 ? pad_I : 0);
             for (size_t row = 0; row < rows; row += NORM_STAT_IDS) {
               const size_t stat_ids = rows - row > NORM_STAT_IDS ?
                 NORM_STAT_IDS : rows - row;
@@ -759,7 +759,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
     const scale_t c = 0.344;
 
     const acc_t qln2 = (int) (0.693147 / bert_scale);
-    const acc_t qln2_inv = (int) (1.44270 * (bert_scale * (1 << 16)));
+    const acc_t qln2_inv = 65536 / qln2;
     const acc_t qb = b / bert_scale;
     const acc_t qc = c / (a*bert_scale*bert_scale);
 
@@ -1052,7 +1052,8 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
         const scale_t c = 0.344;
 
         // is SCALE supposed to be input scale?
-        const acc_t qln2 = (int) (0.693147 / bert_scale);
+        const acc_t qln2 = (acc_t) (0.693147 / bert_scale);
+        const acc_t qln2_inv = 65536 / qln2;
         const acc_t qb = b / bert_scale;
         const acc_t qc = c / (a*bert_scale*bert_scale);
 
@@ -1064,18 +1065,14 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
 
         // pass 2: calculate iexp(q_tilde) and sum(q_tilde)
         acc_t sum_exp = 0;
-        const scale_t qln2_inv = 1.f / qln2;
         for (size_t j = 0; j < DIM_J; j++) {
           acc_t q = c_buffer[j] - max_q;
-          acc_t z = -q * qln2_inv;
+          acc_t z = (acc_t) (-q * qln2_inv) >> 16;
           acc_t qp = q + z * qln2;
           acc_t q_exp = (qp + qb)*(qp + qb) + qc;
           c_buffer[j] = q_exp >> z;
-//          if (i == 0) printf("iexp %d\n", c_buffer[j]);
-          if (i == 0) printf("q %d, z %d, qp %d, q_exp %d, iexp %d\n", q, z, qp, q_exp, c_buffer[j]);
           sum_exp += c_buffer[j];
         }
-        printf("sum_exp %d\n", sum_exp);
 
         // pass 3: divide by sum
         scale_t factor = (127.f) / (float) sum_exp; // what corresponds to 1 in output?
