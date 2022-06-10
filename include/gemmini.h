@@ -1256,7 +1256,11 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 
     size_t tile_I, tile_J, tile_K;
 
-    if (double_buffered) {
+    if (act == LAYERNORM || act == SOFTMAX) {
+       tile_I = 1;
+       tile_J = dim_J_padded/DIM;
+       tile_K = 1;
+    } else if (double_buffered) {
        tile_I = dim_I_padded/DIM < db_max_tile_i_j ? dim_I_padded/DIM : db_max_tile_i_j;
        tile_J = dim_J_padded/DIM < db_max_tile_i_j ? dim_J_padded/DIM : db_max_tile_i_j;
        tile_K = dim_K_padded/DIM < db_max_tile_k ? dim_K_padded/DIM : db_max_tile_k;
