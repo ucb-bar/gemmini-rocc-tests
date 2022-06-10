@@ -3,6 +3,7 @@ include $(abs_top_srcdir)/Makefrag
 tests = \
 	resnet50 \
 	mobilenet \
+	# resnet50_1batch \
 	# alexnet \
 
 tests_baremetal = $(tests:=-baremetal)
@@ -14,6 +15,8 @@ else
 	tests_linux = $(tests:=-linux)
 	tests_pk = $(tests:=-pk)
 endif
+
+tests_pk =
 
 BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
 GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_nn.h $(abs_top_srcdir)/include/gemmini_testutils.h

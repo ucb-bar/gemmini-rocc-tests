@@ -10,11 +10,13 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define CHECK_RESULT 1
+#define CHECK_RESULT 0 // 1
 
 #ifndef BAREMETAL
-#define MAT_DIM_I 512
+
+#define MAT_DIM_I 128
 #define MAT_DIM_J 512
+
 #else
 #define MAT_DIM_I 35
 #define MAT_DIM_J 27
@@ -48,6 +50,8 @@ int main() {
       exit(1);
     }
 #endif
+
+    printf("I: %d, J: %d\n", MAT_DIM_I, MAT_DIM_J);
 
     gemmini_flush(0);
 

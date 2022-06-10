@@ -10,7 +10,7 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define CHECK_RESULT 1
+#define CHECK_RESULT 0 // 1
 
 #define NO_BIAS 1
 #define FULL_BIAS_WIDTH 1
@@ -24,9 +24,11 @@ typedef elem_t ACC_T;
 #define BERT_SCALE 0.8
 
 #ifndef BAREMETAL
-#define MAT_DIM_I 400
-#define MAT_DIM_K 400
-#define MAT_DIM_J 400
+
+#define MAT_DIM_I 128
+#define MAT_DIM_K 512
+#define MAT_DIM_J 512 // 1024
+
 #else
 #define MAT_DIM_I 30
 #define MAT_DIM_K 30
@@ -60,6 +62,8 @@ int main() {
       exit(1);
     }
 #endif
+
+    printf("I: %d, J: %d, K: %d\n", MAT_DIM_I, MAT_DIM_J, MAT_DIM_K);
 
     gemmini_flush(0);
 
@@ -111,6 +115,7 @@ int main() {
 #endif
 
     printf("Starting gemmini matmul\n");
+    printf("I: %d, J: %d, K: %d\n", MAT_DIM_I, MAT_DIM_J, MAT_DIM_K);
     unsigned long start = read_cycles();
 
     tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
@@ -122,6 +127,8 @@ int main() {
             false, !FULL_BIAS_WIDTH,
             0,
             WS);
+
+    gemmini_fence();
 
     unsigned long end = read_cycles();
     printf("Cycles taken: %u\n", end-start);

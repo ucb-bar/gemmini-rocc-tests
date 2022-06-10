@@ -10,9 +10,9 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define CHECK_RESULT 1
+#define CHECK_RESULT 0 // 1
 
-#define NO_BIAS 1
+#define NO_BIAS 0 // 1
 #define FULL_BIAS_WIDTH 1
 
 #if FULL_BIAS_WIDTH
@@ -22,9 +22,11 @@ typedef elem_t ACC_T;
 #endif
 
 #ifndef BAREMETAL
-#define MAT_DIM_I 400
-#define MAT_DIM_K 400
-#define MAT_DIM_J 400
+
+#define MAT_DIM_I 32
+#define MAT_DIM_K 240
+#define MAT_DIM_J 512
+
 #else
 #define MAT_DIM_I 31
 #define MAT_DIM_K 30
@@ -58,6 +60,11 @@ int main() {
       exit(1);
     }
 #endif
+
+    printf("MAT_DIM_I: %d\n", MAT_DIM_I);
+    printf("MAT_DIM_J: %d\n", MAT_DIM_J);
+    printf("MAT_DIM_K: %d\n", MAT_DIM_K);
+    printf("NO_BIAS: %d\n", NO_BIAS);
 
     gemmini_flush(0);
 
@@ -112,14 +119,20 @@ int main() {
     unsigned long start = read_cycles();
 
     tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+    // tiled_matmul(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
             (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             LAYERNORM, ACC_SCALE_IDENTITY, 0, false,
+
+            // 1, 48, 32,
+
             false, false,
             false, !FULL_BIAS_WIDTH,
             0,
             WS);
+
+    gemmini_fence();
 
     unsigned long end = read_cycles();
     printf("Cycles taken: %u\n", end-start);

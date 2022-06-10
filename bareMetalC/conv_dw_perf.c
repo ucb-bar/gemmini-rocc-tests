@@ -8,7 +8,7 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define HEAP_SIZE (4*1024*1024)
+#define HEAP_SIZE (8*1024*1024)
 
 int str2int(char * str)
 {

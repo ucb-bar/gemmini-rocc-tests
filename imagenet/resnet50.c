@@ -8,6 +8,7 @@
 #include "include/gemmini_nn.h"
 
 #include "resnet50_params.h"
+// #include "resnet50_params_1batch.h"
 #include "images.h"
 
 int main (int argc, char * argv[]) {
@@ -2021,7 +2022,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // Global averaging
     static elem_t average[4][2048] row_align(1);
 

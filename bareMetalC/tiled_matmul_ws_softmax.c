@@ -23,9 +23,9 @@ typedef elem_t ACC_T;
 #endif
 
 #ifndef BAREMETAL
-#define MAT_DIM_I 400
-#define MAT_DIM_K 400
-#define MAT_DIM_J 400
+#define MAT_DIM_I 128
+#define MAT_DIM_K 64
+#define MAT_DIM_J 128
 #else
 #define MAT_DIM_I 31
 #define MAT_DIM_K 30
