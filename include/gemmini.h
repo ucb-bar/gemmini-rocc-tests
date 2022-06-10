@@ -281,8 +281,8 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define gemmini_config_st(stride) \
     gemmini_extended_config_st(stride, NO_ACTIVATION, ACC_SCALE_IDENTITY)
 
-#define gemmini_config_bert(q_const, q_const_type, act_msb, stat_id, igelu_qb, igelu_qc) \
-    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (((uint64_t) ((uint32_t) q_const)) << 32) | ((q_const_type & 1) << 17) | ((act_msb & 1) << 16) | ((uint64_t)stat_id << 8) | CONFIG_BERT, ((uint64_t)((uint32_t)(igelu_qc)) << 32) | ((uint64_t)((uint32_t)(igelu_qb))), k_CONFIG)
+#define gemmini_config_bert(q_const, q_const_type, set_stats_id_only, act_msb, stat_id, igelu_qb, igelu_qc) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (((uint64_t) ((uint32_t) q_const)) << 32) | ((q_const_type & 1) << 18) | ((set_stats_id_only & 1) << 17) | ((act_msb & 1) << 16) | ((uint64_t)stat_id << 8) | CONFIG_BERT, ((uint64_t)((uint32_t)(igelu_qc)) << 32) | ((uint64_t)((uint32_t)(igelu_qb))), k_CONFIG)
 
 // flush
 #define gemmini_flush(skip) \
@@ -501,7 +501,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         bool full_C, bool low_D,
         bool no_bias, bool repeating_bias,
         int act) {
-
+/*
   const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
   const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
@@ -617,7 +617,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
                 NORM_STAT_IDS : rows - row;
               for (int cmd = 0; cmd < norm_cmds_size; cmd++) {
                 for (size_t stat_id = 0; stat_id < stat_ids; stat_id++) {
-                  gemmini_config_bert(0, 0, 0, stat_id, 0, 0);
+                  gemmini_config_bert(0, 0, 0, 0, stat_id, 0, 0);
                   const size_t r = row + stat_id;
                   for (size_t jj = 0; jj < J; jj += C_blocks) {
                     uint32_t norm_C_sp_addr = C_sp_addr_start + (i*J + jj)*DIM + r;
@@ -637,20 +637,6 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
               }
             }
           } else if (act == SOFTMAX && j == J - 1) {
-
-            const scale_t bert_scale = 0.05; // TODO: pass bert_scale from outer
-            const scale_t a = 0.3585;
-            const scale_t b = 1.353;
-            const scale_t c = 0.344;
-
-            const acc_t qln2 = (int) (0.693147 / bert_scale);
-            const acc_t qln2_inv = 65536 / qln2; // (int) (1.44270 * (bert_scale * 65536.f));
-            const acc_t qb = b / bert_scale;
-            const acc_t qc = c / (a*bert_scale*bert_scale);
-
-            gemmini_config_bert(qln2, 0, 1, 0, qb, qc);
-            gemmini_config_bert(qln2_inv, 1, 1, 0, qb, qc);
-
             uint32_t norm_cmds[][2] = {{5,5},{6,7},{0,0}};
             const int norm_cmds_size = sizeof(norm_cmds) / sizeof(norm_cmds[0]);
             const size_t rows = DIM - (i == I-1 ? pad_I : 0);
@@ -659,8 +645,8 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
                 NORM_STAT_IDS : rows - row;
               for (int cmd = 0; cmd < norm_cmds_size; cmd++) {
                 for (size_t stat_id = 0; stat_id < stat_ids; stat_id++) {
-                  // TODO: we need a way to set stat id only
-                  gemmini_config_bert(qln2_inv, 1, 1, stat_id, qb, qc);
+                  // set stat id only
+                  gemmini_config_bert(0, 0, 1, 0, stat_id, 0, 0);
                   const size_t r = row + stat_id;
                   for (size_t jj = 0; jj < J; jj += C_blocks) {
                     uint32_t norm_C_sp_addr = C_sp_addr_start + (i*J + jj)*DIM + r;
@@ -684,13 +670,13 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
       }
     }
   }
-
+*/
   // Combined loop
-//  gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
-//    A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
-//    a_transpose, b_transpose,
-//    full_C, low_D, !no_bias || D == NULL,
-//    0);
+  gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
+    A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
+    a_transpose, b_transpose,
+    full_C, low_D, !no_bias || D == NULL,
+    act);
 }
 
 
@@ -750,7 +736,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
     const acc_t qb = -1.769 / (S / sqrt_2);
     const acc_t qc = 1.0 / S_erf;
 
-    gemmini_config_bert(0, 0, 0, 0, qb, qc);
+    gemmini_config_bert(0, 0, 0, 0, 0, qb, qc);
   }
 
   if (act == SOFTMAX) {
@@ -763,8 +749,8 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
     const acc_t qb = b / bert_scale;
     const acc_t qc = c / (a*bert_scale*bert_scale);
 
-    gemmini_config_bert(qln2, 0, 1, 0, qb, qc);
-    gemmini_config_bert(qln2_inv, 1, 1, 0, qb, qc);
+    gemmini_config_bert(qln2, 0, 0, 1, 0, qb, qc);
+    gemmini_config_bert(qln2_inv, 1, 0, 1, 0, qb, qc);
   }
 
   void (*inner)(const elem_t *, const elem_t *, const void *, void *,
