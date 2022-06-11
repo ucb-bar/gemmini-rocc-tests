@@ -1,7 +1,7 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	resnet50 \
+	resnet_batch1_1 \
 	mobilenet \
 	# alexnet \
 
