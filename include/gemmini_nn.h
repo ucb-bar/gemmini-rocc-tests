@@ -178,7 +178,8 @@ static void tiled_matmul_nn_auto_multi(size_t dim_I, size_t dim_J, size_t dim_K,
   size_t tile_I = args_out[8];
   size_t tile_J = args_out[9];
   size_t tile_K = args_out[10];
-
+  
+  //printf("%llu, ", dim_I*dim_J*dim_K);
   size_t orow_offset_floor = args_out[6];
   bool row_divisible = (args_out[7] != 0);
   int window = args_out[0];
@@ -657,6 +658,7 @@ static void tiled_conv_auto_multi( // for sw padding
      exit(1);
    }
 #endif
+   //printf("%d, ", batch_size*out_dim*out_dim*in_channels*out_channels*kernel_dim*kernel_dim);
 
    // tiling, calm configure
    int args_in[10] = {target_util, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -948,6 +950,22 @@ static void tiled_pool_auto_multi(int batch_size, int channels, int in_dim,
   
   //printf("C dram addr after pool: 0x%08lx\n", C);
 }
+
+static void tiled_pool_auto_cid(int batch_size, int channels, int in_dim,
+    int pool_out_dim, int stride,
+    int pool_size, int pool_stride, int pool_padding,
+    const elem_t * A,
+    elem_t * C,
+    size_t och_divide, size_t batch_divide, size_t cid, size_t group_id){
+  
+  tiled_pool_auto_multi(batch_size, channels, in_dim,
+      pool_out_dim, stride,
+      pool_size, pool_stride, pool_padding,
+      false, false,
+      A, C, 
+      och_divide, batch_divide, cid, group_id);
+}
+
 
 #endif // GEMMINI_NN_H
 

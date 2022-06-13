@@ -10,5 +10,8 @@ static const elem_t image5[1][224][224][3] row_align(1);// =
 
 
 static const elem_t image33[1][224][224][3] row_align(1);// =
+static const elem_t image44[1][224][224][3] row_align(1);// =
+
+
 #endif
 
