@@ -1,5 +1,6 @@
 #!/bin/bash
 
+rm -rf ../../../data-collection-output-configs
 rm -rf ../../../data-collection-output
 rm ../../../data-collection-vcs.sh
 rm ../../../data-collection-spike.sh
