@@ -1,4 +1,4 @@
-# Data Collection
+# Gemmini Data Collection
 
 ## Motivation
 
