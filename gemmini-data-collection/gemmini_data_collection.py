@@ -1,5 +1,3 @@
-#TODO: GENERALIZE PATHS
-
 import sys
 
 def main(keywords, replacement, template_file, new_file):
@@ -40,6 +38,16 @@ def main(keywords, replacement, template_file, new_file):
 
     print("Updated data-collection-vcs.sh script")
 
+    with open('../../../data-collection-midas.sh', 'r') as file:
+        filedata = file.read()
+
+    filedata = filedata + "./scripts/run-midas.sh " + new_file + " > data-collection-output/" + new_file + "-midas.txt &\n"
+
+    with open('../../../data-collection-midas.sh', 'w') as file:
+        filedata = file.write(filedata)
+
+    print("Updated data-collection-midas.sh script")
+
     with open('../../../data-collection-spike.sh', 'r') as file:
         filedata = file.read()
 
@@ -57,26 +65,23 @@ def main(keywords, replacement, template_file, new_file):
 
 
 if __name__ == "__main__":
-    #USE PANDAS AND CSV
     with open('../../../data-collection-vcs.sh', 'w') as file:
+        file.write("#!/bin/bash\n\nmkdir -p data-collection-output\n")
+
+    with open('../../../data-collection-midas.sh', 'w') as file:
         file.write("#!/bin/bash\n\nmkdir -p data-collection-output\n")
 
     with open('../../../data-collection-spike.sh', 'w') as file:
         file.write("#!/bin/bash\n\nmkdir -p data-collection-output\n")
 
     with open('clean.sh', 'w') as file:
-        file.write('#!/bin/bash\n\nrm -rf ../../../data-collection-output\nrm ../../../data-collection-vcs.sh\nrm ../../../data-collection-spike.sh\ncp og_baremetal_Makefile ../bareMetalC/Makefile\ncd ..\n./build.sh clean\ncd gemmini-data-collection\n')
+        file.write('#!/bin/bash\n\nrm -rf ../../../data-collection-output\nrm ../../../data-collection-vcs.sh\nrm ../../../data-collection-midas.sh\nrm ../../../data-collection-spike.sh\ncp og_baremetal_Makefile ../bareMetalC/Makefile\ncd ..\n./build.sh clean\ncd gemmini-data-collection\n')
 
+    # call to main: array of keywords, array of values for keywords, name of C file in the templates folder, name of output C file to be placed in bareMetalC
     main(["DIM_I", "DIM_J", "DIM_K"], ["128", "128", "128"], "tiled_matmul_ws_perf_template", "tiled_matmul_ws_perf-128_128_128")
     main(["DIM_I", "DIM_J", "DIM_K"], ["512", "32", "512"], "tiled_matmul_ws_perf_template", "tiled_matmul_ws_perf-512_32_512")
     main(["DIM_I", "DIM_J", "DIM_K"], ["512", "512", "512"], "tiled_matmul_ws_perf_template", "tiled_matmul_ws_perf-512_512_512")
     main(["DIM_I", "DIM_J", "DIM_K"], ["1024", "1024", "1024"], "tiled_matmul_ws_perf_template", "tiled_matmul_ws_perf-1024_1024_1024")
-
-    """
-    main(["DIM_I", "DIM_J", "DIM_K"], ["128", "512", "512"], "tiled_matmul_ws_perf_template", "tiled_matmul_ws_perf-128_512_512")
-    main(["DIM_I", "DIM_J", "DIM_K"], ["128", "2048", "512"], "tiled_matmul_ws_perf_template", "tiled_matmul_ws_perf-128_2048_512")
-    main(["DIM_I", "DIM_J", "DIM_K"], ["128", "512", "2048"], "tiled_matmul_ws_perf_template", "tiled_matmul_ws_perf-128_512_2048")
-    """
 
     main(["IN_DIM", "IN_CHANNELS", "OUT_CHANNELS", "KERNEL_DIM", "STRIDE", "PADDING"], ["224", "3", "64", "7", "2", "3"], "conv-perf_template", "conv-perf_224-3-64-7-2-3")
     main(["IN_DIM", "IN_CHANNELS", "OUT_CHANNELS", "KERNEL_DIM", "STRIDE", "PADDING"], ["56", "64", "64", "1", "1", "0"], "conv-perf_template", "conv-perf_56-64-64-1-1-1")
