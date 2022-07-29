@@ -13,7 +13,7 @@ else
 fi
 ./scripts/build-spike.sh
 cd software/gemmini-rocc-tests/gemmini-data-collection
-bash gen_data.sh tile $2
+bash gen_data.sh tile
 mkdir -p ../../../data-collection-output-configs 
 mv ../../../data-collection-output ../../../data-collection-output-configs/data-collection-output-spike-$1
 bash gen_data.sh cycle $2
