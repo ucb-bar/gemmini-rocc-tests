@@ -20,8 +20,6 @@
 #define MAT_DIM_K %DIM_J%
 #define MAT_DIM_J %DIM_K%
 
-#endif
-
 #if A_TRANSPOSE==0
 #define A_STRIDE MAT_DIM_K
 #else
