@@ -49,7 +49,7 @@ int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]
 }
 
 int main() {
-#ifdef FAST
+#if defined(FAST) || !defined(HAS_NORMALIZATIONS)
     exit(0);
 #endif
 

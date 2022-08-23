@@ -10,7 +10,7 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define CHECK_RESULT 0 // 1
+#define CHECK_RESULT 1
 
 #define NO_BIAS 1
 #define FULL_BIAS_WIDTH 1
@@ -27,7 +27,7 @@ typedef elem_t ACC_T;
 
 #define MAT_DIM_I 128
 #define MAT_DIM_K 512
-#define MAT_DIM_J 512 // 1024
+#define MAT_DIM_J 512
 
 #else
 #define MAT_DIM_I 30
@@ -52,7 +52,7 @@ int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]
 }
 
 int main() {
-#ifdef FAST
+#if defined(FAST) || !defined(HAS_NORMALIZATIONS)
     exit(0);
 #endif
 
