@@ -31,21 +31,28 @@ tests = \
 	conv_trans_input_3120_with_kernel_dilation \
 	conv_first_layer \
 	conv_dw \
+	conv_perf \
+	conv_dw_perf \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_ws_At \
 	tiled_matmul_ws_Bt \
 	tiled_matmul_ws_full_C \
 	tiled_matmul_ws_low_D \
+	tiled_matmul_ws_igelu \
+	tiled_matmul_ws_layernorm \
+	tiled_matmul_ws_softmax \
+	tiled_matmul_ws_perf \
 	tiled_matmul_cpu \
 	tiled_matmul_option \
-	tiled_matmul_ws_perf \
 	transpose \
 	matrix_add \
 	resadd \
 	global_average \
 	template \
-	gemmini_counter
+	# gemmini_counter \
+	# reset_counters \
+	# get_counters
 
 tests_baremetal = $(tests:=-baremetal)
 
@@ -64,6 +71,8 @@ else
 	tests_linux = $(tests:=-linux)
 	tests_pk = $(tests:=-pk)
 endif
+
+tests_pk =
 
 BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
 GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_testutils.h

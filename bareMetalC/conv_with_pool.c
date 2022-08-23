@@ -287,7 +287,7 @@ int main() {
         NO_BIAS ? NULL : (acc_t*)bias,
         (elem_t*)pool_output_mat,
 
-        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0,
+        NO_ACTIVATION, ACC_SCALE_IDENTITY,
         POOL_SIZE, NO_POOL ? 0 : POOL_STRIDE, POOL_PADDING,
 
         WS);
