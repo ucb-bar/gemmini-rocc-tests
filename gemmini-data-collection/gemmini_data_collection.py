@@ -68,6 +68,9 @@ if __name__ == "__main__":
     with open('../../../data-collection-vcs.sh', 'w') as file:
         file.write("#!/bin/bash\n\nmkdir -p data-collection-output\n")
 
+    with open('../../../data-collection-verilator.sh', 'w') as file:
+        file.write("#!/bin/bash\n\nmkdir -p data-collection-output\n")
+
     with open('../../../data-collection-midas.sh', 'w') as file:
         file.write("#!/bin/bash\n\nmkdir -p data-collection-output\n")
 
@@ -75,7 +78,7 @@ if __name__ == "__main__":
         file.write("#!/bin/bash\n\nmkdir -p data-collection-output\n")
 
     with open('clean.sh', 'w') as file:
-        file.write('#!/bin/bash\n\nrm -rf ../../../data-collection-output\nrm ../../../data-collection-vcs.sh\nrm ../../../data-collection-midas.sh\nrm ../../../data-collection-spike.sh\ncp og_baremetal_Makefile ../bareMetalC/Makefile\ncd ..\n./build.sh clean\ncd gemmini-data-collection\n')
+        file.write('#!/bin/bash\n\nrm -rf ../../../data-collection-output\nrm ../../../data-collection-vcs.sh\nrm ../../../data-collection-verilator.sh\nrm ../../../data-collection-midas.sh\nrm ../../../data-collection-spike.sh\ncp og_baremetal_Makefile ../bareMetalC/Makefile\ncd ..\n./build.sh clean\ncd gemmini-data-collection\n')
 
     # call to main: array of keywords, array of values for keywords, name of C file in the templates folder, name of output C file to be placed in bareMetalC
     main(["DIM_I", "DIM_J", "DIM_K"], ["128", "128", "128"], "tiled_matmul_ws_perf_template", "tiled_matmul_ws_perf-128_128_128")

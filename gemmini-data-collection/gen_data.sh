@@ -27,11 +27,14 @@ elif [ "$1" = "cycle" ]; then
 	if [ "$2" = "vcs" ]; then
 		echo "Running VCS"
 		bash data-collection-vcs.sh
+	elif [ "$2" = "verilator" ]; then
+		echo "Running Verilator"
+		bash data-collection-verilator.sh
 	elif [ "$2" = "midas" ]; then
 		echo "Running Midas"
 		bash data-collection-midas.sh
 	else
-		echo "Invalid second parameter passed into gen-data.sh: should be 'vcs' or 'midas'"
+		echo "Invalid second parameter passed into gen-data.sh: should be 'vcs', 'verilator' or 'midas'"
 		exit 1
 	fi
 fi	
