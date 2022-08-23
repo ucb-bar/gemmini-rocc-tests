@@ -10,10 +10,7 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define HEADS 1
-
 #define ACTIVATION NO_ACTIVATION
-// #define ACTIVATION SOFTMAX
 
 #define NO_BIAS 0
 #define REPEATING_BIAS 1
@@ -63,31 +60,25 @@ int main() {
     }
 #endif
 
-    printf("HEADS: %d\n", HEADS);
-    printf("MAT_DIM_I: %d\n", MAT_DIM_I);
-    printf("MAT_DIM_J: %d\n", MAT_DIM_J);
-    printf("MAT_DIM_K: %d\n", MAT_DIM_K);
-    printf("ACTIVATION: %d\n", ACTIVATION);
-
     gemmini_flush(0);
 
 #if A_TRANSPOSE==0
-    static elem_t full_A[HEADS][MAT_DIM_I][MAT_DIM_K] row_align(1);
+    static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
 #else
-    static elem_t full_A[HEADS][MAT_DIM_K][MAT_DIM_I] row_align(1);
+    static elem_t full_A[MAT_DIM_K][MAT_DIM_I] row_align(1);
 #endif
 
 #if B_TRANSPOSE==0
-    static elem_t full_B[HEADS][MAT_DIM_K][MAT_DIM_J] row_align(1);
+    static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
 #else
-    static elem_t full_B[HEADS][MAT_DIM_J][MAT_DIM_K] row_align(1);
+    static elem_t full_B[MAT_DIM_J][MAT_DIM_K] row_align(1);
 #endif
 
-    static elem_t full_C[HEADS][MAT_DIM_I][MAT_DIM_J] row_align(1);
-    static acc_t full_D[HEADS][MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
+    static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
+    static acc_t full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
 
-    static full_t gold_full[HEADS][MAT_DIM_I][MAT_DIM_J];
-    static elem_t gold[HEADS][MAT_DIM_I][MAT_DIM_J];
+    static full_t gold_full[MAT_DIM_I][MAT_DIM_J];
+    static elem_t gold[MAT_DIM_I][MAT_DIM_J];
 
     counter_configure(0, RDMA_BYTES_REC);
     counter_configure(1, WDMA_BYTES_SENT);
@@ -99,11 +90,8 @@ int main() {
     printf("A_TRANSPOSE: %d, B_TRANSPOSE: %d\n", A_TRANSPOSE, B_TRANSPOSE);
     uint64_t start = read_cycles();
 
-    for (int head = 0; head < HEADS; head++)
     tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-            // (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
-            (elem_t*)full_A[head], (elem_t*)full_B[head], NO_BIAS ? NULL : &full_D[head][0][0], (elem_t*)full_C[head],
-            // (elem_t*)full_A[0], (elem_t*)full_B[0], NO_BIAS ? NULL : &full_D[0][0][0], (elem_t*)full_C[0],
+            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
             A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,

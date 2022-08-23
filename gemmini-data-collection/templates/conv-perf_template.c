@@ -8,38 +8,13 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#ifndef BAREMETAL
-
-#define BATCH_SIZE 4
-#define IN_DIM %IN_DIM%
-#define IN_CHANNELS %IN_CHANNELS%
-#define OUT_CHANNELS %OUT_CHANNELS%
-#define KERNEL_DIM %KERNEL_DIM%
-#define PADDING %PADDING%
-#define STRIDE %STRIDE%
-
-#else
-
-#ifdef FAST
-
-#define IN_DIM 9
-#define IN_CHANNELS 5
-#define OUT_CHANNELS 7
-
-#else
-
-#define IN_DIM %IN_DIM%
-#define IN_CHANNELS %IN_CHANNELS%
-#define OUT_CHANNELS %OUT_CHANNELS%
-
-#endif
-
 #define BATCH_SIZE 2
+#define IN_DIM %IN_DIM%
+#define IN_CHANNELS %IN_CHANNELS%
+#define OUT_CHANNELS %OUT_CHANNELS%
 #define KERNEL_DIM %KERNEL_DIM%
 #define PADDING %PADDING%
 #define STRIDE %STRIDE%
-
-#endif
 
 #define NO_BIAS false
 
@@ -234,7 +209,7 @@ int main() {
         NO_BIAS ? NULL : (acc_t*)bias,
         (elem_t*)output_mat,
 
-        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, 0,
+        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0,
 
         WS);
 

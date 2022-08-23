@@ -16,23 +16,9 @@
 #define A_TRANSPOSE 0
 #define B_TRANSPOSE 0
 
-#ifndef BAREMETAL
-#define MAT_DIM_I 512 
-#define MAT_DIM_K 512
-#define MAT_DIM_J 512 
-#else
-
-// #define MAT_DIM_I 128
-// #define MAT_DIM_K 128
-// #define MAT_DIM_J 128
-
 #define MAT_DIM_I %DIM_I% 
 #define MAT_DIM_K %DIM_J%
 #define MAT_DIM_J %DIM_K%
-
-// #define MAT_DIM_I 256
-// #define MAT_DIM_K 512
-// #define MAT_DIM_J 512
 
 #endif
 
