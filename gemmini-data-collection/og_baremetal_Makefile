@@ -31,20 +31,26 @@ tests = \
 	conv_trans_input_3120_with_kernel_dilation \
 	conv_first_layer \
 	conv_dw \
+	conv_perf \
+	conv_dw_perf \
 	tiled_matmul_os \
 	tiled_matmul_ws \
 	tiled_matmul_ws_At \
 	tiled_matmul_ws_Bt \
 	tiled_matmul_ws_full_C \
 	tiled_matmul_ws_low_D \
+	tiled_matmul_ws_igelu \
+	tiled_matmul_ws_layernorm \
+	tiled_matmul_ws_softmax \
+	tiled_matmul_ws_perf \
 	tiled_matmul_cpu \
 	tiled_matmul_option \
-	tiled_matmul_ws_perf \
 	transpose \
 	matrix_add \
 	resadd \
 	global_average \
-	gemmini_counter
+	gemmini_counter \
+	template \
 
 tests_baremetal = $(tests:=-baremetal)
 
@@ -97,7 +103,6 @@ CFLAGS_BAREMETAL := \
 	-static \
 	-T $(BENCH_COMMON)/test.ld \
 	-DBAREMETAL=1 \
-	-DPRINT_TILE=0 \
 
 all: $(tests_baremetal) $(tests_linux) $(tests_pk)
 
