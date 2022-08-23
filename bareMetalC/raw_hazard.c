@@ -63,7 +63,7 @@ int main() {
   gemmini_mvin(IDENTITY, D_addr);
   
   // printf("Setting mode\n");
-  gemmini_config_ex(OUTPUT_STATIONARY, 0, 0, 0);
+  gemmini_config_ex(OUTPUT_STATIONARY, 0, 0);
 
   // printf("RAW with A\n");
   for (int i = 0; i < a_additions; i++) {

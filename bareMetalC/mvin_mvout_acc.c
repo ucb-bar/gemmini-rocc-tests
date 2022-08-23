@@ -12,11 +12,11 @@
 
 #ifdef FAST
 #define N 2
-#define AINIT 2
+#define AINIT RELU
 #define SINIT 12
 #else
 #define N 4
-#define AINIT 0
+#define AINIT NO_ACTIVATION
 #define SINIT 12
 #endif
 
@@ -34,7 +34,7 @@ int main() {
 
   gemmini_flush(0);
 
-  for (int activation = AINIT; activation <= 2; ++activation) {
+  for (int activation = AINIT; activation <= RELU; ++activation) {
     for (int scale = SINIT; scale <= 12; scale += 4) {
       // printf("activation: %d, scale: %d\n", activation, scale);
 
@@ -42,8 +42,6 @@ int main() {
       static full_t In_full[N][DIM][DIM];
       static elem_t Out[N][DIM][DIM] row_align(1);
       static elem_t Out_gold[N][DIM][DIM];
-
-      int relu6_shift = scale+1;
 
       // printf("Initializing matrices\n");
       for (size_t n = 0; n < N; ++n)
@@ -84,15 +82,13 @@ int main() {
 
         if (activation == RELU)
           matrelu(Out_gold[n], Out_gold[n]);
-        else if (activation == RELU6)
-          matrelu6(Out_gold[n], Out_gold[n], 1 << relu6_shift);
       }
 
       const uint32_t acc_addr = 1 << (ADDR_LEN-1);
 
       // printf("Config\n");
       gemmini_config_ld(DIM*sizeof(acc_t));
-      gemmini_config_ex(0, 0, 0, relu6_shift);
+      gemmini_config_ex(0, 0, 0);
       gemmini_extended_config_st(DIM*sizeof(elem_t), activation, scale);
 
       // printf("Mvin and mvout\n");

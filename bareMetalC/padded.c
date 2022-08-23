@@ -145,7 +145,7 @@ int main() {
         const size_t D_sp_addr = 2*DIM;
         const size_t C_sp_addr = 3*DIM;
 
-        gemmini_config_ex(dataflow, NO_ACTIVATION, 0, 0);
+        gemmini_config_ex(dataflow, NO_ACTIVATION, 0);
         gemmini_config_st(J * sizeof(elem_t));
 
         gemmini_config_ld(K * sizeof(elem_t));

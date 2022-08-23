@@ -77,16 +77,6 @@ void matrelu_big(elem_t in[BIG_DIM][BIG_DIM], elem_t out[BIG_DIM][BIG_DIM]) {
       out[r][c] = in[r][c] > 0 ? in[r][c] : 0;
 }
 
-void matrelu6_big(elem_t in[BIG_DIM][BIG_DIM], elem_t out[BIG_DIM][BIG_DIM], int scale) {
-  int max = 6 * scale;
-
-  for (size_t r = 0; r < BIG_DIM; r++)
-    for (size_t c = 0; c < BIG_DIM; c++) {
-      elem_t positive = in[r][c] > 0 ? in[r][c] : 0;
-      out[r][c] = positive > max ? max : positive;
-    }
-}
-
 void printMatrix_big(elem_t m[BIG_DIM][BIG_DIM]) {
   for (size_t i = 0; i < BIG_DIM; ++i) {
     for (size_t j = 0; j < BIG_DIM; ++j)
@@ -122,7 +112,7 @@ int main() {
   gemmini_flush(0);
 
   for (int block_len = BINIT; block_len <= BIG_DIM/DIM && block_len <= MAX_BLOCK_LEN_ACC; block_len++) {
-    for (int activation = AINIT; activation <= 2; ++activation) {
+    for (int activation = AINIT; activation <= RELU; ++activation) {
       for (int scale = SINIT; scale <= 12; scale += 4) {
         // printf("block_len: %d, activation: %d, scale: %d\n", block_len, activation, scale);
         
@@ -130,8 +120,6 @@ int main() {
         static full_t In_full[BIG_DIM][BIG_DIM];
         static elem_t Out[BIG_DIM][BIG_DIM] row_align(1);
         static elem_t Out_gold[BIG_DIM][BIG_DIM];
-
-        int relu6_shift = scale+1;
 
         for (size_t i = 0; i < BIG_DIM; ++i) {
           for (size_t j = 0; j < BIG_DIM; ++j) {
@@ -169,13 +157,11 @@ int main() {
 
         if (activation == RELU)
           matrelu_big(Out_gold, Out_gold);
-        else if (activation == RELU6)
-          matrelu6_big(Out_gold, Out_gold, 1 << relu6_shift);
 
         const uint32_t acc_addr = 1 << (ADDR_LEN-1);
 
         gemmini_config_ld(BIG_DIM*sizeof(acc_t));
-        gemmini_config_ex(0, 0, 0, relu6_shift);
+        gemmini_config_ex(0, 0, 0);
         gemmini_extended_config_st(BIG_DIM*sizeof(elem_t), activation, scale);
 
         for (size_t i = 0; i < BIG_DIM; i += DIM) {

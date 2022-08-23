@@ -102,16 +102,6 @@ void full_matrelu(elem_t in[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_DIM
       out[r][c] = in[r][c] > 0 ? in[r][c] : 0;
 }
 
-void full_matrelu6(elem_t in[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_DIM_J], int scale) {
-  int max = 6 * scale;
-
-  for (size_t r = 0; r < MAT_DIM_I; r++)
-    for (size_t c = 0; c < MAT_DIM_J; c++) {
-      elem_t positive = in[r][c] > 0 ? in[r][c] : 0;
-      out[r][c] = positive > max ? max : positive;
-    }
-}
-
 int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]) {
   for (size_t i = 0; i < MAT_DIM_I; ++i)
     for (size_t j = 0; j < MAT_DIM_J; ++j)
@@ -148,8 +138,6 @@ int main() {
                   (option == WS && a_transpose && b_transpose)) {
                   continue;
                 }
-
-                size_t relu6_shift = scale + 1;
 
                 static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
                 static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
@@ -197,8 +185,6 @@ int main() {
 
                 if (activation == RELU) {
                   full_matrelu(gold, gold);
-                } else if (activation == RELU6) {
-                  full_matrelu6(gold, gold, 1 << relu6_shift);
                 }
 
                 size_t stride_A = a_transpose ? MAT_DIM_I : MAT_DIM_K;
@@ -209,7 +195,7 @@ int main() {
                         (elem_t*)full_A, (elem_t*)full_B, no_bias ? NULL : &full_D[0][0], (elem_t*)full_C,
                         stride_A, stride_B, MAT_DIM_J, MAT_DIM_J,
                         MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-                        activation, scale, relu6_shift, repeating_bias,
+                        activation, scale, 0, repeating_bias,
                         a_transpose, b_transpose,
                         false, false,
                         0,
@@ -220,7 +206,6 @@ int main() {
                   printf("option: %d\n", option);
                   printf("activation: %d\n", activation);
                   printf("scale: %d\n", scale);
-                  printf("relu_shift: %d\n", relu6_shift);
                   printf("no_bias: %d\n", no_bias);
                   printf("repeating_bias: %d\n", repeating_bias);
                   printf("a_transpose: %d\n", a_transpose);

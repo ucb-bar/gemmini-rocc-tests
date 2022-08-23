@@ -68,7 +68,7 @@ int main() {
 
   // printf("Config\n");
   gemmini_config_ld(DIM*sizeof(acc_t));
-  gemmini_config_ex(0, NO_ACTIVATION, 0, 0);
+  gemmini_config_ex(0, NO_ACTIVATION, 0);
   gemmini_config_st(DIM*sizeof(acc_t));
 
   // printf("Mvin and mvout\n");

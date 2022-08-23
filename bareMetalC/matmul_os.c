@@ -12,11 +12,11 @@
 #include "include/gemmini_testutils.h"
 
 #ifdef FAST
-#define AINIT 2
+#define AINIT RELU
 #define SINIT 12
 #define N 1
 #else
-#define AINIT 0
+#define AINIT NO_ACTIVATION
 #define SINIT 0
 #define N 2
 #endif
@@ -45,15 +45,13 @@ int main() {
 
   static elem_t ZERO[DIM][DIM];
 
-  for (int activation = AINIT; activation <= 2; ++activation) {
+  for (int activation = AINIT; activation <= RELU; ++activation) {
     for (int shift = SINIT; shift <= 12; shift += 4) {
       // printf("activation: %d, shift: %d\n", activation, shift);
 
       static elem_t A[N][DIM][DIM] row_align(1);
       static elem_t B[N][DIM][DIM] row_align(1);
       static elem_t D[N][DIM][DIM] row_align(1);
-
-      int relu6_shift = shift+1;
 
       // We will try out every combination of A, B, D possible
       static elem_t C[N*N*N][DIM][DIM] row_align(1);
@@ -116,8 +114,6 @@ int main() {
           matshift(gold_full[g], gold[g], shift);
           if (activation == RELU)
             matrelu(gold[g], gold[g]);
-          else if (activation == RELU6)
-            matrelu6(gold[g], gold[g], 1 << relu6_shift);
       }
 
       int A_addr = 0;
@@ -137,7 +133,7 @@ int main() {
       }
 
       // printf("Setting mode\n");
-      gemmini_config_ex(OUTPUT_STATIONARY, activation, shift, relu6_shift);
+      gemmini_config_ex(OUTPUT_STATIONARY, activation, shift);
 
       // printf("Matmulling\n");
       for (size_t c = 0; c < N*N*N; ++c) {
