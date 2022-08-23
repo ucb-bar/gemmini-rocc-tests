@@ -33,11 +33,12 @@ Most of the following documentation assumes the current working directory is `ge
 
 * Keep note of their names – you will need them for Step 4
 
-### Step 4: Run Script of Choice
+### Step 4: Run Tests in Parallel
 
 * Refer to descriptions of `gen_data.sh` and `config_gen_data.sh` in the section below.
 
 * Run the `config_gen_data.sh` script from the `gemmini-data-collection` directory, as our paths assume that this is your current working directory.
+   - Note that all the tests you specificed in Step 2 will run **in parallel** on separate processes. Make sure you are running on a server with sufficient RAM for all those tests!
 
 ## Detailed Script Descriptions
 ### `gemmini_data_collection.py`
@@ -104,9 +105,9 @@ Each call to the `main` function of this script generates an instance of a templ
 
     * If called with the `midas` parameter, calls `gemmini/data-collection-midas.sh`
 
-### `config_gen_data.sh [configName] [vcs|verilator|midas]`
+### `config_gen_data.sh [config_name] [vcs|verilator|midas]`
 
-* Sets the active Gemmini configuration in `gemmini/src/main/scala/gemmini/CustomConfigs.scala` to the specified `configName` Scala variable name provided as a parameter
+* Sets the active Gemmini configuration in `gemmini/src/main/scala/gemmini/CustomConfigs.scala` to the specified `config_name` Scala variable name provided as a parameter
 
     * If you want to use the default configuration, you should pass in `baselineInferenceConfig` as the first parameter
 
@@ -114,5 +115,5 @@ Each call to the `main` function of this script generates an instance of a templ
 
 * Runs `gen_data.sh tile` and `gen_data.sh cycle [vcs|verilator|midas]` to collect both tiling factor data and simulation cycle count data.
 
-* Places output in subfolders within the `data-collection-output-configs` folder; the subfolders follow the naming format `data-collection-output-<spike/vcs/verilator/midas>-<configName>` where the `<>` indicates variability of naming
+* Places output in subfolders within the `data-collection-output-configs` folder; the subfolders follow the naming format `data-collection-output-<spike/vcs/verilator/midas>-<config_name>` where the `<>` indicates variability of naming
 
