@@ -20,23 +20,15 @@
 
 #ifndef BAREMETAL
 
-#define MAT_DIM_I 128 // 128 // 256
-#define MAT_DIM_K 512 // 64 // 256
-#define MAT_DIM_J 512 // 128 // 256
+#define MAT_DIM_I 128
+#define MAT_DIM_K 512
+#define MAT_DIM_J 256
 
 #else
 
-// #define MAT_DIM_I 128
-// #define MAT_DIM_K 128
-// #define MAT_DIM_J 128
-
-#define MAT_DIM_I 512 // 256
-#define MAT_DIM_K 512 // 256
-#define MAT_DIM_J 32 // 256
-
-// #define MAT_DIM_I 256
-// #define MAT_DIM_K 512
-// #define MAT_DIM_J 512
+#define MAT_DIM_I 128
+#define MAT_DIM_K 256
+#define MAT_DIM_J 256
 
 #endif
 
@@ -105,7 +97,7 @@ int main() {
     uint64_t end = read_cycles();
     printf("Cycles taken: %llu\n", end-start);
 
-    const uint64_t total_macs = HEADS * MAT_DIM_I * MAT_DIM_J * MAT_DIM_K;
+    const uint64_t total_macs = MAT_DIM_I * MAT_DIM_J * MAT_DIM_K;
     const uint64_t ideal_cycles = total_macs / (DIM * DIM);
     const uint64_t utilization = 100 * ideal_cycles / (end-start);
     printf("Total macs: %llu\n", total_macs);
