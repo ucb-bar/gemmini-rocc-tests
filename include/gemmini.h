@@ -1285,6 +1285,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         break;
     }
 
+#ifdef PRINT_TILE
 #if PRINT_TILE
     const int spad_rows = tiled_matmul_total_spad_rows(tile_I, tile_J, tile_K);
     const int acc_rows = tiled_matmul_total_acc_rows(tile_I, tile_J);
@@ -1300,6 +1301,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
     printf("acc_row utilization: %d%%\n\n", (acc_rows * 100) / max_acc_rows);
 
     exit(EXIT_SUCCESS);
+#endif
 #endif
 
     tiled_matmul(dim_I, dim_J, dim_K,
