@@ -90,6 +90,7 @@ CFLAGS := $(CFLAGS) \
 	-I$(abs_top_srcdir) \
 	-I$(BENCH_COMMON) \
 	-DID_STRING=$(ID_STRING) \
+	-DPRINT_TILE=0 \
 
 CFLAGS_PK := \
 	$(CFLAGS) \
