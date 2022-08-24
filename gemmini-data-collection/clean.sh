@@ -1,9 +1,9 @@
 #!/bin/bash
 
-rm -rf ../../../data-collection-output-configs
 rm -rf ../../../data-collection-output
 rm ../../../data-collection-vcs.sh
 rm ../../../data-collection-verilator.sh
+rm ../../../data-collection-midas.sh
 rm ../../../data-collection-spike.sh
 cp og_baremetal_Makefile ../bareMetalC/Makefile
 cd ..
