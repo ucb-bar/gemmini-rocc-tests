@@ -39,6 +39,16 @@ def main(keywords, replacement, template_file, new_file):
 
     print("Updated data-collection-vcs.sh script")
 
+    with open('../../../data-collection-verilator.sh', 'r') as file:
+        filedata = file.read()
+
+    filedata = filedata + "./scripts/run-verilator.sh " + new_file + " > data-collection-output/" + new_file + "-verilator.txt &\n"
+
+    with open('../../../data-collection-verilator.sh', 'w') as file:
+        filedata = file.write(filedata)
+
+    print("Updated data-collection-verilator.sh script")
+
     with open('../../../data-collection-midas.sh', 'r') as file:
         filedata = file.read()
 
