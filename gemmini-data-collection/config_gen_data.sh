@@ -8,7 +8,7 @@ if [ "$2" = "vcs" ]; then
 elif [ "$2" = "verilator" ]; then
 	./scripts/build-verilator.sh
 elif [ "$2" = "midas" ]; then
-	./scripts/build-midas.sh
+	./scripts/build-midas.sh $3
 else
 	echo "Invalid second paramter passed into gen-data.sh: should be 'vcs', 'verilator' or 'midas'"
 	exit 1
@@ -26,6 +26,6 @@ mkdir -p $cycle_dir
 
 bash gen_data.sh tile
 mv $result_dir/* $tiling_dir/ && rmdir $result_dir
-bash gen_data.sh cycle $2
+bash gen_data.sh cycle $2 $3
 mv $result_dir/* $cycle_dir/ && rmdir $result_dir
 

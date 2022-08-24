@@ -41,7 +41,7 @@ def main(keywords, replacement, template_file, new_file):
     with open('../../../data-collection-midas.sh', 'r') as file:
         filedata = file.read()
 
-    filedata = filedata + "./scripts/run-midas.sh " + new_file + " > data-collection-output/" + new_file + "-midas.txt &\n"
+    filedata = filedata + "./scripts/run-midas.sh $1" + new_file + " > data-collection-output/" + new_file + "-midas.txt &\n"
 
     with open('../../../data-collection-midas.sh', 'w') as file:
         filedata = file.write(filedata)
