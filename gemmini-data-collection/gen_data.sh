@@ -37,5 +37,5 @@ elif [ "$1" = "cycle" ]; then
 		echo "Invalid second parameter passed into gen-data.sh: should be 'vcs', 'verilator' or 'midas'"
 		exit 1
 	fi
-fi	
+fi
 

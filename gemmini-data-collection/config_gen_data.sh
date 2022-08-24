@@ -2,7 +2,7 @@
 
 cd ../../..
 sed -i "/val customConfig =/c\ val customConfig = $1" src/main/scala/gemmini/CustomConfigs.scala
-sed -i "/val customConfig =/c\ val customConfig = $1" configs/GemminiCustomConfigs.scala 
+sed -i "/val customConfig =/c\ val customConfig = $1" configs/GemminiCustomConfigs.scala
 if [ "$2" = "vcs" ]; then
 	./scripts/build-vcs.sh
 elif [ "$2" = "verilator" ]; then

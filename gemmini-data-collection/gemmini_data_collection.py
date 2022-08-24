@@ -1,4 +1,5 @@
 import sys
+import tests
 
 def main(keywords, replacement, template_file, new_file):
     """
@@ -41,7 +42,7 @@ def main(keywords, replacement, template_file, new_file):
     with open('../../../data-collection-midas.sh', 'r') as file:
         filedata = file.read()
 
-    filedata = filedata + "./scripts/run-midas.sh $1" + new_file + " > data-collection-output/" + new_file + "-midas.txt &\n"
+    filedata = filedata + "./scripts/run-midas.sh $1 " + new_file + " > data-collection-output/" + new_file + "-midas.txt &\n"
 
     with open('../../../data-collection-midas.sh', 'w') as file:
         filedata = file.write(filedata)
@@ -65,28 +66,17 @@ def main(keywords, replacement, template_file, new_file):
 
 
 if __name__ == "__main__":
-    with open('../../../data-collection-vcs.sh', 'w') as file:
-        file.write("#!/bin/bash\n\nmkdir -p data-collection-output\n")
-
-    with open('../../../data-collection-verilator.sh', 'w') as file:
-        file.write("#!/bin/bash\n\nmkdir -p data-collection-output\n")
-
-    with open('../../../data-collection-midas.sh', 'w') as file:
-        file.write("#!/bin/bash\n\nmkdir -p data-collection-output\n")
-
-    with open('../../../data-collection-spike.sh', 'w') as file:
-        file.write("#!/bin/bash\n\nmkdir -p data-collection-output\n")
+    for fname in 'vcs', 'verilator', 'midas', 'spike':
+        with open('../../../data-collection-' + fname + '.sh', 'w') as file:
+            file.write("#!/bin/bash\n\nmkdir -p data-collection-output\n")
 
     with open('clean.sh', 'w') as file:
         file.write('#!/bin/bash\n\nrm -rf ../../../data-collection-output\nrm ../../../data-collection-vcs.sh\nrm ../../../data-collection-verilator.sh\nrm ../../../data-collection-midas.sh\nrm ../../../data-collection-spike.sh\ncp og_baremetal_Makefile ../bareMetalC/Makefile\ncd ..\n./build.sh clean\ncd gemmini-data-collection\n')
 
-    # call to main: array of keywords, array of values for keywords, name of C file in the templates folder, name of output C file to be placed in bareMetalC
-    main(["DIM_I", "DIM_J", "DIM_K"], ["128", "128", "128"], "tiled_matmul_ws_perf_template", "tiled_matmul_ws_perf-128_128_128")
-    main(["DIM_I", "DIM_J", "DIM_K"], ["512", "32", "512"], "tiled_matmul_ws_perf_template", "tiled_matmul_ws_perf-512_32_512")
-    main(["DIM_I", "DIM_J", "DIM_K"], ["512", "512", "512"], "tiled_matmul_ws_perf_template", "tiled_matmul_ws_perf-512_512_512")
-    main(["DIM_I", "DIM_J", "DIM_K"], ["1024", "1024", "1024"], "tiled_matmul_ws_perf_template", "tiled_matmul_ws_perf-1024_1024_1024")
+    for test in tests.tests:
+        main(*test)
 
-    main(["IN_DIM", "IN_CHANNELS", "OUT_CHANNELS", "KERNEL_DIM", "STRIDE", "PADDING"], ["224", "3", "64", "7", "2", "3"], "conv-perf_template", "conv-perf_224-3-64-7-2-3")
-    main(["IN_DIM", "IN_CHANNELS", "OUT_CHANNELS", "KERNEL_DIM", "STRIDE", "PADDING"], ["56", "64", "64", "1", "1", "0"], "conv-perf_template", "conv-perf_56-64-64-1-1-1")
-    main(["IN_DIM", "IN_CHANNELS", "OUT_CHANNELS", "KERNEL_DIM", "STRIDE", "PADDING"], ["14", "256", "256", "3", "1", "1"], "conv-perf_template", "conv-perf_14-256-256-3-1-1")
-    main(["IN_DIM", "IN_CHANNELS", "OUT_CHANNELS", "KERNEL_DIM", "STRIDE", "PADDING"], ["7", "512", "512", "3", "1", "1"], "conv-perf_template", "conv-perf_7-512-512-3-1-1")
+    for fname in 'vcs', 'verilator', 'midas', 'spike':
+        with open('../../../data-collection-' + fname + '.sh', 'a') as file:
+            file.write("wait\n")
+

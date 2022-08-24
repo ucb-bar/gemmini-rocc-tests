@@ -17,9 +17,9 @@ Most of the following documentation assumes the current working directory is `ge
 
 ### Step 2: Specify Tests to Run
 
-* Open `gemmini_data_collection.py` in your preferred text editor, and make calls to the `main` function for each test you want to simulate (e.g. one test for a 512-by-512-by-512 matmul, or another test for a small convolution). Refer to the existing examples in `gemmini_data_collection.py`.
+* Open `tests.py` in your preferred text editor, and make `GemminiTest` objects for each test you want to simulate (e.g. one test for a 512-by-512-by-512 matmul, or another test for a small convolution). You may refer to the existing examples in `tests.py`.
 
-* The calls to `main` should have the following arguments:
+* The `GemminiTest` objects should have the following arguments:
     * **Parameter 1**: an array of keywords used in the template
     * **Parameter 2**: an array of values to replace the keywords specified in Parameter 1 (in respective order)
     * **Parameter 3**: name of template you are using (must be a `C` file located in the `templates` folder)
