@@ -22,9 +22,9 @@ typedef elem_t ACC_T;
 #endif
 
 #ifndef BAREMETAL
-#define MAT_DIM_I 12544 // 512
-#define MAT_DIM_K 256 // 512
-#define MAT_DIM_J 64 // 512
+#define MAT_DIM_I 512
+#define MAT_DIM_K 512
+#define MAT_DIM_J 512
 #else
 #define MAT_DIM_I 64
 #define MAT_DIM_K 64

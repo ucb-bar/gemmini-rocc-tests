@@ -1285,7 +1285,8 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         break;
     }
 
-    /*
+#ifdef PRINT_TILE
+#if PRINT_TILE
     const int spad_rows = tiled_matmul_total_spad_rows(tile_I, tile_J, tile_K);
     const int acc_rows = tiled_matmul_total_acc_rows(tile_I, tile_J);
 
@@ -1298,7 +1299,10 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 
     printf("spad_row utilization: %d%%\n", (spad_rows * 100) / max_spad_rows);
     printf("acc_row utilization: %d%%\n\n", (acc_rows * 100) / max_acc_rows);
-    */
+
+    exit(EXIT_SUCCESS);
+#endif
+#endif
 
     tiled_matmul(dim_I, dim_J, dim_K,
         A, B, D, C,
@@ -2688,7 +2692,10 @@ static void tiled_conv_auto(
     acc_rows = tiled_conv_total_spad_rows(true,
         stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
         args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+    */
 
+#ifdef PRINT_TILE
+#if PRINT_TILE
     printf("batches = %d\n", batches);
     printf("orows   = %d\n", orows);
     printf("ocols   = %d\n", ocols);
@@ -2704,7 +2711,8 @@ static void tiled_conv_auto(
     printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
 
     printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
-    */
+#endif
+#endif
 
     tiled_conv(
         batch_size, in_dim, in_channels,
