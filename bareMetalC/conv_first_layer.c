@@ -11,40 +11,17 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#ifndef BAREMETAL
-
-#define BATCH_SIZE 4
-#define IN_DIM 224
-#define IN_CHANNELS 3
-#define OUT_CHANNELS 32
+#define BATCH_SIZE 2
 #define KERNEL_DIM 3
-#define PADDING 1
-#define STRIDE 2
-
-#else
-
-#ifdef FAST
-
-#define IN_DIM 9
-#define IN_CHANNELS 3
-#define OUT_CHANNELS 7
-
-#else
-
 #define IN_DIM 17
 #define IN_CHANNELS 3
 #define OUT_CHANNELS 19
-
-#endif
-
-#define BATCH_SIZE 2
-#define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 2
 
-#endif
-
 #define NO_BIAS false
+
+#define CHECK_RESULT 1
 
 #define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
@@ -132,24 +109,14 @@ bool vec_is_equal(elem_t * a, elem_t * b, int len) {
 void init_random(elem_t * buf, int len) {
     elem_t i = 0;
     for (elem_t * ptr = buf; ptr < buf + len; ptr++) {
-        // *ptr = (rand() % 32) - 16;
-#ifdef FAST
-      *ptr = 1;
-#else
       *ptr = (rand() % 5) - 2;
-#endif
     }
 }
 
 void init_random_acc(acc_t * buf, int len) {
     elem_t i = 0;
     for (acc_t * ptr = buf; ptr < buf + len; ptr++) {
-        // *ptr = (rand() % 32) - 16;
-#ifdef FAST
-      *ptr = 1;
-#else
       *ptr = (rand() % 5) - 2;
-#endif
     }
 }
 
@@ -160,6 +127,10 @@ void init_zeros_acc(acc_t * buf, int len) {
 }
 
 int main() {
+#ifdef FAST
+    exit(0);
+#endif
+
 #ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
       perror("mlockall failed");
@@ -178,6 +149,7 @@ int main() {
     static acc_t bias[OUT_CHANNELS];
     static elem_t output[BATCH_SIZE][OUT_DIM][OUT_DIM][OUT_CHANNELS];
 
+#if CHECK_RESULT == 1
     printf("Randomize inputs...\n");
     init_random(&input[0][0][0][0], sizeof(input) / sizeof(elem_t));
 
@@ -192,7 +164,6 @@ int main() {
 
     printf("CPU conv...\n");
     uint64_t start_cpu = read_cycles();
-#ifndef FAST
     conv(BATCH_SIZE, IN_CHANNELS, IN_DIM,
             OUT_CHANNELS, KERNEL_DIM,
             OUT_DIM,
@@ -201,9 +172,9 @@ int main() {
             weights,
             bias,
             output);
-#endif
     uint64_t end_cpu = read_cycles();
     printf("CPU conv took %llu cycles\n", end_cpu - start_cpu);
+#endif // CHECK_RESULT == 1
 
     static elem_t weights_mat[PATCH_SIZE][OUT_CHANNELS];
     static elem_t output_mat[N_PATCHES][OUT_CHANNELS];
@@ -216,39 +187,23 @@ int main() {
 
     printf("Gemmini conv...\n");
     uint64_t start_gemmini = read_cycles();
-    tiled_conv_auto(
+    tiled_conv_tutorial_auto(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
-        STRIDE, 1, 1, PADDING, KERNEL_DIM,
-        false, false, false, false, false,
+        STRIDE, KERNEL_DIM,
 
         (elem_t*)input,
         (elem_t*)weights_mat,
         NO_BIAS ? NULL : (acc_t*)bias,
         (elem_t*)output_mat,
 
-        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0,
-
-        WS);
+        NO_ACTIVATION, ACC_SCALE_IDENTITY);
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 
     assert(sizeof(output_mat) == sizeof(output));
 
-#ifdef FAST
-    bool success = true;
-    for (int orow = 0; orow < BATCH_SIZE * OUT_DIM * OUT_DIM; orow++) {
-      for (int ocol = 0; ocol < OUT_CHANNELS; ocol++) {
-	elem_t v = output_mat[orow][ocol];
-	if (v != 13 && v != 19 && v != 28) {
-	  success = false;
-	  break;
-	}
-      }
-    }
-#else
-    bool success = vec_is_equal(&output[0][0][0][0], &output_mat[0][0], sizeof(output) / sizeof(elem_t));
-#endif
+    bool success = !CHECK_RESULT || vec_is_equal(&output[0][0][0][0], &output_mat[0][0], sizeof(output) / sizeof(elem_t));
 
     if (!success) {
         // return 1;
