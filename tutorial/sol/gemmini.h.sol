@@ -1419,7 +1419,7 @@ static void sp_tiled_conv_tutorial(
 
             gemmini_extended_mvin(in,
                 A_sp_addr,
-                K, I);
+                3*K, I);
           }
         }
       }
@@ -1464,7 +1464,7 @@ static void sp_tiled_conv_tutorial(
          *
          * How much should we increase "kcol" by in each iteration now?
          */
-        for (int kcol = 0; kcol < kcols; kcol++) {
+        for (int kcol = 0; kcol < kcols; kcol += 3) {
           for (int kch = 0; kch < kchs; kch += DIM) {
             bool new_weights = true;
 
@@ -1501,7 +1501,7 @@ static void sp_tiled_conv_tutorial(
                    * "K" so that we reduce over 3 kernel-columns instead?
                    */
 
-                  const int K = kchs - kch > DIM ? DIM : kchs - kch;
+                  const int K = 3 * (kchs - kch > DIM ? DIM : kchs - kch);
 
                   uint32_t A_sp_addr = A_sp_addr_start + (kch / DIM) * batches * irows * icols + b * irows * icols + irow * icols + icol;
 

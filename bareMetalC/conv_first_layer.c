@@ -11,19 +11,18 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define BATCH_SIZE 2
-#define KERNEL_DIM 3
-#define IN_DIM 17
+#define BATCH_SIZE 1
+#define IN_DIM 33
 #define IN_CHANNELS 3
-#define OUT_CHANNELS 19
-#define PADDING 1
+#define OUT_CHANNELS 32
+#define KERNEL_DIM 3
 #define STRIDE 2
 
 #define NO_BIAS false
 
 #define CHECK_RESULT 1
 
-#define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
+#define OUT_DIM ((IN_DIM - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
 #define N_PATCHES (BATCH_SIZE * OUT_DIM * OUT_DIM)
 
@@ -167,7 +166,7 @@ int main() {
     conv(BATCH_SIZE, IN_CHANNELS, IN_DIM,
             OUT_CHANNELS, KERNEL_DIM,
             OUT_DIM,
-            STRIDE, PADDING,
+            STRIDE, 0,
             input,
             weights,
             bias,
