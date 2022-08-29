@@ -3186,6 +3186,26 @@ static void tiled_conv_tutorial_auto(
     const int kcols = args[5];
     const int kchs = args[6];
 
+#ifdef PRINT_TILE
+#if PRINT_TILE
+    printf("batches = %d\n", batches);
+    printf("orows   = %d\n", orows);
+    printf("ocols   = %d\n", ocols);
+    printf("ochs    = %d\n", ochs);
+    printf("krows   = %d\n", krows);
+    printf("kcols   = %d\n", kcols);
+    printf("kchs    = %d\n\n", kchs);
+
+    printf("total spad_rows reserved: %d\n", spad_rows);
+    printf("total acc_rows reserved: %d\n\n", acc_rows);
+
+    printf("scratchpad row utilization: %d%%\n", (spad_rows*100) / max_spad_rows);
+    printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
+
+    printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
+#endif
+#endif
+
     tiled_conv_tutorial(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
