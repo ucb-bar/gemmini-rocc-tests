@@ -797,7 +797,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
   }
 
   for (size_t i0 = 0; i0 < I0; i0++)
-    for (size_t j0 = 0; j0 < J0; j0++)
+    for (size_t j0 = 0; j0 < J0; j0 += (j0 == 0 ? approx_split : 1))
       for (size_t k0 = 0; k0 < K0; k0++) {
 
         const void * pre;
@@ -812,7 +812,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         void * out = k0 == K0-1 ? (int8_t*)C + (i0*tile_I*DIM*stride_C + j0*tile_J*DIM)*sizeof_C : NULL;
 
         const size_t I = i0 < I0-1 ? tile_I : last_I;
-        const size_t J = j0 < J0-1 ? tile_J : last_J;
+        const size_t J = j0 < J0-1 ? tile_J * ((approx_split > 0 && j0 == 0) ? approx_split : 1) : last_J;
         const size_t K = k0 < K0-1 ? tile_K : last_K;
 
         const size_t pad_I = i0 == I0-1 ? padding_I : 0;
@@ -830,7 +830,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
             I, J, K,
             pad_I, pad_J, pad_K,
             stride_A, stride_B, stride_D, stride_C,
-            j0 >= 1, i0 * tile_I, /* TODO: dynamic tile size after split */
+            (approx_split > 0) && (j0 >= approx_split), i0 * tile_I,
             a_transpose, b_transpose,
             full_C, low_D,
             no_bias, repeating_bias,
@@ -1218,7 +1218,7 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
     matmul_cpu(transpose_A, transpose_B, dim_I, dim_J, dim_K,
             A, B, (const acc_t*) D, (elem_t*)C,
             stride_A, stride_B, stride_D, stride_C,
-            A_scale_factor, B_scale_factor, D_scale_factor, approx_split,
+            A_scale_factor, B_scale_factor, D_scale_factor, approx_split * tile_J,
             act, scale, bert_scale, repeating_bias);
   }
 }
@@ -1273,18 +1273,18 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
     size_t tile_I, tile_J, tile_K;
 
     // TODO: this is hardcoded
-    // tile 2+ (incl.) is approximated; to disable, approx_split >= dim_J_padded
+    // columns DIM*<approx_split>+ (incl.) is approximated; to disable, approx_split = 0
     size_t approx_split = 2;
 
     if (act == LAYERNORM || act == SOFTMAX) {
        tile_I = 1;
        tile_J = dim_J_padded/DIM;
        tile_K = 1;
-       if (act == LAYERNORM) {
+       if (act == LAYERNORM && approx_split > 0) {
          // TODO: make sure I and K dont exceed max size
          // TODO: relax check for norm max length
          tile_I = dim_I_padded/DIM < db_max_tile_i_j ? dim_I_padded/DIM : db_max_tile_i_j;
-         tile_J = approx_split < db_max_tile_i_j ? approx_split : db_max_tile_i_j;
+         tile_J = dim_J_padded/DIM < db_max_tile_i_j ? dim_J_padded/DIM : db_max_tile_i_j;
          tile_K = dim_K_padded/DIM < db_max_tile_k ? dim_K_padded/DIM : db_max_tile_k;
        }
     } else if (double_buffered) {
