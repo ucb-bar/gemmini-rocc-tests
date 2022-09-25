@@ -797,7 +797,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
   }
 
   for (size_t i0 = 0; i0 < I0; i0++)
-    for (size_t j0 = 0; j0 < J0; j0 += (j0 == 0 ? approx_split : 1))
+    for (size_t j0 = 0; j0 < J0; j0 += (j0 < approx_split ? approx_split : 1))
       for (size_t k0 = 0; k0 < K0; k0++) {
 
         const void * pre;
@@ -1042,14 +1042,15 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
 
       if (act == LAYERNORM) {
         acc_t sum = 0;
-        for (size_t j = 0; j < approx_split * DIM; j++)
+        acc_t factor = approx_split > 0 ? approx_split * DIM : DIM_J;
+        for (size_t j = 0; j < factor; j++)
           sum += c_buffer[j];
-        acc_t mean = sum / (acc_t) (approx_split * DIM);
+        acc_t mean = sum / factor;
 
         acc_t total_err_sq = 0;
-        for (size_t j = 0; j < approx_split * DIM; j++)
+        for (size_t j = 0; j < factor; j++)
           total_err_sq += (c_buffer[j] - mean)*(c_buffer[j] - mean);
-        acc_t variance = total_err_sq / (acc_t) (approx_split * DIM);
+        acc_t variance = total_err_sq / factor;
 
         acc_t stddev = int_sqrt(variance);
         if (variance == 0) stddev = 1;
@@ -1272,20 +1273,22 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 
     size_t tile_I, tile_J, tile_K;
 
-    // TODO: this is hardcoded
-    // columns DIM*<approx_split>+ (incl.) is approximated; to disable, approx_split = 0
-    size_t approx_split = 2;
+    // columns DIM*tile_J*<approx_split>+ (incl.) is approximated; to disable, approx_split = 0
+    // by default, this is enabled; set to 1 because we stretch tile_J as much as possible
+    size_t approx_split = 1;
 
     if (act == LAYERNORM || act == SOFTMAX) {
        tile_I = 1;
        tile_J = dim_J_padded/DIM;
        tile_K = 1;
        if (act == LAYERNORM && approx_split > 0) {
-         // TODO: make sure I and K dont exceed max size
          // TODO: relax check for norm max length
          tile_I = dim_I_padded/DIM < db_max_tile_i_j ? dim_I_padded/DIM : db_max_tile_i_j;
          tile_J = dim_J_padded/DIM < db_max_tile_i_j ? dim_J_padded/DIM : db_max_tile_i_j;
          tile_K = dim_K_padded/DIM < db_max_tile_k ? dim_K_padded/DIM : db_max_tile_k;
+         if (tile_J == dim_J_padded/DIM) { // fits whole row
+            approx_split = 0; // does not need approximation
+         }
        }
     } else if (double_buffered) {
        tile_I = dim_I_padded/DIM < db_max_tile_i_j ? dim_I_padded/DIM : db_max_tile_i_j;
@@ -1298,7 +1301,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
     }
 
     // Fill scratchpad as much as possible
-    while ((act != LAYERNORM) || (approx_split >= dim_J_padded)) {
+    while ((act != LAYERNORM) || (approx_split == 0)) {
       bool increased = false;
 
       if (tiled_matmul_total_spad_rows(tile_I, tile_J+1, tile_K) <= max_spad_rows &&
