@@ -376,7 +376,7 @@ static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const void * 
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
         size_t I, size_t J, size_t K, size_t pad_I, size_t pad_J, size_t pad_K,
         size_t A_row_stride, size_t B_row_stride, size_t D_row_stride, size_t C_row_stride,
-        bool use_approx_norm, int tile_row_idx,
+        bool use_approx_norm, size_t tile_row_idx,
         bool a_transpose, bool b_transpose,
         bool full_C, bool low_D,
         bool no_bias, bool repeating_bias,
@@ -499,7 +499,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
         size_t I, size_t J, size_t K, size_t pad_I, size_t pad_J, size_t pad_K,
         size_t A_row_stride, size_t B_row_stride, size_t D_row_stride, size_t C_row_stride,
-        bool use_approx_norm, int tile_row_idx,
+        bool use_approx_norm, size_t tile_row_idx,
         bool a_transpose, bool b_transpose,
         bool full_C, bool low_D,
         bool no_bias, bool repeating_bias,
@@ -618,9 +618,9 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
                 const size_t stat_ids = rows - row > NORM_STAT_IDS ?
                   NORM_STAT_IDS : rows - row;
                 for (size_t stat_id = 0; stat_id < stat_ids; stat_id++) {
-                  gemmini_config_norm(0, 0, 0, 1, tile_row_idx * 1 /* TODO */, 0, 0, stat_id, 0, 0);
-                  // TODO: possible performance issue by using up stat slots?
                   const size_t r = row + stat_id;
+                  gemmini_config_norm(0, 0, 0, 1, (tile_row_idx + i) * DIM + r, 0, 0, stat_id, 0, 0);
+                  // TODO: possible performance issue by using up stat slots?
                   for (size_t jj = 0; jj < J; jj += C_blocks) {
                     uint32_t norm_C_sp_addr = C_sp_addr_start + (i*J + jj)*DIM + r;
                     void * const C_dram_addr = (int8_t*)C +
@@ -642,8 +642,8 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
                   NORM_STAT_IDS : rows - row;
                 for (int cmd = 0; cmd < norm_cmds_size; cmd++) {
                   for (size_t stat_id = 0; stat_id < stat_ids; stat_id++) {
-                    gemmini_config_norm(0, 0, 1, 0, tile_row_idx * 1 /* TODO */, 0, 0, stat_id, 0, 0);
                     const size_t r = row + stat_id;
+                    gemmini_config_norm(0, 0, 1, 0, (tile_row_idx + i) * DIM + r, 0, 0, stat_id, 0, 0);
                     for (size_t jj = 0; jj < J; jj += C_blocks) {
                       uint32_t norm_C_sp_addr = C_sp_addr_start + (i*J + jj)*DIM + r;
                       if (jj + C_blocks >= J) {
@@ -830,7 +830,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
             I, J, K,
             pad_I, pad_J, pad_K,
             stride_A, stride_B, stride_D, stride_C,
-            j0 < approx_split, i0 * tile_I, /* TODO: make sure approximating only once per row */
+            j0 >= 1, i0 * tile_I, /* TODO: dynamic tile size after split */
             a_transpose, b_transpose,
             full_C, low_D,
             no_bias, repeating_bias,
@@ -1042,14 +1042,14 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
 
       if (act == LAYERNORM) {
         acc_t sum = 0;
-        for (size_t j = 0; j < DIM_J; j++)
+        for (size_t j = 0; j < approx_split * DIM; j++)
           sum += c_buffer[j];
-        acc_t mean = sum / (acc_t)DIM_J;
+        acc_t mean = sum / (acc_t) (approx_split * DIM);
 
         acc_t total_err_sq = 0;
-        for (size_t j = 0; j < DIM_J; j++)
+        for (size_t j = 0; j < approx_split * DIM; j++)
           total_err_sq += (c_buffer[j] - mean)*(c_buffer[j] - mean);
-        acc_t variance = total_err_sq / (acc_t)DIM_J;
+        acc_t variance = total_err_sq / (acc_t) (approx_split * DIM);
 
         acc_t stddev = int_sqrt(variance);
         if (variance == 0) stddev = 1;
@@ -1218,7 +1218,7 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
     matmul_cpu(transpose_A, transpose_B, dim_I, dim_J, dim_K,
             A, B, (const acc_t*) D, (elem_t*)C,
             stride_A, stride_B, stride_D, stride_C,
-            A_scale_factor, B_scale_factor, D_scale_factor, approx_split
+            A_scale_factor, B_scale_factor, D_scale_factor, approx_split,
             act, scale, bert_scale, repeating_bias);
   }
 }
@@ -1272,11 +1272,21 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 
     size_t tile_I, tile_J, tile_K;
 
+    // TODO: this is hardcoded
+    // tile 2+ (incl.) is approximated; to disable, approx_split >= dim_J_padded
+    size_t approx_split = 2;
+
     if (act == LAYERNORM || act == SOFTMAX) {
        tile_I = 1;
        tile_J = dim_J_padded/DIM;
        tile_K = 1;
-       // TODO: set size_t approx_split
+       if (act == LAYERNORM) {
+         // TODO: make sure I and K dont exceed max size
+         // TODO: relax check for norm max length
+         tile_I = dim_I_padded/DIM < db_max_tile_i_j ? dim_I_padded/DIM : db_max_tile_i_j;
+         tile_J = approx_split < db_max_tile_i_j ? approx_split : db_max_tile_i_j;
+         tile_K = dim_K_padded/DIM < db_max_tile_k ? dim_K_padded/DIM : db_max_tile_k;
+       }
     } else if (double_buffered) {
        tile_I = dim_I_padded/DIM < db_max_tile_i_j ? dim_I_padded/DIM : db_max_tile_i_j;
        tile_J = dim_J_padded/DIM < db_max_tile_i_j ? dim_J_padded/DIM : db_max_tile_i_j;
@@ -1288,7 +1298,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
     }
 
     // Fill scratchpad as much as possible
-    while (true) {
+    while ((act != LAYERNORM) || (approx_split >= dim_J_padded)) {
       bool increased = false;
 
       if (tiled_matmul_total_spad_rows(tile_I, tile_J+1, tile_K) <= max_spad_rows &&
