@@ -341,14 +341,14 @@ static void counter_reset() {
 }
 
 // weight-stationary matmul loop
-#define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, A_transpose, B_transpose, full_C, low_D, ex_accumulate, act) \
+#define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, tile_row_idx, use_approx_norm, A_transpose, B_transpose, full_C, low_D, ex_accumulate, act) \
   { \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(pad_K) << 32) | ((uint64_t)(pad_J) << 16) | (uint64_t)(pad_I), ((uint64_t)(K) << 32) | ((uint64_t)(J) << 16) | (uint64_t)(I), k_LOOP_WS_CONFIG_BOUNDS) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_LOOP_WS_CONFIG_ADDRS_AB) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D, C, k_LOOP_WS_CONFIG_ADDRS_DC) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A_stride, B_stride, k_LOOP_WS_CONFIG_STRIDES_AB) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D_stride, C_stride, k_LOOP_WS_CONFIG_STRIDES_DC) \
-    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(act) << 8) | ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((B_transpose) << 1) | (A_transpose), k_LOOP_WS) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(act) << 8) | ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((tile_row_idx) << 8) | ((use_approx_norm) << 2) | ((B_transpose) << 1) | (A_transpose), k_LOOP_WS) \
   }
 
 // weight-stationary conv loop
@@ -505,7 +505,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         bool no_bias, bool repeating_bias,
         int act) {
 
-  const uint32_t A_sp_addr_start = 0;
+  /*const uint32_t A_sp_addr_start = 0;
   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
   const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
   const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2) | (full_C << (ADDR_LEN-3));
@@ -695,15 +695,15 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
         }
       }
     }
-  }
+  }*/
 
 
   // Combined loop
-  /* gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
+  gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
     A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
-    a_transpose, b_transpose,
+    tile_row_idx, use_approx_norm, a_transpose, b_transpose,
     full_C, low_D, !no_bias || D == NULL,
-    act); */
+    act);
 }
 
 
@@ -777,7 +777,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
     const acc_t qc = c / (a*bert_scale*bert_scale);
 
     gemmini_config_norm(qln2, 0, 0, 0, 0, 0, 1, 0, qb, qc);
-    gemmini_config_norm(qln2_inv, 0, 0, 0, 1, 0, 1, 0, qb, qc);
+    gemmini_config_norm(qln2_inv, 1, 0, 0, 0, 0, 1, 0, qb, qc);
   }
 
   void (*inner)(const elem_t *, const elem_t *, const void *, void *,
