@@ -66,7 +66,7 @@
 #define YOLONET_8 22
 #define YOLOLITENET_8 23
 
-#define MAX_WORKLOAD 400
+#define MAX_WORKLOAD 500
 #define NUM_WORKLOAD (8*3) // 1, 2, 4 batches
 
 #ifndef total_workloads
@@ -108,7 +108,7 @@ int rand_seed(uint32_t seed) {
 
 int workload_type_assign(bool batch1, bool batch4, bool batch8){
   // currently only batch1
-  int rand_mod = 75;
+  int rand_mod = 80;
   int rand_base = 0;
 
   if(batch4){
@@ -125,20 +125,23 @@ int workload_type_assign(bool batch1, bool batch4, bool batch8){
   int r = rand_out % rand_mod + rand_base;
 
  if(batch1){
-   if(r < 10){
+   if(r < 1){
+     id = FCNNET_1;
+   }
+   else if(r < 1 + 12){
      id = RESNET_1;
    }
-   else if (r < 10 + 15){
+   else if (r < 1 + 12 + 17){
      id = ALEXNET_1;
    }
-   else if (r < 10 + 15 + 18){
+   else if (r < 1 + 12 + 17 + 18){
      id = GOOGLENET_1;
    }
-   else if (r < 10 + 15 + 18 + 32){
+   else if (r < 1 + 12 + 17 + 18 + 32){
      id = SQUEEZENET_1;
    }
  }
-}
+
 
 
 /*
@@ -227,13 +230,8 @@ int workload_type_assign(bool batch1, bool batch4, bool batch8){
 
 // mode 1 workload create function (SLA satisfaction)
 void workload_create(int num_workload, bool batch1, bool batch4, bool batch8){ 
-  // qos < 0 -> mixed
-  // qos >= 0 -> workload dispatch qos apart, qos ways at once
-  for(int k = 0; k < NUM_GROUP; k++)
-    for(int i = 0; i < MAX_WORKLOAD; i++)
-      total_queue_status[k][i]= -1;
- 
-  int workload_temp[num_workload] = 0
+
+  int workload_temp[num_workload];
   for (int i = 0; i < num_workload; i++){
     int workload_type = workload_type_assign(batch1, batch4, batch8);
     workload_temp[i] = workload_type;
@@ -393,11 +391,6 @@ dram_util = -1;
     }
   }
 #endif
-  if(cid == 0) {
-    gemmini_dram_util[sub_group_id] = 0;
-    total_queue_status[group_id][queue_id] = 100; // just store big value (finished)
-  }
-
   //if(cid == 0) total_queue_status[queue_id] = 100; // just store big value (finished)
   //uint64_t runtime = read_cycles() - start;
   return total_runtime;

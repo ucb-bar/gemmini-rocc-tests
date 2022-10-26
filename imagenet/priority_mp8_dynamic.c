@@ -14,14 +14,14 @@
 //#define NUM_OUTPUT (20+34+16+3)
 
 #define NUM_CORE 8
-#define SEED 0
-#define total_workloads 100 // 100 each
+#define SEED 2
+#define total_workloads 240 // 100 each
 #define WORKLOAD_CORE 2
 #define QUEUE_DEPTH 5
-#define NUM_ITER 5
-#define CAP 5 // 0 to 1 (smaller number: shorter time between workload dispatch time)
-#define CAP_SCALE 0.9
-#define TARGET_SCALE 1
+#define NUM_ITER 4
+#define CAP 4 // 0 to 1 (smaller number: shorter time between workload dispatch time)
+#define CAP_SCALE 1.8
+#define TARGET_SCALE 0.85
 
 #define BATCH1 true
 #define BATCH4 false
@@ -33,7 +33,7 @@
 #define num_resadd 16
 #define num_proc NUM_CORE
 
-#include "include/gemmini_8.h"
+#include "include/gemmini.h"
 #include "include/gemmini_nn.h"
 #include "workload_8.h"
 //pthread_barrier_t barrier[NUM_SUB_GROUP]; // between two, total 4
@@ -55,8 +55,6 @@ pthread_barrier_t barrier_sub_mid[NUM_GROUP]; // between four, total 2
 
 
 bool done[NUM_GROUP] = {0};
-int queue_group[NUM_GROUP] = {0};
-
 #define MAT_DIM_I 512
 #define MAT_DIM_J 512
 #define MAT_DIM_K 512
@@ -74,10 +72,11 @@ struct thread_args{
 //	uint64_t conv_cycles[num_layer];
 //    uint64_t matmul_cycles[num_layer];
    int barrier_index;
-//   int workload_num_core; 
+   int workload_num_core; 
    int workload_id;
    int cid;
    int group_id;
+   int queue_group;
 };
 // random matmul to warm up thread
 void *thread_matmul0(void *arg){
@@ -111,6 +110,7 @@ void *thread_NN(void *arg){
   int group_id = nn_args->group_id; // 4 + 4 (0 or 1)
   done[group_id] = false;
   pthread_barrier_wait(&barrier_global);
+  int queue_group = nn_args->queue_group;
   int total_sub_group_id = nn_args->barrier_index; // overall subgroup id 2 + 2 + 2 + 2 (0 to 3)
   int sub_group_id = (total_sub_group_id % NUM_GROUP); // inside each group's sub id 0 or 1
   int group_cid = cid + sub_group_id * SUB_GROUP; // cid inside group
@@ -134,23 +134,15 @@ void *thread_NN(void *arg){
 printf("queue id: %d, workload id: %d, others done: %d\n", queue_id, workload_id, others_done);
 #endif
        if(queue_id != -1){
-         int status = total_queue_status[group_id][queue_id];
+         int status = total_queue_status[queue_id];
          if(!others_done || status > 0){
-           int workload_id = total_queue_type[group_id][queue_id];
+           int workload_id = total_queue_type[queue_id];
   // put score here
            if(status < workload_group[workload_id]){           
              if(cid == 0) {
                gemmini_score[total_sub_group_id] = (1 + total_queue_priority[queue_id]) / 4 + MAX(1, (int)(4 * (temp_cycles - total_queue_dispatch[queue_id]))/total_queue_target[queue_id]);
              }	
-
-             uint64_t inner_start = read_cycles();
-        //   uint64_t total_runtime = workload_function(queue_id, workload_id, cid, group_id, total_sub_group_id, all ? SUB_CORE : workload_num_core, -1, &barrier[nn_args->barrier_index]);
-           // iterate
-             uint64_t total_runtime = workload_function(queue_id, workload_id, all ? group_cid : cid, group_id, total_sub_group_id, all ? SUB_CORE : workload_num_core, -1, all ? &barrier_sub[group_id] : &barrier[total_sub_group_id]);
-      
-             total_queue_runtime_total[group_cid][queue_id] = total_runtime;
-             uint64_t inner_end = read_cycles();
-             pthread_barrier_wait(&barrier_mid[total_sub_group_id]);
+	     uint64_t total_runtime = 0;
              int group_queue_id = gemmini_workload_grouped[group_id][sub_group_id][g][i];
 #if debug_print == 1
     printf("rid: %d, workload id: %d, queue id: %d, group queue id: %d, score: %d\n", real_cid, workload_id, queue_id, group_queue_id, gemmini_score[total_sub_group_id]);
@@ -173,8 +165,8 @@ printf("queue id: %d, workload id: %d, others done: %d\n", queue_id, workload_id
             total_queue_finish[group_cid][queue_id] = (this_cycles > total_queue_dispatch[queue_id]) ? (this_cycles- total_queue_dispatch[queue_id]) : 1000;
           //total_queue_finish[group_cid][queue_id] = ((temp_cycles + inner_end - start) - total_queue_dispatch[queue_id]);
 
-             total_queue_runtime_thread[group_cid][queue_id] = inner_end - inner_start;
-             temp_cycles += (inner_end - inner_start);
+             total_queue_runtime_thread[group_cid][queue_id] = end - inner_start;
+             temp_cycles += (end - inner_start);
              pthread_barrier_wait(&barrier_finish[total_sub_group_id]);
            }
          }

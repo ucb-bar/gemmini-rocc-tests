@@ -1031,7 +1031,7 @@ uint64_t* yolonet_block_function_1(size_t cid, size_t group_id, bool part1, bool
 }
 
 
-#if NUM_CORE == 8
+//#if NUM_CORE == 8
 #ifndef BAREMETAL
 uint64_t* yolonet_function_11(size_t cid, size_t group_id, bool part1, bool part2, bool part3, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_yolo11){
 #else
@@ -2568,7 +2568,7 @@ uint64_t* yolonet_planaria_function_1(size_t cid, size_t group_id, size_t part, 
 }
 
 #ifndef BAREMETAL
-uint64_t* yolonet_planaria_function_11(size_t cid, size_t group_id, size_t part, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_yolo){
+uint64_t* yolonet_planaria_function_11(size_t cid, size_t group_id, size_t part, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_yolo11){
 #else
 uint64_t* yolonet_planaria_function_11(size_t cid, size_t group_id, size_t part, int orow_divide, int batch_divide, int target_util){
 #endif
@@ -3082,6 +3082,6 @@ uint64_t* yolonet_planaria_function_11(size_t cid, size_t group_id, size_t part,
     return cycles[cid];
 #undef num_cycle
 }
-#endif
+//#endif
 
 

@@ -31,8 +31,9 @@ uint64_t* alexnet_function_1(size_t cid, size_t group_id, bool part1, bool part2
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_alex);
 #endif
-
+int target_util_save = target_util;
     if(part1){
+target_util = -1;
       // conv_1
       start = read_cycles();
       tiled_conv_A_stride_auto_cid(
@@ -54,8 +55,9 @@ uint64_t* alexnet_function_1(size_t cid, size_t group_id, bool part1, bool part2
       conv_cycles[0] = end - start;
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_alex);
-#endif        
-   
+#endif 
+//printf("before pool 1\n");       
+//if(cid == 0 || cid == 1)   
       start = read_cycles();
       tiled_pool_auto_cid(
           conv_1_params_alex1.batch_size,
@@ -96,6 +98,8 @@ uint64_t* alexnet_function_1(size_t cid, size_t group_id, bool part1, bool part2
       pthread_barrier_wait(barrier_alex);
 #endif        
     
+//printf("before pool 2\n");       
+//if(cid == 0 || cid == 1)  
       start = read_cycles();
       tiled_pool_auto_cid(
           conv_2_params_alex1.batch_size,
@@ -181,6 +185,9 @@ uint64_t* alexnet_function_1(size_t cid, size_t group_id, bool part1, bool part2
     }
 
     if(part2){
+
+//printf("before pool 3\n");       
+//if(cid == 0 || cid == 1)  
       start = read_cycles();
       tiled_pool_auto_cid(
           conv_5_params_alex1.batch_size,
@@ -212,7 +219,8 @@ uint64_t* alexnet_function_1(size_t cid, size_t group_id, bool part1, bool part2
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_alex);
 #endif
-
+target_util = target_util_save;
+//printf("entering FC\n");
       // fc_6
       start = read_cycles();
 
@@ -242,7 +250,7 @@ uint64_t* alexnet_function_1(size_t cid, size_t group_id, bool part1, bool part2
       pthread_barrier_wait(barrier_alex);
 #endif   
 
-
+//printf("after fc6\n");
       // fc_7
       start = read_cycles();
 
@@ -271,7 +279,7 @@ uint64_t* alexnet_function_1(size_t cid, size_t group_id, bool part1, bool part2
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_alex);
 #endif   
-      
+     //printf("after fc7\n");
       // fc_8
       start = read_cycles();
 
@@ -324,8 +332,10 @@ uint64_t* alexnet_block_function_1(size_t cid, size_t group_id, bool part1, bool
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_alex);
 #endif
-
+int target_util_save = target_util;
     if(part1){
+target_util = -1;
+
       // conv_1
       start = read_cycles();
       tiled_conv_A_stride_auto_cid(
@@ -505,7 +515,7 @@ uint64_t* alexnet_block_function_1(size_t cid, size_t group_id, bool part1, bool
 #if THREAD_SYNC == 1
       //pthread_barrier_wait(barrier_alex);
 #endif
-
+target_util = target_util_save;
       // fc_6
       start = read_cycles();
 
@@ -603,7 +613,7 @@ uint64_t* alexnet_block_function_1(size_t cid, size_t group_id, bool part1, bool
 #undef num_cycle
 }
 
-#if NUM_CORE == 8
+//#if NUM_CORE == 8
 #ifndef BAREMETAL
 uint64_t* alexnet_function_11(size_t cid, size_t group_id, bool part1, bool part2, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_alex){
 #else
@@ -624,7 +634,7 @@ uint64_t* alexnet_function_11(size_t cid, size_t group_id, bool part1, bool part
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_alex);
 #endif
-
+int target_util_save = target_util;
     if(part1){
       // conv_1
       start = read_cycles();
@@ -805,7 +815,7 @@ uint64_t* alexnet_function_11(size_t cid, size_t group_id, bool part1, bool part
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_alex);
 #endif
-
+target_util = target_util_save;
       // fc_6
       start = read_cycles();
 
@@ -917,8 +927,9 @@ uint64_t* alexnet_block_function_11(size_t cid, size_t group_id, bool part1, boo
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_alex);
 #endif
-
+int target_util_save = target_util;
     if(part1){
+target_util = -1;
       // conv_1
       start = read_cycles();
       tiled_conv_A_stride_auto_cid(
@@ -1098,7 +1109,7 @@ uint64_t* alexnet_block_function_11(size_t cid, size_t group_id, bool part1, boo
 #if THREAD_SYNC == 1
       //pthread_barrier_wait(barrier_alex);
 #endif
-
+target_util = target_util_save;
       // fc_6
       start = read_cycles();
 
@@ -1256,7 +1267,8 @@ uint64_t* alexnet_planaria_function_1(size_t cid, size_t group_id, int part, int
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_alex);
 #endif        
-          
+       }
+      if(part == 1) {
       // conv_2
       start = read_cycles();
       tiled_conv_A_stride_auto_cid(
@@ -1379,7 +1391,10 @@ uint64_t* alexnet_planaria_function_1(size_t cid, size_t group_id, int part, int
       pthread_barrier_wait(barrier_alex);
 #endif           
       // Global averaging
-      
+ 
+    }
+
+    if(part==2){     
       static elem_t average[1][9216] row_align(MAX_BLOCK_LEN);
 
       start = read_cycles();
@@ -1394,9 +1409,6 @@ uint64_t* alexnet_planaria_function_1(size_t cid, size_t group_id, int part, int
       pthread_barrier_wait(barrier_alex);
 #endif
 
-    }
-
-    if(part==1){
       // fc_6
       start = read_cycles();
 
@@ -1427,7 +1439,7 @@ uint64_t* alexnet_planaria_function_1(size_t cid, size_t group_id, int part, int
 #endif   
 
     }
-    if(part==2){
+    if(part==3){
       // fc_7
       start = read_cycles();
 
@@ -1457,7 +1469,7 @@ uint64_t* alexnet_planaria_function_1(size_t cid, size_t group_id, int part, int
       pthread_barrier_wait(barrier_alex);
 #endif   
     }
-    if(part==3){
+    if(part==4){
       
       // fc_8
       start = read_cycles();
@@ -1557,7 +1569,9 @@ uint64_t* alexnet_planaria_function_11(size_t cid, size_t group_id, int part, in
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_alex);
 #endif        
-          
+              
+       }
+      if(part == 1) {   
       // conv_2
       start = read_cycles();
       tiled_conv_A_stride_auto_cid(
@@ -1680,7 +1694,10 @@ uint64_t* alexnet_planaria_function_11(size_t cid, size_t group_id, int part, in
       pthread_barrier_wait(barrier_alex);
 #endif           
       // Global averaging
-      
+ 
+    }
+
+    if(part==2){     
       static elem_t average[1][9216] row_align(MAX_BLOCK_LEN);
 
       start = read_cycles();
@@ -1695,9 +1712,6 @@ uint64_t* alexnet_planaria_function_11(size_t cid, size_t group_id, int part, in
       pthread_barrier_wait(barrier_alex);
 #endif
 
-    }
-
-    if(part==1){
       // fc_6
       start = read_cycles();
 
@@ -1728,7 +1742,7 @@ uint64_t* alexnet_planaria_function_11(size_t cid, size_t group_id, int part, in
 #endif   
 
     }
-    if(part==2){
+    if(part==3){
       // fc_7
       start = read_cycles();
 
@@ -1758,7 +1772,7 @@ uint64_t* alexnet_planaria_function_11(size_t cid, size_t group_id, int part, in
       pthread_barrier_wait(barrier_alex);
 #endif   
     }
-    if(part==3){
+    if(part==4){
       
       // fc_8
       start = read_cycles();
@@ -1796,6 +1810,6 @@ uint64_t* alexnet_planaria_function_11(size_t cid, size_t group_id, int part, in
     return cycles[cid];
 #undef num_cycle
 }
-#endif
+//#endif
 
 

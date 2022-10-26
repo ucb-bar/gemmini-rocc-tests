@@ -14,15 +14,14 @@
 //#define NUM_OUTPUT (20+34+16+3)
 
 #define NUM_CORE 8
-#define SEED 0
-#define total_workloads 250 // 100 each
+#define SEED 2
+#define total_workloads 180 // 100 each
 #define WORKLOAD_CORE 2
 #define QUEUE_DEPTH 5
 #define NUM_ITER 4
 #define CAP 4 // 0 to 1 (smaller number: shorter time between workload dispatch time)
-#define CAP_SCALE 1.4
-#define TARGET_SCALE 1.2
-
+#define CAP_SCALE 1.92
+#define TARGET_SCALE 1.0
 
 #define BATCH1 true
 #define BATCH4 false
@@ -37,7 +36,7 @@
 #include "include/gemmini.h"
 #include "include/gemmini_nn.h"
 
-#define planaria_scale 3
+#define planaria_scale 2
 static uint64_t gemmini_planaria_score[NUM_SUB_GROUP] = {0};
 #include "workload_8.h"
 pthread_barrier_t barrier[NUM_SUB_GROUP]; // between two, total 4
@@ -71,6 +70,7 @@ bool done[NUM_GROUP] = {0};
 static int curr_queue_id[NUM_SUB_GROUP] = {0};
 static int total_queue_planaria_send[MAX_WORKLOAD] = {0};
 static int total_queue_planaria_receive[MAX_WORKLOAD] = {0};
+static uint64_t total_queue_planaria_time[MAX_WORKLOAD] = {0};
 #define MAT_DIM_I 512
 #define MAT_DIM_J 512
 #define MAT_DIM_K 512
@@ -159,7 +159,7 @@ printf("global: %d, global start: %d, global end: %d, global mid: %d\n", &barrie
            for(int y = 0; y < SUB_GROUP; y++){ 
               printf("group %d queue %d, sub-group %d: ", k, x, y);
               for(int j = 0; j < QUEUE_DEPTH; j++)
-                 printf("%d, ", gemmini_workload_assigned[k][y][x][j]);
+                 printf("%d (%d), ", gemmini_workload_assigned[k][y][x][j], total_queue_type[gemmini_workload_assigned[k][y][x][j]]);
               printf("\n");
            }
         }
@@ -229,7 +229,7 @@ printf("global: %d, global start: %d, global end: %d, global mid: %d\n", &barrie
             bool inner_done = false;
 	    uint64_t slack_time = slack > (temp_end - inner_start) ? slack - (temp_end - inner_start) : 1000;
             //uint64_t slack_time = (temp_cycles > (temp_end - inner_start + total_queue_dispatch[queue_id])) ? temp_cycles - (temp_end - inner_start) - total_queue_dispatch[queue_id] : 100000;
-            if(workload_num == 0) // for last one
+            if(workload_num == 0 || queue_group < NUM_ITER) // for last one
 		total_runtime = workload_function(queue_id, workload_id, cid, group_id, total_sub_group_id, workload_num_core, slack_time, &barrier[total_sub_group_id]);
             else
               total_runtime += workload_planaria_function(queue_id, workload_id, cid, group_id, all ? total_sub_group_id / SUB_GROUP : total_sub_group_id, all ? SUB_CORE : workload_num_core, slack_time, &barrier[total_sub_group_id]);
@@ -240,6 +240,7 @@ printf("global: %d, global start: %d, global end: %d, global mid: %d\n", &barrie
               inner_done = true;
             }
             if(!inner_done && gemmini_terminate_receive[total_sub_group_id]){
+//	      uint64_t planaria_start = read_cycles();
               if(gemmini_terminate[total_sub_group_id]){ // other made it terminate
                 pthread_barrier_wait(&barrier_sub_mid2[group_id]);
                 gemmini_terminate_receive[total_sub_group_id] = false;
@@ -271,6 +272,8 @@ printf("global: %d, global start: %d, global end: %d, global mid: %d\n", &barrie
                    pthread_barrier_wait(&barrier_sub_mid3[group_id]);
                 }
                }
+//	     uint64_t planaria_end = read_cycles();
+//	     if(cid == 0) total_queue_planaria_time[queue_id] += planaria_end - planaria_start; 
             }
             else if(inner_done && gemmini_terminate_receive[total_sub_group_id]){
               total_runtime += workload_planaria_function(queue_id, workload_id, cid, group_id, total_sub_group_id, 2, 100000000, &barrier[nn_args->barrier_index]); // hack: has to be sub barrier
@@ -505,6 +508,7 @@ int main (int argc, char * argv[]) {
     printf("queue id %d target: %llu\n", i, total_queue_target[i]);
     printf("queue id %d planaria send: %llu\n", i, total_queue_planaria_send[i]);
     printf("queue id %d planaria receive: %llu\n", i, total_queue_planaria_receive[i]);
+    printf("queue id %d planaria time: %llu\n", i, total_queue_planaria_time[i]);
 
     max = 0;
     for(int j = 0; j < SUB_CORE; j++){

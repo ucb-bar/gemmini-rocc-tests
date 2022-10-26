@@ -589,7 +589,7 @@ uint64_t* yololitenet_block_function_1(size_t cid, size_t group_id, int orow_div
 }
 
 
-#if NUM_CORE == 8
+//#if NUM_CORE == 8
 #ifndef BAREMETAL
 uint64_t* yololitenet_function_11(size_t cid, size_t group_id, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_yololite){
 #else
@@ -1601,7 +1601,7 @@ uint64_t* yololitenet_planaria_function_11(size_t cid, size_t group_id, size_t p
     pthread_barrier_wait(barrier_yololite);
 #endif
         
-    // conv_4
+      // conv_4
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
         conv_4_params_yololite11.batch_size, conv_4_params_yololite11.in_dim, conv_4_params_yololite11.in_channels,
@@ -1755,4 +1755,4 @@ uint64_t* yololitenet_planaria_function_11(size_t cid, size_t group_id, size_t p
 
 
 
-#endif
+//#endif

@@ -1031,9 +1031,9 @@ uint64_t* yolonet_block_function_8(size_t cid, size_t group_id, bool part1, bool
 }
 
 #ifndef BAREMETAL
-uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_yolo8){
+uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, int target_util, pthread_barrier_t  *barrier_yolo8){
 #else
-uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, int orow_divide, int batch_divide, int target_util){
+uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, int target_util){
 #endif
 
 #define num_cycle (19+5+3)
@@ -1049,11 +1049,11 @@ uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yolo8);
 #endif
-
+      int orow_divide = 1;
+      int batch_divide = 2;
+ 
     if(part1){
-      int batch_division = conv_1_parans_yolo8.batch_size / 2;
-//      int orow_divide = 1;
-//      int batch_divide = 2;
+      int batch_division = conv_1_params_yolo8.batch_size / 2;
       for(int i = 0; i < batch_division; i++){
       // conv_1
         start = read_cycles();
@@ -1077,7 +1077,8 @@ uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool
 #if THREAD_SYNC == 1
         pthread_barrier_wait(barrier_yolo8);
 #endif        
-  //printf("before pool1\n");   
+/*
+//  printf("before pool1\n");   
         start = read_cycles();
     if(cid == 0)
         tiled_pool_auto_cid(
@@ -1095,7 +1096,7 @@ uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool
 #if THREAD_SYNC == 1
         pthread_barrier_wait(barrier_yolo8);
 #endif        
-            
+  */          
         // conv_2
         start = read_cycles();
         tiled_conv_A_stride_auto_cid(
@@ -1118,7 +1119,8 @@ uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool
 #if THREAD_SYNC == 1
         pthread_barrier_wait(barrier_yolo8);
 #endif        
-  //printf("before pool2\n");
+/*
+ // printf("before pool2\n");
     if(cid == 0 )  
         start = read_cycles();
         tiled_pool_auto_cid(
@@ -1136,6 +1138,7 @@ uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool
 #if THREAD_SYNC == 1
         pthread_barrier_wait(barrier_yolo8);
 #endif              
+*/
         // conv_3
         start = read_cycles();
         tiled_conv_A_stride_auto_cid(
@@ -1160,7 +1163,7 @@ uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool
             
         // conv_4
           start = read_cycles();
-          tiled_matmul_nn_auto_cid(conv_4_params_yolo8.I/batch_size, conv_4_params_yolo8.J, conv_4_params_yolo8.K, conv_4_params_yolo8.out_stride,
+          tiled_matmul_nn_auto_cid(conv_4_params_yolo8.I/batch_division, conv_4_params_yolo8.J, conv_4_params_yolo8.K, conv_4_params_yolo8.out_stride,
               (elem_t*)conv_3_out_yolo8, (elem_t*)conv_4_w_yolo8, (acc_t*)conv_4_b_yolo8, (elem_t*)conv_4_out_yolo8,
               NO_ACTIVATION, conv_4_params_yolo8.output_scale, 0, true,
               WS,
@@ -1201,7 +1204,7 @@ uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool
       pthread_barrier_wait(barrier_yolo8);
 #endif        
        
-//printf("before pool3\n");
+ //printf("before pool3\n");
       start = read_cycles();
    if(cid == 0)
       tiled_pool_auto_cid(
@@ -1244,7 +1247,7 @@ uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool
           
       // conv_7
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_7_params_yolo8.I/batch_size, conv_7_params_yolo8.J, conv_7_params_yolo8.K, conv_7_params_yolo8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_7_params_yolo8.I/batch_division, conv_7_params_yolo8.J, conv_7_params_yolo8.K, conv_7_params_yolo8.out_stride,
             (elem_t*)conv_6_out_yolo8, (elem_t*)conv_7_w_yolo8, (acc_t*)conv_7_b_yolo8, (elem_t*)conv_7_out_yolo8,
             NO_ACTIVATION, conv_7_params_yolo8.output_scale, 0, true,
             WS,
@@ -1279,7 +1282,7 @@ uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_yolo8);
 #endif
-//printf("before pool4\n");
+  //printf("before pool4\n");
        
       start = read_cycles();
    if(cid == 0)
@@ -1323,7 +1326,7 @@ uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool
           
       // conv_10
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_10_params_yolo8.I/batch_size, conv_10_params_yolo8.J, conv_10_params_yolo8.K, conv_10_params_yolo8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_10_params_yolo8.I/batch_division, conv_10_params_yolo8.J, conv_10_params_yolo8.K, conv_10_params_yolo8.out_stride,
             (elem_t*)conv_9_out_yolo8, (elem_t*)conv_10_w_yolo8, (acc_t*)conv_10_b_yolo8, (elem_t*)conv_10_out_yolo8,
             NO_ACTIVATION, conv_10_params_yolo8.output_scale, 0, true,
             WS,
@@ -1361,7 +1364,7 @@ uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool
           
       // conv_12
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_12_params_yolo8.I/batch_size, conv_12_params_yolo8.J, conv_12_params_yolo8.K, conv_12_params_yolo8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_12_params_yolo8.I/batch_division, conv_12_params_yolo8.J, conv_12_params_yolo8.K, conv_12_params_yolo8.out_stride,
             (elem_t*)conv_11_out_yolo8, (elem_t*)conv_12_w_yolo8, (acc_t*)conv_12_b_yolo8, (elem_t*)conv_12_out_yolo8,
             NO_ACTIVATION, conv_12_params_yolo8.output_scale, 0, true,
             WS,
@@ -1440,7 +1443,7 @@ uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool
           
       // conv_15
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_15_params_yolo8.I/batch_size, conv_15_params_yolo8.J, conv_15_params_yolo8.K, conv_15_params_yolo8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_15_params_yolo8.I/batch_division, conv_15_params_yolo8.J, conv_15_params_yolo8.K, conv_15_params_yolo8.out_stride,
             (elem_t*)conv_14_out_yolo8, (elem_t*)conv_15_w_yolo8, (acc_t*)conv_15_b_yolo8, (elem_t*)conv_15_out_yolo8,
             NO_ACTIVATION, conv_15_params_yolo8.output_scale, 0, true,
             WS,
@@ -1478,7 +1481,7 @@ uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool
           
       // conv_17
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_17_params_yolo8.I/batch_size, conv_17_params_yolo8.J, conv_17_params_yolo8.K, conv_17_params_yolo8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_17_params_yolo8.I/batch_division, conv_17_params_yolo8.J, conv_17_params_yolo8.K, conv_17_params_yolo8.out_stride,
             (elem_t*)conv_16_out_yolo8, (elem_t*)conv_17_w_yolo8, (acc_t*)conv_17_b_yolo8, (elem_t*)conv_17_out_yolo8,
             NO_ACTIVATION, conv_17_params_yolo8.output_scale, 0, true,
             WS,
@@ -1517,7 +1520,7 @@ uint64_t* yolonet_batch_function_8(size_t cid, size_t group_id, bool part1, bool
      
      // conv_19
       start = read_cycles();
-      tiled_matmul_nn_auto_cid(conv_19_params_yolo8.I/batch_size, conv_19_params_yolo8.J, conv_19_params_yolo8.K, conv_19_params_yolo8.out_stride,
+      tiled_matmul_nn_auto_cid(conv_19_params_yolo8.I/batch_division, conv_19_params_yolo8.J, conv_19_params_yolo8.K, conv_19_params_yolo8.out_stride,
           (elem_t*)conv_18_out_yolo8, (elem_t*)conv_19_w_yolo8, (acc_t*)conv_19_b_yolo8, (elem_t*)conv_19_out_yolo8,
           RELU, conv_19_params_yolo8.output_scale, 0, true,
           WS,

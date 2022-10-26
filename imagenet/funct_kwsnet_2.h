@@ -4,7 +4,7 @@
 #include "include/gemmini_nn.h"
 
 #include "kwsnet_params_2.h"
-#include "fingerprints_2.h"
+#include "fingerprints.h"
 
 #ifndef BAREMETAL
 #define THREAD_SYNC 1

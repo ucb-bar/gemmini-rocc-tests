@@ -1,5 +1,5 @@
-#ifndef GOOGLENET2_PARAMETERS_H
-#define GOOGLENET2_PARAMETERS_H
+#ifndef GOOGLENET4_PARAMETERS_H
+#define GOOGLENET4_PARAMETERS_H
 
 #include <include/gemmini_params.h>
 #include <stdbool.h>

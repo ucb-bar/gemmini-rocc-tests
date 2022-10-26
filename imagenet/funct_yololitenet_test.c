@@ -8,13 +8,14 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
+#define num_proc 8
+#define NUM_LAYER (7+5+3)
+#define NUM_CORE num_proc
 #include "include/gemmini_testutils.h"
 #include "include/gemmini_nn.h"
-#include "funct_yololitenet.h"
+#include "funct_yololitenet_1.h"
 #include "util.h"
 
-#define NUM_LAYER (7+5+3)
-#define NUM_CORE 1
 
 void thread_entry(int cid, int nc)
 {
@@ -31,11 +32,11 @@ void thread_entry(int cid, int nc)
 
 
   for(int j = 0; j < nc; j++){
-    if(j == cid && j < NUM_CORE){
+    if(j == cid && j == 0){//< NUM_CORE){
 #ifndef BAREMETAL
       *cycles = yololitenet_function(j, NUM_LAYER, cycles, 4, 1, 0, &barrier);
 #else
-      cycles = yololitenet_function(j, NUM_CORE, 1, 10);
+      cycles = yololitenet_function_1(j, 0, NUM_CORE, 1, -1);
 #endif
     }
   }

@@ -15,15 +15,14 @@
 
 #define NUM_CORE 8
 #define SUB_CORE 8
-#define SEED 0
-#define total_workloads 250 // 100 each
+#define SEED 2
+#define total_workloads 130 // 100 each
 #define WORKLOAD_CORE 2
-#define QUEUE_DEPTH 5
-#define NUM_ITER 4
+#define QUEUE_DEPTH 8
+#define NUM_ITER 5
 #define CAP 4 // 0 to 1 (smaller number: shorter time between workload dispatch time)
-#define CAP_SCALE 1.4
-#define TARGET_SCALE 1.2
-
+#define CAP_SCALE 1.92
+#define TARGET_SCALE 1.0
 
 #define BATCH1 true
 #define BATCH4 false
@@ -192,12 +191,12 @@ int main (int argc, char * argv[]) {
     }
     */
     printf("starting workload creation \n");
-    workload_mode_2(total_workloads+10, BATCH1, BATCH4, BATCH8, SEED, CAP, TARGET_SCALE, CAP_SCALE); 
+    workload_mode_2(total_workloads, BATCH1, BATCH4, BATCH8, SEED, TARGET_SCALE, CAP_SCALE); 
     printf("workload creation finished \n");
 
     int queue_length = 1;
     while(queue_length != -1){
-      global_time = gemmini_runtime;
+      global_time = gemmini_runtime[0];
       for(int i = 0; i < NUM_CORE; i++)
         if(global_time < gemmini_runtime[i]) 
           global_time = gemmini_runtime[i];

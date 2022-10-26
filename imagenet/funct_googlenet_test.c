@@ -8,13 +8,16 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#include "include/gemmini_testutils.h"
-#include "include/gemmini_nn.h"
-#include "funct_googlenet.h"
+#define num_proc 8
+
+#include "funct_googlenet_1.h"
 #include "util.h"
 
 #define NUM_LAYER (36+22+9+4)
-#define NUM_CORE 1
+#define NUM_CORE num_proc
+#include "include/gemmini_testutils.h"
+#include "include/gemmini_nn.h"
+
 
 void thread_entry(int cid, int nc)
 {
@@ -30,11 +33,11 @@ void thread_entry(int cid, int nc)
   uint64_t cycles[NUM_LAYER] = {0};
 
   for(int j = 0; j < nc; j++){
-    if(j == cid && j < NUM_CORE){
+    if(j == cid && j == 0){
 #ifndef BAREMETAL
-      *cycles = googlenet_function(j, NUM_CORE, 1, 10, &barrier);
+      *cycles = googlenet_function_1(j, NUM_CORE, 1, 10, &barrier);
 #else
-      *cycles = googlenet_function(j, NUM_CORE, 1, 10);
+      *cycles = googlenet_function_1(j, 0, true, true, NUM_CORE, 1, -1);
 #endif
     }
   }

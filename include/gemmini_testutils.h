@@ -13,7 +13,7 @@
 #include <stdbool.h>
 
 #include "include/gemmini_params.h"
-#include "include/gemmini.h"
+#include "include/gemmini_8.h"
 
 #ifdef BAREMETAL
 #undef assert
@@ -37,10 +37,7 @@
 // running_gemmini[NUM_CORES(gemmini_states)]: state of gemmini
 // gemmini_states: idle (-1), running (workload id)
 
-#define NUM_CORES 4
-#define MAX_WORKLOAD 6
-#define TOTAL_WORKLOAD 50
-
+/*
 #define MAX_PRIORITY 11
 #define PRIORI0 1 // Free: 0-1
 #define PRIORI1 8 // Normal: 2-8
@@ -78,7 +75,7 @@ static uint64_t total_workload[TOTAL_WORKLOAD] = {0};
 
 static int start_queue = 0;// start pointer for gemmini_queue
 static int end_queue = 0;// end poiinter for gemmini_queue
-
+*/
 //////////////////////////////////////////////////////////
 
 // Matmul utility functions

@@ -2658,9 +2658,9 @@ uint64_t* resnet_block_function_8(size_t cid, size_t group_id, bool part1, bool 
 }
 
 #ifndef BAREMETAL
-uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, bool part3, int orow_divide_given, int batch_divide_given, int target_util, pthread_barrier_t  *barrier_res){
+uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, bool part3, int target_util, pthread_barrier_t  *barrier_res){
 #else
-uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, bool part3, int orow_divide_given, int batch_divide_given, int target_util){
+uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, bool part3, int target_util){
 #endif
 
 #define num_cycle (20+34+16+3)
@@ -2708,7 +2708,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
 #endif             
         // conv_2
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_2_params_res8.I/batch_division conv_2_params_res8.J, conv_2_params_res8.K, conv_2_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_2_params_res8.I/batch_division, conv_2_params_res8.J, conv_2_params_res8.K, conv_2_params_res8.out_stride,
             (elem_t*)conv_1_out_res8_pooled, (elem_t*)conv_2_w_res8, (acc_t*)conv_2_b_res8, (elem_t*)conv_2_out_res8,
             RELU, conv_2_params_res8.output_scale, 0, true,
             WS,
@@ -2747,7 +2747,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_4
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_4_params_res8.I/batch_division conv_4_params_res8.J, conv_4_params_res8.K, conv_4_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_4_params_res8.I/batch_division, conv_4_params_res8.J, conv_4_params_res8.K, conv_4_params_res8.out_stride,
             (elem_t*)conv_3_out_res8, (elem_t*)conv_4_w_res8, (acc_t*)conv_4_b_res8, (elem_t*)conv_4_out_res8,
             NO_ACTIVATION, conv_4_params_res8.output_scale, 0, true,
             WS,
@@ -2763,7 +2763,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
         // Downsampling conv_1_out_res8_pooled
         // conv_5
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_5_params_res8.I/batch_division conv_5_params_res8.J, conv_5_params_res8.K, conv_5_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_5_params_res8.I/batch_division, conv_5_params_res8.J, conv_5_params_res8.K, conv_5_params_res8.out_stride,
             (elem_t*)conv_1_out_res8_pooled, (elem_t*)conv_5_w_res8, (acc_t*)conv_5_b_res8, (elem_t*)conv_5_out_res8,
             NO_ACTIVATION, conv_5_params_res8.output_scale, 0, true,
             WS,
@@ -2778,7 +2778,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // Add residuals
         start = read_cycles();
-        tiled_resadd_auto_cid(conv_4_params_res8.I/batch_division conv_4_params_res8.J,
+        tiled_resadd_auto_cid(conv_4_params_res8.I/batch_division, conv_4_params_res8.J,
             conv_4_params_res8.res_scale,
             MVIN_SCALE_IDENTITY,
             ACC_SCALE_IDENTITY,
@@ -2797,7 +2797,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_6
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_6_params_res8.I/batch_division conv_6_params_res8.J, conv_6_params_res8.K, conv_6_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_6_params_res8.I/batch_division, conv_6_params_res8.J, conv_6_params_res8.K, conv_6_params_res8.out_stride,
             (elem_t*)conv_4_out_res8, (elem_t*)conv_6_w_res8, (acc_t*)conv_6_b_res8, (elem_t*)conv_6_out_res8,
             RELU, conv_6_params_res8.output_scale, 0, true,
             WS,
@@ -2834,7 +2834,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_8
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_8_params_res8.I/batch_division conv_8_params_res8.J, conv_8_params_res8.K, conv_8_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_8_params_res8.I/batch_division, conv_8_params_res8.J, conv_8_params_res8.K, conv_8_params_res8.out_stride,
             (elem_t*)conv_7_out_res8, (elem_t*)conv_8_w_res8, (acc_t*)conv_8_b_res8, (elem_t*)conv_8_out_res8,
             NO_ACTIVATION, conv_8_params_res8.output_scale, 0, true,
             WS,
@@ -2849,7 +2849,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // Add residuals
         start = read_cycles();
-        tiled_resadd_auto_cid(conv_8_params_res8.I/batch_division conv_8_params_res8.J,
+        tiled_resadd_auto_cid(conv_8_params_res8.I/batch_division, conv_8_params_res8.J,
             conv_8_params_res8.res_scale,
             MVIN_SCALE_IDENTITY,
             ACC_SCALE_IDENTITY,
@@ -2868,7 +2868,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_9
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_9_params_res8.I/batch_division conv_9_params_res8.J, conv_9_params_res8.K, conv_9_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_9_params_res8.I/batch_division, conv_9_params_res8.J, conv_9_params_res8.K, conv_9_params_res8.out_stride,
             (elem_t*)conv_8_out_res8, (elem_t*)conv_9_w_res8, (acc_t*)conv_9_b_res8, (elem_t*)conv_9_out_res8,
             RELU, conv_9_params_res8.output_scale, 0, true,
             WS,
@@ -2905,7 +2905,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_11
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_11_params_res8.I/batch_division conv_11_params_res8.J, conv_11_params_res8.K, conv_11_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_11_params_res8.I/batch_division, conv_11_params_res8.J, conv_11_params_res8.K, conv_11_params_res8.out_stride,
             (elem_t*)conv_10_out_res8, (elem_t*)conv_11_w_res8, (acc_t*)conv_11_b_res8, (elem_t*)conv_11_out_res8,
             NO_ACTIVATION, conv_11_params_res8.output_scale, 0, true,
             WS,
@@ -2920,7 +2920,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // Add residuals
         start = read_cycles();
-        tiled_resadd_auto_cid(conv_11_params_res8.I/batch_division conv_11_params_res8.J,
+        tiled_resadd_auto_cid(conv_11_params_res8.I/batch_division, conv_11_params_res8.J,
             conv_11_params_res8.res_scale,
             MVIN_SCALE_IDENTITY,
             ACC_SCALE_IDENTITY,
@@ -2939,7 +2939,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_12
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_12_params_res8.I/batch_division conv_12_params_res8.J, conv_12_params_res8.K, conv_12_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_12_params_res8.I/batch_division, conv_12_params_res8.J, conv_12_params_res8.K, conv_12_params_res8.out_stride,
             (elem_t*)conv_11_out_res8, (elem_t*)conv_12_w_res8, (acc_t*)conv_12_b_res8, (elem_t*)conv_12_out_res8,
             RELU, conv_12_params_res8.output_scale, 0, true,
             WS,
@@ -2975,7 +2975,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_14
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_14_params_res8.I/batch_division conv_14_params_res8.J, conv_14_params_res8.K, conv_14_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_14_params_res8.I/batch_division, conv_14_params_res8.J, conv_14_params_res8.K, conv_14_params_res8.out_stride,
             (elem_t*)conv_13_out_res8, (elem_t*)conv_14_w_res8, (acc_t*)conv_14_b_res8, (elem_t*)conv_14_out_res8,
             NO_ACTIVATION, conv_14_params_res8.output_scale, 0, true,
             WS,
@@ -3013,7 +3013,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // Add residuals
         start = read_cycles();
-        tiled_resadd_auto_cid(conv_14_params_res8.I/batch_division conv_14_params_res8.J,
+        tiled_resadd_auto_cid(conv_14_params_res8.I/batch_division, conv_14_params_res8.J,
             conv_14_params_res8.res_scale,
             MVIN_SCALE_IDENTITY,
             ACC_SCALE_IDENTITY,
@@ -3032,7 +3032,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_16
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_16_params_res8.I/batch_division conv_16_params_res8.J, conv_16_params_res8.K, conv_16_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_16_params_res8.I/batch_division, conv_16_params_res8.J, conv_16_params_res8.K, conv_16_params_res8.out_stride,
             (elem_t*)conv_14_out_res8, (elem_t*)conv_16_w_res8, (acc_t*)conv_16_b_res8, (elem_t*)conv_16_out_res8,
             RELU, conv_16_params_res8.output_scale, 0, true,
             WS,
@@ -3077,7 +3077,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_18
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_18_params_res8.I/batch_division conv_18_params_res8.J, conv_18_params_res8.K, conv_18_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_18_params_res8.I/batch_division, conv_18_params_res8.J, conv_18_params_res8.K, conv_18_params_res8.out_stride,
             (elem_t*)conv_17_out_res8, (elem_t*)conv_18_w_res8, (acc_t*)conv_18_b_res8, (elem_t*)conv_18_out_res8,
             NO_ACTIVATION, conv_18_params_res8.output_scale, 0, true,
             WS,
@@ -3092,7 +3092,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // Add residuals
         start = read_cycles();
-        tiled_resadd_auto_cid(conv_18_params_res8.I/batch_division conv_18_params_res8.J,
+        tiled_resadd_auto_cid(conv_18_params_res8.I/batch_division, conv_18_params_res8.J,
             conv_18_params_res8.res_scale,
             MVIN_SCALE_IDENTITY,
             ACC_SCALE_IDENTITY,
@@ -3111,7 +3111,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_19
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_19_params_res8.I/batch_division conv_19_params_res8.J, conv_19_params_res8.K, conv_19_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_19_params_res8.I/batch_division, conv_19_params_res8.J, conv_19_params_res8.K, conv_19_params_res8.out_stride,
             (elem_t*)conv_18_out_res8, (elem_t*)conv_19_w_res8, (acc_t*)conv_19_b_res8, (elem_t*)conv_19_out_res8,
             RELU, conv_19_params_res8.output_scale, 0, true,
             WS,
@@ -3148,7 +3148,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_21
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_21_params_res8.I/batch_division conv_21_params_res8.J, conv_21_params_res8.K, conv_21_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_21_params_res8.I/batch_division, conv_21_params_res8.J, conv_21_params_res8.K, conv_21_params_res8.out_stride,
             (elem_t*)conv_20_out_res8, (elem_t*)conv_21_w_res8, (acc_t*)conv_21_b_res8, (elem_t*)conv_21_out_res8,
             NO_ACTIVATION, conv_21_params_res8.output_scale, 0, true,
             WS,
@@ -3163,7 +3163,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // Add residuals
         start = read_cycles();
-        tiled_resadd_auto_cid(conv_21_params_res8.I/batch_division conv_21_params_res8.J,
+        tiled_resadd_auto_cid(conv_21_params_res8.I/batch_division, conv_21_params_res8.J,
             conv_21_params_res8.res_scale,
             MVIN_SCALE_IDENTITY,
             ACC_SCALE_IDENTITY,
@@ -3182,7 +3182,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_22
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_22_params_res8.I/batch_division conv_22_params_res8.J, conv_22_params_res8.K, conv_22_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_22_params_res8.I/batch_division, conv_22_params_res8.J, conv_22_params_res8.K, conv_22_params_res8.out_stride,
             (elem_t*)conv_21_out_res8, (elem_t*)conv_22_w_res8, (acc_t*)conv_22_b_res8, (elem_t*)conv_22_out_res8,
             RELU, conv_22_params_res8.output_scale, 0, true,
             WS,
@@ -3219,7 +3219,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_24
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_24_params_res8.I/batch_division conv_24_params_res8.J, conv_24_params_res8.K, conv_24_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_24_params_res8.I/batch_division, conv_24_params_res8.J, conv_24_params_res8.K, conv_24_params_res8.out_stride,
             (elem_t*)conv_23_out_res8, (elem_t*)conv_24_w_res8, (acc_t*)conv_24_b_res8, (elem_t*)conv_24_out_res8,
             NO_ACTIVATION, conv_24_params_res8.output_scale, 0, true,
             WS,
@@ -3234,7 +3234,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // Add residuals
         start = read_cycles();
-        tiled_resadd_auto_cid(conv_24_params_res8.I/batch_division conv_24_params_res8.J,
+        tiled_resadd_auto_cid(conv_24_params_res8.I/batch_division, conv_24_params_res8.J,
             conv_24_params_res8.res_scale,
             MVIN_SCALE_IDENTITY,
             ACC_SCALE_IDENTITY,
@@ -3253,7 +3253,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_25
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_25_params_res8.I/batch_division conv_25_params_res8.J, conv_25_params_res8.K, conv_25_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_25_params_res8.I/batch_division, conv_25_params_res8.J, conv_25_params_res8.K, conv_25_params_res8.out_stride,
             (elem_t*)conv_24_out_res8, (elem_t*)conv_25_w_res8, (acc_t*)conv_25_b_res8, (elem_t*)conv_25_out_res8,
             RELU, conv_25_params_res8.output_scale, 0, true,
             WS,
@@ -3289,7 +3289,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_27
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_27_params_res8.I/batch_division conv_27_params_res8.J, conv_27_params_res8.K, conv_27_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_27_params_res8.I/batch_division, conv_27_params_res8.J, conv_27_params_res8.K, conv_27_params_res8.out_stride,
             (elem_t*)conv_26_out_res8, (elem_t*)conv_27_w_res8, (acc_t*)conv_27_b_res8, (elem_t*)conv_27_out_res8,
             NO_ACTIVATION, conv_27_params_res8.output_scale, 0, true,
             WS,
@@ -3327,7 +3327,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // Add residuals
         start = read_cycles();
-        tiled_resadd_auto_cid(conv_27_params_res8.I/batch_division conv_27_params_res8.J,
+        tiled_resadd_auto_cid(conv_27_params_res8.I/batch_division, conv_27_params_res8.J,
             conv_27_params_res8.res_scale,
             MVIN_SCALE_IDENTITY,
             ACC_SCALE_IDENTITY,
@@ -3346,7 +3346,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_29
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_29_params_res8.I/batch_division conv_29_params_res8.J, conv_29_params_res8.K, conv_29_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_29_params_res8.I/batch_division, conv_29_params_res8.J, conv_29_params_res8.K, conv_29_params_res8.out_stride,
             (elem_t*)conv_27_out_res8, (elem_t*)conv_29_w_res8, (acc_t*)conv_29_b_res8, (elem_t*)conv_29_out_res8,
             RELU, conv_29_params_res8.output_scale, 0, true,
             WS,
@@ -3383,7 +3383,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_31
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_31_params_res8.I/batch_division conv_31_params_res8.J, conv_31_params_res8.K, conv_31_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_31_params_res8.I/batch_division, conv_31_params_res8.J, conv_31_params_res8.K, conv_31_params_res8.out_stride,
             (elem_t*)conv_30_out_res8, (elem_t*)conv_31_w_res8, (acc_t*)conv_31_b_res8, (elem_t*)conv_31_out_res8,
             NO_ACTIVATION, conv_31_params_res8.output_scale, 0, true,
             WS,
@@ -3398,7 +3398,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // Add residuals
         start = read_cycles();
-        tiled_resadd_auto_cid(conv_31_params_res8.I/batch_division conv_31_params_res8.J,
+        tiled_resadd_auto_cid(conv_31_params_res8.I/batch_division, conv_31_params_res8.J,
             conv_31_params_res8.res_scale,
             MVIN_SCALE_IDENTITY,
             ACC_SCALE_IDENTITY,
@@ -3417,7 +3417,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_32
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_32_params_res8.I/batch_division conv_32_params_res8.J, conv_32_params_res8.K, conv_32_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_32_params_res8.I/batch_division, conv_32_params_res8.J, conv_32_params_res8.K, conv_32_params_res8.out_stride,
             (elem_t*)conv_31_out_res8, (elem_t*)conv_32_w_res8, (acc_t*)conv_32_b_res8, (elem_t*)conv_32_out_res8,
             RELU, conv_32_params_res8.output_scale, 0, true,
             WS,
@@ -3454,7 +3454,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_34
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_34_params_res8.I/batch_division conv_34_params_res8.J, conv_34_params_res8.K, conv_34_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_34_params_res8.I/batch_division, conv_34_params_res8.J, conv_34_params_res8.K, conv_34_params_res8.out_stride,
             (elem_t*)conv_33_out_res8, (elem_t*)conv_34_w_res8, (acc_t*)conv_34_b_res8, (elem_t*)conv_34_out_res8,
             NO_ACTIVATION, conv_34_params_res8.output_scale, 0, true,
             WS,
@@ -3469,7 +3469,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // Add residuals
         start = read_cycles();
-        tiled_resadd_auto_cid(conv_34_params_res8.I/batch_division conv_34_params_res8.J,
+        tiled_resadd_auto_cid(conv_34_params_res8.I/batch_division, conv_34_params_res8.J,
             conv_34_params_res8.res_scale,
             MVIN_SCALE_IDENTITY,
             ACC_SCALE_IDENTITY,
@@ -3488,7 +3488,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_35
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_35_params_res8.I/batch_division conv_35_params_res8.J, conv_35_params_res8.K, conv_35_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_35_params_res8.I/batch_division, conv_35_params_res8.J, conv_35_params_res8.K, conv_35_params_res8.out_stride,
             (elem_t*)conv_34_out_res8, (elem_t*)conv_35_w_res8, (acc_t*)conv_35_b_res8, (elem_t*)conv_35_out_res8,
             RELU, conv_35_params_res8.output_scale, 0, true,
             WS,
@@ -3525,7 +3525,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_37
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_37_params_res8.I/batch_division conv_37_params_res8.J, conv_37_params_res8.K, conv_37_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_37_params_res8.I/batch_division, conv_37_params_res8.J, conv_37_params_res8.K, conv_37_params_res8.out_stride,
             (elem_t*)conv_36_out_res8, (elem_t*)conv_37_w_res8, (acc_t*)conv_37_b_res8, (elem_t*)conv_37_out_res8,
             NO_ACTIVATION, conv_37_params_res8.output_scale, 0, true,
             WS,
@@ -3540,7 +3540,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // Add residuals
         start = read_cycles();
-        tiled_resadd_auto_cid(conv_37_params_res8.I/batch_division conv_37_params_res8.J,
+        tiled_resadd_auto_cid(conv_37_params_res8.I/batch_division, conv_37_params_res8.J,
             conv_37_params_res8.res_scale,
             MVIN_SCALE_IDENTITY,
             ACC_SCALE_IDENTITY,
@@ -3559,7 +3559,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
             
         // conv_38
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_38_params_res8.I/batch_division conv_38_params_res8.J, conv_38_params_res8.K, conv_38_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_38_params_res8.I/batch_division, conv_38_params_res8.J, conv_38_params_res8.K, conv_38_params_res8.out_stride,
             (elem_t*)conv_37_out_res8, (elem_t*)conv_38_w_res8, (acc_t*)conv_38_b_res8, (elem_t*)conv_38_out_res8,
             RELU, conv_38_params_res8.output_scale, 0, true,
             WS,
@@ -3603,7 +3603,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
           
       // conv_40
       start = read_cycles();
-      tiled_matmul_nn_auto_cid(conv_40_params_res8.I/batch_division conv_40_params_res8.J, conv_40_params_res8.K, conv_40_params_res8.out_stride,
+      tiled_matmul_nn_auto_cid(conv_40_params_res8.I/batch_division, conv_40_params_res8.J, conv_40_params_res8.K, conv_40_params_res8.out_stride,
           (elem_t*)conv_39_out_res8, (elem_t*)conv_40_w_res8, (acc_t*)conv_40_b_res8, (elem_t*)conv_40_out_res8,
           NO_ACTIVATION, conv_40_params_res8.output_scale, 0, true,
           WS,
@@ -3618,7 +3618,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
           
       // Add residuals
       start = read_cycles();
-      tiled_resadd_auto_cid(conv_40_params_res8.I/batch_division conv_40_params_res8.J,
+      tiled_resadd_auto_cid(conv_40_params_res8.I/batch_division, conv_40_params_res8.J,
           conv_40_params_res8.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
@@ -3637,7 +3637,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
           
       // conv_41
       start = read_cycles();
-      tiled_matmul_nn_auto_cid(conv_41_params_res8.I/batch_division conv_41_params_res8.J, conv_41_params_res8.K, conv_41_params_res8.out_stride,
+      tiled_matmul_nn_auto_cid(conv_41_params_res8.I/batch_division, conv_41_params_res8.J, conv_41_params_res8.K, conv_41_params_res8.out_stride,
           (elem_t*)conv_40_out_res8, (elem_t*)conv_41_w_res8, (acc_t*)conv_41_b_res8, (elem_t*)conv_41_out_res8,
           RELU, conv_41_params_res8.output_scale, 0, true,
           WS,
@@ -3674,7 +3674,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
           
       // conv_43
       start = read_cycles();
-      tiled_matmul_nn_auto_cid(conv_43_params_res8.I/batch_division conv_43_params_res8.J, conv_43_params_res8.K, conv_43_params_res8.out_stride,
+      tiled_matmul_nn_auto_cid(conv_43_params_res8.I/batch_division, conv_43_params_res8.J, conv_43_params_res8.K, conv_43_params_res8.out_stride,
           (elem_t*)conv_42_out_res8, (elem_t*)conv_43_w_res8, (acc_t*)conv_43_b_res8, (elem_t*)conv_43_out_res8,
           NO_ACTIVATION, conv_43_params_res8.output_scale, 0, true,
           WS,
@@ -3689,7 +3689,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
           
       // Add residuals
       start = read_cycles();
-      tiled_resadd_auto_cid(conv_43_params_res8.I/batch_division conv_43_params_res8.J,
+      tiled_resadd_auto_cid(conv_43_params_res8.I/batch_division, conv_43_params_res8.J,
           conv_43_params_res8.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
@@ -3708,7 +3708,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
     
         // conv_44
         start = read_cycles();
-        tiled_matmul_nn_auto_cid(conv_44_params_res8.I/batch_division conv_44_params_res8.J, conv_44_params_res8.K, conv_44_params_res8.out_stride,
+        tiled_matmul_nn_auto_cid(conv_44_params_res8.I/batch_division, conv_44_params_res8.J, conv_44_params_res8.K, conv_44_params_res8.out_stride,
             (elem_t*)conv_43_out_res8, (elem_t*)conv_44_w_res8, (acc_t*)conv_44_b_res8, (elem_t*)conv_44_out_res8,
             RELU, conv_44_params_res8.output_scale, 0, true,
             WS,
@@ -3744,7 +3744,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
           
       // conv_46
       start = read_cycles();
-      tiled_matmul_nn_auto_cid(conv_46_params_res8.I/batch_division conv_46_params_res8.J, conv_46_params_res8.K, conv_46_params_res8.out_stride,
+      tiled_matmul_nn_auto_cid(conv_46_params_res8.I/batch_division, conv_46_params_res8.J, conv_46_params_res8.K, conv_46_params_res8.out_stride,
           (elem_t*)conv_45_out_res8, (elem_t*)conv_46_w_res8, (acc_t*)conv_46_b_res8, (elem_t*)conv_46_out_res8,
           NO_ACTIVATION, conv_46_params_res8.output_scale, 0, true,
           WS,
@@ -3782,7 +3782,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
           
       // Add residuals
       start = read_cycles();
-      tiled_resadd_auto_cid(conv_46_params_res8.I/batch_division conv_46_params_res8.J,
+      tiled_resadd_auto_cid(conv_46_params_res8.I/batch_division, conv_46_params_res8.J,
           conv_46_params_res8.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
@@ -3801,7 +3801,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
           
       // conv_48
       start = read_cycles();
-      tiled_matmul_nn_auto_cid(conv_48_params_res8.I/batch_division conv_48_params_res8.J, conv_48_params_res8.K, conv_48_params_res8.out_stride,
+      tiled_matmul_nn_auto_cid(conv_48_params_res8.I/batch_division, conv_48_params_res8.J, conv_48_params_res8.K, conv_48_params_res8.out_stride,
           (elem_t*)conv_46_out_res8, (elem_t*)conv_48_w_res8, (acc_t*)conv_48_b_res8, (elem_t*)conv_48_out_res8,
           RELU, conv_48_params_res8.output_scale, 0, true,
           WS,
@@ -3838,7 +3838,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
           
       // conv_50
       start = read_cycles();
-      tiled_matmul_nn_auto_cid(conv_50_params_res8.I/batch_division conv_50_params_res8.J, conv_50_params_res8.K, conv_50_params_res8.out_stride,
+      tiled_matmul_nn_auto_cid(conv_50_params_res8.I/batch_division, conv_50_params_res8.J, conv_50_params_res8.K, conv_50_params_res8.out_stride,
           (elem_t*)conv_49_out_res8, (elem_t*)conv_50_w_res8, (acc_t*)conv_50_b_res8, (elem_t*)conv_50_out_res8,
           NO_ACTIVATION, conv_50_params_res8.output_scale, 0, true,
           WS,
@@ -3853,7 +3853,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
           
       // Add residuals
       start = read_cycles();
-      tiled_resadd_auto_cid(conv_50_params_res8.I/batch_division conv_50_params_res8.J,
+      tiled_resadd_auto_cid(conv_50_params_res8.I/batch_division, conv_50_params_res8.J,
           conv_50_params_res8.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
@@ -3872,7 +3872,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
           
       // conv_51
       start = read_cycles();
-      tiled_matmul_nn_auto_cid(conv_51_params_res8.I/batch_division conv_51_params_res8.J, conv_51_params_res8.K, conv_51_params_res8.out_stride,
+      tiled_matmul_nn_auto_cid(conv_51_params_res8.I/batch_division, conv_51_params_res8.J, conv_51_params_res8.K, conv_51_params_res8.out_stride,
           (elem_t*)conv_50_out_res8, (elem_t*)conv_51_w_res8, (acc_t*)conv_51_b_res8, (elem_t*)conv_51_out_res8,
           RELU, conv_51_params_res8.output_scale, 0, true,
           WS,
@@ -3909,7 +3909,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
           
       // conv_53
       start = read_cycles();
-      tiled_matmul_nn_auto_cid(conv_53_params_res8.I/batch_division conv_53_params_res8.J, conv_53_params_res8.K, conv_53_params_res8.out_stride,
+      tiled_matmul_nn_auto_cid(conv_53_params_res8.I/batch_division, conv_53_params_res8.J, conv_53_params_res8.K, conv_53_params_res8.out_stride,
           (elem_t*)conv_52_out_res8, (elem_t*)conv_53_w_res8, (acc_t*)conv_53_b_res8, (elem_t*)conv_53_out_res8,
           NO_ACTIVATION, conv_53_params_res8.output_scale, 0, true,
           WS,
@@ -3924,7 +3924,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
           
       // Add residuals
       start = read_cycles();
-      tiled_resadd_auto_cid(conv_53_params_res8.I/batch_division conv_53_params_res8.J,
+      tiled_resadd_auto_cid(conv_53_params_res8.I/batch_division, conv_53_params_res8.J,
           conv_53_params_res8.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
@@ -3940,11 +3940,11 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_res);
 #endif
-     /* 
+      
       // Global averaging
       
       static elem_t average[8][2048] row_align(MAX_BLOCK_LEN);
-
+/*
       start = read_cycles();
       if(cid == 1)
           tiled_global_average_auto(conv_53_out_res8, average, conv_53_params_res8.batch_size/batch_division,                         
@@ -3962,7 +3962,7 @@ uint64_t* resnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
       // fc_54
       start = read_cycles();
 
-      tiled_matmul_nn_auto_cid(fc_54_params_res8.I/batch_division fc_54_params_res8.J, fc_54_params_res8.K, fc_54_params_res8.out_stride,
+      tiled_matmul_nn_auto_cid(fc_54_params_res8.I/batch_division, fc_54_params_res8.J, fc_54_params_res8.K, fc_54_params_res8.out_stride,
           (elem_t*)average, (elem_t*)fc_54_w_res8, (acc_t*)fc_54_b_res8, (elem_t*)fc_54_out_res8,
           NO_ACTIVATION, fc_54_params_res8.output_scale, 0, false,
           WS, orow_divide, batch_divide, cid, group_id, target_util);

@@ -1716,7 +1716,7 @@ uint64_t* kwsnet_block_function_8(size_t cid, size_t group_id, bool part1, bool 
 
 
 
-uint64_t* kwsnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, int orow_divide, int batch_divide, int target_util){
+uint64_t* kwsnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, int target_util, pthread_barrier_t  *barrier_kws8){
 #define num_cycle (25+1+11+4)
 
   static uint64_t cycles[NUM_CORE][num_cycle];
@@ -1730,9 +1730,9 @@ uint64_t* kwsnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool 
     pthread_barrier_wait(barrier_kws8);
 #endif
     //processing 2 batches
-    int batch_division = conv_1_params_kws.batch_size / 2;
-    orow_divide = 1;
-    batch_divide = 2;
+    int batch_division = conv_1_params_kws8.batch_size / 2;
+    int orow_divide = 1;
+    int batch_divide = 2;
     
     for (int i = 0; i < batch_division; i++){
       if(part1){

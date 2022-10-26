@@ -1329,9 +1329,9 @@ uint64_t* fcnnet_function_8(size_t cid, size_t group_id, int orow_divide, int ba
 
 
 #ifndef BAREMETAL
-uint64_t* fcnnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, bool part3, int orow_divide_given, int batch_divide_given, int target_util, pthread_barrier_t  *barrier_fcnnet){
+uint64_t* fcnnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, bool part3, int target_util, pthread_barrier_t  *barrier_fcnnet){
 #else
-uint64_t* fcnnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, bool part3, int orow_divide_given, int batch_divide_given, int target_util){
+uint64_t* fcnnet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, bool part3, int target_util){
 #endif
 
 #define num_cycle (19+36+16+3)

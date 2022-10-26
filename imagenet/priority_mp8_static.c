@@ -15,14 +15,13 @@
 
 #define NUM_CORE 8
 #define SEED 0
-#define total_workloads 250 // 100 each
-#define QoS 0
+#define total_workloads 550 // 100 each
 #define WORKLOAD_CORE 2
 #define QUEUE_DEPTH 5
 #define NUM_ITER 5
-#define CAP 5 // 0 to 1 (smaller number: shorter time between workload dispatch time)
-#define CAP_SCALE 0.9
-#define TARGET_SCALE 1
+#define CAP 4 // 0 to 1 (smaller number: shorter time between workload dispatch time)
+#define CAP_SCALE 1.4
+#define TARGET_SCALE 1.0
 
 #define BATCH1 true
 #define BATCH4 false
@@ -118,25 +117,27 @@ void *thread_NN(void *arg){
   int group_cid = cid + sub_group_id * SUB_GROUP; // cid inside group
 
   int queue_group = nn_args->queue_group;
-  printf("entered thread_NN - cid: %d, total_sub_group_id(barrier_index): %d, sub_group_id: %d, group_id: %d, real_cid: %d\n", cid, total_sub_group_id, sub_group_id, group_id, real_cid);
+  printf("entered thread_NN - cid: %d, total_sub_group_id(barrier_index): %d, sub_group_id: %d, group_id: %d, real_cid: %d, queue_group: %d \n", cid, total_sub_group_id, sub_group_id, group_id, real_cid, queue_group);
   uint64_t start, end;
   uint64_t temp_cycles = global_time; //gemmini_runtime[real_cid];
   pthread_barrier_wait(&barrier[total_sub_group_id]);
+  bool all = false; // ToDo
   start = read_cycles();
   bool others_done = false;
   for(int g = 0; g < queue_group; g++){
      for(int i = 0; i < QUEUE_DEPTH; i++){
        pthread_barrier_wait(&barrier_start[total_sub_group_id]);
-       for(int o = 0; o < NUM_GROUP; o++){
-         if(o != group_id)
+       for(int o = 0; o < NUM_SUB_GROUP; o++){
+         if(o != total_sub_group_id)
            if(gemmini_done[o] && queue_group == NUM_ITER) others_done = true;
        }
        int queue_id = gemmini_workload_assigned[group_id][sub_group_id][g][i];
+       int workload_id = total_queue_type[queue_id];
+ 
+//printf("queue id: %d, workload id: %d, others done: %d\n", queue_id, workload_id, others_done);
        if(queue_id != -1){
          if(!others_done){
-           uint64_t inner_start = read_cycles();
-           int workload_id = total_queue_type[queue_id];
-	         if(cid == 0) {
+	   if(cid == 0) {
              gemmini_score[total_sub_group_id] = (1 + total_queue_priority[queue_id]) / 4 + MAX(1, (int)(4 * (temp_cycles - total_queue_dispatch[queue_id]))/total_queue_target[queue_id]);
            }	
 
@@ -153,7 +154,7 @@ void *thread_NN(void *arg){
 
            total_queue_runtime_thread[group_cid][queue_id] = inner_end - inner_start;
            temp_cycles += (inner_end - inner_start);
-           pthread_barrier_wait(&barrier_finish[total_sub_group_id])
+           pthread_barrier_wait(&barrier_finish[total_sub_group_id]);
          }
          else total_queue_status[queue_id] = -1; // release the queue 
        }
@@ -161,7 +162,7 @@ void *thread_NN(void *arg){
           break;
      }
   }
-  if(cid == 0) gemmini_done[group_id][sub_group_id] = true;
+  if(cid == 0) gemmini_done[total_sub_group_id] = true;
   end = read_cycles();
   pthread_barrier_wait(&barrier_finish2[total_sub_group_id]);
   //if(queue_group != 1)
@@ -287,10 +288,10 @@ int main (int argc, char * argv[]) {
            }
         }
 
+          for(int j = 0; j < NUM_SUB_GROUP; j++)
+            gemmini_done[j] = false;
       if(queue_group != 0){
         for(int i = 0; i < NUM_GROUP; i++){
-          for(int j = 0; j < SUB_GROUP; j++)
-            gemmini_done[i][j] = false;
           for(int j = 0; j < SUB_CORE; j++){
             int index = i * SUB_CORE + j;
             nn_args[index].barrier_index = (int)(index / WORKLOAD_CORE);

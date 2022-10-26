@@ -92,6 +92,7 @@ uint64_t* googlenet_function_8(size_t cid, size_t group_id, bool part1, bool par
     }
 
     if(part2){   
+target_util =  -1;
     //Inception 3a
 	 //Branch 1
     // conv_4
@@ -2638,9 +2639,9 @@ gemmini_fence();
 }
 
 #ifndef BAREMETAL
-uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_google){
+uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, int target_util, pthread_barrier_t  *barrier_google){
 #else
-uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, int orow_divide, int batch_divide, int target_util){
+uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bool part2, int target_util){
 #endif
 
 #define num_cycle (58+11+3)
@@ -2656,9 +2657,11 @@ uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bo
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_google);
 #endif  
+    int orow_divide = 1;
+    int batch_divide = 2;
     int batch_division = conv_1_params_google8.batch_size / 2;
-    for(int i = 0; i < batch_division; i ++){
-     if(part1){
+    if(part1){
+      for(int i = 0; i < batch_division; i ++){
       // conv_1
       start = read_cycles();
       tiled_conv_A_stride_auto_cid(
@@ -2693,7 +2696,7 @@ uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bo
       total_matmul_cycles += end - start;
       //conv_cycles[1] = end - start;
 #if THREAD_SYNC == 1
-      pthread_barrier_wait(barrier_google);
+      //pthread_barrier_wait(barrier_google);
 #endif
           
       // conv_3
@@ -2716,10 +2719,7 @@ uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bo
       //conv_cycles[2] = end - start;
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_google);
-#endif    
-      }
-
-      if(part2){   
+#endif  
       //Inception 3a
      //Branch 1
       // conv_4
@@ -2734,7 +2734,7 @@ uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bo
       total_conv_cycles += end - start;
       //conv_cycles[3] = end - start;
 #if THREAD_SYNC == 1
-      pthread_barrier_wait(barrier_google);
+      //pthread_barrier_wait(barrier_google);
 #endif
      // Branch 2
       // conv_5
@@ -2749,7 +2749,7 @@ uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bo
       total_matmul_cycles += end - start;
       //conv_cycles[4] = end - start;
 #if THREAD_SYNC == 1
-      pthread_barrier_wait(barrier_google);
+      //pthread_barrier_wait(barrier_google);
 #endif
                  
       // conv_6
@@ -2787,7 +2787,7 @@ uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bo
       total_matmul_cycles += end - start;
       //conv_cycles[6] = end - start;
 #if THREAD_SYNC == 1
-      pthread_barrier_wait(barrier_google);
+      //pthread_barrier_wait(barrier_google);
 #endif        
          
       // conv_8
@@ -2811,7 +2811,7 @@ uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bo
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_google);
 #endif
-            
+       /*     
      // pool_9 for Inception 3a branch 4
       start = read_cycles();
       tiled_pool_auto_cid(pool_9_params_google8.batch_size/batch_division, pool_9_params_google8.out_channels, pool_9_params_google8.out_dim, pool_9_params_google8.out_dim_pooled,
@@ -2824,7 +2824,8 @@ uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bo
       pool_cycles[0] = end - start;
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_google);
-#endif     
+#endif   
+*/  
       // Branch 4
       // conv_10
       start = read_cycles();
@@ -2838,7 +2839,7 @@ uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bo
       total_conv_cycles += end - start;
       //conv_cycles[8] = end - start;
 #if THREAD_SYNC == 1
-      pthread_barrier_wait(barrier_google);
+      //pthread_barrier_wait(barrier_google);
 #endif      
      //Inception 3b
      //Branch 1
@@ -2872,7 +2873,7 @@ uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bo
       total_matmul_cycles += end - start;
       //conv_cycles[10] = end - start;
 #if THREAD_SYNC == 1
-      pthread_barrier_wait(barrier_google);
+      //pthread_barrier_wait(barrier_google);
 #endif
                  
       // conv_13
@@ -2912,7 +2913,7 @@ uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bo
       total_matmul_cycles += end - start;
       //conv_cycles[12] = end - start;
 #if THREAD_SYNC == 1
-      pthread_barrier_wait(barrier_google);
+      //pthread_barrier_wait(barrier_google);
 #endif        
          
       // conv_15
@@ -2937,7 +2938,11 @@ uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bo
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_google);
 #endif
-         
+	}  
+      }
+
+      batch_division = 1; // go all batches
+      if(part2){          
   // pool_16 for Inception 3a branch 4
       start = read_cycles();
       tiled_pool_auto_cid(pool_16_params_google8.batch_size/batch_division, pool_16_params_google8.out_channels, pool_16_params_google8.out_dim, pool_16_params_google8.out_dim_pooled,
@@ -3905,11 +3910,11 @@ uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bo
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_google);
 #endif        
-      /*
+      
       // Global averaging
       
       static elem_t average[1024][8] row_align(MAX_BLOCK_LEN);
-
+/*
       start = read_cycles();
       if(cid == 1)
          tiled_global_average_auto((elem_t*) inception5b_out_google8, (elem_t*) average, 8, 1024, 7, WS);
@@ -3936,7 +3941,7 @@ uint64_t* googlenet_batch_function_8(size_t cid, size_t group_id, bool part1, bo
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_google);
 #endif
-      }
+      
     }
 
     for(int i = 0; i < num_cycle; i++){

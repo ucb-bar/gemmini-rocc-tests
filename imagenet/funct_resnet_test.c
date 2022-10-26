@@ -8,13 +8,17 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
+#define NUM_LAYER (20+34+16+4)
+#define NUM_CORE 8
+#define NUM_GROUP 2
+
+
 #include "include/gemmini_testutils.h"
 #include "include/gemmini_nn.h"
-#include "funct_resnet.h"
+#include "funct_resnet_1.h"
 #include "util.h"
 
-#define NUM_LAYER (20+34+16+4)
-#define NUM_CORE 1
+#include "workload.h"
 
 void thread_entry(int cid, int nc)
 {
@@ -24,7 +28,10 @@ void thread_entry(int cid, int nc)
     barrier(nc);
   }
   int gemmini_cid = cid; 
-  
+ 
+  gemmini_dram_util[1] = 60;
+  gemmini_score[1] = 4;
+  gemmini_score[0] = 6;
   barrier(nc);
 
   uint64_t dummy[NUM_LAYER] = {0};
@@ -33,12 +40,8 @@ void thread_entry(int cid, int nc)
 
 
   for(int j = 0; j < nc; j++){
-    if(j == cid && j < NUM_CORE){
-#ifndef BAREMETAL
-      *cycles = resnet_function(j, NUM_LAYER, cycles, 4, 1, 0, &barrier);
-#else
-      cycles = resnet_function(j, NUM_CORE, 1, 10);
-#endif
+    if(j == cid && j==0){//j < NUM_CORE){
+      cycles = resnet_function_1(j, 0, true, true, true, true, 1, 1, -1);
     }
   }
 

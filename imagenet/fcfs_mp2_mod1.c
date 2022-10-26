@@ -16,13 +16,13 @@
 //#define NUM_OUTPUT (20+34+16+3)
 
 #define NUM_CORE 4
-#define TOTAL_CORE (NUM_CORE + 1)
 #define SEED 0
-#define CAP 0.8
+#define CAP 0.7
 #define total_workloads 100
 #define QoS 2
 #define WORKLOAD_CORE 2
 #define NUM_GROUP (int)(NUM_CORE / WORKLOAD_CORE)
+#define QUEUE_DEPTH 10
 
 #define BATCH1 true
 #define BATCH2 false
@@ -33,7 +33,7 @@
 #define num_proc NUM_CORE
 
 #include "workload.h"
-pthread_barrier_t barrier[NUM_CORE];
+pthread_barrier_t barrier[NUM_CORE+1];
 
 #define MAT_DIM_I 512
 #define MAT_DIM_J 512
@@ -55,6 +55,7 @@ struct thread_args{
    int workload_num_core; 
    int workload_id;
    int cid;
+   int queue_group;
 };
 // random matmul to warm up thread
 void *thread_matmul0(void *arg){
@@ -85,74 +86,77 @@ void *thread_NN(void *arg){
 	uint64_t* cycles;
     int workload_num_core = nn_args->workload_num_core;
     int cid = nn_args->cid;
+    int queue_group = nn_args->queue_group;
     int group_id = nn_args->barrier_index;
     uint64_t start, end;
-    //printf("entered thread_NN - cid: %d\n", cid);
-    //uint64_t target_cycle = nn_args->target_cycles;
+    //printf("entered thread_NN - cid: %d, group_id: %d, real_cid: %d, initial assign: %d\n", cid, group_id, real_cid, gemmini_workload_assigned[group_id]);
     pthread_barrier_wait(&barrier[nn_args->barrier_index]);
-    //printf("barrier working - cid: %d\n", cid);
-    while(smallest_pointer != total_workload){
-      // fetching workload id from master
-      int queue_id = gemmini_workload_assigned[group_id];
-      while(queue_id == -1){
-        queue_id = gemmini_workload_assigned[group_id];
-        if(smallest_pointer == total_workload)
-          return;
-      }
-      if(queue_id == -1 || gemmini_workload_assigned[group_id] == -1){
-        printf("invalid workload id %d, %d\n", queue_id, gemmini_workload_assigned[group_id]);
-        exit(1);
-      }
-      gemmini_workload_received[real_id] = queue_id;
-      int workload_id = total_queue_type[queue_id];
-
-    	start = read_cycles();
-    	uint64_t total_runtime = workload_function(workload_id, cid, workload_num_core,  &barrier[nn_args->barrier_index]);
-      //gemmini_workload_received[real_id] = -1;
-      if(cid == 0) gemmini_workload_assigned[group_id] = -1;
-      pthread_barrier_wait(&barrier[nn_args->barrier_index]);
-    	end = read_cycles();
- 
-    	gemmini_runtime[real_cid] += (end - start);
-      total_queue_runtime_thread[real_cid][queue_id] = end - start;
-      total_queue_runtime_total[real_cid][queue_id] = total_runtime;
-      total_queue_finish[real_cid][queue_id] = (gemmini_runtime[real_cid] - total_queue_dispatch[queue_id]);
-    	//nn_args->total_thread_cycles = end - start;
-    	//nn_args->total_cycles = total_runtime;
+    //printf("barrier working - group_id: %d\n", group_id);
+    for(int g = 0; g < queue_group; g++){
+       start = read_cycles();
+       uint64_t temp_cycles = gemmini_runtime[real_cid];
+       for(int i = 0; i < QUEUE_DEPTH; i++){
+	   int queue_id = gemmini_workload_assigned[group_id][g][i];
+	   if(queue_id != -1){
+	      int workload_id = total_queue_type[queue_id];
+	//printf("rid: %d, workload id: %d, queue id: %d\n", real_cid, workload_id, queue_id);
+	      uint64_t inner_start = read_cycles();
+	      uint64_t total_runtime = workload_function(workload_id, cid, workload_num_core,  &barrier[nn_args->barrier_index]);
+	      pthread_barrier_wait(&barrier[nn_args->barrier_index]);
+	      uint64_t inner_end = read_cycles();
+	 
+	      temp_cycles += (inner_end - inner_start);
+	      total_queue_runtime_thread[real_cid][queue_id] = inner_end - inner_start;
+	      total_queue_runtime_total[real_cid][queue_id] = total_runtime;
+	      total_queue_finish[real_cid][queue_id] = (temp_cycles - total_queue_dispatch[queue_id]);
+	 
+	   }
+	   else
+	      break;
+       }
+	pthread_barrier_wait(&barrier[NUM_CORE]);
+	end = read_cycles();
+	gemmini_runtime[real_cid] += (end - start);
+	printf("idle cycle for queue group %d: %llu\n", g, gemmini_runtime[real_cid] - temp_cycles);
     }
 }
 
+/*
 void *thread_master(void *arg){
   bool idle_detected = false;
   int group_id = -1;
   smallest_pointer = 0;
   gemmini_workload_assigned[0] = 0;
-  while(smallest_pointer != total_workload - 1){
+  gemmini_workload_assigned[1] = 1;
+  smallest_pointer = 1;
+  printf("core id of master thread: %d\n", sched_getcpu());
+  while(smallest_pointer != total_workloads - 1){
     smallest_pointer += 1;
     while(!idle_detected){
-      for(int i = 0; i < num_group; i++){
+      for(int i = 0; i < NUM_GROUP; i++){
         if(gemmini_workload_assigned[i] == -1){
           idle_detected = true;
           group_id = i;
           break;
         }
       }
-    }
-    idle_detected = false;
+    } 
     gemmini_workload_assigned[group_id] = smallest_pointer; // FCFS
+    idle_detected = false;
+printf("group id: %d, smallest pointer: %d\n", group_id, smallest_pointer);
   }
   int count = 0;
   while(count != WORKLOAD_CORE){ 
     for(int i = 0; i < NUM_CORE; i++){
-      if(gemmini_workload_received[i] == total_workload - 1){
+      if(gemmini_workload_received[i] == total_workloads - 1){
         count ++;
       }
     }
   }
-  smallest_pointer = total_workload;
+  smallest_pointer = total_workloads;
 
 }
-
+*/
 void *print_message(void *ptr){
     printf("entered message thread\n");
     gemmini_flush(0); // check whether all have gemmini cores
@@ -174,39 +178,39 @@ int main (int argc, char * argv[]) {
     cpu_id = sched_getcpu();
     printf("main cpu: %d \n", cpu_id);
  
-    cpu_set_t cpuset[TOTAL_CORE];
-    pthread_t thread[TOTAL_CORE];
-    pthread_attr_t attr[TOTAL_CORE];
-    for(int i = 0; i < TOTAL_CORE; i++)
+    cpu_set_t cpuset[NUM_CORE];
+    pthread_t thread[NUM_CORE];
+    pthread_attr_t attr[NUM_CORE];
+    for(int i = 0; i < NUM_CORE; i++)
       pthread_attr_init(&attr[i]);
-    struct thread_args nn_args[TOTAL_CORE];
+    struct thread_args nn_args[NUM_CORE];
 
     printf("create threading \n");
-    for(int i = 0; i < TOTAL_CORE; i++){
+    for(int i = 0; i < NUM_CORE; i++){
       CPU_ZERO(&cpuset[i]);
       CPU_SET(i, &cpuset[i]);
       pthread_attr_setaffinity_np(&attr[i], sizeof(cpu_set_t), &cpuset[i]);
       pthread_create(&thread[i], &attr[i], print_message, NULL);
     }
 
-    for(int i = 0; i < TOTAL_CORE; i++){
+    for(int i = 0; i < NUM_CORE; i++){
         pthread_join(thread[i], NULL);
     }
     printf("thread joined after message printing\n");
 
     //just random turn
-    for(int i = 0; i < TOTAL_CORE; i++){
+    for(int i = 0; i < NUM_CORE; i++){
         pthread_create(&thread[i], &attr[i], thread_matmul0, &nn_args[i]);
     }
 
-    for(int i = 0; i < TOTAL_CORE; i++)
+    for(int i = 0; i < NUM_CORE; i++)
         pthread_join(thread[i], NULL);
     printf("thread joined after doing thread matmul\n");
 
    // for(int i = 0; i < OROW_DIVIDE; i++)
    //     nn_args[i].target_cycles = RESNET_TARGET;
     
-    //pthread_barrier_init(&barrier, NULL, OROW_DIVIDE);
+    pthread_barrier_init(&barrier[NUM_CORE], NULL, NUM_CORE);
     int group = NUM_CORE / WORKLOAD_CORE;
     for(int i = 0; i < group; i++){
       pthread_barrier_init(&barrier[i], NULL, WORKLOAD_CORE);
@@ -214,18 +218,20 @@ int main (int argc, char * argv[]) {
     printf("starting workload crreation \n");
     workload_mode_1(QoS, total_workloads, BATCH1, BATCH2, BATCH4, SEED, CAP); 
     printf("workload creation finished \n");
-   
+    int queue_group = workload_fcfs_mp_schedule(NUM_GROUP, total_workloads);
+    printf("finished workload queue assignment\n");
+ 
     for(int i = 0; i < group; i++){
       for(int j = 0; j < WORKLOAD_CORE; j++){
         int index = i * WORKLOAD_CORE + j;
         nn_args[index].barrier_index = i;
         nn_args[index].workload_num_core = WORKLOAD_CORE;
         nn_args[index].cid = j;
+	nn_args[index].queue_group = queue_group;
         pthread_create(&thread[index], &attr[index], thread_NN, &nn_args[index]);
       }
     }	
-    pthread_create(&thread[TOTAL_CORE-1], &attr[TOTAL_CORE-1], thread_master, NULL);
-    for(int i = 0; i < TOTAL_CORE; i++)
+    for(int i = 0; i < NUM_CORE; i++)
       pthread_join(thread[i], NULL);
 
 // check total_queue_finish, total_queue_runtime_thread, total_queue_runtime_total of each workload (total_queue_type)
@@ -239,6 +245,10 @@ int main (int argc, char * argv[]) {
 	  printf("queue id %d workload type: %d\n", i, total_queue_type[i]);
 	  printf("queue id %d dispatch to finish time: %llu\n", i, max);
     
+    
+    printf("queue id %d dispatched time: %llu\n", i, total_queue_dispatch[i]);
+
+
     max = 0;
     for(int j = 0; j < NUM_CORE; j++){
       max = max > total_queue_runtime_thread[j][i] ? max : total_queue_runtime_thread[j][i]; 
@@ -258,7 +268,7 @@ int main (int argc, char * argv[]) {
 
   for(int i = 0; i < group; i++)
     pthread_barrier_destroy(&barrier[i]);
- 
+  pthread_barrier_destroy(&barrier[NUM_CORE]); 
   printf("==================================\n");
   exit(0);
 }

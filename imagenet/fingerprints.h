@@ -3,7 +3,7 @@
 
 static const elem_t fingerprint0[1][96][96][3] row_align(1);// =
 static const elem_t fingerprint1[1][96][96][3] row_align(1);// =
-static const elem_t fingerprint2[1][96][96][3] row_align(1);// =
+static const elem_t fingerprints_8[8][96][96][3] row_align(1);// =
 static const elem_t fingerprints[1][96][96][3] row_align(1);// =
 
 static const elem_t fingerprints_2[2][96][96][3] row_align(1);// =

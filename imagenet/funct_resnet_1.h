@@ -2658,7 +2658,7 @@ uint64_t* resnet_block_function_1(size_t cid, size_t group_id, bool part1, bool 
 }
 
 
-#if NUM_CORE == 8
+//#if NUM_CORE == 8
 #ifndef BAREMETAL
 uint64_t* resnet_function_11(size_t cid, size_t group_id, bool part1, bool part2, bool part3, bool part4, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_res){
 #else
@@ -7967,6 +7967,6 @@ uint64_t* resnet_planaria_function_11(size_t cid, size_t group_id, size_t part, 
 }
 
 
-#endif
+//#endif
 
 

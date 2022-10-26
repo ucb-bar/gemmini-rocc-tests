@@ -59,21 +59,45 @@
 #define RELU 1
 #define RELU6 2
 
-#define CACHE_SIZE (1e6/DIM)
-#define DRAM_MAX_UTIL 120
-#define DRAM_BW 0.5
+//#define CACHE_SIZE (1e6/DIM)
+#define DRAM_MAX_UTIL 120//150
+//#define DRAM_BW 0.5
+
+//#define NUM_CORE 8
 
 #ifndef NUM_GROUP
-#define NUM_CORE 4
 #define NUM_GROUP 2
 #endif
+#ifndef NUM_CORE
+#define NUM_CORE 8
+#endif
+
+#ifndef WORKLOAD_CORE
+#define WORKLOAD_CORE 2
+#endif
+
+#ifndef SUB_CORE
+#define SUB_CORE 4 // 8 -> 4 + 4
+#endif
+
+#define SUB_GROUP 2 // 4 -> 2 + 2
+#define NUM_SUB_GROUP 4 // total 4 sub groups
+
+#if NUM_CORE == 8
+#define DRAM_BW 1
+#define CACHE_SIZE (2e6/DIM)
+#else
+#define DRAM_BW 0.5
+#define CACHE_SIZE (1e6/DIM)
+#endif
+
 
 // dram_bw -1: disable bandwidth modulation (window, target load to 0)
 // dram_bw 0: monitor gemmini_dram_util and priority score 
 // dram_bw 0-100: use dram_bw given to compute window, target load 
-static int gemmini_dram_util[NUM_GROUP] = {0}; // only the cid == 0 updates it
-static int gemmini_score[NUM_GROUP] = {0}; // priority score scaled to 100 (for bw division when it gets over the limit)
-
+static int gemmini_dram_util[NUM_SUB_GROUP] = {0};
+//static int gemmini_dram_util[NUM_GROUP][SUB_GROUP] = {0}; // only the cid == 0 updates it
+static int gemmini_score[NUM_SUB_GROUP] = {0}; // priority score scaled to 100 (for bw division when it gets over the limit)
 
 #define MAX(X, Y) (X > Y ? X : Y)
 #define MIN(X, Y) (X < Y ? X : Y)
@@ -364,11 +388,15 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
   int num_core = orow_divide > batch_divide ? orow_divide : batch_divide;
   if (orow_divide > 1 && batch_divide > 1)
     num_core = orow_divide + batch_divide;
+  bool no_row_divide = false;
+   if(dim_I_in <= DIM && dim_I_in % orow_divide == 0 && batch_divide == 1 && dim_J_in >= 1024)
+     no_row_divide = true;
+
   bool fc_layer = (dim_I_in <= DIM) || (dim_J_in <= DIM);
   orow_divide = batch_divide * orow_divide;
   batch_divide = 1;
 
-  bool row_divisible = (orow_divide > 1) && (dim_I_in % orow_divide == 0);
+  bool row_divisible = (orow_divide > 1) && (dim_I_in % orow_divide == 0) && !no_row_divide;
   size_t orow_offset_floor = 0;
   size_t dim_I = dim_I_in;
   size_t dim_J = dim_J_in;
@@ -494,7 +522,7 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
   int C_size = dim_I_in * ceil_divide_int(dim_J_in, DIM);
   size_t num_tiles = I0 * J0 * K0;
   uint64_t total_from_dram = B_size + C_size;
-  if(A_size > CACHE_SIZE * 0.8 || total_from_dram + A_size > CACHE_SIZE) {
+  if(A_size > CACHE_SIZE || total_from_dram + A_size > CACHE_SIZE) {
 //    added_image = 1;
     total_from_dram += A_size; // add for first layer
   }
@@ -572,11 +600,13 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
   int outer_loop_iter_A = 1;
   int outer_loop_iter_B = (ceil_divide_int)(dim_I_in, tile_I_in*DIM);
   num_tiles = I0 * J0 * K0;
+  int D_from_dram = ceil_divide_int(dim_J_in, DIM) * 4 * ceil_divide_int(dim_I_in, tile_I_in * DIM);
+  D_from_dram = D_from_dram / num_core;
 
-  if(inner_tile_A + inner_tile_B + C_size > CACHE_SIZE){
-    total_from_dram += (outer_loop_iter_B - 1) * inner_tile_B;
+  if(inner_tile_A + inner_tile_B + (C_size / outer_loop_iter_B) > CACHE_SIZE){
+    total_from_dram += ((outer_loop_iter_B - 1) * inner_tile_B)/2;
   }
-  total_from_dram += D_load * och_divide;
+  total_from_dram += D_from_dram; //D_load * och_divide;
   uint64_t total_mem = A_load + B_load + D_load +dim_I * ceil_divide_int(dim_J, DIM); 
   uint64_t mem_ideal = total_from_dram / DRAM_BW + (total_mem - total_from_dram/num_core);
   uint64_t ideal_prediction = MAX(mem_ideal, ideal_runtime) + MIN(mem_ideal, ideal_runtime) * 0.5;
@@ -588,23 +618,28 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
 
   int other_dram_util = 0;
   int other_score = 0;
+  int other_weight_sum = 0;
   int this_score = gemmini_score[group_id];
-  for(int i = 0; i < NUM_GROUP; i++)
+  for(int i = 0; i < NUM_SUB_GROUP; i++)
     if(i != group_id) {
       other_score += gemmini_score[i];
       other_dram_util += gemmini_dram_util[i];
+      other_weight_sum += gemmini_score[i] * gemmini_dram_util[i];
     }
 
   if(dram_util == 0){
     if(ideal_dram_util + other_dram_util > DRAM_MAX_UTIL){
       int excess = ideal_dram_util + other_dram_util - DRAM_MAX_UTIL;
-      dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util)); 
+      dram_util = ideal_dram_util - (int)((excess * other_weight_sum) / (this_score * ideal_dram_util + other_weight_sum));
+      //dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util));
+      dram_util = MAX(25, dram_util); 
       //dram_util = (int)((DRAM_MAX_UTIL * ideal_dram_util * this_score) / (this_score * ideal_dram_util + other_score * other_dram_util));
+     // printf("matmul ideal dram util: %d, other dram util: %d, dram util: %d, this score: %d, other score: %d\n", ideal_dram_util, other_dram_util, dram_util, this_score, other_score);
     }
     else{
       dram_util = -1; // don't really have to use memory modulation
     }
-    if(cid == 0) gemmini_dram_util[group_id] = ideal_dram_util;
+    if(cid == 0) gemmini_dram_util[group_id] = ideal_dram_util;//(dram_util != -1) ? dram_util : ideal_dram_util;//ideal_dram_util;
   }
 
 
@@ -625,7 +660,7 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
   printf("window: %d, target load: %d, prediction cycles: %llu \n", window, target_load, prediction);
   // for pre-compilation
   printf("compute_ideal: %llu, mem_ideal: %llu, ideal prediction cycles: %llu, ideal dram bw usage: %d, ideal dram bw util: %d, result dram bw util: %d\n", ideal_runtime, mem_ideal, ideal_prediction, ideal_dram_bw_exp, ideal_dram_util, dram_util);
-  printf("total A load: %d, total B load: %d, total D load: %d \n", A_load, B_load, D_load);
+  printf("total A load: %d, total B load: %d, total D load: %d, raw D: %d \n", A_load, B_load, D_load, D_from_dram);
   printf("A size: %d, B size: %d, C size: %d \n", A_size, B_size, C_size);
   printf("inner tile A: %d, inner tile B: %d, outer loop iteration A: %d, outer loop iteration B: %d \n", inner_tile_A, inner_tile_B, outer_loop_iter_A, outer_loop_iter_B);
   printf("number of tile: %d, target load per tile: %d, ideal runtime: %llu\n\n", num_tiles, (A_load + B_load + D_load) / num_tiles, ideal_runtime);
@@ -893,13 +928,12 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   }
   */
 
-    // Combined loop
+   // Combined loop
   gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
     A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
     a_transpose, b_transpose,
     full_C, low_D, !no_bias || D == NULL,
     weightA);
-
 }
 
 static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
@@ -2121,7 +2155,7 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
 
   int added_image = 0;
   uint64_t total_from_dram = (weight_size + output_size);
-  if(input_size > CACHE_SIZE * 0.8 || total_from_dram + input_size > CACHE_SIZE) {
+  if(input_size > CACHE_SIZE || total_from_dram + input_size > CACHE_SIZE) {
     added_image = 1;
     total_from_dram += input_size; // add for first layer
   }
@@ -2131,6 +2165,10 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
   size_t out_row = (row_divisible) ? (pool_out_row - 1) * pool_stride + pool_size - 2 * pool_padding : out_dim;
   const uint64_t total_macs = out_channels * batch_size * out_dim * out_row * kernel_dim * kernel_dim * in_channels;
   uint64_t ideal_runtime = ((uint64_t)(total_macs / (DIM*DIM)));
+
+  int bias_from_dram = ceil_divide_int(out_channels * och_divide, DIM) * 4 * ceil_divide_int(original_batch_size, batches) * ceil_divide_int(pool_out_dim, porows) * ceil_divide_int(pool_out_dim, pocols);
+  bias_from_dram = bias_from_dram / num_core;
+
   if(in_channels < DIM) ideal_runtime = ideal_runtime * DIM / in_channels;
   int inner_tile_A = in_dim * in_dim * ceil_divide_int(in_channels, DIM) * original_batch_size;
   int inner_tile_B = kernel_dim * kernel_dim * in_channels * ceil_divide_int(pochs, DIM);
@@ -2329,8 +2367,9 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
        num_tiles = (size_t)((num_tiles * spad_util) / acc_util);
     } 
   }
-  total_from_dram += bias_load * och_divide;
-  
+  total_from_dram += bias_from_dram; //bias_load * och_divide;
+ 
+  if(in_channels == 3) dram_util = -1;//just disable for first layer 
   uint64_t total_mem = input_load + weight_load + bias_load + (ceil_divide_int)(out_channels, DIM) * pool_out_row * pool_out_dim * batch_size;
   uint64_t mem_ideal = total_from_dram / DRAM_BW + (total_mem-total_from_dram/num_core);
   uint64_t ideal_prediction = MAX(mem_ideal, ideal_runtime) + MIN(mem_ideal, ideal_runtime) * 0.5;
@@ -2343,22 +2382,28 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
   int other_dram_util = 0;
   int other_score = 0;
   int this_score = gemmini_score[group_id];
-  for(int i = 0; i < NUM_GROUP; i++)
+  int other_weight_sum = 0;
+  for(int i = 0; i < NUM_SUB_GROUP; i++)
     if(i != group_id) {
       other_score += gemmini_score[i];
       other_dram_util += gemmini_dram_util[i];
+      other_weight_sum += gemmini_score[i] * gemmini_dram_util[i];
     }
 
   if(dram_util == 0){
     if(ideal_dram_util + other_dram_util > DRAM_MAX_UTIL){
       int excess = ideal_dram_util + other_dram_util - DRAM_MAX_UTIL;
-      dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util)); 
+      dram_util = ideal_dram_util - (int)((excess * other_weight_sum) / (this_score * ideal_dram_util + other_weight_sum));
+      //dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util)); 
+      dram_util = MAX(25, dram_util); 
       //dram_util = (int)((DRAM_MAX_UTIL * ideal_dram_util * this_score) / (this_score * ideal_dram_util + other_score * other_dram_util));
+      //printf("conv ideal dram util: %d, other dram util: %d, dram util: %d, this score: %d, other score: %d\n", ideal_dram_util, other_dram_util, dram_util, this_score, other_score);
     }
     else{
       dram_util = -1; // don't really have to use memory modulation
     }
-    if(cid == 0) gemmini_dram_util[group_id] = ideal_dram_util;
+    if(cid == 0) gemmini_dram_util[group_id] = ideal_dram_util;//(dram_util != -1) ? dram_util : ideal_dram_util;//ideal_dram_util;
+    //if(cid == 0) gemmini_dram_util[group_id] = ideal_dram_util;
   }
 
   uint64_t prediction = (100 * total_from_dram) / (DRAM_BW * dram_util);
@@ -2380,7 +2425,7 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
   printf("compute_ideal: %llu, mem_ideal: %llu, ideal prediction cycles: %llu, ideal dram bw usage: %d, ideal dram bw util: %d, result dram bw util: %d\n", ideal_runtime, mem_ideal, ideal_prediction, ideal_dram_bw_exp, ideal_dram_util, dram_util);
  
   // for pre-compilation
-  printf("total A load: %d, total B load: %d, total D load: %d \n", input_load, weight_load, bias_load);
+  printf("total A load: %d, total B load: %d, total D load: %d, raw D: %d \n", input_load, weight_load, bias_load, bias_from_dram);
   printf("A size: %d, B size: %d, C size: %d \n", input_size, weight_size, output_size);
   printf("inner tile A: %d, inner tile B: %d, outer loop iteration A: %d, outer loop iteration B: %d \n", inner_tile_A, inner_tile_B, outer_loop_iter_A, outer_loop_iter_B);
   printf("number of tile: %d, target load per tile: %d, ideal runtime: %llu\n\n", num_tiles_store, (input_load + weight_load + bias_load) / num_tiles_store, ideal_runtime);
@@ -3623,18 +3668,23 @@ int* tiled_resadd_bubble_calculate(
 
   int other_dram_util = 0;
   int other_score = 0;
+  int other_weight_sum = 0;
   int this_score = gemmini_score[group_id];
-  for(int i = 0; i < NUM_GROUP; i++)
+  for(int i = 0; i < NUM_SUB_GROUP; i++)
     if(i != group_id) {
       other_score += gemmini_score[i];
       other_dram_util += gemmini_dram_util[i];
+      other_weight_sum += gemmini_score[i] * gemmini_dram_util[i];
     }
   
   if(dram_util == 0){
     if(ideal_dram_util + other_dram_util > DRAM_MAX_UTIL){
       int excess = ideal_dram_util + other_dram_util - DRAM_MAX_UTIL;
-      dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util)); 
+      dram_util = ideal_dram_util - (int)((excess * other_weight_sum) / (this_score * ideal_dram_util + other_weight_sum));
+      //dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util)); 
+      dram_util = MAX(25, dram_util); 
       //dram_util = (int)((DRAM_MAX_UTIL * ideal_dram_util * this_score) / (this_score * ideal_dram_util + other_score * other_dram_util));
+      //printf("resadd ideal dram util: %d, other dram util: %d, dram util: %d, this score: %d, other score: %d\n", ideal_dram_util, other_dram_util, dram_util, this_score, other_score);
     }
     else{
       dram_util = -1; // don't really have to use memory modulation
@@ -4083,11 +4133,11 @@ int* tiled_pool_bubble_calculate(
     target_load = (int)(total_load / num_tiles) ;
     window = (int)(target_cycles / num_tiles) ;
   }
-/*
+#if PRINT_CALM == 1
   // for pre-compilation
   int C_size = batch_size * out_dim * out_dim * (int)(channels / DIM);
   printf("pool total load: %d, C size: %d, number of tile: %d, target load per tile: %d\n\n", total_load, C_size, num_tiles, target_load);
-*/
+#endif
 
   out_args[0] = window;
   out_args[1] = target_load;

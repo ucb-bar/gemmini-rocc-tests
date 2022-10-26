@@ -8,14 +8,18 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
+#define NUM_CORE 8
+#define NUM_GROUP 2
+
+
 #include "include/gemmini_testutils.h"
 #include "include/gemmini_nn.h"
-#include "funct_squeezenet.h"
 #include "util.h"
 
 #define NUM_LAYER (12+15+1+4)
-#define NUM_CORE 1
 
+#include "funct_squeezenet_1.h"
+#include "workload.h"
 void thread_entry(int cid, int nc)
 {
   gemmini_flush(0);
@@ -26,19 +30,24 @@ void thread_entry(int cid, int nc)
   int gemmini_cid = cid; 
   
   barrier(nc);
+ gemmini_dram_util[1] = 60;
+  gemmini_score[1] = 5;
+  gemmini_score[0] = 5;
+  barrier(nc);
+
 
   uint64_t cycles[NUM_LAYER] = {0};
 
   for(int j = 0; j < nc; j++){
-    if(j == cid && j < NUM_CORE){
+    if(j == cid && j == 0){
 #ifndef BAREMETAL
-      *cycles = squeezenet_function(j, NUM_CORE, 1, 10, &barrier);
+      *cycles = squeezenet_function_1(j, 1, NUM_CORE, 10, &barrier);
 #else
-      *cycles = squeezenet_function(j, NUM_CORE, 1, 10);
+      *cycles = squeezenet_function_1(j, 0, 8, 1, -1);
 #endif
     }
   }
-
+barrier(nc);
 	for (int i = 0; i < nc; i++) {
     if (i == cid) printf("Thread %d/%d ending\n", cid, nc);
     barrier(nc);

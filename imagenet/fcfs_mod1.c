@@ -17,7 +17,7 @@
 #define NUM_CORE 4
 #define SEED 0
 #define CAP 0.8
-#define total_workloads 100
+#define total_workloads 101
 #define QoS 2
 
 #define BATCH1 true
@@ -93,6 +93,7 @@ void *thread_NN(void *arg){
 	int workload_id = total_queue_type[i];
     	start = read_cycles();
     	uint64_t total_runtime = workload_function(workload_id, cid, workload_num_core,  &barrier[nn_args->barrier_index]);
+	pthread_barrier_wait(&barrier[nn_args->barrier_index]);
     	end = read_cycles();
  
     	gemmini_runtime[real_cid] += (end - start);

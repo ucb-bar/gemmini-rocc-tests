@@ -92,6 +92,7 @@ uint64_t* googlenet_function_1(size_t cid, size_t group_id, bool part1, bool par
     }
 
     if(part2){   
+target_util = -1;
     //Inception 3a
 	 //Branch 1
     // conv_4
@@ -1402,6 +1403,7 @@ uint64_t* googlenet_block_function_1(size_t cid, size_t group_id, bool part1, bo
     }
 
     if(part2){
+target_util = -1;
     //Inception 3a
 	 //Branch 1
     // conv_4
@@ -2637,7 +2639,7 @@ gemmini_fence();
 #undef num_cycle
 }
 
-#if NUM_CORE == 8
+//#if NUM_CORE == 8
 
 #ifndef BAREMETAL
 uint64_t* googlenet_function_11(size_t cid, size_t group_id, bool part1, bool part2, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_google){
@@ -2720,6 +2722,7 @@ uint64_t* googlenet_function_11(size_t cid, size_t group_id, bool part1, bool pa
     }
 
     if(part2){   
+target_util = -1;
     //Inception 3a
 	 //Branch 1
     // conv_4
@@ -4030,6 +4033,7 @@ uint64_t* googlenet_block_function_11(size_t cid, size_t group_id, bool part1, b
     }
 
     if(part2){
+target_util = -1;
     //Inception 3a
 	 //Branch 1
     // conv_4
@@ -7906,4 +7910,4 @@ gemmini_fence();
 
 
 
-#endif
+//#endif

@@ -1179,7 +1179,7 @@ uint64_t* squeezenet_block_function_1(size_t cid, size_t group_id, int orow_divi
 #undef num_cycle
 }
 
-#if NUM_CORE == 8
+//#if NUM_CORE == 8
 #ifndef BAREMETAL
 uint64_t* squeezenet_function_11(size_t cid, size_t group_id, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_squeeze){
 #else
@@ -2434,8 +2434,6 @@ uint64_t* squeezenet_planaria_function_1(size_t cid, size_t group_id, size_t par
 #if thread_sync == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif         
-    }
-    if(part == 1){
         
     // conv_2
     start = read_cycles();
@@ -2455,6 +2453,8 @@ uint64_t* squeezenet_planaria_function_1(size_t cid, size_t group_id, size_t par
     pthread_barrier_wait(barrier_squeeze);
 #endif
         
+    }
+    if(part == 1){
     // conv_3
     start = read_cycles();
     tiled_matmul_nn_auto_cid(conv_3_params_squeeze1.I, conv_3_params_squeeze1.J, conv_3_params_squeeze1.K, conv_3_params_squeeze1.out_stride,
@@ -3027,8 +3027,6 @@ uint64_t* squeezenet_planaria_function_11(size_t cid, size_t group_id, size_t pa
 #if thread_sync == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif         
-    }
-    if(part == 1){
         
     // conv_2
     start = read_cycles();
@@ -3047,6 +3045,8 @@ uint64_t* squeezenet_planaria_function_11(size_t cid, size_t group_id, size_t pa
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif
+    }
+    if(part == 1){
         
     // conv_3
     start = read_cycles();
@@ -3284,6 +3284,8 @@ uint64_t* squeezenet_planaria_function_11(size_t cid, size_t group_id, size_t pa
     pthread_barrier_wait(barrier_squeeze);
 #endif
         
+        
+    
     // conv_15
     start = read_cycles();
     tiled_matmul_nn_auto_cid(conv_15_params_squeeze11.I, conv_15_params_squeeze11.J, conv_15_params_squeeze11.K, conv_15_params_squeeze11.out_stride,
@@ -3538,4 +3540,4 @@ uint64_t* squeezenet_planaria_function_11(size_t cid, size_t group_id, size_t pa
 
 
 
-#endif
+//#endif

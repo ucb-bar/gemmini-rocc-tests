@@ -1715,7 +1715,7 @@ uint64_t* kwsnet_block_function_1(size_t cid, size_t group_id, bool part1, bool 
 }
 
 
-#if NUM_CORE == 8
+//#if NUM_CORE == 8
 
 #ifndef BAREMETAL
 uint64_t* kwsnet_function_11(size_t cid, size_t group_id, bool part1, bool part2, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_kws11){
@@ -3746,6 +3746,8 @@ uint64_t* kwsnet_planaria_function_1(size_t cid, size_t group_id, size_t part, i
       pthread_barrier_wait(barrier_kws1);
 #endif
       
+    }
+    if(part==2){
       // conv_10
       start = read_cycles();
       tiled_conv_A_stride_auto_stride(
@@ -3768,8 +3770,6 @@ uint64_t* kwsnet_planaria_function_1(size_t cid, size_t group_id, size_t part, i
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_kws1);
 #endif
-    }
-    if(part==2){
       // conv_11
       start = read_cycles();
       tiled_conv_A_stride_auto_stride(
@@ -3965,7 +3965,9 @@ uint64_t* kwsnet_planaria_function_1(size_t cid, size_t group_id, size_t part, i
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_kws1);
 #endif
-          
+      
+    }
+    if(part==3){    
       // conv_17
       start = read_cycles();
       tiled_conv_A_stride_auto_stride(
@@ -4007,8 +4009,6 @@ uint64_t* kwsnet_planaria_function_1(size_t cid, size_t group_id, size_t part, i
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_kws1);
 #endif
-    }
-    if(part==3){
       // conv_18
       start = read_cycles();
       tiled_conv_A_stride_auto_stride(
@@ -4075,6 +4075,8 @@ uint64_t* kwsnet_planaria_function_1(size_t cid, size_t group_id, size_t part, i
 #endif
    
 
+    }
+    if(part==4){
       // conv_20
       start = read_cycles();
       tiled_conv_A_stride_auto_stride(
@@ -4275,7 +4277,7 @@ uint64_t* kwsnet_planaria_function_1(size_t cid, size_t group_id, size_t part, i
 }
 
 #ifndef BAREMETAL
-uint64_t* kwsnet_planaria_function_11(size_t cid, size_t group_id, size_t part, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_kws1){
+uint64_t* kwsnet_planaria_function_11(size_t cid, size_t group_id, size_t part, int orow_divide, int batch_divide, int target_util, pthread_barrier_t  *barrier_kws11){
 #else
 uint64_t* kwsnet_planaria_function_11(size_t cid, size_t group_id, size_t part, int orow_divide, int batch_divide, int target_util){
 #endif
@@ -4601,6 +4603,8 @@ uint64_t* kwsnet_planaria_function_11(size_t cid, size_t group_id, size_t part, 
       pthread_barrier_wait(barrier_kws11);
 #endif
       
+    }
+    if(part==2){
       // conv_10
       start = read_cycles();
       tiled_conv_A_stride_auto_stride(
@@ -4623,8 +4627,6 @@ uint64_t* kwsnet_planaria_function_11(size_t cid, size_t group_id, size_t part, 
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_kws11);
 #endif
-    }
-    if(part==2){
       // conv_11
       start = read_cycles();
       tiled_conv_A_stride_auto_stride(
@@ -4820,7 +4822,9 @@ uint64_t* kwsnet_planaria_function_11(size_t cid, size_t group_id, size_t part, 
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_kws11);
 #endif
-          
+      
+    }
+    if(part==3){    
       // conv_17
       start = read_cycles();
       tiled_conv_A_stride_auto_stride(
@@ -4862,8 +4866,6 @@ uint64_t* kwsnet_planaria_function_11(size_t cid, size_t group_id, size_t part, 
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_kws11);
 #endif
-    }
-    if(part==3){
       // conv_18
       start = read_cycles();
       tiled_conv_A_stride_auto_stride(
@@ -4930,6 +4932,8 @@ uint64_t* kwsnet_planaria_function_11(size_t cid, size_t group_id, size_t part, 
 #endif
    
 
+    }
+    if(part==4){
       // conv_20
       start = read_cycles();
       tiled_conv_A_stride_auto_stride(
@@ -5130,5 +5134,4 @@ uint64_t* kwsnet_planaria_function_11(size_t cid, size_t group_id, size_t part, 
 }
 
 
-
-#endif
+//#endif
