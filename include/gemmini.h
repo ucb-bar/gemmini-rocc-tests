@@ -60,7 +60,7 @@
 #define RELU6 2
 
 //#define CACHE_SIZE (1e6/DIM)
-#define DRAM_MAX_UTIL 120//150
+#define DRAM_MAX_UTIL 150
 //#define DRAM_BW 0.5
 
 //#define NUM_CORE 8

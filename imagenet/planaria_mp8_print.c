@@ -39,7 +39,7 @@
 
 #define planaria_scale 3
 static uint64_t gemmini_planaria_score[NUM_SUB_GROUP] = {0};
-#include "workload_8.h"
+#include "include/workload.h"
 pthread_barrier_t barrier[NUM_SUB_GROUP]; // between two, total 4
 pthread_barrier_t barrier_sub[NUM_GROUP]; // between four, total 2
 pthread_barrier_t barrier_mid[NUM_SUB_GROUP]; // between two, total 4

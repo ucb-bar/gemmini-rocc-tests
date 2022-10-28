@@ -13,7 +13,7 @@
 #include <stdbool.h>
 
 #include "include/gemmini_params.h"
-#include "include/gemmini_8.h"
+#include "include/gemmini.h"
 
 #ifdef BAREMETAL
 #undef assert

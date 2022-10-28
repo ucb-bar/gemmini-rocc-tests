@@ -34,7 +34,7 @@
 
 #include "include/gemmini.h"
 #include "include/gemmini_nn.h"
-#include "workload_8.h"
+#include "include/workload.h"
 pthread_barrier_t barrier_global;
 
 #define MAT_DIM_I 512

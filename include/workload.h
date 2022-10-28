@@ -5,36 +5,33 @@
 #ifndef BAREMETAL
 // code for each workload
 #if BATCH1 == true
-#include "funct_resnet_1.h"
-#include "funct_googlenet_1.h"
-#include "funct_fcnnet_1.h"
-#include "funct_squeezenet_1.h"
-#include "funct_kwsnet_1.h"
-#include "funct_alexnet_1.h"
-#include "funct_yolonet_1.h"
-#include "funct_yololitenet_1.h"
+#include "imagenet/funct_resnet_1.h"
+#include "imagenet/funct_googlenet_1.h"
+#include "imagenet/funct_squeezenet_1.h"
+#include "imagenet/funct_kwsnet_1.h"
+#include "imagenet/funct_alexnet_1.h"
+#include "imagenet/funct_yolonet_1.h"
+#include "imagenet/funct_yololitenet_1.h"
 #endif
 
 #if BATCH8 == true
-#include "funct_resnet_8.h"
-#include "funct_fcnnet_8.h"
-#include "funct_googlenet_8.h"
-#include "funct_squeezenet_8.h"
-#include "funct_kwsnet_8.h"
-#include "funct_alexnet_8.h"
-#include "funct_yolonet_8.h"
-#include "funct_yololitenet_8.h"
+#include "imagenet/funct_resnet_8.h"
+#include "imagenet/funct_googlenet_8.h"
+#include "imagenet/funct_squeezenet_8.h"
+#include "imagenet/funct_kwsnet_8.h"
+#include "imagenet/funct_alexnet_8.h"
+#include "imagenet/funct_yolonet_8.h"
+#include "imagenet/funct_yololitenet_8.h"
 #endif
 
 #if BATCH4 == true
-#include "funct_resnet_4.h"
-#include "funct_fcnnet_4.h"
-#include "funct_googlenet_4.h"
-#include "funct_squeezenet_4.h"
-#include "funct_kwsnet_4.h"
-#include "funct_alexnet_4.h"
-#include "funct_yolonet_4.h"
-#include "funct_yololitenet_4.h"
+#include "imagenet/funct_resnet_4.h"
+#include "imagenet/funct_googlenet_4.h"
+#include "imagenet/funct_squeezenet_4.h"
+#include "imagenet/funct_kwsnet_4.h"
+#include "imagenet/funct_alexnet_4.h"
+#include "imagenet/funct_yolonet_4.h"
+#include "imagenet/funct_yololitenet_4.h"
 #endif
 
 #endif

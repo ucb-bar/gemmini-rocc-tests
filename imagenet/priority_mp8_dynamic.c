@@ -35,7 +35,7 @@
 
 #include "include/gemmini.h"
 #include "include/gemmini_nn.h"
-#include "workload_8.h"
+#include "include/workload.h"
 //pthread_barrier_t barrier[NUM_SUB_GROUP]; // between two, total 4
 //pthread_barrier_t barrier_sub[NUM_GROUP]; // between four, total 2
 pthread_barrier_t barrier_global; // for all 8 cores
