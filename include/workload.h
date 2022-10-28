@@ -978,8 +978,8 @@ uint64_t workload_function(int queue_id, int workload_id, size_t cid, size_t gro
     int orow_divide = num_gemmini;
     int batch_divide = 1; // 1 batch workload
     if(workload_id == 0){
-      cycles = fcnnet_function_1(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
-      total_runtime = *(cycles+73);
+      //cycles = fcnnet_function_1(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      //total_runtime = *(cycles+73);
     }
     else if(workload_id == 1){
       if(sub_group_id % 2 == 0) cycles = resnet_function_1(cid, sub_group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);

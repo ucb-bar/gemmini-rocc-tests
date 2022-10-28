@@ -1,9 +1,6 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	planaria_mp8 \
-	planaria_mp8_h \
-	planaria_mp8_l \
 	priority_mp8_staticb \
 	priority_mp8_staticb3 \
 	priority_mp8_staticb2 \
@@ -16,14 +13,9 @@ tests = \
 	prema_mp8 \
 	prema_mp8_l \
 	prema_mp8_h \
-	resnet_batch1_4 \
-	alexnet_batch1_4 \
-	googlenet_batch1_4 \
-	squeezenet_batch1_4 \
-	resnet_batch1_2 \
-	alexnet_batch1_2 \
-	googlenet_batch1_2 \
-	squeezenet_batch1_2 \
+	planaria_mp8 \
+	planaria_mp8_h \
+	planaria_mp8_l \
 	motivation_4 \
 	motivation_3 \
 	motivation_2 \
