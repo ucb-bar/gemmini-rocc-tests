@@ -15,7 +15,7 @@
 #include "include/gemmini_params.h"
 
 #define GEMMINI_ASSERTIONS
-#define PRINT_CALM 0
+#define PRINT_MOCA 0
 
 // Accelerator interface
 #include "rocc-software/src/xcustom.h"
@@ -49,7 +49,7 @@
 #define CONFIG_EX 0
 #define CONFIG_LD 1
 #define CONFIG_ST 2
-#define CONFIG_CALM 3
+#define CONFIG_MOCA 3
 
 #define GARBAGE_ADDR ((uint32_t)(-1))
 #define OUTPUT_STATIONARY 0
@@ -83,6 +83,7 @@
 #define SUB_GROUP 2 // 4 -> 2 + 2
 #define NUM_SUB_GROUP 4 // total 4 sub groups
 
+// we use 8 cores
 #if NUM_CORE == 8
 #define DRAM_BW 1
 #define CACHE_SIZE (2e6/DIM)
@@ -340,9 +341,9 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 // fence
 #define gemmini_fence() asm volatile("fence")
 
-// for CALM configuration
+// for MOCA configuration
 #define gemmini_config_calm(window, target_load) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_CALM, ((uint64_t)(window) << 16) | ((uint64_t)(target_load)), k_CONFIG)
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, CONFIG_MOCA, ((uint64_t)(window) << 16) | ((uint64_t)(target_load)), k_CONFIG)
 
 // weight-stationary matmul loop
 #define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, A_transpose, B_transpose, full_C, low_D, ex_accumulate, weightA) \
@@ -382,6 +383,10 @@ static size_t tiled_matmul_total_acc_rows(size_t I, size_t J) {
   return (I * J) * DIM;
 }
 
+// MOCA: ran when executing each layer
+// calculate tiling factor for matmul function
+// detect contention using estimated BW needed
+// calculate bubble, window cycles to configure MOCA hardware
 size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, size_t dim_K_in,
   size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id, size_t args[], int dram_util){
 
@@ -496,24 +501,13 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
   const int acc_rows = tiled_matmul_total_acc_rows(tile_I, tile_J);
   const int spad_util = (spad_rows * 100) / max_spad_rows;
   const int acc_util = (acc_rows * 100) / max_acc_rows;
-/*
-    printf("tile_I: %d\n", tile_I);
-    printf("tile_J: %d\n", tile_J);
-    printf("tile_K: %d\n\n", tile_J);
-
-    printf("spad_rows: %d\n", spad_rows);
-    printf("acc_rows: %d\n\n", acc_rows);
-
-    printf("spad_row utilization: %d%%\n", (spad_rows * 100) / max_spad_rows);
-    printf("acc_row utilization: %d%%\n\n", (acc_rows * 100) / max_acc_rows);
- */
 
   const size_t I0 = dim_I_padded / (tile_I*DIM) + (dim_I_padded % (tile_I*DIM) != 0);
   const size_t J0 = dim_J_padded / (tile_J*DIM) + (dim_J_padded % (tile_J*DIM) != 0);
   const size_t K0 = dim_K_padded / (tile_K*DIM) + (dim_K_padded % (tile_K*DIM) != 0);
 
 
-  // for pre-compilation
+  // for pre-compilation of MOCA (number of load, runtime estimation)
   int A_load = 0;
   int B_load = 0;
   int D_load = 0;
@@ -527,34 +521,20 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
     total_from_dram += A_size; // add for first layer
   }
 
-   //CALM config
-  //int window = 0;
-  //int target_load = 0;
+   //MOCA config
   const uint64_t total_macs = dim_I * dim_J * dim_K;
   uint64_t ideal_runtime = (uint64_t)(total_macs / (DIM*DIM));
   if(fc_layer){
     A_load = dim_I * ceil_divide_int(dim_K, DIM);
     B_load = dim_K * ceil_divide_int(dim_J, DIM);
-    D_load = dim_I * ceil_divide_int(dim_J, DIM) * 4;
-    const int total_loads = A_load + B_load + D_load; //dim_I * ceil_divide_int(dim_K, DIM) + dim_K * ceil_divide_int(dim_J, DIM) + dim_I * ceil_divide_int(dim_J, DIM) * 4;
+    D_load = dim_I * ceil_divide_int(dim_J, DIM) * 4; // bias has 4x bitwidth
+    const int total_loads = A_load + B_load + D_load; 
     ideal_runtime = total_loads;
-    //const int total_loads = dim_I * ceil_divide_int(dim_K, DIM) + dim_K * ceil_divide_int(dim_J, DIM) + dim_I * ceil_divide_int(dim_J, DIM) * 4;
-   /*
-      uint64_t target_runtime = target_util <= 100 ? ((uint64_t)(total_loads * 100 / target_util)) : target_util;
-      window = target_runtime / num_tiles;
-      target_load = total_loads / num_tiles;
-   */
-      //printf("number of tiles: %d, target load: %d, window: %d\n", num_tiles, target_load, window);
   }
-  else{
-/*
-    uint64_t target_runtime = target_util <= 100 ? (uint64_t)(ideal_runtime * 100 / target_util) : target_util;
-    target_runtime -= (tile_I * tile_J * tile_K * DIM + tile_I*DIM * tile_J*DIM * 4 / DIM);
-    uint64_t target_tile_runtime = target_runtime / num_tiles;
-    */
+  else{ 
     uint64_t num_K_tile = ceil_divide_int(dim_K, tile_K*DIM);
     uint64_t bias_time = (4 * tile_I * tile_J * DIM) / num_K_tile;
-    //window = target_tile_runtime;
+    //window = target tile runtime;
     for(size_t i0 = 0; i0 < dim_I; i0+=tile_I*DIM){
       int I = i0 + tile_I*DIM > dim_I ? dim_I - i0 : tile_I*DIM;
       for(size_t j0 = 0; j0 < dim_J; j0+=tile_J*DIM){
@@ -584,17 +564,10 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
     //  target_load = (int)((target_load * acc_util) / spad_util);
     //  window = (int)((window * acc_util) / spad_util);
       num_tiles = (size_t)((num_tiles * spad_util) / acc_util);
-//          printf("number of tile after adjustment: %d\n", num_tiles);
-
     }
-    /*
-    if(target_util == 0 || full_power || num_tiles <= 4){
-      target_load = 0;
-      window = 0;
-    }
-    */
   }
 
+  // figures out whether it is from cache or DRAM
   int inner_tile_A = tile_I_in * DIM * (ceil_divide_int)(dim_K_in, DIM);
   int inner_tile_B = ceil_divide_int(dim_J_in, DIM) * dim_K_in;
   int outer_loop_iter_A = 1;
@@ -613,9 +586,11 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
 
   if(cid == 0 && dram_util == -1) gemmini_dram_util[group_id] = 0;
 
+  // ideal exepected dram bandwidth
   int ideal_dram_bw_exp = (100 * total_from_dram) / ideal_prediction;
   int ideal_dram_util = (ideal_dram_bw_exp / DRAM_BW);
 
+  // detect contention and partition
   int other_dram_util = 0;
   int other_score = 0;
   int other_weight_sum = 0;
@@ -628,15 +603,15 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
     }
 
   if(dram_util == 0){
+    // contention detected
     if(ideal_dram_util + other_dram_util > DRAM_MAX_UTIL){
       int excess = ideal_dram_util + other_dram_util - DRAM_MAX_UTIL;
+      // partition overflowing amount
       dram_util = ideal_dram_util - (int)((excess * other_weight_sum) / (this_score * ideal_dram_util + other_weight_sum));
       //dram_util = ideal_dram_util - (int)((excess * ideal_dram_util * other_score) / (this_score * ideal_dram_util + other_score * other_dram_util));
       dram_util = MAX(25, dram_util); 
-      //dram_util = (int)((DRAM_MAX_UTIL * ideal_dram_util * this_score) / (this_score * ideal_dram_util + other_score * other_dram_util));
-     // printf("matmul ideal dram util: %d, other dram util: %d, dram util: %d, this score: %d, other score: %d\n", ideal_dram_util, other_dram_util, dram_util, this_score, other_score);
     }
-    else{
+    else{ // if no contention detected
       dram_util = -1; // don't really have to use memory modulation
     }
     if(cid == 0) gemmini_dram_util[group_id] = ideal_dram_util;//(dram_util != -1) ? dram_util : ideal_dram_util;//ideal_dram_util;
@@ -647,16 +622,16 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
 
   int window = prediction / num_tiles;
   int target_load = (int)((A_load + B_load + D_load)/num_tiles);
- // if(prediction <= ideal_prediction || num_tiles < 4){
+  // if too short running layer, then skip
   if(dram_util >= ideal_dram_util || num_tiles < 4){
     window = 0;
     target_load = 0;
-  } // computation dominant
-
+  } 
   window = (dram_util == -1) ? 0 : window;
   target_load = (dram_util == -1) ? 0 : target_load;
 
-#if PRINT_CALM == 1
+// prints for runtime estimation (offline pre-compiler)
+#if PRINT_MOCA == 1
   printf("window: %d, target load: %d, prediction cycles: %llu \n", window, target_load, prediction);
   // for pre-compilation
   printf("compute_ideal: %llu, mem_ideal: %llu, ideal prediction cycles: %llu, ideal dram bw usage: %d, ideal dram bw util: %d, result dram bw util: %d\n", ideal_runtime, mem_ideal, ideal_prediction, ideal_dram_bw_exp, ideal_dram_util, dram_util);
@@ -671,7 +646,6 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
   return args;
 }
 
-// Tiling functions
 static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const void * D, void * C,
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
         size_t I, size_t J, size_t K, size_t pad_I, size_t pad_J, size_t pad_K,
@@ -2419,7 +2393,7 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
   target_load = (dram_util == -1) ? 0 : target_load;
 
 
-#if PRINT_CALM == 1 
+#if PRINT_MOCA == 1 
   printf("window: %d, target load: %d, prediction cycles: %llu, num tiles: %d \n", window, target_load, prediction, num_tiles);
   // for pre-compilation
   printf("compute_ideal: %llu, mem_ideal: %llu, ideal prediction cycles: %llu, ideal dram bw usage: %d, ideal dram bw util: %d, result dram bw util: %d\n", ideal_runtime, mem_ideal, ideal_prediction, ideal_dram_bw_exp, ideal_dram_util, dram_util);
@@ -3703,7 +3677,7 @@ int* tiled_resadd_bubble_calculate(
   } // computation dominant
 
 
-#if PRINT_CALM == 1
+#if PRINT_MOCA == 1
   printf("window: %d, target load: %d, prediction cycles: %llu \n", window, target_load, prediction);
   // for pre-compilation 
   printf("ideal prediction cycles: %llu, expected dram bw x 100: %d, ideal dram bw util: %d, real dram util: %d \n", ideal_prediction, ideal_dram_bw_exp, ideal_dram_util, dram_util);
@@ -4133,7 +4107,7 @@ int* tiled_pool_bubble_calculate(
     target_load = (int)(total_load / num_tiles) ;
     window = (int)(target_cycles / num_tiles) ;
   }
-#if PRINT_CALM == 1
+#if PRINT_MOCA == 1
   // for pre-compilation
   int C_size = batch_size * out_dim * out_dim * (int)(channels / DIM);
   printf("pool total load: %d, C size: %d, number of tile: %d, target load per tile: %d\n\n", total_load, C_size, num_tiles, target_load);
@@ -4268,7 +4242,7 @@ static void tiled_pool_auto_cid(int batch_size, int channels, int in_dim,
   //printf("window: %d, target_load: %d \n", window, target_load);
 
   window = 0;
-  target_load = 0; // for now, disable CALM on pooling
+  target_load = 0; // for now, disable MOCA on pooling
   //printf("C dram addr before pool: 0x%08lx\n", C);
   tiled_pool(batch_size, in_dim, channels, pool_out_dim,
 				batches, porows, pocols, pochs,

@@ -1,3 +1,7 @@
+#ifndef NUM_CORE
+#define NUM_CORE 8 // for 8 cores
+#endif
+
 #ifndef BAREMETAL
 // code for each workload
 #if BATCH1 == true
@@ -62,13 +66,17 @@
 #define YOLONET_8 22
 #define YOLOLITENET_8 23
 
-#define MAX_WORKLOAD 300
-#define NUM_WORKLOAD (8*3) // 1, 2, 4 batches
+#define MAX_WORKLOAD 600
+#define NUM_WORKLOAD 8//(8*3) // 1, 2, 4 batches
 
 #ifndef total_workloads
 #define total_workloads 200
 #define QUEUE_DEPTH 10
 #endif
+
+//#ifndef planaria_scale
+//#define planaria_scale 2.5
+//#endif
 
 //[[120778499, 67655896, 40484174], [26048228, 16871159, 13302457], [18153183, 13480880, 9734783], [12059398, 7194660, 6382764], [4325949, 2853555, 2790373], [9193046, 5219157, 4111254], [17391717, 10483108, 8413386], [3859186, 3137930, 3222616]]
 //[[485011422, 260614658, 161822568], [103707389, 64801233, 47448663], [36628263, 23877088, 18234202], [46343352, 27089661, 27971820], [16748058, 9558922, 8751179], [38773439, 23131212, 17656532], [67136866, 38408465, 24478347], [15076962, 11593273, 12049913]]
@@ -76,38 +84,37 @@
 
 
 static uint64_t mem_cycles[NUM_WORKLOAD] = 
-{0, 4464256, 9184240, 0, 0, 0, 4231271, 0,
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+{0, 4464256, 9184240, 0, 0, 0, 4231271, 0};//
+//0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // single program (isolated run) cycles
+#if WORKLOAD_CORE == 2
+static uint64_t sp_cycles[NUM_WORKLOAD] =
+{62623637,15070506,8382324,7070440,2608024,9458914,5132036,1978161};
+#elif WORKLOAD_CORE == 4
 static uint64_t sp_cycles[NUM_WORKLOAD] = 
- {40484174, 13302457, 9734783, 6382764, 2790373, 4111254, 9382349, 3222616,
-  161822568, 47448663, 18234202, 27971820, 8751179, 17656532, 24478347, 12049913,
-  327567928, 101819975, 32103729, 55384159, 16752679, 34225754, 55725139, 34942369};
+{34187290,9829820,5539067,4923351,1538641,6203714,3314037,1998578};
+#endif
 
-static uint64_t sp2_cycles[NUM_WORKLOAD] =
- {67655896, 16871159, 13480880, 7194660, 2853555, 5219157, 10483108, 3137930,
-  260614658, 64801233, 23877088, 27089661, 9558922, 23131212, 38408465, 11593273,
-  519399762, 129435130, 39288987, 52921143,18761773, 46963714, 75566170, 22687359};  
+//update more batches
+#if WORKLOAD_CORE == 2
+static uint64_t sp_prediction_cycles[NUM_WORKLOAD] =
+ {67958081,15279080,8789354, 7778090,1949208,9500000, 4600000, 1724694};
+#elif WORKLOAD_CORE == 4
+static uint64_t sp_prediction_cycles[NUM_WORKLAOD] = 
+ {36508639,9591162, 6251126, 5155716,1552023,6000000, 3600000, 1416785};
+#endif
 
-static uint64_t sp_prediction_cycles[NUM_CORE][NUM_WORKLOAD] =
-{{51998429, 11609760, 9775970, 4233402, 1554138, 3048772, 6483179, 2*1014052,
- 219697314, 53193614, 15264781, 15560770, 6302614, 15107557, 20218408, 2*3894960,
- 460570438, 131508421, 32794135, 47788049, 13463166, 31048562, 41018163, 2*8411099},// 4 cores
- {78600899, 16342374, 11693769, 6374191, 1975373, 4398102, 9278409, 2041686,//1.5*1361124,
-  323379193, 70932031, 21652658, 24382388, 7975050, 20436384, 32979430, 7988048,// 1.5*5325365,
-  688920519, 187435173, 56257474, 85237598, 20613232, 43801771, 73829109, 22398058},// 1.5*14932039},// 2 cores
- {136872531, 26509740, 15546486, 10819934, 2909057, 7122425, 15551184, 2204055,
-  552344088, 109148570, 34428412, 42708002, 11587648, 31196813, 59534474, 8744576,
-  1189319719, 304024301, 103184153, 161397053, 35484840, 69308189, 139969715, 28259508},// 1 core
- {2*136872531, 2*26509740, 2*15546486, 2*10819934, 2*2909057, 2*7122425, 2*15551184, 2*2204055,
-  2*552344088, 2*109148570, 2*34428412, 2*42708002, 2*11587648, 2*31196813, 2*59534474, 2*8744576,
-  2378639438, 2*304024301, 2*103184153, 2*161397053, 2*35484840, 2*69308189, 2*139969715, 2*28259508}// 0.5 core
- };
 
-static int workload_group[NUM_WORKLOAD] = {1, 4, 2, 2, 1, 2, 3, 1,
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}; // for now only 1 batch
+static uint64_t target_cycles[NUM_WORKLOAD] = 
+ {200000000, 50000000, 33333334,33333334,10000000,33333334,16666667,10000000};
 
+static int workload_group[NUM_WORKLOAD] = {1, 4, 2, 2, 1, 2, 3, 1};
+//  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}; // for now only 1 batch
+
+static int planaria_group[NUM_WORKLOAD] = 
+ {18, 10, 5, 5, 2, 5, 5, 2};
+//   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 //#define QUEUE_DEPTH 10
 //#define SEED 10 // to randomize workload more
 //#define CAP 0.8 // 0 to 1 (smaller number: shorter time between workload dispatch time)
@@ -118,22 +125,23 @@ static int workload_group[NUM_WORKLOAD] = {1, 4, 2, 2, 1, 2, 3, 1,
 
 static int total_queue_type[MAX_WORKLOAD] = {-1};
 static uint64_t total_queue_dispatch[MAX_WORKLOAD] = {0}; // dispatched time (in order)
-static uint64_t total_queue_finish[NUM_CORE][MAX_WORKLOAD] = {0};
+static uint64_t total_queue_finish[SUB_CORE][MAX_WORKLOAD] = {0};
 static int total_queue_status[MAX_WORKLOAD] = {-1}; // -1: not assigned, 0: in assigned queue, >= 1: part
 static int total_queue_priority[MAX_WORKLOAD] = {-1}; // 0 - 11
-static int total_queue_qos[MAX_WORKLOAD] = {-1}; // latency sensitivity of workload (target: (qos + 1) * 1.2 * sp_cycles)
 static uint64_t total_queue_target[MAX_WORKLOAD] = {0};
-static uint64_t total_queue_runtime_thread[NUM_CORE][MAX_WORKLOAD] = {0}; // for checking purpose (end to end runtime)
-static uint64_t total_queue_runtime_total[NUM_CORE][MAX_WORKLOAD] = {0}; // for checking purpose (end to end runtime)
+static uint64_t total_queue_runtime_thread[SUB_CORE][MAX_WORKLOAD] = {0}; // for checking purpose (end to end runtime)
+static uint64_t total_queue_runtime_total[SUB_CORE][MAX_WORKLOAD] = {0}; // for checking purpose (end to end runtime)
 
 #define MAX_ITER (int)(total_workloads / QUEUE_DEPTH)
-static int gemmini_workload_assigned[NUM_CORE][MAX_ITER][QUEUE_DEPTH] = {-1};
+static int gemmini_workload_assigned[NUM_GROUP][SUB_GROUP][MAX_ITER][QUEUE_DEPTH] = {-1};
 static uint64_t gemmini_runtime[NUM_CORE] = {0}; // to track real runtime without thread create overhead
 
-static int gemmini_workload_grouped[NUM_CORE][MAX_ITER][QUEUE_DEPTH] = {-1};
-static bool gemmini_done[NUM_CORE] = {0};
-
-static uint64_t global_time = 0;
+static int gemmini_workload_grouped[NUM_GROUP][SUB_GROUP][MAX_ITER][QUEUE_DEPTH] = {-1};
+//static bool gemmini_done[NUM_GROUP][SUB_GROUP] = {0};
+static bool gemmini_done[NUM_SUB_GROUP] = {0};
+static bool gemmini_terminate[NUM_SUB_GROUP] = {0};
+static bool gemmini_terminate_receive[NUM_SUB_GROUP] = {0};
+static uint64_t global_time = {0};
 
 // dram_bw -1: disable bandwidth modulation (window, target load to 0)
 // dram_bw 0: monitor gemmini_bw and priority score 
@@ -149,7 +157,7 @@ int rand_seed(uint32_t seed) {
 
 int workload_type_assign(bool batch1, bool batch4, bool batch8, uint32_t seed){
   // currently only batch1
-  int rand_mod = 160;
+  int rand_mod = 140;//58;//160;
   int rand_base = 0;
 
   if(batch4){
@@ -164,59 +172,71 @@ int workload_type_assign(bool batch1, bool batch4, bool batch8, uint32_t seed){
   static int id = 1;
   uint32_t rand_out = rand_seed(seed);
   int r = rand_out % rand_mod + rand_base;
+
   if(batch1){
-    if(r < 8){
-      id = 1;
-    }
-    else if(r < (1+7)){
+    if(r < 0){
       id = 0;
     }
-    else if(r < (1+7+14)){
+    else if(r < (0+12)){
+      id = 1;
+    }
+    else if(r < (0+12+18)){
       id = 2;
     }
-    else if(r < (1+7+14+16)){
+    else if(r < (0+12+18+16)){
       id = 3;
     }
-    else if(r < (1+7+14+16+44)){
+    else if(r < (0+12+18+16+30)){
       id = 4;
     }
-    else if(r < (1+7+14+16+44+21)){
+    else if(r < (0+12+18+16+30+21)){
       id = 5;
     }
-    else if(r < (1+7+14+16+44+21+13)){
+    else if(r < (0+12+18+16+30+21+18)){
       id = 6;
     }
-    else{// if(r < (1+5+11+18+44+24+11+43)){
+    else{// if(r < (1+5+11+18+44+24+11+33)){
       id = 7;
     }
   }
-
-
 /*
-  if(r < 8){
-    id = 1;
+
+  if(batch1){
+    if(r < 0){
+      id = FCNNET_1;
+    }
+    else if(r < (0+9)){
+      id = RESNET_1;
+    }
+    else if(r < (0+9+14)){
+      id = ALEXNET_1;
+    }
+    else if(r < (0+9+14+19)){
+      id = GOOGLENET_1;
+    }
+    else if(r < (0+9+14+19+16)){
+      id = YOLONET_1;
+    }
   }
-  else if(r < (1+8)){
-    id = 0;
+
+  if(batch1){
+    if(r < 0){
+      id = FCNNET_1;
+    }
+    else if(r < (0+43)){
+      id = SQUEEZENET_1;
+    }
+    else if(r < (0+43+42)){
+      id = YOLOLITENET_1;
+    }
+    else if(r < (0+43+42+16)){
+      id = GOOGLENET_1;
+    }
+    else if(r < (0+43+42+16+21)){
+      id = KWSNET_1;
+    }
   }
-  else if(r < (1+8+12)){
-    id = 2;
-  }
-  else if(r < (1+8+12+16)){
-    id = 3;
-  }
-  else if(r < (1+8+12+16+44)){
-    id = 4;
-  }
-  else if(r < (1+8+12+16+44+24)){
-    id = 5;
-  }
-  else if(r < (1+8+12+16+44+24+12)){
-    id = 6;
-  }
-  else{// if(r < (1+8+12+16+44+24+12+43)){
-    id = 7;
-  }
+  
 */
   if(batch4){
     if(r < 0){
@@ -276,148 +296,17 @@ int workload_type_assign(bool batch1, bool batch4, bool batch8, uint32_t seed){
   return id;
 }
 
-// mode 1 workload create function (SLA satisfaction)
-void workload_mode_1(int qos, int workload, bool batch1, bool batch4, bool batch8, uint32_t seed, int cap, float target_scale, float cap_scale){ 
-  // qos < 0 -> mixed
-  // qos >= 0 -> workload dispatch qos apart, qos ways at once
-  for(int i = 0; i < MAX_WORKLOAD; i++)
-    total_queue_status[i]= -1;
-  
-  int first_dispatch_interval = 50000;
-  if (batch4) first_dispatch_interval *= 4;
-  if (batch8) first_dispatch_interval *= 8;
-
-  int group = cap * (2+1);
-  if (qos == 0){ // mixed QoS
-    // extremely high QoS (0) should come really rarely
-    // 1: 30%, 2: 40%, 3: 30%
-    for (int i = 0; i < workload+2*group; i++){
-
-/*
-      int select = rand_seed(seed) % 50;
-      int workload_qos = 1;
-      if(select >= 35)
-        workload_qos = 3;
-      else if (select >= 15)
-        workload_qos = 2;
-      else if(select <= 1)
-        workload_qos = 0;
-*/
-      int workload_qos = qos;
-      group = cap * (qos + 1);
-      int workload_type = workload_type_assign(batch1, batch4, batch8, seed);//rand_base + rand_seed(seed) % rand_mod;
-      total_queue_type[i] = workload_type;
-      total_queue_priority[i] = 4;//(workload_qos == 0) ? 10 : 4;
-      total_queue_qos[i] = workload_qos;
-      total_queue_target[i] = (workload_qos + 1) * target_scale * cap * sp_cycles[workload_type];
-      for (int j = 0; j < NUM_CORE; j++){
-        total_queue_finish[j][i] = 0;
-        total_queue_runtime_thread[j][i] = 0;
-        total_queue_runtime_total[j][i] = 0;
-      }
-      if(i < group){
-        total_queue_dispatch[i] = first_dispatch_interval*i;
-      }
-      else{
-        total_queue_dispatch[i] = total_queue_dispatch[i - group] + sp_cycles[total_queue_type[i - group]] * group * cap_scale; // is it enough?
-      }
-    }
-/*
-    int num_qos_4 = workload / 100; // < 1% of workload 
-    for(int i = 0; i < num_qos_4; i++){
-      int qos_4_index = 0;
-      while (!(qos_4_index > 3 && qos_4_index < 100 * (i + 1))){
-        qos_4_index = rand_seed(seed) % workload;
-      }
-      total_queue_qos[qos_4_index] = 0;
-      total_queue_priority[qos_4_index] = 11;
-    }
-    */
-  }
-  else{
-    group = cap * (qos+1);
-    int num_workload_group = ceil_divide_int(workload+2*group, group);
-    for(int i = 0; i < num_workload_group; i++){
-      for(int j = 0; j < group; j++){
-        int index = group * i + j;
-        int workload_type = workload_type_assign(batch1, batch4, batch8, seed);
-        //int workload_type = rand_base + rand_seed(seed) % rand_mod;
-        total_queue_type[index] = workload_type; 
-//printf("index: %d, output workload type: %d, stored type: %d\n", index, workload_type, total_queue_type[index]);
-        total_queue_priority[index] = 5; // mode 1 -> same priority 
-        total_queue_qos[index] = qos;
-        total_queue_target[index] = (qos + 1) * target_scale * cap * sp_cycles[workload_type];
-        for (int j = 0; j < NUM_CORE; j++){
-           total_queue_finish[j][index] = 0;
-           total_queue_runtime_thread[j][index] = 0;
-           total_queue_runtime_total[j][index] = 0;
-      	}
-        if(i == 0){
-          total_queue_dispatch[index] = first_dispatch_interval*j;
-        }
-        else{
-          total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * group * cap_scale; // is it enough?
-        }
-      }
-    }
-  }  
-
-  for(int i = 0; i < workload; i++){
-    for(int j = i+1; j < workload+2*group; j++){
-      if(total_queue_dispatch[i] > total_queue_dispatch[j]){
-        uint64_t a = total_queue_dispatch[i];
-        total_queue_dispatch[i] = total_queue_dispatch[j];
-        total_queue_dispatch[j] = a;
- 
-        a = total_queue_target[i];
-        total_queue_target[i] = total_queue_target[j];
-        total_queue_target[j] = a;
- 
-        int b = total_queue_priority[i];
-        total_queue_priority[i] = total_queue_priority[j];
-        total_queue_priority[j] = b;
-  
-        b = total_queue_type[i];
-        total_queue_type[i] = total_queue_type[j];
-        total_queue_type[j] = b;
- 
-        b = total_queue_qos[i];
-        total_queue_qos[i] = total_queue_qos[j];
-        total_queue_qos[j] = b;                    
-      }
-    }
-  }
-  for(int i = workload; i < workload+2*group; i++){
-    total_queue_dispatch[i] = 0;
-    total_queue_priority[i] = -1;
-    total_queue_type[i] = -1;
-    total_queue_status[i] = -1;
-    total_queue_qos[i] = -1;
-  }
-
-  //for(int i = 0; i < workload; i++)
-    //printf("after mixing entry %d, workload id %d\n", i, total_queue_type[i]);
-
-  for(int i = 0; i < NUM_CORE; i++){
-    gemmini_runtime[i] = 0; // initialize time 
-  }
-  for(int c = 0; c < NUM_CORE; c++)
-    for(int i = 0; i < MAX_ITER; i++)
-      for(int j = 0; j < QUEUE_DEPTH; j++)
-        gemmini_workload_assigned[c][i][j] = -1;
-}
-
-void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32_t seed, int cap, float target_scale, float cap_scale){
+// to test fairness
+void workload_mode_1(int workload, bool batch1, bool batch4, bool batch8, uint32_t seed, float target_scale, float cap_scale){
   // priority (0: 15, 1: 18 / 2: 10, 4: 15, 6: 15, 8: 15 / 9: 10, 11: 2)
   for(int i = 0; i < MAX_WORKLOAD; i++)
     total_queue_status[i]= -1;
-  int qos = 2; // to lowest QoS
-  int group = (qos+1)*cap;//8;
-
+  
   int first_dispatch_interval = 50000;
   if (batch4) first_dispatch_interval *= 4;
   if (batch8) first_dispatch_interval *= 8;
 
+  int group = CAP; // set this to 4 for 2 cores
   int num_workload_group = ceil_divide_int(workload+group, group);
 
   for(int i = 0; i < num_workload_group; i++){
@@ -426,44 +315,19 @@ void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32
       int workload_type = workload_type_assign(batch1, batch4, batch8, seed);
       //int workload_type = rand_base + rand_seed(seed) % rand_mod;
       total_queue_type[index] = workload_type; 
-      int priority_level = rand_seed(seed) % 100;
-      if(priority_level < 15){
-          priority_level = 0;
-      }
-      else if(priority_level < 33){
-          priority_level = 1;
-      }
-      else if(priority_level < 43){
-          priority_level = 2;
-      }
-      else if(priority_level < 58){
-          priority_level = 4;
-      }
-      else if(priority_level < 73){
-          priority_level = 6;
-      }
-      else if(priority_level < 88){
-          priority_level = 8;
-      }
-      else if(priority_level < 98){
-          priority_level = 9;
-      }
-      else{
-          priority_level = 11;
-      }
-      total_queue_priority[index] = priority_level; 
-      total_queue_qos[index] = qos;
-      total_queue_target[index] = (qos+1)*cap*target_scale*sp_cycles[workload_type];
-      for (int j = 0; j < NUM_CORE; j++){
+      int priority_level = 5; // fixed level priority 
+      total_queue_priority[index] = priority_level;
+      total_queue_target[index] = target_cycles[workload_type] * target_scale;
+      for (int j = 0; j < SUB_CORE; j++){
         total_queue_finish[j][index] = 0;
-   	    total_queue_runtime_thread[j][index] = 0;
-   	    total_queue_runtime_total[j][index] = 0;
+        total_queue_runtime_thread[j][index] = 0;
+        total_queue_runtime_total[j][index] = 0;
       }
       if(i == 0){
         total_queue_dispatch[index] = first_dispatch_interval*j;
       }
       else{
-        total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * (group) * cap_scale; // is it enough?
+        total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * cap_scale;// + 45000*(rand()%20); 
       }
     }
   }
@@ -486,120 +350,60 @@ void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32
         b = total_queue_type[i];
         total_queue_type[i] = total_queue_type[j];
         total_queue_type[j] = b;
- 
-        b = total_queue_qos[i];
-        total_queue_qos[i] = total_queue_qos[j];
-        total_queue_qos[j] = b;                    
+                     
       }
     }
   }
 
+  
   for(int i = workload; i < workload+group; i++){
     total_queue_dispatch[i] = 0;
     total_queue_priority[i] = -1;
     total_queue_type[i] = -1;
     total_queue_status[i] = -1;
-    total_queue_qos[i] = -1;
   }
+
   for(int i = 0; i < NUM_CORE; i++){
-    gemmini_runtime[i] = 0; // initialize time 
+      gemmini_runtime[i] = 0; // initialize time 
+    
   }
-  for(int c = 0; c < NUM_CORE; c++)
-    for(int i = 0; i < MAX_ITER; i++)
-      for(int j = 0; j < QUEUE_DEPTH; j++)
-        gemmini_workload_assigned[c][i][j] = -1; 
-}
+  for(int c = 0; c < NUM_GROUP; c++)
+    for(int k = 0; k < SUB_GROUP; k++)
+      for(int i = 0; i < MAX_ITER; i++)
+        for(int j = 0; j < QUEUE_DEPTH; j++)
+          gemmini_workload_assigned[c][k][i][j] = -1;
 
-// fcfs static partition of 2 cores each
-int workload_fcfs_mp_schedule(int num_group, int num_workload){
-  for(int c = 0; c < NUM_CORE; c++)
-    for(int i = 0; i < MAX_ITER; i++)
-      for(int j = 0; j < QUEUE_DEPTH; j++){
-        gemmini_workload_assigned[c][i][j] = -1;
-      }
 
-  int index = 0;
-  int iter = 0;
-  int group[num_group];
-  uint64_t cycle[num_group];
-  for (int i = 0; i < num_group; i++){
-    cycle[i] = 0;
-    group[i] = 0;
-  }
-
-  while(index < num_workload){
-//    printf("iter: %d, index: %d, cycle0: %llu, cycle1: %llu, group0: %d, group1: %d\n", iter, index, cycle[0], cycle[1], group[0], group[1]);
-    bool full = false;
-    for(int i = 0; i < num_group; i++){
-      if(group[i] == QUEUE_DEPTH){
-        full = true;
-        break;
-      }
-    }
-
-    if(!full){
-      for(int k = 0; k < num_group; k++){
-        if(group[k] == 0){
-          gemmini_workload_assigned[k][iter][group[k]] = index;
-          int type = total_queue_type[index];
-          group[k] += 1;
-          index += 1;
-          cycle[k] += sp2_cycles[type];
-        }
-        else{
-          bool smallest = true;
-          for(int c = 0; c < num_group; c++){
-            if(cycle[k] > cycle[c]){
-              smallest = false;
-              break;
-            }
-          }
-          if(smallest){
-            gemmini_workload_assigned[k][iter][group[k]] = index;
-            int type = total_queue_type[index];
-            index += 1;
-            cycle[k] += sp2_cycles[type];
-            group[k] += 1;
-          }
-
-        }
-      }
-    }
-    else{
-      iter += 1;
-      for(int i = 0; i < num_group; i++){
-        cycle[i] = 0;
-        group[i] = 0;
-      }
-    }
-  }
-  return (iter+1); // number of queue group
 }
 
 // priority scheduling
-int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t current_cycle){
-  for(int c = 0; c < NUM_CORE; c++)
-    for(int i = 0; i < MAX_ITER; i++)
-      for(int j = 0; j < QUEUE_DEPTH; j++){
-        gemmini_workload_grouped[c][i][j] = -1;
-        gemmini_workload_assigned[c][i][j] = -1;
-      }
+// num_sub_group: SUB_CORE (2), or 1 if doing 4+4 partitioning
+int workload_priority_mp(int num_workload, int num_iter, uint64_t current_cycle){
+  for(int group; group < NUM_GROUP; group++)
+    for(int c = 0; c < SUB_GROUP; c++)
+      for(int i = 0; i < MAX_ITER; i++)
+        for(int j = 0; j < QUEUE_DEPTH; j++){
+          gemmini_workload_grouped[group][c][i][j] = -1;
+          gemmini_workload_assigned[group][c][i][j] = -1;
+        }
 
   int num_batch = 1;
   if(total_queue_type[0] >= FCNNET_4)  num_batch = 4;
   if(total_queue_type[0] >= FCNNET_8)  num_batch = 8;
-  printf("workload_priority_mp current cycles: %llu\n", current_cycle);
-  int group[num_group];
-  uint64_t cycle[num_group];
-  for (int i = 0; i < num_group; i++){
+//  printf("workload_priority_mp current cycles: %llu\n", current_cycle);
+
+  // 4 entries if grouping 2 cores
+  int group_temp[NUM_SUB_GROUP];
+  uint64_t cycle[NUM_SUB_GROUP];
+  for (int i = 0; i < NUM_SUB_GROUP; i++){
     cycle[i] = current_cycle + 500000 * num_batch;
-    group[i] = 0;
+    group_temp[i] = 0;
     gemmini_dram_util[i] = 0;
   }
 
   // priority score initialization
   int64_t score[num_workload];
-  int max_depth = QUEUE_DEPTH * 1.8;
+  int max_depth = QUEUE_DEPTH * NUM_SUB_GROUP;
 
   int iter = 0;
 
@@ -615,7 +419,7 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
 
     uint64_t top_cycle = cycle[0];
     // get max cycle
-    for(int i = 0; i < num_group; i++){
+    for(int i = 0; i < NUM_SUB_GROUP; i++){
       if(top_cycle > cycle[i]){
         top_cycle = cycle[i];
       }
@@ -645,7 +449,7 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
     if(done && (pointer == num_workload))
       break;
 
-    //printf("iter: %d, cycle: %llu, cycle0: %llu, cycle1: %llu, dispatch queue pointer: %d\n", iter, top_cycle, cycle[0], cycle[1], pointer);
+   // printf("iter: %d, cycle: %llu, cycle0: %llu, cycle1: %llu, dispatch queue pointer: %d\n", iter, top_cycle, cycle[0], cycle[1], pointer);
     
     // ToDo: QoS 0 (extreme priority)
 
@@ -653,16 +457,14 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
     // based on expected cycles after num_iter
     for(int i = 0; i < pointer; i++){
       if(score[i] >= 0){
-        int qos = total_queue_qos[i];
         int type = total_queue_type[i];
-        uint64_t after_dispatch = (top_cycle - total_queue_dispatch[i]);
-        score[i] = score[i]*1000000 + ((4*1000000*after_dispatch) / (CAP*sp_prediction_cycles[qos][type]));
-        //score[i] = score[i]*1000000 + ((1000000*after_dispatch) / (qos*sp_prediction_cycles[1][type]));
+        uint64_t after_dispatch = (top_cycle > total_queue_dispatch[i]) ? (top_cycle - total_queue_dispatch[i]) : 0;
+        score[i] = score[i]*100000 + ((100000*after_dispatch) / (sp_prediction_cycles[type]));
       }
     }
 
     // first, pick candidate
-    // next, assign using cycle prediction
+    // next, assign using cycle predictio 
     int queue_index = 0;
     int max_index = -1;
     int64_t max_score = -1;
@@ -688,8 +490,8 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
       max_score = -1;
     }
     if(queue_index == 0 && ((iter == 0 && pre_assign_length == 0) || (iter == 1 && pre_assign_length == 1))) break;
- //   printf("queue_index: %d, pre_assign_length: %d, iter: %d\n", queue_index, pre_assign_length, iter);
-    pre_assign_length = queue_index;
+   // printf("queue_index: %d, pre_assign_length: %d, iter: %d\n", queue_index, pre_assign_length, iter);
+   pre_assign_length = queue_index;
    /*
     printf("pre assigned queue length: %d \n", pre_assign_length);
     for(int i = 0; i < pre_assign_length; i++)
@@ -698,19 +500,34 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
     */
 
     for (int p = 0; p < pre_assign_length; ){
-  //    printf("iter: %d, index: %d, cycle0: %llu, cycle1: %llu, group0: %d, group1: %d\n", iter, index, cycle[0], cycle[1], group[0], group[1]);
+  //    printf("iter: %d, index: %d, cycle0: %llu, cycle1: %llu, group0: %d, group1: %d\n", iter, index, cycle[0], cycle[1], group_temp[0], group_temp[1]);
       bool full = false;
-      for(int i = 0; i < num_group; i++){
-        if(group[i] == QUEUE_DEPTH){
+      for(int i = 0; i < NUM_SUB_GROUP; i++){
+        if(group_temp[i] == QUEUE_DEPTH){
           full = true;
           break;
         }
       }
 
       if(!full){
-        for(int k = 0; k < num_group; k++){
+/*
+        // check iter == 1 and first entries are same when executing
+        if (pre_assign_length == 1 && iter == 0){
+          int index = pre_assign_queue[0];
+          int type = total_queue_type[group][index];
+          for(int k=0; k < num_sub_group; k++){
+            gemmini_workload_assigned[group][k][iter][group_temp[k]] = index;
+            cycle[k] += sp2_cycles[type];
+            group_temp[k] += 1;
+            p++;
+          }
+          iter = num_iter;
+          break;
+        }
+  */        
+        for(int k = 0; k < NUM_SUB_GROUP; k++){
           bool smallest = true;
-          for(int c = 0; c < num_group; c++){
+          for(int c = 0; c < NUM_SUB_GROUP; c++){
             if(cycle[k] > cycle[c]){
               smallest = false;
               break;
@@ -718,10 +535,12 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
           }
           if(smallest && p < pre_assign_length){
             int index = pre_assign_queue[p];
-            gemmini_workload_assigned[k][iter][group[k]] = index;
+            int group_index = k / NUM_GROUP;
+            int sub_group_index = k % NUM_GROUP;
+            gemmini_workload_assigned[group_index][sub_group_index][iter][group_temp[k]] = index;
             int type = total_queue_type[index];
-            cycle[k] += sp2_cycles[type];
-            group[k] += 1;
+            cycle[k] += (sp_cycles[type] * (CAP_SCALE+0.1));
+            group_temp[k] += 1;
             p++;
           }
         }
@@ -734,8 +553,8 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
       }
     }
     iter += 1;
-    for(int i = 0; i < num_group; i++){
-      group[i] = 0;
+    for(int i = 0; i < NUM_SUB_GROUP; i++){
+      group_temp[i] = 0;
     }
   }
 
@@ -743,136 +562,413 @@ int workload_priority_mp(int num_group, int num_workload, int num_iter, uint64_t
   return (iter); // number of queue group
 }
 
-void workload_grouping(int num_iter, int num_group){
-  for(int group = 0; group < num_group; group++){
-    for(int iter = 0; iter < num_iter; iter++){
-      for(int i = 0; i < QUEUE_DEPTH; i++){
-        int queue_id = gemmini_workload_assigned[group][iter][i];
-            //printf("queue_id: %d\n", queue_id);
-        if(queue_id != -1){
-          int workload_type = total_queue_type[queue_id];
-          if(workload_type == RESNET_1){ // if it is resnet
-            bool groupped = false;
-            for(int i_next = i; i_next < QUEUE_DEPTH; i_next++){
-              int next_queue_id = gemmini_workload_assigned[group][iter][i_next];
-              int next_type = total_queue_type[next_queue_id];
-              if(next_type == -1) break;
-              if(next_type == GOOGLENET_1 ||next_type == SQUEEZENET_1 || next_type == YOLOLITENET_1 || next_type == KWSNET_1 || next_type == ALEXNET_1){
-                if(gemmini_workload_grouped[group][iter][i_next] != -7){
-                  gemmini_workload_grouped[group][iter][i_next] = -7; // mark 0
-                 
-                  gemmini_workload_grouped[group][iter][i] = next_queue_id;
-                  groupped = true;
-                  break;
-                }
-              }
-            }
-            if(!groupped && iter != num_iter - 1){
-              //printf("num_iter: %d, iter: %d, queue_id: %d\n", num_iter, iter, queue_id);
-              int iter_temp = iter + 1;
-              while(iter_temp < num_iter && !groupped){
-                for(int i_next = 0; i_next < QUEUE_DEPTH; i_next++){
-                  int next_queue_id = gemmini_workload_assigned[group][iter_temp][i_next];
-                  int next_type = total_queue_type[next_queue_id];
-                  if(next_type == -1) break;
-                  if(next_type == GOOGLENET_1 ||next_type == SQUEEZENET_1 || next_type == YOLOLITENET_1 || next_type == KWSNET_1 || next_type == ALEXNET_1){
-                    if(gemmini_workload_grouped[group][iter_temp][i_next] != -7){ 
-                      gemmini_workload_grouped[group][iter_temp][i_next] = -7;
-                      gemmini_workload_grouped[group][iter][i] = next_queue_id; 
-                      groupped = true;
-                      break;
-                    }
-                  }
-                }
-                iter_temp ++;
-              }
-            }
-          }
-          else if(workload_type == ALEXNET_1){ // if it is resnet
-            bool groupped = false;
-            for(int i_next = i; i_next < QUEUE_DEPTH; i_next++){
-              int next_queue_id = gemmini_workload_assigned[group][iter][i_next];
-              int next_type = total_queue_type[next_queue_id];
-              if(next_type == -1) break;
-              if(next_type == GOOGLENET_1 || next_type == YOLONET_1 || next_type == KWSNET_1 || next_type == RESNET_1){
-                if(gemmini_workload_grouped[group][iter][i_next] != -7){
-                  gemmini_workload_grouped[group][iter][i_next] = -7; // mark 0
-                  gemmini_workload_grouped[group][iter][i] = next_queue_id;
-                  groupped = true;
-                  break;
-                }
-              }
-            }
-            if(!groupped && iter != num_iter - 1){ 
-              int iter_temp = iter + 1;
-              while(iter_temp < num_iter && !groupped){
-                for(int i_next = 0; i_next < QUEUE_DEPTH; i_next++){
-                  int next_queue_id = gemmini_workload_assigned[group][iter_temp][i_next];
-                  int next_type = total_queue_type[next_queue_id];
-                  if(next_type == -1) break;
-                  if(next_type == GOOGLENET_1 || next_type == YOLONET_1 || next_type == KWSNET_1 || next_type == RESNET_1 ){
-                    if(gemmini_workload_grouped[group][iter_temp][i_next] != -7){ 
-                      gemmini_workload_grouped[group][iter_temp][i_next] = -7;
-                      gemmini_workload_grouped[group][iter][i] = next_queue_id; 
-                      groupped = true;
-                      break;
-                    }
-                  }
-                }
-                iter_temp ++;
-              }
-            }
-          }
-          else if(workload_type == YOLONET_1){ // if it is resnet
-            bool groupped = false;
-            for(int i_next = i; i_next < QUEUE_DEPTH; i_next++){
-              int next_queue_id = gemmini_workload_assigned[group][iter][i_next];
-              int next_type = total_queue_type[next_queue_id];
-              if(next_type == -1) break;
-              if(next_type == GOOGLENET_1 ||next_type == SQUEEZENET_1 || next_type == YOLOLITENET_1 || next_type == KWSNET_1 || next_type == ALEXNET_1){
-                if(gemmini_workload_grouped[group][iter][i_next] != -7){
-                  gemmini_workload_grouped[group][iter][i_next] = -7;
-                  gemmini_workload_grouped[group][iter][i] = next_queue_id;
-                  groupped = true;
-                  break;
-                }
-              }
-            }
-            if(!groupped && iter != num_iter - 1){
-              //printf("num_iter: %d, iter: %d, queue_id: %d\n", num_iter, iter, queue_id);
-              int iter_temp = iter + 1;
-              while(iter_temp < num_iter && !groupped){
-                for(int i_next = 0; i_next < QUEUE_DEPTH; i_next++){
-                  int next_queue_id = gemmini_workload_assigned[group][iter_temp][i_next];
-                  int next_type = total_queue_type[next_queue_id];
-                  if(next_type == -1) break;
-                  if(next_type == GOOGLENET_1 ||next_type == SQUEEZENET_1 || next_type == YOLOLITENET_1 || next_type == KWSNET_1 || next_type == ALEXNET_1){
-                    if(gemmini_workload_grouped[group][iter_temp][i_next] != -7){ 
-                      gemmini_workload_grouped[group][iter_temp][i_next] = -7;
-                      gemmini_workload_grouped[group][iter][i] = next_queue_id; 
-                      groupped = true;
-                      break;
-                    }
-                  }
-                }
-                iter_temp ++;
-              }
-            }
-          }
-        }
-        else break;
+
+void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32_t seed, float target_scale, float cap_scale){
+  // priority (0: 15, 1: 18 / 2: 10, 4: 15, 6: 15, 8: 15 / 9: 10, 11: 2)
+  for(int i = 0; i < MAX_WORKLOAD; i++)
+    total_queue_status[i]= -1;
+
+  
+  int first_dispatch_interval = 50000;
+  if (batch4) first_dispatch_interval *= 4;
+  if (batch8) first_dispatch_interval *= 8;
+
+  int group = CAP; // set this to 4 for 2 cores
+  int num_workload_group = ceil_divide_int(workload+group, group);
+
+  for(int i = 0; i < num_workload_group; i++){
+    for(int j = 0; j < group; j++){
+      int index = group * i + j;
+      int workload_type = workload_type_assign(batch1, batch4, batch8, seed);
+      //int workload_type = rand_base + rand_seed(seed) % rand_mod;
+      total_queue_type[index] = workload_type; 
+      int priority_level = rand_seed(seed) % 108; //100;
+      if(priority_level < 15){
+          priority_level = 0;
+      }
+      else if(priority_level < 33){
+          priority_level = 1;
+      }
+      else if(priority_level < 43){
+          priority_level = 2;
+      }
+      else if(priority_level < 58){
+          priority_level = 4;
+      }
+      else if(priority_level < 73){
+          priority_level = 6;
+      }
+      else if(priority_level < 88){
+          priority_level = 8;
+      }
+      else if(priority_level < 98){
+          priority_level = 9;
+      }
+      else{
+          priority_level = 11;
+      }
+      total_queue_priority[index] = priority_level;
+      total_queue_target[index] = target_cycles[workload_type] * target_scale;
+      for (int j = 0; j < SUB_CORE; j++){
+        total_queue_finish[j][index] = 0;
+        total_queue_runtime_thread[j][index] = 0;
+        total_queue_runtime_total[j][index] = 0;
+      }
+      if(i == 0){
+        total_queue_dispatch[index] = first_dispatch_interval*j;
+      }
+      else{
+        total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * cap_scale;// + 45000*(rand()%20); 
+      }
+    }
+  }
+ 
+  for(int i = 0; i < workload; i++){
+    for(int j = i+1; j < workload+group; j++){
+      if(total_queue_dispatch[i] > total_queue_dispatch[j]){
+        uint64_t a = total_queue_dispatch[i];
+        total_queue_dispatch[i] = total_queue_dispatch[j];
+        total_queue_dispatch[j] = a;
+ 
+        a = total_queue_target[i];
+        total_queue_target[i] = total_queue_target[j];
+        total_queue_target[j] = a;
+ 
+        int b = total_queue_priority[i];
+        total_queue_priority[i] = total_queue_priority[j];
+        total_queue_priority[j] = b;
+  
+        b = total_queue_type[i];
+        total_queue_type[i] = total_queue_type[j];
+        total_queue_type[j] = b;
+                     
       }
     }
   }
 
+  
+  for(int i = workload; i < workload+group; i++){
+    total_queue_dispatch[i] = 0;
+    total_queue_priority[i] = -1;
+    total_queue_type[i] = -1;
+    total_queue_status[i] = -1;
+  }
+
+  for(int i = 0; i < NUM_CORE; i++){
+      gemmini_runtime[i] = 0; // initialize time 
+    
+  }
+  for(int c = 0; c < NUM_GROUP; c++)
+    for(int k = 0; k < SUB_GROUP; k++)
+      for(int i = 0; i < MAX_ITER; i++)
+        for(int j = 0; j < QUEUE_DEPTH; j++)
+          gemmini_workload_assigned[c][k][i][j] = -1;
+
 
 }
+
+void workload_grouping(int num_iter){
+  for(int group = 0; group < NUM_GROUP; group++){
+    for(int sub = 0; sub < SUB_GROUP; sub++){
+      for(int iter = 0; iter < num_iter; iter++){
+        for(int i = 0; i < QUEUE_DEPTH; i++){
+          int queue_id = gemmini_workload_assigned[group][sub][iter][i];
+              //printf("queue_id: %d\n", queue_id);
+          if(queue_id != -1){
+            int workload_type = total_queue_type[queue_id];
+            if(workload_type == RESNET_1){ // if it is resnet
+              bool groupped = false;
+              for(int i_next = i; i_next < QUEUE_DEPTH; i_next++){
+                int next_queue_id = gemmini_workload_assigned[group][sub][iter][i_next];
+                int next_type = total_queue_type[next_queue_id];
+                if(next_type == -1) break;
+                if(next_type == GOOGLENET_1 ||next_type == SQUEEZENET_1 || next_type == YOLOLITENET_1 || next_type == KWSNET_1 || next_type == ALEXNET_1){
+                  if(gemmini_workload_grouped[group][sub][iter][i_next] != -7){
+                    gemmini_workload_grouped[group][sub][iter][i_next] = -7; // mark 0
+                   
+                    gemmini_workload_grouped[group][sub][iter][i] = next_queue_id;
+                    groupped = true;
+                    break;
+                  }
+                }
+              }
+              if(!groupped && iter != num_iter - 1){
+                //printf("num_iter: %d, iter: %d, queue_id: %d\n", num_iter, iter, queue_id);
+                int iter_temp = iter + 1;
+                while(iter_temp < num_iter && !groupped){
+                  for(int i_next = 0; i_next < QUEUE_DEPTH; i_next++){
+                    int next_queue_id = gemmini_workload_assigned[group][sub][iter_temp][i_next];
+                    int next_type = total_queue_type[next_queue_id];
+                    if(next_type == -1) break;
+                    if(next_type == GOOGLENET_1 ||next_type == SQUEEZENET_1 || next_type == YOLOLITENET_1 || next_type == KWSNET_1 || next_type == ALEXNET_1){
+                      if(gemmini_workload_grouped[group][sub][iter_temp][i_next] != -7){ 
+                        gemmini_workload_grouped[group][sub][iter_temp][i_next] = -7;
+                        gemmini_workload_grouped[group][sub][iter][i] = next_queue_id; 
+                        groupped = true;
+                        break;
+                      }
+                    }
+                  }
+                  iter_temp ++;
+                }
+              }
+            }
+            else if(workload_type == ALEXNET_1){ // if it is resnet
+              bool groupped = false;
+              for(int i_next = i; i_next < QUEUE_DEPTH; i_next++){
+                int next_queue_id = gemmini_workload_assigned[group][sub][iter][i_next];
+                int next_type = total_queue_type[next_queue_id];
+                if(next_type == -1) break;
+                if(next_type == GOOGLENET_1 || next_type == YOLONET_1 || next_type == KWSNET_1 || next_type == RESNET_1){
+                  if(gemmini_workload_grouped[group][sub][iter][i_next] != -7){
+                    gemmini_workload_grouped[group][sub][iter][i_next] = -7; // mark 0
+                    gemmini_workload_grouped[group][sub][iter][i] = next_queue_id;
+                    groupped = true;
+                    break;
+                  }
+                }
+              }
+              if(!groupped && iter != num_iter - 1){ 
+                int iter_temp = iter + 1;
+                while(iter_temp < num_iter && !groupped){
+                  for(int i_next = 0; i_next < QUEUE_DEPTH; i_next++){
+                    int next_queue_id = gemmini_workload_assigned[group][sub][iter_temp][i_next];
+                    int next_type = total_queue_type[next_queue_id];
+                    if(next_type == -1) break;
+                    if(next_type == GOOGLENET_1 || next_type == YOLONET_1 || next_type == KWSNET_1 || next_type == RESNET_1 ){
+                      if(gemmini_workload_grouped[group][sub][iter_temp][i_next] != -7){ 
+                        gemmini_workload_grouped[group][sub][iter_temp][i_next] = -7;
+                        gemmini_workload_grouped[group][sub][iter][i] = next_queue_id; 
+                        groupped = true;
+                        break;
+                      }
+                    }
+                  }
+                  iter_temp ++;
+                }
+              }
+            }
+            else if(workload_type == YOLONET_1){ // if it is resnet
+              bool groupped = false;
+              for(int i_next = i; i_next < QUEUE_DEPTH; i_next++){
+                int next_queue_id = gemmini_workload_assigned[group][sub][iter][i_next];
+                int next_type = total_queue_type[next_queue_id];
+                if(next_type == -1) break;
+                if(next_type == GOOGLENET_1 ||next_type == SQUEEZENET_1 || next_type == YOLOLITENET_1 || next_type == KWSNET_1 || next_type == ALEXNET_1){
+                  if(gemmini_workload_grouped[group][sub][iter][i_next] != -7){
+                    gemmini_workload_grouped[group][sub][iter][i_next] = -7;
+                    gemmini_workload_grouped[group][sub][iter][i] = next_queue_id;
+                    groupped = true;
+                    break;
+                  }
+                }
+              }
+              if(!groupped && iter != num_iter - 1){
+                //printf("num_iter: %d, iter: %d, queue_id: %d\n", num_iter, iter, queue_id);
+                int iter_temp = iter + 1;
+                while(iter_temp < num_iter && !groupped){
+                  for(int i_next = 0; i_next < QUEUE_DEPTH; i_next++){
+                    int next_queue_id = gemmini_workload_assigned[group][sub][iter_temp][i_next];
+                    int next_type = total_queue_type[next_queue_id];
+                    if(next_type == -1) break;
+                    if(next_type == GOOGLENET_1 ||next_type == SQUEEZENET_1 || next_type == YOLOLITENET_1 || next_type == KWSNET_1 || next_type == ALEXNET_1){
+                      if(gemmini_workload_grouped[group][sub][iter_temp][i_next] != -7){ 
+                        gemmini_workload_grouped[group][sub][iter_temp][i_next] = -7;
+                        gemmini_workload_grouped[group][sub][iter][i] = next_queue_id; 
+                        groupped = true;
+                        break;
+                      }
+                    }
+                  }
+                  iter_temp ++;
+                }
+              }
+            }
+          }
+          else break;
+        }
+      }
+    }
+  }
+
+}
+
+// prema scheduling
+// num_sub_group: SUB_CORE (2), or 1 if doing 4+4 partitioning
+int workload_priority_sp(int num_workload, uint64_t current_cycle){
+//  int group = 0; // just assume group 0
+  int num_sub_group = 1;
+
+  for(int c = 0; c < SUB_GROUP; c++)
+    for(int i = 0; i < MAX_ITER; i++)
+      for(int j = 0; j < QUEUE_DEPTH; j++){
+        gemmini_workload_grouped[0][c][i][j] = -1;
+        gemmini_workload_assigned[0][c][i][j] = -1;
+      }
+
+  //num_workload = num_workload * NUM_GROUP; // 2x
+  int num_batch = 1;
+  if(total_queue_type[0] >= FCNNET_4)  num_batch = 4;
+  if(total_queue_type[0] >= FCNNET_8)  num_batch = 8;
+//  printf("workload_priority_mp current cycles: %llu\n", current_cycle);
+
+  
+  int group_temp[num_sub_group];
+  uint64_t cycle[num_sub_group];
+  for (int i = 0; i < num_sub_group; i++){
+    cycle[i] = current_cycle + 2000000 * num_batch;
+    group_temp[i] = 0;
+    //gemmini_dram_util[group*num_sub_group+i] = 0;
+  }
+
+  // priority score initialization
+  int64_t score[num_workload*NUM_GROUP];
+  int max_depth = QUEUE_DEPTH;// * 1.8;
+
+  // repeat from here
+  int pre_assign_queue[max_depth];
+  int64_t pre_assign_score[max_depth]; // need this?
+  int pre_assign_length = 0;
+
+  for(int i = 0; i < max_depth; i++){
+    pre_assign_queue[i] = -1;
+    pre_assign_score[i] = -1;
+  }
+
+  uint64_t top_cycle = cycle[0];
+  // get max cycle
+  for(int i = 0; i < num_sub_group; i++){
+    if(top_cycle > cycle[i]){
+      top_cycle = cycle[i];
+    }
+  }
+
+  int pointer = 0;
+  bool finished = true;
+  for(int i = 0; i < num_workload; i++){
+    if(total_queue_dispatch[i] > top_cycle){
+      pointer = i;
+      break;
+    }
+    else if(i == num_workload - 1){
+      pointer = num_workload;
+    }
+  }
+  pointer = (pointer >= num_workload - 3) ? num_workload : pointer; 
+
+  bool done = true;
+  for (int i = 0; i < pointer; i++){
+    int index = i;
+    if(total_queue_status[i] == -1){ //only take the unassigned ones
+      score[index] = total_queue_priority[i];
+      done = false;
+    }
+    else
+      score[index] = -1;
+  }
+  if(!(done && (pointer == num_workload)))
+    finished = false;
+
+  if(finished)
+    return -1;
+    //break;
+//printf("pointer0: %d, pointer1: %d\n", pointer[0], pointer[1]);
+  //printf("iter: %d, cycle: %llu, cycle0: %llu, cycle1: %llu, dispatch queue pointer: %d\n", iter, top_cycle, cycle[0], cycle[1], pointer);
+     
+  for(int i = 0; i < pointer; i++){
+    if(score[i] >= 0){
+      int type = total_queue_type[i];
+      uint64_t after_dispatch = (top_cycle > total_queue_dispatch[i]) ? (top_cycle - total_queue_dispatch[i]) : 0;
+      score[i] = score[i]*100000 + ((100000*after_dispatch) / (CAP*sp_prediction_cycles[type]));
+      //score[index] = score[index]*100000 + ((100000*after_dispatch) / (qos*sp_prediction_cycles[1][type]));
+    }
+  }
+  
+
+  // first, pick candidate
+  // next, assign using cycle predictio
+  
+
+  int queue_index = 0;
+  int max_index = -1;
+  int64_t max_score = -1;
+  while(queue_index < max_depth){
+    for(int i = 0; i < pointer; i++){
+      if(total_queue_status[i] == -1){
+        if(max_score < score[i]){
+          max_score = score[i];
+          max_index = i;
+        }
+      }
+    }
+  
+    //printf("queue index: %d, max index: %d\n", queue_index, max_index);
+    if(max_index == -1){
+   //   pre_assign_length = queue_index;
+      break;
+    }
+    /*
+    if(queue_index > 0){
+      if(iter == 0 && pre_assign_score[queue_index - 1] > max_score + 6 * 100000){
+        max_index = -1;
+        //printf("max score: %d, pre_assign_score: %d\n", max_score, pre_assign_score[queue_index - 1]);
+        max_score = -1;
+        break;
+      }
+    }
+    */
+    pre_assign_queue[queue_index] = max_index;
+    pre_assign_score[queue_index] = max_score;
+    queue_index ++;
+    total_queue_status[max_index] = 0;
+    max_index = -1;
+    max_score = -1;
+  }
+//  if(queue_index == 0 && ((iter == 0 && pre_assign_length == 0) || (iter == 1 && pre_assign_length == 1))) break;
+ // printf("queue_index: %d, pre_assign_length: %d, iter: %d\n", queue_index, pre_assign_length, iter);
+ pre_assign_length = queue_index;
+ /*
+  printf("pre assigned queue length: %d \n", pre_assign_length);
+  for(int i = 0; i < pre_assign_length; i++)
+    printf("%d, ", pre_assign_queue[i]); 
+  printf("\n");
+  */
+
+  for (int p = 0; p < pre_assign_length; p++){
+//    printf("iter: %d, index: %d, cycle0: %llu, cycle1: %llu, group0: %d, group1: %d\n", iter, index, cycle[0], cycle[1], group_temp[0], group_temp[1]);
+    bool full = p >= QUEUE_DEPTH; 
+
+    if(!full){
+      int index = pre_assign_queue[p];
+      gemmini_workload_assigned[0][0][0][p] = index;
+      int group = index / num_workload;
+      int i = index % num_workload;
+      int type = total_queue_type[i];
+        
+      
+    }
+    else{
+      // release status
+      int index = pre_assign_queue[p];
+      int group = index / num_workload;
+      int i = index % num_workload;
+      total_queue_status[i] = -1;
+    }
+  }
+
+  // if returned value is 0, then it is over
+  return pre_assign_length > QUEUE_DEPTH ? QUEUE_DEPTH : pre_assign_length; // number of queue group
+}
+
+
 #ifndef BAREMETAL
-uint64_t workload_function(int queue_id, int workload_id, size_t cid, size_t group_id, int num_gemmini, int dram_util, pthread_barrier_t *barrier_funct){
+uint64_t workload_function(int queue_id, int workload_id, size_t cid, size_t group_id, size_t sub_group, int num_gemmini, int dram_util, pthread_barrier_t *barrier_funct){
   gemmini_flush(0);
   uint64_t* cycles;
   uint64_t total_runtime;
 
+  size_t sub_group_id = sub_group;
+  //size_t sub_group_id = group_id * NUM_GROUP + sub_group; // out of total sub-group
   int group_status = total_queue_status[queue_id];
   bool part1 = group_status < 1;
   bool part2 = group_status < 2;
@@ -885,35 +981,44 @@ uint64_t workload_function(int queue_id, int workload_id, size_t cid, size_t gro
     int orow_divide = num_gemmini;
     int batch_divide = 1; // 1 batch workload
     if(workload_id == 0){
-      cycles = fcnnet_function_1(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = fcnnet_function_1(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+73);
     }
     else if(workload_id == 1){
-      cycles = resnet_function_1(cid, group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = resnet_function_1(cid, sub_group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
+      else cycles = resnet_function_11(cid, sub_group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+72);
     }
     else if(workload_id == 2){
-      cycles = alexnet_function_1(cid, group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = alexnet_function_1(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      else cycles = alexnet_function_11(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+14);
     }
     else if(workload_id == 3){
-      cycles = googlenet_function_1(cid, group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = googlenet_function_1(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      else cycles = googlenet_function_11(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+71);
     }
     else if(workload_id == 4){
-      cycles = squeezenet_function_1(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+dram_util = -1;
+      if(sub_group_id % 2 == 0) cycles = squeezenet_function_1(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      else cycles = squeezenet_function_11(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+29);
     }
     else if(workload_id == 5){
-      cycles = kwsnet_function_1(cid, group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = kwsnet_function_1(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      else cycles = kwsnet_function_11(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+40);
     }
     else if(workload_id == 6){
-      cycles = yolonet_function_1(cid, group_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = yolonet_function_1(cid, sub_group_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
+      else cycles = yolonet_function_11(cid, sub_group_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+26);
     }
     else if(workload_id == 7){
-      cycles = yololitenet_function_1(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+dram_util = -1;
+      if(sub_group_id % 2 == 0) cycles = yololitenet_function_1(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      else cycles = yololitenet_function_11(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+14);
     }
   }
@@ -924,35 +1029,35 @@ uint64_t workload_function(int queue_id, int workload_id, size_t cid, size_t gro
     int orow_divide = 1;
     int batch_divide = num_gemmini; // 4 batch workload 
     if(workload_id == 8 + 0){
-      cycles = fcnnet_function_4(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = fcnnet_function_4(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+73);
     }
     else if(workload_id == 8 + 1){
-      cycles = resnet_function_4(cid, group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = resnet_function_4(cid, sub_group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+72);
     }
     else if(workload_id == 8 + 2){
-      cycles = alexnet_function_4(cid, group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = alexnet_function_4(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+14);
     }
     else if(workload_id == 8 + 3){
-      cycles = googlenet_function_4(cid, group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = googlenet_function_4(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+71);
     }
     else if(workload_id == 8 + 4){
-      cycles = squeezenet_function_4(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = squeezenet_function_4(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+29);
     }
     else if(workload_id == 8 + 5){
-      cycles = kwsnet_function_4(cid, group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = kwsnet_function_4(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+40);
     }
     else if(workload_id == 8 + 6){
-      cycles = yolonet_function_4(cid, group_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = yolonet_function_4(cid, sub_group_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+26);
     }
     else if(workload_id == 8 + 7){
-      cycles = yololitenet_function_4(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = yololitenet_function_4(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+14);
     }
   }
@@ -964,41 +1069,41 @@ uint64_t workload_function(int queue_id, int workload_id, size_t cid, size_t gro
     int orow_divide = 1;
     int batch_divide = num_gemmini; // 4 batch workload 
     if(workload_id == 16 + 0){
-      cycles = fcnnet_function_8(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = fcnnet_function_8(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+73);
     }
     else if(workload_id == 16 + 1){
-      cycles = resnet_function_8(cid, group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = resnet_function_8(cid, sub_group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+72);
     }
     else if(workload_id == 16 + 2){
-      cycles = alexnet_function_8(cid, group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = alexnet_function_8(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+14);
     }
     else if(workload_id == 16 + 3){
-      cycles = googlenet_function_8(cid, group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = googlenet_function_8(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+71);
     }
     else if(workload_id == 16 + 4){
-      cycles = squeezenet_function_8(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = squeezenet_function_8(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+29);
     }
     else if(workload_id == 16 + 5){
-      cycles = kwsnet_function_8(cid, group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = kwsnet_function_8(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+40);
     }
     else if(workload_id == 16 + 6){
-      cycles = yolonet_function_8(cid, group_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = yolonet_function_8(cid, sub_group_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+26);
     }
     else if(workload_id == 16 + 7){
-      cycles = yololitenet_function_8(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      cycles = yololitenet_function_8(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+14);
     }
   }
 #endif
   if(cid == 0) {
-    gemmini_dram_util[group_id] = 0;
+    gemmini_dram_util[sub_group_id] = 0;
     total_queue_status[queue_id] = 100; // just store big value (finished)
   }
 
@@ -1008,7 +1113,8 @@ uint64_t workload_function(int queue_id, int workload_id, size_t cid, size_t gro
 
 }
 
-uint64_t workload_group_function(int queue_id, int group_queue_id, int original_workload_id, int grouped_workload_id, size_t cid, size_t group_id, int num_gemmini, int dram_util, pthread_barrier_t *barrier_funct){
+// sub_group_id: 0 - 3
+uint64_t workload_group_function(int queue_id, int group_queue_id, int original_workload_id, int grouped_workload_id, size_t cid, size_t group_id, size_t sub_group_id, int num_gemmini, int dram_util, pthread_barrier_t *barrier_funct){
   gemmini_flush(0);
   uint64_t* cycles;
   uint64_t total_runtime;
@@ -1020,148 +1126,289 @@ uint64_t workload_group_function(int queue_id, int group_queue_id, int original_
   bool part4 = group_status < 4;
 #if BATCH1 == true
   //int dram_util_half = (cid == 0) ? dram_util : (dram_util / 2) - 10;
- 
-  //uint64_t start = read_cycles();
-  if(original_workload_id < 8){
-    int orow_divide = num_gemmini;
-    int batch_divide = 1; // 1 batch workload
-    if(original_workload_id == 1){
-      if(part1 || part2 || part3){
-        cycles = resnet_function_1(cid, group_id, part1, part2, part3, false, orow_divide, batch_divide, dram_util, barrier_funct);
-       // total_runtime = *(cycles+72);
-      }
+  if(sub_group_id % 2 == 0){
+    //uint64_t start = read_cycles();
+    if(original_workload_id < 8){
+      int orow_divide = num_gemmini;
+      int batch_divide = 1; // 1 batch workload
+      if(original_workload_id == 1){
+        if(part1 || part2 || part3){
+          cycles = resnet_function_1(cid, sub_group_id, part1, part2, part3, false, orow_divide, batch_divide, dram_util, barrier_funct);
+         // total_runtime = *(cycles+72);
+        }
 
-      if(cid == 0){
-//	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
-//	   dram_util += 10;
-//	}
-        cycles = resnet_block_function_1(0, group_id, false, false, false, true, 1, 1, dram_util);
-        total_runtime = *(cycles+72);
+        if(cid == 0){
+  //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
+  //	   dram_util += 10;
+  //	}
+          cycles = resnet_block_function_1(0, sub_group_id, false, false, false, true, 1, 1, dram_util);
+          total_runtime = *(cycles+72);
+        }
+        else{
+          if(grouped_workload_id == SQUEEZENET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = squeezenet_block_function_1(0, sub_group_id, 1, 1, dram_util); 
+            total_runtime = *(cycles+29);
+            total_queue_status[group_queue_id] = 50;
+          }
+          else if(grouped_workload_id == YOLOLITENET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+  //	  dram_util = 10;
+            cycles = yololitenet_block_function_1(0, sub_group_id, 1, 1, dram_util);
+            total_runtime = *(cycles + 14);
+            total_queue_status[group_queue_id] = 50;
+          }
+          else if(grouped_workload_id == KWSNET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = kwsnet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util);
+            total_runtime = *(cycles + 40);
+            total_queue_status[group_queue_id] = 1;
+          }
+          else if(grouped_workload_id == ALEXNET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = alexnet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util);
+            total_runtime = *(cycles + 14);
+            total_queue_status[group_queue_id] = 1;
+          }
+          else if(grouped_workload_id == GOOGLENET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = googlenet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util); 
+            total_runtime = *(cycles+71);
+            total_queue_status[group_queue_id] = 1;
+          }
+        }
       }
-      else{
-        if(grouped_workload_id == SQUEEZENET_1){
-	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-          cycles = squeezenet_block_function_1(0, group_id, 1, 1, dram_util); 
-          total_runtime = *(cycles+29);
-          total_queue_status[group_queue_id] = 50;
+      else if(original_workload_id == 2){
+        if(part1){
+          cycles = alexnet_function_1(cid, sub_group_id, part1, false, orow_divide, batch_divide, dram_util, barrier_funct);
+          //total_runtime = *(cycles+14);
         }
-        else if(grouped_workload_id == YOLOLITENET_1){
-	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-//	  dram_util = 10;
-          cycles = yololitenet_block_function_1(0, group_id, 1, 1, dram_util);
-          total_runtime = *(cycles + 14);
-          total_queue_status[group_queue_id] = 50;
-        }
-        else if(grouped_workload_id == KWSNET_1){
-	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-          cycles = kwsnet_block_function_1(0, group_id, true, false, 1, 1, dram_util);
-          total_runtime = *(cycles + 40);
-          total_queue_status[group_queue_id] = 1;
-        }
-        else if(grouped_workload_id == ALEXNET_1){
-	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-          cycles = alexnet_block_function_1(0, group_id, true, false, 1, 1, dram_util);
-          total_runtime = *(cycles + 14);
-          total_queue_status[group_queue_id] = 1;
-        }
-        else if(grouped_workload_id == GOOGLENET_1){
-	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-          cycles = googlenet_block_function_1(0, group_id, true, false, 1, 1, dram_util); 
-          total_runtime = *(cycles+71);
-          total_queue_status[group_queue_id] = 1;
-        }
-      }
-    }
-    else if(original_workload_id == 2){
-      if(part1){
-        cycles = alexnet_function_1(cid, group_id, part1, false, orow_divide, batch_divide, dram_util, barrier_funct);
-        //total_runtime = *(cycles+14);
-      }
 
-      if(cid == 0){
-        cycles = alexnet_block_function_1(0, group_id, false, true, 1, 1, dram_util);
-        total_runtime = *(cycles+14);
+        if(cid == 0){
+          cycles = alexnet_block_function_1(0, sub_group_id, false, true, 1, 1, dram_util);
+          total_runtime = *(cycles+14);
+        }
+        else{
+          if(grouped_workload_id == GOOGLENET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = googlenet_block_function_1(0, sub_group_id, true, true, 1, 1, dram_util); 
+            total_runtime = *(cycles+71);
+            total_queue_status[group_queue_id] = 50;
+          }
+          else if(grouped_workload_id == YOLONET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = yolonet_block_function_1(0, sub_group_id, true, true, false, 1, 1, dram_util);
+            total_runtime = *(cycles + 26);
+            total_queue_status[group_queue_id] = 2;
+          }
+          else if(grouped_workload_id == KWSNET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = kwsnet_block_function_1(0, sub_group_id, true, true, 1, 1, dram_util);
+            total_runtime = *(cycles + 40);
+            total_queue_status[group_queue_id] = 50;
+          }
+          else if(grouped_workload_id == RESNET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = resnet_block_function_1(0, sub_group_id, true, true, false, false, 1, 1, dram_util);
+            total_runtime = *(cycles + 72);
+            total_queue_status[group_queue_id] = 2;
+          }
+        }
       }
-      else{
-        if(grouped_workload_id == GOOGLENET_1){
-	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-          cycles = googlenet_block_function_1(0, group_id, true, true, 1, 1, dram_util); 
-          total_runtime = *(cycles+71);
-          total_queue_status[group_queue_id] = 50;
+      else if(original_workload_id == 6){
+        if(part1 || part2){
+          cycles = yolonet_function_1(cid, sub_group_id, part1, part2, false, orow_divide, batch_divide, dram_util, barrier_funct);
+          //total_runtime = *(cycles+26);
         }
-        else if(grouped_workload_id == YOLONET_1){
-	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-          cycles = yolonet_block_function_1(0, group_id, true, true, false, 1, 1, dram_util);
-          total_runtime = *(cycles + 26);
-          total_queue_status[group_queue_id] = 2;
-        }
-        else if(grouped_workload_id == KWSNET_1){
-	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-          cycles = kwsnet_block_function_1(0, group_id, true, true, 1, 1, dram_util);
-          total_runtime = *(cycles + 40);
-          total_queue_status[group_queue_id] = 50;
-        }
-        else if(grouped_workload_id == RESNET_1){
-	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-          cycles = resnet_block_function_1(0, group_id, true, true, false, false, 1, 1, dram_util);
-          total_runtime = *(cycles + 72);
-          total_queue_status[group_queue_id] = 2;
-        }
-      }
-    }
-    else if(original_workload_id == 6){
-      if(part1 || part2){
-        cycles = yolonet_function_1(cid, group_id, part1, part2, false, orow_divide, batch_divide, dram_util, barrier_funct);
-        //total_runtime = *(cycles+26);
-      }
 
-      if(cid == 0){
-//	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
-//	   dram_util += 10;
-//	}
-        cycles = yolonet_block_function_1(0, group_id, false, false, true, 1, 1, dram_util);
-        total_runtime = *(cycles+26);
-      }
-      else{
-        if(grouped_workload_id == SQUEEZENET_1){
-	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-//	  dram_util = 10;
-          cycles = squeezenet_block_function_1(0, group_id, 1, 1, dram_util); 
-          total_runtime = *(cycles+29);
-          total_queue_status[group_queue_id] = 50;
+        if(cid == 0){
+  //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
+  //	   dram_util += 10;
+  //	}
+          cycles = yolonet_block_function_1(0, sub_group_id, false, false, true, 1, 1, dram_util);
+          total_runtime = *(cycles+26);
         }
-        else if(grouped_workload_id == YOLOLITENET_1){
-	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-//	  dram_util = 10;
-          cycles = yololitenet_block_function_1(0, group_id, 1, 1, dram_util);
-          total_runtime = *(cycles + 14);
-          total_queue_status[group_queue_id] = 50;
-        }
-        else if(grouped_workload_id == KWSNET_1){
-	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-          cycles = kwsnet_block_function_1(0, group_id, true, false, 1, 1, dram_util);
-          total_runtime = *(cycles + 40);
-          total_queue_status[group_queue_id] = 1;
-        }
-        else if(grouped_workload_id == ALEXNET_1){
-	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-          cycles = alexnet_block_function_1(0, group_id, true, false, 1, 1, dram_util);
-          total_runtime = *(cycles + 14);
-          total_queue_status[group_queue_id] = 1;
-        }
-        else if(grouped_workload_id == GOOGLENET_1){
-	       dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-          cycles = googlenet_block_function_1(0, group_id, true, false, 1, 1, dram_util); 
-          total_runtime = *(cycles+71);
-          total_queue_status[group_queue_id] = 1;
+        else{
+          if(grouped_workload_id == SQUEEZENET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+  //	  dram_util = 10;
+            cycles = squeezenet_block_function_1(0, sub_group_id, 1, 1, dram_util); 
+            total_runtime = *(cycles+29);
+            total_queue_status[group_queue_id] = 50;
+          }
+          else if(grouped_workload_id == YOLOLITENET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+  //	  dram_util = 10;
+            cycles = yololitenet_block_function_1(0, sub_group_id, 1, 1, dram_util);
+            total_runtime = *(cycles + 14);
+            total_queue_status[group_queue_id] = 50;
+          }
+          else if(grouped_workload_id == KWSNET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = kwsnet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util);
+            total_runtime = *(cycles + 40);
+            total_queue_status[group_queue_id] = 1;
+          }
+          else if(grouped_workload_id == ALEXNET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = alexnet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util);
+            total_runtime = *(cycles + 14);
+            total_queue_status[group_queue_id] = 1;
+          }
+          else if(grouped_workload_id == GOOGLENET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = googlenet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util); 
+            total_runtime = *(cycles+71);
+            total_queue_status[group_queue_id] = 1;
+          }
         }
       }
     }
   }
+  else{
+    if(original_workload_id < 8){
+      int orow_divide = num_gemmini;
+      int batch_divide = 1; // 1 batch workload
+      if(original_workload_id == 1){
+        if(part1 || part2 || part3){
+          cycles = resnet_function_11(cid, sub_group_id, part1, part2, part3, false, orow_divide, batch_divide, dram_util, barrier_funct);
+         // total_runtime = *(cycles+72);
+        }
+
+        if(cid == 0){
+  //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
+  //	   dram_util += 10;
+  //	}
+          cycles = resnet_block_function_11(0, sub_group_id, false, false, false, true, 1, 1, dram_util);
+          total_runtime = *(cycles+72);
+        }
+        else{
+          if(grouped_workload_id == SQUEEZENET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = squeezenet_block_function_11(0, sub_group_id, 1, 1, dram_util); 
+            total_runtime = *(cycles+29);
+            total_queue_status[group_queue_id] = 50;
+          }
+          else if(grouped_workload_id == YOLOLITENET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+  //	  dram_util = 10;
+            cycles = yololitenet_block_function_11(0, sub_group_id, 1, 1, dram_util);
+            total_runtime = *(cycles + 14);
+            total_queue_status[group_queue_id] = 50;
+          }
+          else if(grouped_workload_id == KWSNET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = kwsnet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util);
+            total_runtime = *(cycles + 40);
+            total_queue_status[group_queue_id] = 1;
+          }
+          else if(grouped_workload_id == ALEXNET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = alexnet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util);
+            total_runtime = *(cycles + 14);
+            total_queue_status[group_queue_id] = 1;
+          }
+          else if(grouped_workload_id == GOOGLENET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = googlenet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util); 
+            total_runtime = *(cycles+71);
+            total_queue_status[group_queue_id] = 1;
+          }
+        }
+      }
+      else if(original_workload_id == 2){
+        if(part1){
+          cycles = alexnet_function_11(cid, sub_group_id, part1, false, orow_divide, batch_divide, dram_util, barrier_funct);
+          //total_runtime = *(cycles+14);
+        }
+
+        if(cid == 0){
+          cycles = alexnet_block_function_11(0, sub_group_id, false, true, 1, 1, dram_util);
+          total_runtime = *(cycles+14);
+        }
+        else{
+          if(grouped_workload_id == GOOGLENET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = googlenet_block_function_11(0, sub_group_id, true, true, 1, 1, dram_util); 
+            total_runtime = *(cycles+71);
+            total_queue_status[group_queue_id] = 50;
+          }
+          else if(grouped_workload_id == YOLONET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = yolonet_block_function_11(0, sub_group_id, true, true, false, 1, 1, dram_util);
+            total_runtime = *(cycles + 26);
+            total_queue_status[group_queue_id] = 2;
+          }
+          else if(grouped_workload_id == KWSNET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = kwsnet_block_function_11(0, sub_group_id, true, true, 1, 1, dram_util);
+            total_runtime = *(cycles + 40);
+            total_queue_status[group_queue_id] = 50;
+          }
+          else if(grouped_workload_id == RESNET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = resnet_block_function_11(0, sub_group_id, true, true, false, false, 1, 1, dram_util);
+            total_runtime = *(cycles + 72);
+            total_queue_status[group_queue_id] = 2;
+          }
+        }
+      }
+      else if(original_workload_id == 6){
+        if(part1 || part2){
+          cycles = yolonet_function_11(cid, sub_group_id, part1, part2, false, orow_divide, batch_divide, dram_util, barrier_funct);
+          //total_runtime = *(cycles+26);
+        }
+
+        if(cid == 0){
+  //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
+  //	   dram_util += 10;
+  //	}
+          cycles = yolonet_block_function_11(0, sub_group_id, false, false, true, 1, 1, dram_util);
+          total_runtime = *(cycles+26);
+        }
+        else{
+          if(grouped_workload_id == SQUEEZENET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+  //	  dram_util = 10;
+            cycles = squeezenet_block_function_11(0, sub_group_id, 1, 1, dram_util); 
+            total_runtime = *(cycles+29);
+            total_queue_status[group_queue_id] = 50;
+          }
+          else if(grouped_workload_id == YOLOLITENET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+  //	  dram_util = 10;
+            cycles = yololitenet_block_function_11(0, sub_group_id, 1, 1, dram_util);
+            total_runtime = *(cycles + 14);
+            total_queue_status[group_queue_id] = 50;
+          }
+          else if(grouped_workload_id == KWSNET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = kwsnet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util);
+            total_runtime = *(cycles + 40);
+            total_queue_status[group_queue_id] = 1;
+          }
+          else if(grouped_workload_id == ALEXNET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = alexnet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util);
+            total_runtime = *(cycles + 14);
+            total_queue_status[group_queue_id] = 1;
+          }
+          else if(grouped_workload_id == GOOGLENET_1){
+           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+            cycles = googlenet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util); 
+            total_runtime = *(cycles+71);
+            total_queue_status[group_queue_id] = 1;
+          }
+        }
+      }
+    }
+
+
+  }
 #endif
 
   if(cid == 0) {
-    gemmini_dram_util[group_id] = 0;
+    gemmini_dram_util[sub_group_id] = 0;
     total_queue_status[queue_id] = 80; // just store big value (finished)
   }
   //uint64_t runtime = read_cycles() - start;
@@ -1169,109 +1416,339 @@ uint64_t workload_group_function(int queue_id, int group_queue_id, int original_
 
 }
 
-uint64_t workload_batch_function(int queue_id, int workload_id, size_t cid, size_t group_id, int num_gemmini, int dram_util, pthread_barrier_t *barrier_funct){
+
+#ifdef planaria_scale
+// for planaria
+// barrier_funct2: for subgroup (between 2), barrier_funct4: for group (between 4)
+uint64_t workload_planaria_function(int queue_id, int workload_id, size_t cid, size_t group_id, size_t sub_group_id, int num_gemmini, uint64_t slack_time,  pthread_barrier_t *barrier_funct){
   gemmini_flush(0);
   uint64_t* cycles;
-  uint64_t total_runtime;
+  uint64_t total_runtime = 0;
+  int other_sub_group_id = group_id * WORKLOAD_CORE + (sub_group_id % 2 == 0 ? 1 : 0);   
+  if(cid == 0){
+//printf("num_gemmini: %d, sub group id: %d, other sub group id: %d  workload id %d queue id %d slack: %llu\n", num_gemmini, sub_group_id, other_sub_group_id, workload_id, queue_id, slack_time);
+    gemmini_terminate_receive[sub_group_id] = false;
+    gemmini_terminate[other_sub_group_id] = false;
+  }
+  pthread_barrier_wait(barrier_funct);
+  //size_t sub_group_id = group_id * NUM_GROUP + sub_group; // out of total sub-group
+  int group_status = total_queue_status[queue_id]; // need to update when terminated, check this if it finshed outer loop
+
+  bool part[30];
+  for(int i = 0; i < 30; i++){
+    part[i] = group_status < (i+1);
+  }
+#if BATCH1 == true
+  if(workload_id < 8){
+    int orow_divide = num_gemmini;
+    int batch_divide = 1; // 1 batch workload
+    if(workload_id == 0){
+
+      uint64_t slack = 60000000;
+      for(int i = 0; i < 18; i++){
+        uint64_t start = read_cycles();
+        if(num_gemmini <= 2){
+          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){
+            if(cid == 0 && slack_time <= ((slack - 3000000*i) * planaria_scale)){
+              gemmini_terminate[other_sub_group_id] = true;
+//printf("group id %d need to terminate others\n", sub_group_id);
+            }
+          }
+         /* else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
+            if(cid == 0 && slack_time*2 <= (slack - 1000000*i) * planaria_scale){
+              gemmini_terminate[other_sub_group_id] = true;
+//printf("group id %d need to terminate others\n", sub_group_id);
+            }
+          }*/
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif
+         if(gemmini_terminate_receive[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        }
+        if(part[i]){
+          cycles = fcnnet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          total_runtime += *(cycles+73);
+          if(cid == 0) total_queue_status[queue_id] = i+1;
+        }
+        uint64_t end = read_cycles();
+        slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
+      }
+    
+    }
+    else if(workload_id == 1){
+      uint64_t slack = 20000000;
+//      int other_sub_group_id = group_id * WORKLOAD_CORE + (sub_group_id % 2 == 0 ? 1 : 0);      
+      for(int i = 0; i < 10; i++){
+        uint64_t start = read_cycles();
+        if(num_gemmini <= 2){
+          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){    
+            if(cid == 0 && slack_time <= (slack - 2000000*i) * planaria_scale){
+              gemmini_terminate[other_sub_group_id] = true;
+//printf("group id %d need to terminate others\n", sub_group_id);
+            }
+          }
+      /*    else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
+            if(cid == 0 && slack_time*2 <= (slack - 2000000*i) * planaria_scale){
+              gemmini_terminate[other_sub_group_id] = true;
+//printf("group id %d need to terminate others\n", sub_group_id);
+            }
+          }*/
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif 
+          if(gemmini_terminate_receive[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        }
+        if(part[i]){
+          if(sub_group_id % 2 == 0) cycles = resnet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          else cycles = resnet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          total_runtime += *(cycles+72);
+          if(cid == 0) total_queue_status[queue_id] = (i+1); 
+        }
+        uint64_t end = read_cycles();
+        slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
+      }
+
+    }
+    else if(workload_id == 2){
+      uint64_t slack[5] = {12522781, 10500000, 6429112, 2297240, 459726};
+      if(num_gemmini == 4){ 
+//printf("executing alexnet with all 4cores\n");
+      	if(sub_group_id % 2 == 0) cycles = alexnet_function_1(cid, sub_group_id, true, true, orow_divide, batch_divide, -1, barrier_funct);
+      	else cycles = alexnet_function_11(cid, sub_group_id, true, true, orow_divide, batch_divide, -1, barrier_funct);
+      	total_runtime = *(cycles+14);
+        if(cid == 0) total_queue_status[queue_id] = 100;
+      }
+      else{
+      
+        for(int i = 0; i < 5; i++){
+          uint64_t start = read_cycles(); 
+          if(cid == 0) gemmini_terminate[other_sub_group_id] = false;
+        /*  else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
+            if(cid == 0 && slack_time*2 <= (slack[i]) * planaria_scale){
+              gemmini_terminate[other_sub_group_id] = true;
+//printf("group id %d need to terminate others\n", sub_group_id);
+            }
+          }*/
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif 
+          if(gemmini_terminate_receive[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        
+          if(part[i]){
+            if(sub_group_id % 2 == 0) cycles = alexnet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+            else cycles = alexnet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+            total_runtime += *(cycles+14);
+            if(cid == 0) total_queue_status[queue_id] = (i+1); 
+          }
+          uint64_t end = read_cycles();
+          slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
+        }
+      }
+    }
+    else if(workload_id == 3){
+      uint64_t slack = 10000000;
+  //    int other_sub_group_id = group_id * WORKLOAD_CORE + (sub_group_id % 2 == 0 ? 1 : 0);      
+      for(int i = 0; i < 5; i++){
+        uint64_t start = read_cycles();
+          if(cid == 0) gemmini_terminate[other_sub_group_id] = false;
+        if(num_gemmini <= 2){
 /*
-  int group_status = total_queue_status[queue_id];
-  bool part1 = group_status < 1;
-  bool part2 = group_status < 2;
-  bool part3 = group_status < 3;
-  bool part4 = group_status < 4;
-  */
+          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){    
+            if(cid == 0 && slack_time <= (slack - 2000000*i) * planaria_scale){
+              gemmini_terminate[other_sub_group_id] = true;
+            }
+          }
+*/
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif 
+          if(gemmini_terminate_receive[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        }
+        if(part[i]){
+          if(sub_group_id % 2 == 0) cycles = googlenet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          else cycles = googlenet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          total_runtime += *(cycles+71);
+          if(cid == 0) total_queue_status[queue_id] = (i+1); 
+        }
+        uint64_t end = read_cycles();
+        slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
+      }
 
-#if BATCH4 == true  
-  if(workload_id < 16){
-    int orow_divide = 1;
-    int batch_divide = num_gemmini; // 4 batch workload 
-    if(workload_id == 8 + 0){
-      cycles = fcnnet_batch_function_4(cid, group_id, true, true, true, dram_util, barrier_funct);
-      total_runtime = *(cycles+73);
     }
-    else if(workload_id == 8 + 1){
-      cycles = resnet_batch_function_4(cid, group_id, true, true, true, dram_util, barrier_funct);
-      total_runtime = *(cycles+72);
+    else if(workload_id == 4){
+      uint64_t slack = 2000000;
+      for(int i = 0; i < 2; i++){
+        uint64_t start = read_cycles();
+        if(num_gemmini <= 2){
+          if(cid == 0) gemmini_terminate[other_sub_group_id] = false;
+         /* else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
+            if(cid == 0 && slack_time*2 <= (slack - 1000000*i) * planaria_scale){
+              gemmini_terminate[other_sub_group_id] = true;
+//printf("group id %d need to terminate others\n", sub_group_id);
+            }
+          }*/
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif
+         if(gemmini_terminate_receive[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        }
+        if(part[i]){
+          if(sub_group_id % 2 == 0) cycles = squeezenet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          else cycles = squeezenet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          total_runtime += *(cycles+29);
+          if(cid == 0) total_queue_status[queue_id] = i+1;
+        }
+        uint64_t end = read_cycles();
+        slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
+      }
     }
-    else if(workload_id == 8 + 2){
-      cycles = alexnet_batch_function_4(cid, group_id, true, true, num_gemmini, 1, dram_util, barrier_funct);
-      total_runtime = *(cycles+14);
+    else if(workload_id == 5){
+      uint64_t slack = 4000000;
+      for(int i = 0; i < 5; i++){
+        uint64_t start = read_cycles();
+        if(num_gemmini <= 2){
+          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){
+            if(cid == 0 && slack_time <= ((slack - 800000*i) * planaria_scale)){
+              gemmini_terminate[other_sub_group_id] = true;
+            }
+          }
+         /* else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
+            if(cid == 0 && slack_time*2 <= (slack - 800000*i) * planaria_scale){
+              gemmini_terminate[other_sub_group_id] = true;
+//printf("group id %d need to terminate others\n", sub_group_id);
+            }
+          }*/
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif 
+          if(gemmini_terminate_receive[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        }
+        if(part[i]){
+          if(sub_group_id % 2 == 0) cycles = kwsnet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          else cycles = kwsnet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          total_runtime += *(cycles+40);
+          if(cid == 0) total_queue_status[queue_id] = i+1;
+        }
+        uint64_t end = read_cycles();
+        slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
+      }
+        
     }
-    else if(workload_id == 8 + 3){
-      cycles = googlenet_batch_function_4(cid, group_id, true, true, dram_util, barrier_funct);
-      total_runtime = *(cycles+71);
+    else if(workload_id == 6){
+      uint64_t slack = 10000000;
+      for(int i = 0; i < 5; i++){
+        uint64_t start = read_cycles();
+        if(num_gemmini <= 2){
+          if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id]){
+            if(cid == 0 && slack_time <= ((slack - 2000000*i) * planaria_scale)){
+              gemmini_terminate[other_sub_group_id] = true;
+//printf("group id %d need to terminate others\n", sub_group_id);
+            }
+          }
+         /* else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
+            if(cid == 0 && slack_time*2 <= (slack - 2000000*i) * planaria_scale){
+              gemmini_terminate[other_sub_group_id] = true;
+//printf("group id %d need to terminate others\n", sub_group_id);
+            }
+          }*/
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif 
+          if(gemmini_terminate_receive[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        }
+        if(part[i]){
+          if(sub_group_id % 2 == 0) cycles = yolonet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          else cycles = yolonet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          total_runtime += *(cycles+26);
+          if(cid == 0) total_queue_status[queue_id] = i+1;
+        }
+        uint64_t end = read_cycles();
+        slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
+      }
+  
     }
-    else if(workload_id == 8 + 4){
-dram_util = -1;
-      cycles = squeezenet_function_4(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
-      total_runtime = *(cycles+29);
-    }
-    else if(workload_id == 8 + 5){
-      cycles = kwsnet_batch_function_4(cid, group_id, true, true, dram_util, barrier_funct);
-      total_runtime = *(cycles+40);
-    }
-    else if(workload_id == 8 + 6){
-      cycles = yolonet_batch_function_4(cid, group_id, true, true, dram_util, barrier_funct);
-      total_runtime = *(cycles+26);
-    }
-    else if(workload_id == 8 + 7){
-dram_util = -1;
-      cycles = yololitenet_function_4(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
-      total_runtime = *(cycles+14);
+    else if(workload_id == 7){
+      uint64_t slack = 1800000;
+      for(int i = 0; i < 2; i++){
+        uint64_t start = read_cycles();
+        if(num_gemmini <= 2){
+          if(cid == 0) gemmini_terminate[other_sub_group_id] = false;
+         /* else if(gemmini_planaria_score[other_sub_group_id] <= gemmini_planaria_score[sub_group_id] * 2){    
+            if(cid == 0 && slack_time*2 <= (slack - 900000*i) * planaria_scale){
+              gemmini_terminate[other_sub_group_id] = true;
+//printf("group id %d need to terminate others\n", sub_group_id);
+            }
+          }*/
+          if(gemmini_terminate[other_sub_group_id] || gemmini_terminate[sub_group_id])
+            if(cid == 0) gemmini_terminate_receive[sub_group_id] = true;
+          pthread_barrier_wait(barrier_funct);
+#if debug_print == 1
+printf("group id %d workload %d part %d - my score: %d, others score: %d, slack: %llu, slack time: %llu, other terminate me: %d, me terminate other: %d, recieved: %d\n", sub_group_id, workload_id, i, gemmini_planaria_score[sub_group_id], gemmini_planaria_score[other_sub_group_id], slack, slack_time, gemmini_terminate[sub_group_id], gemmini_terminate[other_sub_group_id], gemmini_terminate_receive[sub_group_id]);
+#endif 
+          if(gemmini_terminate_receive[sub_group_id])
+            break;
+          pthread_barrier_wait(barrier_funct);
+        }
+        if(part[i]){
+          if(sub_group_id % 2 == 0) cycles = yololitenet_planaria_function_1(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          else cycles = yololitenet_planaria_function_11(cid, sub_group_id, i, orow_divide, batch_divide, -1, barrier_funct);
+          total_runtime += *(cycles+14);
+          if(cid == 0) total_queue_status[queue_id] = i+1;
+        }
+        uint64_t end = read_cycles();
+        slack_time = (slack_time < (end - start)) ? 0 : slack_time - (end - start);
+      }
+    
     }
   }
 #endif
-
-#if BATCH8 == true  
-  if(workload_id < 24 && workload_id >= 16){
-    int orow_divide = 1;
-    int batch_divide = num_gemmini; // 4 batch workload 
-    if(workload_id == 16 + 0){
-      cycles = fcnnet_batch_function_8(cid, group_id, true, true, true, dram_util, barrier_funct);
-      total_runtime = *(cycles+73);
-    }
-    else if(workload_id == 16 + 1){
-      cycles = resnet_batch_function_8(cid, group_id, true, true, true, dram_util, barrier_funct);
-      total_runtime = *(cycles+72);
-    }
-    else if(workload_id == 16 + 2){
-      cycles = alexnet_batch_function_8(cid, group_id, true, true, num_gemmini, 1, dram_util, barrier_funct);
-      total_runtime = *(cycles+14);
-    }
-    else if(workload_id == 16 + 3){
-      cycles = googlenet_batch_function_8(cid, group_id, true, true, dram_util, barrier_funct);
-      total_runtime = *(cycles+71);
-    }
-    else if(workload_id == 16 + 4){
-dram_util = -1;
-      cycles = squeezenet_function_8(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
-      total_runtime = *(cycles+29);
-    }
-    else if(workload_id == 16 + 5){
-      cycles = kwsnet_batch_function_8(cid, group_id, true, true, dram_util, barrier_funct);
-      total_runtime = *(cycles+40);
-    }
-    else if(workload_id == 16 + 6){
-      cycles = yolonet_batch_function_8(cid, group_id, true, true, dram_util, barrier_funct);
-      total_runtime = *(cycles+26);
-    }
-    else if(workload_id == 16 + 7){
-dram_util = -1;
-      cycles = yololitenet_function_8(cid, group_id, orow_divide, batch_divide, dram_util, barrier_funct);
-      total_runtime = *(cycles+14);
-    }
-  }
-#endif
-
-
+/*
   if(cid == 0) {
-    gemmini_dram_util[group_id] = 0;
-    total_queue_status[queue_id] = 100; // just store big value (finished)
+    gemmini_dram_util[sub_group_id] = 0;
+    total_queue_status[group_id][queue_id] = 100; // just store big value (finished)
   }
-
+*/
   //if(cid == 0) total_queue_status[queue_id] = 100; // just store big value (finished)
   //uint64_t runtime = read_cycles() - start;
   return total_runtime;
 
 }
+
+#endif
+
 #endif
