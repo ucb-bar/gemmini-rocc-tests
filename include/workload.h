@@ -216,7 +216,7 @@ int workload_priority_mp(int num_workload, int num_iter, uint64_t current_cycle)
       if(score[i] >= 0){
         int type = total_queue_type[i];
         uint64_t after_dispatch = (top_cycle > total_queue_dispatch[i]) ? (top_cycle - total_queue_dispatch[i]) : 0;
-        score[i] = score[i]*100000 + ((100000*after_dispatch) / (sp_prediction_cycles[type]));
+        score[i] = score[i]*100000 + ((100000*after_dispatch) / (sp_prediction_cycles[type-1]));
       }
     }
 
@@ -296,7 +296,8 @@ int workload_priority_mp(int num_workload, int num_iter, uint64_t current_cycle)
             int sub_group_index = k % NUM_GROUP;
             gemmini_workload_assigned[group_index][sub_group_index][iter][group_temp[k]] = index;
             int type = total_queue_type[index];
-            cycle[k] += (sp_cycles[type] * (CAP_SCALE+0.1));
+            cycle[k] += (tp_prediction_cycles[type-1] * (INTER_SCALE));
+            //cycle[k] += (sp_cycles[type] * (CAP_SCALE+0.1));
             group_temp[k] += 1;
             p++;
           }
@@ -327,8 +328,6 @@ void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32
 
   
   int first_dispatch_interval = 50000;
-  if (batch4) first_dispatch_interval *= 4;
-  if (batch8) first_dispatch_interval *= 8;
 
   int group = CAP; // set this to 4 for 2 cores
   int num_workload_group = ceil_divide_int(workload+group, group);
@@ -377,7 +376,7 @@ void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32
         total_queue_dispatch[index] = first_dispatch_interval*j;
       }
       else{
-        total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * cap_scale;// + 45000*(rand()%20); 
+        total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]-1] * cap_scale;// + 45000*(rand()%20); 
       }
     }
   }
@@ -644,7 +643,7 @@ int workload_priority_sp(int num_workload, uint64_t current_cycle){
     if(score[i] >= 0){
       int type = total_queue_type[i];
       uint64_t after_dispatch = (top_cycle > total_queue_dispatch[i]) ? (top_cycle - total_queue_dispatch[i]) : 0;
-      score[i] = score[i]*100000 + ((100000*after_dispatch) / (CAP*sp_prediction_cycles[type]));
+      score[i] = score[i]*100000 + ((100000*after_dispatch) / (CAP*sp_prediction_cycles[type-1]));
       //score[index] = score[index]*100000 + ((100000*after_dispatch) / (qos*sp_prediction_cycles[1][type]));
     }
   }

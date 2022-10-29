@@ -22,6 +22,7 @@
 #define CAP 4 // 0 to 1 (smaller number: shorter time between workload dispatch time)
 #define CAP_SCALE 1.3
 #define TARGET_SCALE 1.0
+#define INTER_SCALE 1.2
 
 #define BATCH1 true
 #define BATCH4 false

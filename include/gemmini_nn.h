@@ -221,7 +221,7 @@ static void tiled_matmul_nn_auto_stride(size_t dim_I, size_t dim_J, size_t dim_K
   if(cid == 0){ 
     int workload_type = total_queue_type[gemmini_queue_id[group_id]];
     int queue_id = gemmini_queue_id[group_id];
-    total_queue_togo[queue_id] -= conv_prediction_cycles[workload_type][queue_id];
+    total_queue_togo[queue_id] -= conv_prediction_cycles[workload_type-1][queue_id];
     total_queue_conv[queue_id] ++;
     //gemmini_score[group_id] = this_score;
   }
