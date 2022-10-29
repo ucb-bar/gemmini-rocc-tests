@@ -27,7 +27,7 @@
 #define WORKLOAD_A true
 #define WORKLOAD_B false
 // else: mixed (C)
-#define BATCH_1 true
+#define BATCH1 true
 
 #define debug_print 0
 
