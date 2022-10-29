@@ -15,18 +15,19 @@
 
 #define NUM_CORE 8
 #define SEED 0
-#define total_workloads 250 // 100 each
+#define total_workloads 300 // 100 each
 #define WORKLOAD_CORE 2
 #define QUEUE_DEPTH 6
 #define NUM_ITER 3
-#define CAP 4 // 0 to 1 (smaller number: shorter time between workload dispatch time)
+#define CAP 4 
 #define CAP_SCALE 1.3
 #define TARGET_SCALE 1.0
-#define INTER_SCALE 1.2
+#define INTER_SCALE 1.1
 
-#define BATCH1 true
-#define BATCH4 false
-#define BATCH8 false
+#define WORKLOAD_A false
+#define WORKLOAD_B false
+// else: mixed (C)
+
 
 #define debug_print 0
 
@@ -262,7 +263,7 @@ int main (int argc, char * argv[]) {
       pthread_barrier_init(&barrier[i], NULL, WORKLOAD_CORE);
     }
     printf("starting workload creation \n");
-    workload_mode_2(total_workloads, BATCH1, BATCH4, BATCH8, SEED, TARGET_SCALE, CAP_SCALE); 
+    workload_mode_2(total_workloads, BATCH1, false, false, SEED, TARGET_SCALE, CAP_SCALE); 
     printf("workload creation finished \n");
 
     int queue_group = 1;

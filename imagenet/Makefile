@@ -1,12 +1,12 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	priority_mp8_dynamicb \
+	priority_mp8_dynamic \
 	priority_mp8_static \
-	priority_mp8_dynamicb_l \
-	priority_mp8_dynamicb_h \
-	priority_mp8_staticb3 \
-	priority_mp8_staticb2 \
+	priority_mp8_dynamica \
+	priority_mp8_statica \
+	priority_mp8_dynamicb \
+	priority_mp8_staticb \
 	prema_mp8 \
 	prema_mp8_l \
 	prema_mp8_h \

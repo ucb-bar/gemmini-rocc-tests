@@ -24,8 +24,8 @@
 #define TARGET_SCALE 1.0
 #define INTER_SCALE 1.1
 
-#define WORKLOAD_A false
-#define WORKLOAD_B true
+#define WORKLOAD_A true
+#define WORKLOAD_B false
 // else: mixed (C)
 
 #define BATCH1 true

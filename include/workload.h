@@ -17,7 +17,7 @@
 #define YOLONET_1 6 // 3 blocks: [4, 13, 19 (mem)] same as ResNet
 #define YOLOLITENET_1 7 
 
-// single program (isolated run) cycles
+// some random cycles for dispatch interval
 #if WORKLOAD_CORE == 2
 static uint64_t sp_cycles[NUM_WORKLOAD] =
 {15070506,8382324,7070440,2608024,9458914,5132036,1978161};
@@ -30,14 +30,8 @@ static uint64_t target_cycles[NUM_WORKLOAD] =
  {50000000, 33333334,33333334,10000000,33333334,16666667,10000000};
 
 static int workload_group[NUM_WORKLOAD] = {4, 2, 2, 1, 2, 3, 1};
-//  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}; // for now only 1 batch
-
 static int planaria_group[NUM_WORKLOAD] = 
 {10, 5, 5, 2, 5, 5, 2};
-//   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-//#define QUEUE_DEPTH 10
-//#define SEED 10 // to randomize workload more
-//#define CAP 0.8 // 0 to 1 (smaller number: shorter time between workload dispatch time)
 
 //workload creating capacity: cap * sp_cycles * cap_scale(<1)
 //QoS target: cap * (qos+1) *  sp_cycles * target_scale(> 1, < 1)
@@ -50,88 +44,78 @@ int rand_seed(uint32_t seed) {
 
 int workload_type_assign(bool batch1, bool batch4, bool batch8, uint32_t seed){
   // currently only batch1
-  int rand_mod = 140;//58;//160;
+#if WORKLOAD_A == 1
+  int rand_mod = 76;
   int rand_base = 0;
-
-  if(batch4){
-    rand_base = 0;
-    rand_mod = 165;
-  }
-  else if(batch8){
-    rand_base = 0;
-    rand_mod = 170;
-  }
 
   static int id = 1;
   uint32_t rand_out = rand_seed(seed);
   int r = rand_out % rand_mod + rand_base;
-
   if(batch1){
-    if(r < 0){
-      id = 0;
+    //30
+      if(r < (30)){
+      id = SQUEEZENET_1;
     }
-    else if(r < (0+12)){
-      id = 1;
+    //21
+    else if(r < (30+21)){
+      id = KWSNET_1;
     }
-    else if(r < (0+12+18)){
-      id = 2;
-    }
-    else if(r < (0+12+18+16)){
-      id = 3;
-    }
-    else if(r < (0+12+18+16+30)){
-      id = 4;
-    }
-    else if(r < (0+12+18+16+30+21)){
-      id = 5;
-    }
-    else if(r < (0+12+18+16+30+21+18)){
-      id = 6;
-    }
-    else{// if(r < (1+5+11+18+44+24+11+33)){
-      id = 7;
+    else{//25
+      id = YOLOLITENET_1;
     }
   }
-/*
+#elif WORKLOAD_B == 1
+  int rand_mod = 64;
+  int rand_base = 0;
 
+  static int id = 1;
+  uint32_t rand_out = rand_seed(seed);
+  int r = rand_out % rand_mod + rand_base;
   if(batch1){
-    if(r < 0){
-      id = FCNNET_1;
-    }
-    else if(r < (0+9)){
+    if(r < (0+12)){
       id = RESNET_1;
     }
-    else if(r < (0+9+14)){
+    else if(r < (0+12+18)){
       id = ALEXNET_1;
     }
-    else if(r < (0+9+14+19)){
+    else if(r < (0+12+18+16)){
       id = GOOGLENET_1;
     }
-    else if(r < (0+9+14+19+16)){
+    else{
       id = YOLONET_1;
     }
   }
+#else
+  int rand_mod = 140;//58;//160;
+  int rand_base = 0;
 
+  static int id = 1;
+  uint32_t rand_out = rand_seed(seed);
+  int r = rand_out % rand_mod + rand_base;
   if(batch1){
-    if(r < 0){
-      id = FCNNET_1;
+    if(r < (0+12)){
+      id = RESNET_1;
     }
-    else if(r < (0+43)){
-      id = SQUEEZENET_1;
+    else if(r < (0+12+18)){
+      id = ALEXNET_1;
     }
-    else if(r < (0+43+42)){
-      id = YOLOLITENET_1;
-    }
-    else if(r < (0+43+42+16)){
+    else if(r < (0+12+18+16)){
       id = GOOGLENET_1;
     }
-    else if(r < (0+43+42+16+21)){
+    else if(r < (0+12+18+16+30)){
+      id = SQUEEZENET_1;
+    }
+    else if(r < (0+12+18+16+30+21)){
       id = KWSNET_1;
     }
+    else if(r < (0+12+18+16+30+21+18)){
+      id = YOLONET_1;
+    }
+    else{
+      id = YOLOLITENET_1;
+    }
   }
-  
-*/
-    //printf("rand output: %zu, rand output value: %d, workload id: %d \n", rand_out, r, id);
+#endif
   return id;
 }
 
@@ -330,7 +314,7 @@ void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32
   int first_dispatch_interval = 50000;
 
   int group = CAP; // set this to 4 for 2 cores
-  int num_workload_group = ceil_divide_int(workload+group, group);
+  int num_workload_group = ceil_divide_int(workload+2*group, group);
 
   for(int i = 0; i < num_workload_group; i++){
     for(int j = 0; j < group; j++){
@@ -376,13 +360,14 @@ void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32
         total_queue_dispatch[index] = first_dispatch_interval*j;
       }
       else{
-        total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]-1] * cap_scale;// + 45000*(rand()%20); 
+        //total_queue_dispatch[index] = total_queue_dispatch[index-group] + tp_prediction_cycle[total_queue_type[index-group]-1]*cap_scale - 45000*(rand()%20);
+        total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]-1] * cap_scale -  45000*(rand()%20); 
       }
     }
   }
  
   for(int i = 0; i < workload; i++){
-    for(int j = i+1; j < workload+group; j++){
+    for(int j = i+1; j < workload+2*group; j++){
       if(total_queue_dispatch[i] > total_queue_dispatch[j]){
         uint64_t a = total_queue_dispatch[i];
         total_queue_dispatch[i] = total_queue_dispatch[j];
@@ -413,7 +398,7 @@ void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32
   }
 
   
-  for(int i = workload; i < workload+group; i++){
+  for(int i = workload; i < workload+2*group; i++){
     total_queue_dispatch[i] = 0;
     total_queue_priority[i] = -1;
     total_queue_type[i] = -1;
