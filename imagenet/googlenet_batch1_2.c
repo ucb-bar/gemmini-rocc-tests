@@ -29,7 +29,7 @@ pthread_barrier_t barrier[num_proc];
 #define target_util -1 // ToDo: needs to be changed for target utilization
 #define bubble 0
 
-#define GOOGLENET_REPEAT 20
+#define GOOGLENET_REPEAT 7
 
 
 #define MAT_DIM_I 512
@@ -155,8 +155,8 @@ int main (int argc, char * argv[]) {
    // for(int i = 0; i < OROW_DIVIDE; i++)
    //     nn_args[i].target_cycles = GOOGLENET_TARGET;
     
-    //pthread_barrier_init(&barrier, NULL, num_proc);
-    pthread_barrier_init(&barrier[0], NULL, num_proc);
+    //pthread_barrier_init(&barrier, NULL, OROW_DIVIDE);
+    pthread_barrier_init(&barrier[0], NULL, OROW_DIVIDE);
     //printf("thread barrier initialized \n");
     for(int r = 0; r < GOOGLENET_REPEAT; r++){
 	 uint64_t start = read_cycles();
@@ -186,7 +186,7 @@ int main (int argc, char * argv[]) {
 	  printf("\ngooglenet repeat %d total thread cycles: %llu\n", r, thread_googlenet_max);
 	  printf("googlenet repeat %d total cycles: %llu\n", r, total_googlenet_max);
 	
-/*
+
 	 for(int i = 0; i < 58; i++)    
 
 	 {
@@ -226,7 +226,6 @@ int main (int argc, char * argv[]) {
 		  
 
 	 }
-*/
     }
     pthread_barrier_destroy(&barrier[0]);
  

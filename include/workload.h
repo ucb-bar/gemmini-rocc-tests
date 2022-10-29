@@ -1,8 +1,3 @@
-#ifndef NUM_CORE
-#define NUM_CORE 8 // for 8 cores
-#endif
-
-#ifndef BAREMETAL
 // code for each workload
 #if BATCH1 == true
 #include "imagenet/funct_resnet_1.h"
@@ -14,29 +9,6 @@
 #include "imagenet/funct_yololitenet_1.h"
 #endif
 
-#if BATCH8 == true
-#include "imagenet/funct_resnet_8.h"
-#include "imagenet/funct_googlenet_8.h"
-#include "imagenet/funct_squeezenet_8.h"
-#include "imagenet/funct_kwsnet_8.h"
-#include "imagenet/funct_alexnet_8.h"
-#include "imagenet/funct_yolonet_8.h"
-#include "imagenet/funct_yololitenet_8.h"
-#endif
-
-#if BATCH4 == true
-#include "imagenet/funct_resnet_4.h"
-#include "imagenet/funct_googlenet_4.h"
-#include "imagenet/funct_squeezenet_4.h"
-#include "imagenet/funct_kwsnet_4.h"
-#include "imagenet/funct_alexnet_4.h"
-#include "imagenet/funct_yolonet_4.h"
-#include "imagenet/funct_yololitenet_4.h"
-#endif
-
-#endif
-
-#define FCNNET_1 0
 #define RESNET_1 1 // 4 blocks: [12, 25, 44, 54 (mem)] -> with squeezenet(4), yololitenet(7), kwsnet group1(5)
 #define ALEXNET_1 2 // 2 blocks: conv, fc -> googlenet(3), resnet group1 (1), kwsnet (5), yolonet group1&2(6)
 #define GOOGLENET_1 3 
@@ -45,72 +17,23 @@
 #define YOLONET_1 6 // 3 blocks: [4, 13, 19 (mem)] same as ResNet
 #define YOLOLITENET_1 7 
 
-#define FCNNET_4 8
-#define RESNET_4 9
-#define ALEXNET_4 10
-#define GOOGLENET_4 11
-#define SQUEEZENET_4 12
-#define KWSNET_4 13
-#define YOLONET_4 14
-#define YOLOLITENET_4 15
-
-#define FCNNET_8 16
-#define RESNET_8 17
-#define ALEXNET_8 18
-#define GOOGLENET_8 19
-#define SQUEEZENET_8 20
-#define KWSNET_8 21
-#define YOLONET_8 22
-#define YOLOLITENET_8 23
-
-#define MAX_WORKLOAD 600
-#define NUM_WORKLOAD 8//(8*3) // 1, 2, 4 batches
-
-#ifndef total_workloads
-#define total_workloads 200
-#define QUEUE_DEPTH 10
-#endif
-
-//#ifndef planaria_scale
-//#define planaria_scale 2.5
-//#endif
-
-//[[120778499, 67655896, 40484174], [26048228, 16871159, 13302457], [18153183, 13480880, 9734783], [12059398, 7194660, 6382764], [4325949, 2853555, 2790373], [9193046, 5219157, 4111254], [17391717, 10483108, 8413386], [3859186, 3137930, 3222616]]
-//[[485011422, 260614658, 161822568], [103707389, 64801233, 47448663], [36628263, 23877088, 18234202], [46343352, 27089661, 27971820], [16748058, 9558922, 8751179], [38773439, 23131212, 17656532], [67136866, 38408465, 24478347], [15076962, 11593273, 12049913]]
-//[[967833971, 519399762, 327567928], [208302990, 129435130, 101819975], [64386337, 39288987, 32103729], [92824678, 52921143, 55384159], [32989741, 18761773, 16752679], [78456021, 46963714, 34225754], [134271000, 75566170, 55725139], [29750804, 22687359, 34942369]]
-
-
-static uint64_t mem_cycles[NUM_WORKLOAD] = 
-{0, 4464256, 9184240, 0, 0, 0, 4231271, 0};//
-//0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
 // single program (isolated run) cycles
 #if WORKLOAD_CORE == 2
 static uint64_t sp_cycles[NUM_WORKLOAD] =
-{62623637,15070506,8382324,7070440,2608024,9458914,5132036,1978161};
+{15070506,8382324,7070440,2608024,9458914,5132036,1978161};
 #elif WORKLOAD_CORE == 4
 static uint64_t sp_cycles[NUM_WORKLOAD] = 
-{34187290,9829820,5539067,4923351,1538641,6203714,3314037,1998578};
+{9829820,5539067,4923351,1538641,6203714,3314037,1998578};
 #endif
-
-//update more batches
-#if WORKLOAD_CORE == 2
-static uint64_t sp_prediction_cycles[NUM_WORKLOAD] =
- {67958081,15279080,8789354, 7778090,1949208,9500000, 4600000, 1724694};
-#elif WORKLOAD_CORE == 4
-static uint64_t sp_prediction_cycles[NUM_WORKLAOD] = 
- {36508639,9591162, 6251126, 5155716,1552023,6000000, 3600000, 1416785};
-#endif
-
 
 static uint64_t target_cycles[NUM_WORKLOAD] = 
- {200000000, 50000000, 33333334,33333334,10000000,33333334,16666667,10000000};
+ {50000000, 33333334,33333334,10000000,33333334,16666667,10000000};
 
-static int workload_group[NUM_WORKLOAD] = {1, 4, 2, 2, 1, 2, 3, 1};
+static int workload_group[NUM_WORKLOAD] = {4, 2, 2, 1, 2, 3, 1};
 //  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}; // for now only 1 batch
 
 static int planaria_group[NUM_WORKLOAD] = 
- {18, 10, 5, 5, 2, 5, 5, 2};
+{10, 5, 5, 2, 5, 5, 2};
 //   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 //#define QUEUE_DEPTH 10
 //#define SEED 10 // to randomize workload more
@@ -119,33 +42,6 @@ static int planaria_group[NUM_WORKLOAD] =
 //workload creating capacity: cap * sp_cycles * cap_scale(<1)
 //QoS target: cap * (qos+1) *  sp_cycles * target_scale(> 1, < 1)
 //QoS 0: 4 cores, 1: 2 cores, 2: 1 core, 3: 0.5 x 1 core
-
-static int total_queue_type[MAX_WORKLOAD] = {-1};
-static uint64_t total_queue_dispatch[MAX_WORKLOAD] = {0}; // dispatched time (in order)
-static uint64_t total_queue_finish[SUB_CORE][MAX_WORKLOAD] = {0};
-static int total_queue_status[MAX_WORKLOAD] = {-1}; // -1: not assigned, 0: in assigned queue, >= 1: part
-static int total_queue_priority[MAX_WORKLOAD] = {-1}; // 0 - 11
-static uint64_t total_queue_target[MAX_WORKLOAD] = {0};
-static uint64_t total_queue_runtime_thread[SUB_CORE][MAX_WORKLOAD] = {0}; // for checking purpose (end to end runtime)
-static uint64_t total_queue_runtime_total[SUB_CORE][MAX_WORKLOAD] = {0}; // for checking purpose (end to end runtime)
-
-#define MAX_ITER (int)(total_workloads / QUEUE_DEPTH)
-static int gemmini_workload_assigned[NUM_GROUP][SUB_GROUP][MAX_ITER][QUEUE_DEPTH] = {-1};
-static uint64_t gemmini_runtime[NUM_CORE] = {0}; // to track real runtime without thread create overhead
-
-static int gemmini_workload_grouped[NUM_GROUP][SUB_GROUP][MAX_ITER][QUEUE_DEPTH] = {-1};
-//static bool gemmini_done[NUM_GROUP][SUB_GROUP] = {0};
-static bool gemmini_done[NUM_SUB_GROUP] = {0};
-static bool gemmini_terminate[NUM_SUB_GROUP] = {0};
-static bool gemmini_terminate_receive[NUM_SUB_GROUP] = {0};
-static uint64_t global_time = {0};
-
-// dram_bw -1: disable bandwidth modulation (window, target load to 0)
-// dram_bw 0: monitor gemmini_bw and priority score 
-// dram_bw 0-100: use dram_bw given to compute window, target load 
-//static int gemmini_bw[NUM_GROUP] = {0}; // only the cid == 0 updates it
-//static int gemmini_score[NUM_GROUP] = {0}; // priority score scaled to 100 (for bw division when it gets over the limit)
-
 int rand_seed(uint32_t seed) {
   static uint32_t x = 777;
   x = x * (1664525 + seed) + 1013904223;
@@ -235,142 +131,8 @@ int workload_type_assign(bool batch1, bool batch4, bool batch8, uint32_t seed){
   }
   
 */
-  if(batch4){
-    if(r < 0){
-      id = FCNNET_4;
-    }
-    else if(r < (0+9)){
-      id = RESNET_4;
-    }
-    else if(r < (0+9+20)){
-      id = ALEXNET_4;
-    }
-    else if(r < (0+9+20+17)){
-      id = GOOGLENET_4;
-    }
-    else if(r < (0+9+20+17+47)){
-      id = SQUEEZENET_4;
-    }
-    else if(r < (0+9+20+17+47+22)){
-      id = KWSNET_4;
-    }
-    else if(r < (0+9+20+17+47+22+17)){
-      id = YOLONET_4;
-    }
-    else{// if(r < (0+7+20+17+48+20+9+40)){
-      id = YOLOLITENET_4;
-    }
-  }
-  
-  if(batch8){
-    if(r < 0){
-      id = FCNNET_8;
-    }
-    else if(r < (0+10)){
-      id = RESNET_8;
-    }
-    else if(r < (0+10+25)){
-      id = ALEXNET_8;
-    }
-    else if(r < (0+10+25+17)){
-      id = GOOGLENET_8;
-    }
-    else if(r < (0+10+25+17+48)){
-      id = SQUEEZENET_8;
-    }
-    else if(r < (0+10+25+17+48+22)){
-      id = KWSNET_8;
-    }
-    else if(r < (0+10+25+17+48+22+14)){
-      id = YOLONET_8;
-    }
-    else{// if(r < (1+7+23+17+49+20+12+41)){
-      id = YOLOLITENET_8;
-    }
-  }
-
-  //printf("rand output: %zu, rand output value: %d, workload id: %d \n", rand_out, r, id);
+    //printf("rand output: %zu, rand output value: %d, workload id: %d \n", rand_out, r, id);
   return id;
-}
-
-// to test fairness
-void workload_mode_1(int workload, bool batch1, bool batch4, bool batch8, uint32_t seed, float target_scale, float cap_scale){
-  // priority (0: 15, 1: 18 / 2: 10, 4: 15, 6: 15, 8: 15 / 9: 10, 11: 2)
-  for(int i = 0; i < MAX_WORKLOAD; i++)
-    total_queue_status[i]= -1;
-  
-  int first_dispatch_interval = 50000;
-  if (batch4) first_dispatch_interval *= 4;
-  if (batch8) first_dispatch_interval *= 8;
-
-  int group = CAP; // set this to 4 for 2 cores
-  int num_workload_group = ceil_divide_int(workload+group, group);
-
-  for(int i = 0; i < num_workload_group; i++){
-    for(int j = 0; j < group; j++){
-      int index = group * i + j;
-      int workload_type = workload_type_assign(batch1, batch4, batch8, seed);
-      //int workload_type = rand_base + rand_seed(seed) % rand_mod;
-      total_queue_type[index] = workload_type; 
-      int priority_level = 5; // fixed level priority 
-      total_queue_priority[index] = priority_level;
-      total_queue_target[index] = target_cycles[workload_type] * target_scale;
-      for (int j = 0; j < SUB_CORE; j++){
-        total_queue_finish[j][index] = 0;
-        total_queue_runtime_thread[j][index] = 0;
-        total_queue_runtime_total[j][index] = 0;
-      }
-      if(i == 0){
-        total_queue_dispatch[index] = first_dispatch_interval*j;
-      }
-      else{
-        total_queue_dispatch[index] = total_queue_dispatch[index - group] + sp_cycles[total_queue_type[index - group]] * cap_scale;// + 45000*(rand()%20); 
-      }
-    }
-  }
- 
-  for(int i = 0; i < workload; i++){
-    for(int j = i+1; j < workload+group; j++){
-      if(total_queue_dispatch[i] > total_queue_dispatch[j]){
-        uint64_t a = total_queue_dispatch[i];
-        total_queue_dispatch[i] = total_queue_dispatch[j];
-        total_queue_dispatch[j] = a;
- 
-        a = total_queue_target[i];
-        total_queue_target[i] = total_queue_target[j];
-        total_queue_target[j] = a;
- 
-        int b = total_queue_priority[i];
-        total_queue_priority[i] = total_queue_priority[j];
-        total_queue_priority[j] = b;
-  
-        b = total_queue_type[i];
-        total_queue_type[i] = total_queue_type[j];
-        total_queue_type[j] = b;
-                     
-      }
-    }
-  }
-
-  
-  for(int i = workload; i < workload+group; i++){
-    total_queue_dispatch[i] = 0;
-    total_queue_priority[i] = -1;
-    total_queue_type[i] = -1;
-    total_queue_status[i] = -1;
-  }
-
-  for(int i = 0; i < NUM_CORE; i++){
-      gemmini_runtime[i] = 0; // initialize time 
-    
-  }
-  for(int c = 0; c < NUM_GROUP; c++)
-    for(int k = 0; k < SUB_GROUP; k++)
-      for(int i = 0; i < MAX_ITER; i++)
-        for(int j = 0; j < QUEUE_DEPTH; j++)
-          gemmini_workload_assigned[c][k][i][j] = -1;
-
-
 }
 
 // priority scheduling
@@ -385,15 +147,13 @@ int workload_priority_mp(int num_workload, int num_iter, uint64_t current_cycle)
         }
 
   int num_batch = 1;
-  if(total_queue_type[0] >= FCNNET_4)  num_batch = 4;
-  if(total_queue_type[0] >= FCNNET_8)  num_batch = 8;
 //  printf("workload_priority_mp current cycles: %llu\n", current_cycle);
 
   // 4 entries if grouping 2 cores
   int group_temp[NUM_SUB_GROUP];
   uint64_t cycle[NUM_SUB_GROUP];
   for (int i = 0; i < NUM_SUB_GROUP; i++){
-    cycle[i] = current_cycle + 500000 * num_batch;
+    cycle[i] = current_cycle + 5000000;
     group_temp[i] = 0;
     gemmini_dram_util[i] = 0;
   }
@@ -606,6 +366,8 @@ void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32
       }
       total_queue_priority[index] = priority_level;
       total_queue_target[index] = target_cycles[workload_type] * target_scale;
+      total_queue_togo[index] = tp_prediction_cycles[workload_type-1];
+      total_queue_conv[index] = 0;
       for (int j = 0; j < SUB_CORE; j++){
         total_queue_finish[j][index] = 0;
         total_queue_runtime_thread[j][index] = 0;
@@ -631,6 +393,10 @@ void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32
         total_queue_target[i] = total_queue_target[j];
         total_queue_target[j] = a;
  
+        a = total_queue_togo[i];
+        total_queue_togo[i] = total_queue_togo[j];
+        total_queue_togo[j] = a;
+ 
         int b = total_queue_priority[i];
         total_queue_priority[i] = total_queue_priority[j];
         total_queue_priority[j] = b;
@@ -638,6 +404,10 @@ void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32
         b = total_queue_type[i];
         total_queue_type[i] = total_queue_type[j];
         total_queue_type[j] = b;
+         
+        b = total_queue_conv[i];
+        total_queue_conv[i] = total_queue_conv[j];
+        total_queue_conv[j] = b;
                      
       }
     }
@@ -805,8 +575,6 @@ int workload_priority_sp(int num_workload, uint64_t current_cycle){
 
   //num_workload = num_workload * NUM_GROUP; // 2x
   int num_batch = 1;
-  if(total_queue_type[0] >= FCNNET_4)  num_batch = 4;
-  if(total_queue_type[0] >= FCNNET_8)  num_batch = 8;
 //  printf("workload_priority_mp current cycles: %llu\n", current_cycle);
 
   
@@ -959,7 +727,7 @@ int workload_priority_sp(int num_workload, uint64_t current_cycle){
 
 
 #ifndef BAREMETAL
-uint64_t workload_function(int queue_id, int workload_id, size_t cid, size_t group_id, size_t sub_group, int num_gemmini, int dram_util, pthread_barrier_t *barrier_funct){
+uint64_t workload_function(int64_t inner_start, int queue_id, int workload_id, size_t cid, size_t group_id, size_t sub_group, int num_gemmini, int dram_util, pthread_barrier_t *barrier_funct){
   gemmini_flush(0);
   uint64_t* cycles;
   uint64_t total_runtime;
@@ -973,6 +741,12 @@ uint64_t workload_function(int queue_id, int workload_id, size_t cid, size_t gro
   bool part4 = group_status < 4;
 //printf("part1: %d, part2: %d, part3: %d, part4: %d\n", part1, part2, part3, part4);
   //uint64_t start = read_cycles();
+  if(cid == 0){
+    gemmini_queue_id[sub_group_id] = queue_id;
+    gemmini_start_time[sub_group_id] = inner_start;
+  }
+  //gemmini_dispatch_cycle[sub_group_id] = total_queue_dispatch[queue_id];
+  //gemmini_workload_id[sub_group_id] = workload_id - 1;
 #if BATCH1 == true
   if(workload_id < 8){
     int orow_divide = num_gemmini;
@@ -1111,7 +885,7 @@ dram_util = -1;
 }
 
 // sub_group_id: 0 - 3
-uint64_t workload_group_function(int queue_id, int group_queue_id, int original_workload_id, int grouped_workload_id, size_t cid, size_t group_id, size_t sub_group_id, int num_gemmini, int dram_util, pthread_barrier_t *barrier_funct){
+uint64_t workload_group_function(uint64_t inner_start, int queue_id, int group_queue_id, int original_workload_id, int grouped_workload_id, size_t cid, size_t group_id, size_t sub_group_id, int num_gemmini, int dram_util, pthread_barrier_t *barrier_funct){
   gemmini_flush(0);
   uint64_t* cycles;
   uint64_t total_runtime;
@@ -1121,6 +895,10 @@ uint64_t workload_group_function(int queue_id, int group_queue_id, int original_
   bool part2 = group_status < 2;
   bool part3 = group_status < 3;
   bool part4 = group_status < 4;
+  if(cid == 0){
+    gemmini_queue_id[sub_group_id] = queue_id;
+    gemmini_start_time[sub_group_id] = inner_start;
+  }
 #if BATCH1 == true
   //int dram_util_half = (cid == 0) ? dram_util : (dram_util / 2) - 10;
   if(sub_group_id % 2 == 0){

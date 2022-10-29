@@ -15,12 +15,12 @@
 
 #define NUM_CORE 8
 #define SEED 0
-#define total_workloads 550 // 100 each
+#define total_workloads 250 // 100 each
 #define WORKLOAD_CORE 2
-#define QUEUE_DEPTH 5
-#define NUM_ITER 5
+#define QUEUE_DEPTH 6
+#define NUM_ITER 3
 #define CAP 4 // 0 to 1 (smaller number: shorter time between workload dispatch time)
-#define CAP_SCALE 1.4
+#define CAP_SCALE 1.3
 #define TARGET_SCALE 1.0
 
 #define BATCH1 true
@@ -137,14 +137,10 @@ void *thread_NN(void *arg){
 //printf("queue id: %d, workload id: %d, others done: %d\n", queue_id, workload_id, others_done);
        if(queue_id != -1){
          if(!others_done){
-	   if(cid == 0) {
-             gemmini_score[total_sub_group_id] = (1 + total_queue_priority[queue_id]) / 4 + MAX(1, (int)(4 * (temp_cycles - total_queue_dispatch[queue_id]))/total_queue_target[queue_id]);
-           }	
-
            uint64_t inner_start = read_cycles();
         //   uint64_t total_runtime = workload_function(queue_id, workload_id, cid, group_id, total_sub_group_id, all ? SUB_CORE : workload_num_core, -1, &barrier[nn_args->barrier_index]);
            // iterate
-           uint64_t total_runtime = workload_function(queue_id, workload_id, all ? group_cid : cid, group_id, total_sub_group_id, all ? SUB_CORE : workload_num_core, -1, all ? &barrier_sub[group_id] : &barrier[total_sub_group_id]);
+           uint64_t total_runtime = workload_function(inner_start - temp_cycles, queue_id, workload_id, all ? group_cid : cid, group_id, total_sub_group_id, all ? SUB_CORE : workload_num_core, -1, all ? &barrier_sub[group_id] : &barrier[total_sub_group_id]);
     
            total_queue_runtime_total[group_cid][queue_id] = total_runtime;
            uint64_t inner_end = read_cycles();
@@ -283,7 +279,7 @@ int main (int argc, char * argv[]) {
            for(int y = 0; y < SUB_GROUP; y++){ 
               printf("group %d queue %d, sub-group %d: ", k, x, y);
               for(int j = 0; j < QUEUE_DEPTH; j++)
-                 printf("%d, ", gemmini_workload_assigned[k][y][x][j]);
+                 printf("%d(%d), ", gemmini_workload_assigned[k][y][x][j], total_queue_type[gemmini_workload_assigned[k][y][x][j]]);
               printf("\n");
            }
         }

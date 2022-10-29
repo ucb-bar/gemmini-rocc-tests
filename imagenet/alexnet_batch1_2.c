@@ -8,10 +8,9 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
-#define BATCH1 true
 #include "include/gemmini.h"
 #include "include/gemmini_nn.h"
-#include "motivation.h"
+
 //#include "alexnet_params_1.h"
 //#include "alexnet50_mt_images.h"
 #define NUM_OUTPUT (5+3+3+4)
@@ -22,7 +21,7 @@
 
 pthread_barrier_t barrier[num_proc];
 
-//#include "funct_alexnet_1.h"
+#include "funct_alexnet_1.h"
 
 #define BATCH_DIVIDE 1
 #define OROW_DIVIDE num_proc // 1: independent, 2: 2+2 collab, 4: sequential
@@ -30,7 +29,7 @@ pthread_barrier_t barrier[num_proc];
 #define target_util -1 // ToDo: needs to be changed for target utilization
 #define bubble 0
 
-#define ALEXNET_REPEAT 20
+#define ALEXNET_REPEAT 7
 
 
 #define MAT_DIM_I 512
@@ -79,38 +78,6 @@ void *thread_NN(void *arg){
 	int cid = sched_getcpu();
 	struct thread_args * nn_args = (struct thread_args *) arg;
 	gemmini_flush(0);
-	uint64_t cycles;
-
-    uint64_t start, end;
-    printf("entered thread_NN - cid: %d\n", cid);
-    //uint64_t target_cycle = nn_args->target_cycles;
-    pthread_barrier_wait(&barrier[nn_args->barrier_index]);
-    //printf("barrier working - cid: %d\n", cid);
-    
-    uint64_t thread_start = read_cycles();
-
-   // cycles = alexnet_function_1(cid, 0, true, true, 4, BATCH_DIVIDE, target_util, &barrier[nn_args->barrier_index]);
-    cycles = workload_function(2, cid, 0, 2, &barrier[nn_args->barrier_index]);
-    uint64_t thread_end = read_cycles();
-    nn_args->total_thread_cycles = thread_end - thread_start;
-    //nn_args->total_matmul_cycles = *(cycles+12);
-    //nn_args->total_conv_cycles = *(cycles+11);
-    //nn_args->other_cycles = other_cycles;
-    //nn_args->total_pool_cycles = *(cycles+13);
-    nn_args->total_cycles = cycles;//*(cycles+14);
-/*
-    for(int i = 0; i < NUM_OUTPUT; i++){
-	if(i < 5) nn_args->conv_cycles[i] = *(cycles+i);
-	else if(i < 8) nn_args->matmul_cycles[i-5] = *(cycles+i);
-	else if(i < 11) nn_args->pool_cycles[i-8] = *(cycles+i);
-    }
-*/
-}
-/*
-void *thread_NN(void *arg){
-	int cid = sched_getcpu();
-	struct thread_args * nn_args = (struct thread_args *) arg;
-	gemmini_flush(0);
 	uint64_t* cycles;
 
     uint64_t start, end;
@@ -137,7 +104,6 @@ void *thread_NN(void *arg){
     }
 
 }
-*/
 void *print_message(void *ptr){
     printf("entered message thread\n");
     gemmini_flush(0); // check whether all have gemmini cores
@@ -191,8 +157,8 @@ int main (int argc, char * argv[]) {
    // for(int i = 0; i < OROW_DIVIDE; i++)
    //     nn_args[i].target_cycles = ALEXNET_TARGET;
     
-    //pthread_barrier_init(&barrier, NULL, num_proc);
-    pthread_barrier_init(&barrier[0], NULL, num_proc);
+    //pthread_barrier_init(&barrier, NULL, OROW_DIVIDE);
+    pthread_barrier_init(&barrier[0], NULL, OROW_DIVIDE);
     //printf("thread barrier initialized \n");
     for(int r = 0; r < ALEXNET_REPEAT; r++){
 	 uint64_t start = read_cycles();
@@ -222,7 +188,7 @@ int main (int argc, char * argv[]) {
 	  printf("\nalexnet repeat %d total thread cycles: %llu\n", r, thread_alexnet_max);
 	  printf("alexnet repeat %d total cycles: %llu\n", r, total_alexnet_max);
 	
-/*
+
 	 for(int i = 0; i < 5; i++)    
 
 	 {
@@ -262,7 +228,6 @@ int main (int argc, char * argv[]) {
 		  
 
 	 }
-*/
     }
     pthread_barrier_destroy(&barrier[0]);
  

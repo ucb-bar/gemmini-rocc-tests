@@ -29,7 +29,7 @@ pthread_barrier_t barrier[num_proc];
 #define target_util -1 // ToDo: needs to be changed for target utilization
 #define bubble 0
 
-#define GOOGLENET_REPEAT 20
+#define GOOGLENET_REPEAT 7
 
 
 #define MAT_DIM_I 512
@@ -186,7 +186,7 @@ int main (int argc, char * argv[]) {
 	  printf("\ngooglenet repeat %d total thread cycles: %llu\n", r, thread_googlenet_max);
 	  printf("googlenet repeat %d total cycles: %llu\n", r, total_googlenet_max);
 	
-/*
+
 	 for(int i = 0; i < 58; i++)    
 
 	 {
@@ -226,7 +226,6 @@ int main (int argc, char * argv[]) {
 		  
 
 	 }
-*/
     }
     pthread_barrier_destroy(&barrier[0]);
  

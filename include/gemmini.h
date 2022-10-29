@@ -13,8 +13,9 @@
 #include <stdbool.h>
 
 #include "include/gemmini_params.h"
-
-#define GEMMINI_ASSERTIONS
+#include "include/define.h"
+#include "include/precompile.h"
+//#define GEMMINI_ASSERTIONS
 #define PRINT_MOCA 0
 
 // Accelerator interface
@@ -58,50 +59,6 @@
 #define NO_ACTIVATION 0
 #define RELU 1
 #define RELU6 2
-
-//#define CACHE_SIZE (1e6/DIM)
-#define DRAM_MAX_UTIL 150
-//#define DRAM_BW 0.5
-
-//#define NUM_CORE 8
-
-#ifndef NUM_GROUP
-#define NUM_GROUP 2
-#endif
-#ifndef NUM_CORE
-#define NUM_CORE 8
-#endif
-
-#ifndef WORKLOAD_CORE
-#define WORKLOAD_CORE 2
-#endif
-
-#ifndef SUB_CORE
-#define SUB_CORE 4 // 8 -> 4 + 4
-#endif
-
-#define SUB_GROUP 2 // 4 -> 2 + 2
-#define NUM_SUB_GROUP 4 // total 4 sub groups
-
-// we use 8 cores
-#if NUM_CORE == 8
-#define DRAM_BW 1
-#define CACHE_SIZE (2e6/DIM)
-#else
-#define DRAM_BW 0.5
-#define CACHE_SIZE (1e6/DIM)
-#endif
-
-
-// dram_bw -1: disable bandwidth modulation (window, target load to 0)
-// dram_bw 0: monitor gemmini_dram_util and priority score 
-// dram_bw 0-100: use dram_bw given to compute window, target load 
-static int gemmini_dram_util[NUM_SUB_GROUP] = {0};
-//static int gemmini_dram_util[NUM_GROUP][SUB_GROUP] = {0}; // only the cid == 0 updates it
-static int gemmini_score[NUM_SUB_GROUP] = {0}; // priority score scaled to 100 (for bw division when it gets over the limit)
-
-#define MAX(X, Y) (X > Y ? X : Y)
-#define MIN(X, Y) (X < Y ? X : Y)
 
 #ifdef ELEM_T_IS_FLOAT
 elem_t elem_t_bits_to_elem_t(elem_t_bits x) {
@@ -584,22 +541,42 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
   uint64_t mem_ideal = total_from_dram / DRAM_BW + (total_mem - total_from_dram/num_core);
   uint64_t ideal_prediction = MAX(mem_ideal, ideal_runtime) + MIN(mem_ideal, ideal_runtime) * 0.5;
 
+  int workload_type = total_queue_type[gemmini_queue_id[group_id]];
+  int queue_id = gemmini_queue_id[group_id];
+#if PRINT_MOCA != 1
+  // replace with pre-compiled data
+  total_from_dram = from_dram[workload_type-1][total_queue_conv[queue_id]];
+  ideal_prediction = conv_prediction_cycles[workload_type-1][total_queue_conv[queue_id]]; 
+#endif
   if(cid == 0 && dram_util == -1) gemmini_dram_util[group_id] = 0;
 
   // ideal exepected dram bandwidth
   int ideal_dram_bw_exp = (100 * total_from_dram) / ideal_prediction;
   int ideal_dram_util = (ideal_dram_bw_exp / DRAM_BW);
 
+  uint64_t dispatch_cycle = total_queue_dispatch[queue_id];
+  uint64_t end = read_cycles();
+  uint64_t this_cycles = end - gemmini_start_time[group_id];
+  uint64_t slack = (this_cycles > dispatch_cycle) ? this_cycles - dispatch_cycle : total_queue_target[queue_id];
+  int priority = total_queue_priority[queue_id];
+  // MOCA runtime dynamic priority score
+  int this_score = (1+priority)/4 + round_divide_int(10*total_queue_togo[queue_id], slack);//max(1, (int)((10*total_queue_togo[queue_id])/slack));
+  // update for the next conv layer
+  if(cid == 0){ 
+    //gemmini_estimate_togo[group_id] -= conv_prediction_cycles[workload_type][gemmini_num_conv[group_id]];
+    //gemmini_num_conv[group_id] ++;
+    gemmini_score[group_id] = this_score;
+  }
   // detect contention and partition
   int other_dram_util = 0;
   int other_score = 0;
   int other_weight_sum = 0;
-  int this_score = gemmini_score[group_id];
+//  int this_score = gemmini_score[group_id];
   for(int i = 0; i < NUM_SUB_GROUP; i++)
     if(i != group_id) {
-      other_score += gemmini_score[i];
+      other_score += this_score;//gemmini_score[i];
       other_dram_util += gemmini_dram_util[i];
-      other_weight_sum += gemmini_score[i] * gemmini_dram_util[i];
+      other_weight_sum += this_score * gemmini_dram_util[i];
     }
 
   if(dram_util == 0){
@@ -2342,26 +2319,45 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
     } 
   }
   total_from_dram += bias_from_dram; //bias_load * och_divide;
- 
+
   if(in_channels == 3) dram_util = -1;//just disable for first layer 
   uint64_t total_mem = input_load + weight_load + bias_load + (ceil_divide_int)(out_channels, DIM) * pool_out_row * pool_out_dim * batch_size;
   uint64_t mem_ideal = total_from_dram / DRAM_BW + (total_mem-total_from_dram/num_core);
   uint64_t ideal_prediction = MAX(mem_ideal, ideal_runtime) + MIN(mem_ideal, ideal_runtime) * 0.5;
-
+  int workload_type = total_queue_type[gemmini_queue_id[group_id]];
+  int queue_id = gemmini_queue_id[group_id];
+#if PRINT_MOCA != 1
+  // replace with pre-compiled data
+  total_from_dram = from_dram[workload_type-1][total_queue_conv[queue_id]];
+  ideal_prediction = conv_prediction_cycles[workload_type-1][total_queue_conv[queue_id]]; 
+#endif
   int ideal_dram_bw_exp = (100 * total_from_dram) / ideal_prediction;
   int ideal_dram_util = (ideal_dram_bw_exp / DRAM_BW);
 
   if(cid == 0 && dram_util == -1) gemmini_dram_util[group_id] = 0;
+  uint64_t dispatch_cycle = total_queue_dispatch[queue_id];
+  uint64_t end = read_cycles();
+  uint64_t this_cycles = end - gemmini_start_time[group_id];
+  uint64_t slack = (this_cycles > dispatch_cycle) ? this_cycles - dispatch_cycle : total_queue_target[queue_id];
+  int priority = total_queue_priority[queue_id];
+  // MOCA runtime dynamic priority score
+  int this_score = (1+priority)/4 + round_divide_int(10*(total_queue_togo[queue_id]), slack);//max(1, (int)((10*total_queue_togo[queue_id])/slack));
+  // update for the next conv layer
+  if(cid == 0){ 
+    //gemmini_estimate_togo[group_id] -= conv_prediction_cycles[workload_type][gemmini_num_conv[group_id]];
+    //gemmini_num_conv[group_id] ++;
+    gemmini_score[group_id] = this_score;
+  }
 
   int other_dram_util = 0;
   int other_score = 0;
-  int this_score = gemmini_score[group_id];
+//  int this_score = gemmini_score[group_id];
   int other_weight_sum = 0;
   for(int i = 0; i < NUM_SUB_GROUP; i++)
     if(i != group_id) {
-      other_score += gemmini_score[i];
+      other_score += this_score;//gemmini_score[i];
       other_dram_util += gemmini_dram_util[i];
-      other_weight_sum += gemmini_score[i] * gemmini_dram_util[i];
+      other_weight_sum += this_score * gemmini_dram_util[i];
     }
 
   if(dram_util == 0){
@@ -2391,7 +2387,6 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
 
   window = (dram_util == -1) ? 0 : window;
   target_load = (dram_util == -1) ? 0 : target_load;
-
 
 #if PRINT_MOCA == 1 
   printf("window: %d, target load: %d, prediction cycles: %llu, num tiles: %d \n", window, target_load, prediction, num_tiles);
@@ -3155,6 +3150,15 @@ static void tiled_conv_A_stride_auto_stride( // for sw padding
         window, target_load);
 
   }
+ 
+  //update for the next layer
+  if(cid == 0){ 
+    int workload_type = total_queue_type[gemmini_queue_id[group_id]];
+    int queue_id = gemmini_queue_id[group_id];
+    total_queue_togo[queue_id] -= conv_prediction_cycles[workload_type][queue_id];
+    total_queue_conv[queue_id] ++;
+//    gemmini_score[group_id] = this_score;
+  }
 }
 
 // for convert
@@ -3577,10 +3581,10 @@ int* tiled_resadd_bubble_calculate(
     int out_args[], // window, bubble, ideal cycles, tiling factors
     size_t I, size_t J, 
     size_t orow_divide, size_t batch_divide,
-    size_t group_id, int dram_util){
+    size_t group_id, int dram_util, int cid){
 
-  uint64_t total_from_dram = I * (ceil_divide_int(J, DIM)) * 2;
-  if (total_from_dram > CACHE_SIZE) total_from_dram += I * (ceil_divide_int(J, DIM));
+  uint64_t total_from_dram = I * (ceil_divide_int(J, DIM)) * 3;
+  //if (total_from_dram > CACHE_SIZE) total_from_dram += I * (ceil_divide_int(J, DIM));
 
   size_t batch_size = I / batch_divide;
   I = batch_size;
@@ -3617,9 +3621,9 @@ int* tiled_resadd_bubble_calculate(
   // computing window, target load
   //int window = 0;
  // int target_load = 0;
-	int total_mems = I * J * 3;
+  int total_mems = I * J * 3;
   int total_load = (int)(I*J*2 / DIM);
-	int num_tile = ceil_divide_int(I, tile_I) * ceil_divide_int(J, tile_J);
+  int num_tile = ceil_divide_int(I, tile_I) * ceil_divide_int(J, tile_J);
 	//printf("total macs: %d, number of tile: %d, tile_I: %d, tile_J: %d \n", total_mems, num_tile, tile_I, tile_J);
 /*
   int macs_per_tile = (int)(total_mems / num_tile);
@@ -3643,6 +3647,7 @@ int* tiled_resadd_bubble_calculate(
   int other_dram_util = 0;
   int other_score = 0;
   int other_weight_sum = 0;
+  // just use previous score 
   int this_score = gemmini_score[group_id];
   for(int i = 0; i < NUM_SUB_GROUP; i++)
     if(i != group_id) {
@@ -3666,6 +3671,9 @@ int* tiled_resadd_bubble_calculate(
     // skip for resadd
     //if(cid == 0) gemmini_dram_util[group_id] = ideal_dram_bw_exp;
   }
+  // but still udpate predicted to_go cycle
+  if(cid == 0)
+    total_queue_togo[gemmini_queue_id[group_id]] -= ideal_prediction; 
 
   uint64_t prediction = (100 * total_from_dram) / (DRAM_BW * dram_util);
   int window = prediction / num_tile;
@@ -3716,7 +3724,7 @@ static void tiled_resadd_auto_stride(size_t I, size_t J,
   size_t orow_cid = (size_t)(cid % orow_divide);
 
   int args_in[] = {0, 0, 0, 0, 0};
-  int * args = tiled_resadd_bubble_calculate(args_in, I, J, orow_divide, batch_divide, group_id, target_util);
+  int * args = tiled_resadd_bubble_calculate(args_in, I, J, orow_divide, batch_divide, group_id, target_util, cid);
 
   size_t batch_size = I / batch_divide;
   I = batch_size;

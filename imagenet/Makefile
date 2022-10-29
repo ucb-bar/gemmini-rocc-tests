@@ -1,15 +1,12 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	priority_mp8_staticb \
-	priority_mp8_staticb3 \
-	priority_mp8_staticb2 \
-	priority_mp8_static \
-	priority_mp8_static1 \
-	priority_mp8_static2 \
 	priority_mp8_dynamicb \
+	priority_mp8_static \
 	priority_mp8_dynamicb_l \
 	priority_mp8_dynamicb_h \
+	priority_mp8_staticb3 \
+	priority_mp8_staticb2 \
 	prema_mp8 \
 	prema_mp8_l \
 	prema_mp8_h \
@@ -20,52 +17,15 @@ tests = \
 	motivation_3 \
 	motivation_2 \
 	motivation_1 \
-	#priority_mp_dynamic3_mod2_batch8 \
-	#priority_mp_dynamic2_mod2_batch8 \
-	#priority_mp_static2_mod2_batch8 \
-	#priority_mp_static2_mod1_batch8 \
-	#priority_mp_dynamic3_mod1_batch8 \
-	#priority_mp_dynamic2_mod1_batch8 \
-	#fcfs_mp_mod2_batch8 \
-	#fcfs_sp_mod2_batch8 \
-	#fcfs_mp_mod1_batch8 \
-	#fcfs_sp_mod1_batch8 \
-	#yolonet_batch8_8 \
-	#kwsnet_batch8_8 \
-	#fcnnet_batch8_8 \
-	#resnet_batch8_8 \
-	#alexnet_batch8_8 \
-	#googlenet_batch8_8 \
-	#yololitenet_batch8_8 \
-	#squeezenet_batch8_8 \
-	#yolonet_batch4_8 \
-	#kwsnet_batch4_8 \
-	#fcnnet_batch4_8 \
-	#resnet_batch4_8 \
-	#alexnet_batch4_8 \
-	#googlenet_batch4_8 \
-	#yololitenet_batch4_8 \
-	#squeezenet_batch4_8 \
-	#yolonet_batch2_8 \
-	#kwsnet_batch2_8 \
-	#fcnnet_batch2_8 \
-	#resnet_batch2_8 \
-	#alexnet_batch2_8 \
-	#googlenet_batch2_8 \
-	#yololitenet_batch2_8 \
-	#squeezenet_batch2_8 \
 	#yolonet_batch1_8 \
 	#kwsnet_batch1_8 \
-	#fcnnet_batch1_8 \
 	#resnet_batch1_8 \
 	#alexnet_batch1_8 \
 	#googlenet_batch1_8 \
 	#yololitenet_batch1_8 \
 	#squeezenet_batch1_8 \
-	#yolonet_batch8_4 \
 	#yolonet_batch1_4 \
 	#kwsnet_batch1_4 \
-	#fcnnet_batch1_4 \
 	#resnet_batch1_4 \
 	#alexnet_batch1_4 \
 	#googlenet_batch1_4 \
@@ -74,7 +34,6 @@ tests = \
 	#kwsnet_batch1_2 \
 	#yolonet_batch1_2 \
 	#yololitenet_batch1_2 \
-	#fcnnet_batch1_2 \
 	#resnet_batch1_2 \
 	#alexnet_batch1_2 \
 	#googlenet_batch1_2 \
@@ -82,101 +41,10 @@ tests = \
 	#kwsnet_batch1_1 \
 	#yolonet_batch1_1 \
 	#yololitenet_batch1_1 \
-	#fcnnet_batch1_1 \
 	#resnet_batch1_1 \
 	#alexnet_batch1_1 \
 	#googlenet_batch1_1 \
 	#squeezenet_batch1_1 \
-	#kwsnet_batch2_4 \
-	#yolonet_batch2_4 \
-	#yololitenet_batch2_4 \
-	#fcnnet_batch2_4 \
-	#resnet_batch2_4 \
-	#alexnet_batch2_4 \
-	#googlenet_batch2_4 \
-	#squeezenet_batch2_4 \
-	#kwsnet_batch2_2 \
-	#yolonet_batch2_2 \
-	#yololitenet_batch2_2 \
-	#fcnnet_batch2_2 \
-	#resnet_batch2_2 \
-	#alexnet_batch2_2 \
-	#googlenet_batch2_2 \
-	#squeezenet_batch2_2 \
-	#kwsnet_batch2_1 \
-	#yolonet_batch2_1 \
-	#yololitenet_batch2_1 \
-	#fcnnet_batch2_1 \
-	#resnet_batch2_1 \
-	#alexnet_batch2_1 \
-	#googlenet_batch2_1 \
-	#squeezenet_batch2_1 \
-	#kwsnet_batch8_4 \
-	#fcnnet_batch8_4 \
-	#resnet_batch8_4 \
-	#alexnet_batch8_4 \
-	#googlenet_batch8_4 \
-	#yololitenet_batch8_4 \
-	#squeezenet_batch8_4 \
-	#kwsnet_batch8_2 \
-	#yolonet_batch8_2 \
-	#yololitenet_batch8_2 \
-	#fcnnet_batch8_2 \
-	#resnet_batch8_2 \
-	#alexnet_batch8_2 \
-	#googlenet_batch8_2 \
-	#squeezenet_batch8_2 \
-	#kwsnet_batch8_1 \
-	#yolonet_batch8_1 \
-	#yololitenet_batch8_1 \
-	#fcnnet_batch8_1 \
-	#resnet_batch8_1 \
-	#alexnet_batch8_1 \
-	#googlenet_batch8_1 \
-	#squeezenet_batch8_1 \
-	#kwsnet_batch4_4 \
-	#yolonet_batch4_4 \
-	#yololitenet_batch4_4 \
-	#fcnnet_batch4_4 \
-	#resnet_batch4_4 \
-	#alexnet_batch4_4 \
-	#googlenet_batch4_4 \
-	#squeezenet_batch4_4 \
-	#kwsnet_batch4_2 \
-	#yolonet_batch4_2 \
-	#yololitenet_batch4_2 \
-	#fcnnet_batch4_2 \
-	#resnet_batch4_2 \
-	#alexnet_batch4_2 \
-	#googlenet_batch4_2 \
-	#squeezenet_batch4_2 \
-	#kwsnet_batch4_1 \
-	#yolonet_batch4_1 \
-	#yololitenet_batch4_1 \
-	#fcnnet_batch4_1 \
-	#resnet_batch4_1 \
-	#alexnet_batch4_1 \
-	#googlenet_batch4_1 \
-	#squeezenet_batch4_1 \
-	#fcfs_mp_mod1 \
-	#fcfs_mp_mod2\
-	#fcfs_sp_mod1 \
-	#fcfs_sp_mod2 \
-	#googlenet_batch8_re \
-	#priority_mp_dynamic3_mod2_batch4 \
-	#priority_mp_dynamic2_mod2_batch4 \
-	#priority_mp_static2_mod2_batch4 \
-	#priority_mp_static2_mod1_batch4 \
-	#priority_mp_dynamic3_mod1_batch4 \
-	#priority_mp_dynamic2_mod1_batch4 \
-	#priority_mp_static2_mod1 \
-	#priority_mp_static2_mod2 \
-	#priority_mp_dynamic3_mod1 \
-	#priority_mp_dynamic3_mod2 \
-	#priority_mp_dynamic2_mod1 \
-	#priority_mp_dynamic2_mod2 \
-	#priority_mp_static_mod1 \
-	#priority_mp_static_mod2 \
 
 tests_baremetal = $(tests:=-baremetal)
 runs_baremetal = $(addsuffix .run,$(tests_baremetal))

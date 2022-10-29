@@ -12,6 +12,7 @@
 #include <limits.h>
 #include <stdbool.h>
 
+
 #include "include/gemmini_params.h"
 #include "include/gemmini.h"
 
@@ -332,6 +333,10 @@ static int is_equal_transposed(elem_t x[DIM][DIM], elem_t y[DIM][DIM]) {
         } \
       result;})
 
+
+#undef abs
+
+#ifndef NUM_CORE
 static uint64_t read_cycles() {
     uint64_t cycles;
     asm volatile ("rdcycle %0" : "=r" (cycles));
@@ -341,7 +346,5 @@ static uint64_t read_cycles() {
     // const uint32_t * mtime = (uint32_t *)(33554432 + 0xbffc);
     // return *mtime;
 }
-
-#undef abs
-
+#endif
 #endif  // SRC_MAIN_C_GEMMINI_TESTUTILS_H

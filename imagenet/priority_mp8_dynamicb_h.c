@@ -298,7 +298,7 @@ int main (int argc, char * argv[]) {
            for(int y = 0; y < SUB_GROUP; y++){ 
               printf("group %d queue %d, sub-group %d: ", k, x, y);
               for(int j = 0; j < QUEUE_DEPTH; j++)
-                 printf("%d, ", gemmini_workload_assigned[k][y][x][j]);
+                 printf("%d(%d), ", gemmini_workload_assigned[k][y][x][j], total_queue_type[gemmini_workload_assigned[k][y][x][j]]);
               printf("\n");
            }
         }
@@ -310,7 +310,7 @@ int main (int argc, char * argv[]) {
            for(int y = 0; y < SUB_GROUP; y++){  
               printf("group %d queue %d, sub-group %d: ", k, x, y);
               for(int j = 0; j < QUEUE_DEPTH; j++)
-                 printf("%d, ", gemmini_workload_grouped[k][y][x][j]);
+                 printf("%d(%d), ", gemmini_workload_assigned[k][y][x][j], total_queue_type[gemmini_workload_assigned[k][y][x][j]]);
               printf("\n");
            }
         }
