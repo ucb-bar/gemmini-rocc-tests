@@ -22,7 +22,7 @@
 #define CAP 4 
 #define CAP_SCALE 1.3
 #define TARGET_SCALE 1.0
-#define INTER_SCALE 1.1
+#define INTER_SCALE 1.2
 
 #define WORKLOAD_A true
 #define WORKLOAD_B false
