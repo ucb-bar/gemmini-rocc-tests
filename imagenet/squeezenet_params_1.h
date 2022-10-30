@@ -502,7 +502,7 @@ static const acc_t conv_1_b_squeeze1111[64] row_align_acc(MAX_BLOCK_LEN_ACC);// 
 static elem_t conv_1_in_squeeze1111[12321][27] row_align(MAX_BLOCK_LEN);
 static elem_t conv_1_out_squeeze1111[12321][64] row_align(MAX_BLOCK_LEN);
 static elem_t conv_1_out_squeeze1111_pooled[1][55][55][64] row_align(MAX_BLOCK_LEN);
-static const struct ConvParams conv_1_params_squeeze1111 = {.batch_size=1, .in_dim=224, .kernel_size=3, .in_channels=3, .out_channels=64, .out_stride=(64), .stride=2, .padding=0, .bias=1, .depthwise=0, .out_dim=1111, .n_patches=12321, .patch_size=27, .pool_size=3, .pool_stride=2, .pool_padding=0, .out_dim_pooled=55, .output_scale=9, .I=12321, .J=64, .K=27, .res_scale=0};
+static const struct ConvParams conv_1_params_squeeze1111 = {.batch_size=1, .in_dim=224, .kernel_size=3, .in_channels=3, .out_channels=64, .out_stride=(64), .stride=2, .padding=0, .bias=1, .depthwise=0, .out_dim=111, .n_patches=12321, .patch_size=27, .pool_size=3, .pool_stride=2, .pool_padding=0, .out_dim_pooled=55, .output_scale=9, .I=12321, .J=64, .K=27, .res_scale=0};
 
 
 static const elem_t conv_2_w_squeeze1111[64][16] row_align(MAX_BLOCK_LEN);

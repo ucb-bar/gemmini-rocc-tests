@@ -18,7 +18,7 @@ uint64_t* squeezenet_function_1(size_t cid, size_t group_id, int orow_divide, in
 #endif
 
 #define num_cycle (26+1+3)
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -51,7 +51,7 @@ uint64_t* squeezenet_function_1(size_t cid, size_t group_id, int orow_divide, in
     conv_cycles[0] = end - start;
 //    printf("conv cycles 0: %llu\n", conv_cycles[0]);
 
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -75,7 +75,7 @@ uint64_t* squeezenet_function_1(size_t cid, size_t group_id, int orow_divide, in
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[0] += end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif   
 *//*
@@ -92,7 +92,7 @@ uint64_t* squeezenet_function_1(size_t cid, size_t group_id, int orow_divide, in
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[0] = end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif         
    */     
@@ -634,7 +634,7 @@ uint64_t* squeezenet_block_function_1(size_t cid, size_t group_id, int orow_divi
     conv_cycles[0] = end - start;
 //    printf("conv cycles 0: %llu\n", conv_cycles[0]);
 
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -658,7 +658,7 @@ uint64_t* squeezenet_block_function_1(size_t cid, size_t group_id, int orow_divi
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[0] += end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif   
 *//*
@@ -675,7 +675,7 @@ uint64_t* squeezenet_block_function_1(size_t cid, size_t group_id, int orow_divi
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[0] = end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif         
     */    
@@ -1187,7 +1187,7 @@ uint64_t* squeezenet_function_11(size_t cid, size_t group_id, int orow_divide, i
 #endif
 
 #define num_cycle (26+1+3)
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -1220,7 +1220,7 @@ uint64_t* squeezenet_function_11(size_t cid, size_t group_id, int orow_divide, i
     conv_cycles[0] = end - start;
 //    printf("conv cycles 0: %llu\n", conv_cycles[0]);
 
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -1244,7 +1244,7 @@ uint64_t* squeezenet_function_11(size_t cid, size_t group_id, int orow_divide, i
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[0] += end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif   
 *//*
@@ -1261,7 +1261,7 @@ uint64_t* squeezenet_function_11(size_t cid, size_t group_id, int orow_divide, i
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[0] = end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif         
     */    
@@ -1803,7 +1803,7 @@ uint64_t* squeezenet_block_function_11(size_t cid, size_t group_id, int orow_div
     conv_cycles[0] = end - start;
 //    printf("conv cycles 0: %llu\n", conv_cycles[0]);
 
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -1827,7 +1827,7 @@ uint64_t* squeezenet_block_function_11(size_t cid, size_t group_id, int orow_div
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[0] += end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif   
 *//*
@@ -1844,7 +1844,7 @@ uint64_t* squeezenet_block_function_11(size_t cid, size_t group_id, int orow_div
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[0] = end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif         
     */    
@@ -2357,7 +2357,7 @@ uint64_t* squeezenet_function_111(size_t cid, size_t group_id, int orow_divide, 
 #endif
 
 #define num_cycle (26+1+3)
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -2390,7 +2390,7 @@ uint64_t* squeezenet_function_111(size_t cid, size_t group_id, int orow_divide, 
     conv_cycles[0] = end - start;
 //    printf("conv cycles 0: %llu\n", conv_cycles[0]);
 
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -2414,7 +2414,7 @@ uint64_t* squeezenet_function_111(size_t cid, size_t group_id, int orow_divide, 
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[0] += end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif   
 *//*
@@ -2431,7 +2431,7 @@ uint64_t* squeezenet_function_111(size_t cid, size_t group_id, int orow_divide, 
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[0] = end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif         
     */    
@@ -2973,7 +2973,7 @@ uint64_t* squeezenet_block_function_111(size_t cid, size_t group_id, int orow_di
     conv_cycles[0] = end - start;
 //    printf("conv cycles 0: %llu\n", conv_cycles[0]);
 
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -2997,7 +2997,7 @@ uint64_t* squeezenet_block_function_111(size_t cid, size_t group_id, int orow_di
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[0] += end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif   
 *//*
@@ -3014,7 +3014,7 @@ uint64_t* squeezenet_block_function_111(size_t cid, size_t group_id, int orow_di
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[0] = end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif         
     */    
@@ -3527,7 +3527,7 @@ uint64_t* squeezenet_function_1111(size_t cid, size_t group_id, int orow_divide,
 #endif
 
 #define num_cycle (26+1+3)
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -3560,7 +3560,7 @@ uint64_t* squeezenet_function_1111(size_t cid, size_t group_id, int orow_divide,
     conv_cycles[0] = end - start;
 //    printf("conv cycles 0: %llu\n", conv_cycles[0]);
 
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -3584,7 +3584,7 @@ uint64_t* squeezenet_function_1111(size_t cid, size_t group_id, int orow_divide,
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[0] += end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif   
 *//*
@@ -3601,7 +3601,7 @@ uint64_t* squeezenet_function_1111(size_t cid, size_t group_id, int orow_divide,
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[0] = end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif         
     */    
@@ -4143,7 +4143,7 @@ uint64_t* squeezenet_block_function_1111(size_t cid, size_t group_id, int orow_d
     conv_cycles[0] = end - start;
 //    printf("conv cycles 0: %llu\n", conv_cycles[0]);
 
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -4167,7 +4167,7 @@ uint64_t* squeezenet_block_function_1111(size_t cid, size_t group_id, int orow_d
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[0] += end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif   
 *//*
@@ -4184,7 +4184,7 @@ uint64_t* squeezenet_block_function_1111(size_t cid, size_t group_id, int orow_d
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[0] = end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif         
     */    
@@ -4696,7 +4696,7 @@ uint64_t* squeezenet_planaria_function_1(size_t cid, size_t group_id, size_t par
 #endif
 
 #define num_cycle (26+1+3)
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -4730,7 +4730,7 @@ uint64_t* squeezenet_planaria_function_1(size_t cid, size_t group_id, size_t par
     conv_cycles[0] = end - start;
 //    printf("conv cycles 0: %llu\n", conv_cycles[0]);
 
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -4754,7 +4754,7 @@ uint64_t* squeezenet_planaria_function_1(size_t cid, size_t group_id, size_t par
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[0] += end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif   
 */
@@ -4772,7 +4772,7 @@ uint64_t* squeezenet_planaria_function_1(size_t cid, size_t group_id, size_t par
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[0] = end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif         
       */  
@@ -5290,7 +5290,7 @@ uint64_t* squeezenet_planaria_function_11(size_t cid, size_t group_id, size_t pa
 #endif
 
 #define num_cycle (26+1+3)
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -5324,7 +5324,7 @@ uint64_t* squeezenet_planaria_function_11(size_t cid, size_t group_id, size_t pa
     conv_cycles[0] = end - start;
 //    printf("conv cycles 0: %llu\n", conv_cycles[0]);
 
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif        
 
@@ -5348,7 +5348,7 @@ uint64_t* squeezenet_planaria_function_11(size_t cid, size_t group_id, size_t pa
     end = read_cycles();
     total_conv_cycles += end - start;
     conv_cycles[0] += end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif   
 *//*
@@ -5365,7 +5365,7 @@ uint64_t* squeezenet_planaria_function_11(size_t cid, size_t group_id, size_t pa
     end = read_cycles();
     total_pool_cycles += end - start;
     pool_cycles[0] = end - start;
-#if thread_sync == 1
+#if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif         
     */    
