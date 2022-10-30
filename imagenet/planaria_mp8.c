@@ -14,18 +14,19 @@
 //#define NUM_OUTPUT (20+34+16+3)
 
 #define NUM_CORE 8
-#define SEED 2
-#define total_workloads 180 // 100 each
+#define SEED 0
+#define total_workloads 350 // 100 each
 #define WORKLOAD_CORE 2
-#define QUEUE_DEPTH 5
-#define NUM_ITER 4
-#define CAP 4 // 0 to 1 (smaller number: shorter time between workload dispatch time)
-#define CAP_SCALE 1.92
+#define QUEUE_DEPTH 6
+#define NUM_ITER 3
+#define CAP 4 
+#define CAP_SCALE 1.26
 #define TARGET_SCALE 1.0
+#define INTER_SCALE 1.1
 
-#define BATCH1 true
-#define BATCH4 false
-#define BATCH8 false
+#define WORKLOAD_A false
+#define WORKLOAD_B false
+// else: mixed (C)
 
 #define debug_print 0
 
@@ -213,10 +214,11 @@ printf("global: %d, global start: %d, global end: %d, global mid: %d\n", &barrie
           uint64_t total_runtime = 0;
           uint64_t after_dispatch = (temp_cycles > total_queue_dispatch[queue_id]) ? (temp_cycles - total_queue_dispatch[queue_id]) : 0;
           uint64_t slack = total_queue_target[queue_id] > after_dispatch ? total_queue_target[queue_id] - after_dispatch : 10;
+          int estimate = ceil_divide_int(total_queue_togo[queue_id], slack);
           if(cid == 0) {
-            //gemmini_planaria_score[total_sub_group_id] = (1 + total_queue_priority[group_id][queue_id]) / 4 + MAX(1, (int)(4 * (temp_cycles - total_queue_dispatch[group_id][queue_id]))/total_queue_target[group_id][queue_id]);
-            gemmini_planaria_score[total_sub_group_id] = total_queue_priority[queue_id]*10000 + ((CAP*10000*after_dispatch) / (total_queue_target[queue_id]));
- 	    //gemmini_planaria_score[i] = ((1+total_queue_priority[queue_id])*100000000) / slack; 
+            //gemmini_planaria_score[total_sub_group_id] = total_queue_priority[queue_id]*10000 + ((CAP*10000*after_dispatch) / (total_queue_target[queue_id]));
+            gemmini_planaria_score[total_sub_group_id] = (total_queue_priority[queue_id]*100000000) / (slack * estimate);
+            //gemmini_planaria_score[i] = ((1+total_queue_priority[queue_id])*100000000) / slack; 
           }
           pthread_barrier_wait(&barrier_start[total_sub_group_id]);
  //         int group_queue_id = gemmini_workload_grouped[group_id][sub_group_id][g][i];
@@ -227,10 +229,10 @@ printf("global: %d, global start: %d, global end: %d, global mid: %d\n", &barrie
           while(total_queue_status[queue_id] < planaria_group[workload_id]){
             uint64_t temp_end = read_cycles();
             bool inner_done = false;
-	    uint64_t slack_time = slack > (temp_end - inner_start) ? slack - (temp_end - inner_start) : 1000;
+	        uint64_t slack_time = slack > (temp_end - inner_start) ? slack - (temp_end - inner_start) : 1000;
             //uint64_t slack_time = (temp_cycles > (temp_end - inner_start + total_queue_dispatch[queue_id])) ? temp_cycles - (temp_end - inner_start) - total_queue_dispatch[queue_id] : 100000;
             if(workload_num == 0 || queue_group < NUM_ITER) // for last one
-		total_runtime = workload_function(queue_id, workload_id, cid, group_id, total_sub_group_id, workload_num_core, slack_time, &barrier[total_sub_group_id]);
+              total_runtime = workload_function(inner_start - temp_cycles, queue_id, workload_id, cid, group_id, total_sub_group_id, workload_num_core, -1, &barrier[total_sub_group_id]);
             else
               total_runtime += workload_planaria_function(queue_id, workload_id, cid, group_id, all ? total_sub_group_id / SUB_GROUP : total_sub_group_id, all ? SUB_CORE : workload_num_core, slack_time, &barrier[total_sub_group_id]);
  //            total_runtime += workload_planaria_function(queue_id, workload_id, all ? group_cid : cid, group_id, all ? total_sub_group_id / SUB_GROUP : total_sub_group_id, all ? SUB_CORE : workload_num_core, slack_time, all ? &barrier_sub[group_id] : &barrier[total_sub_group_id]);
