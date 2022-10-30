@@ -78,7 +78,7 @@ uint64_t* squeezenet_function_1(size_t cid, size_t group_id, int orow_divide, in
 #if thread_sync == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif   
-*/
+*//*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_squeeze1.batch_size,
@@ -95,7 +95,7 @@ uint64_t* squeezenet_function_1(size_t cid, size_t group_id, int orow_divide, in
 #if thread_sync == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif         
-        
+   */     
     // conv_2
     start = read_cycles();
     tiled_matmul_nn_auto_cid(conv_2_params_squeeze1.I, conv_2_params_squeeze1.J, conv_2_params_squeeze1.K, conv_2_params_squeeze1.out_stride,
@@ -661,7 +661,7 @@ uint64_t* squeezenet_block_function_1(size_t cid, size_t group_id, int orow_divi
 #if thread_sync == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif   
-*/
+*//*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_squeeze1.batch_size,
@@ -678,7 +678,7 @@ uint64_t* squeezenet_block_function_1(size_t cid, size_t group_id, int orow_divi
 #if thread_sync == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif         
-        
+    */    
     // conv_2
     start = read_cycles();
     tiled_matmul_nn_auto_cid(conv_2_params_squeeze1.I, conv_2_params_squeeze1.J, conv_2_params_squeeze1.K, conv_2_params_squeeze1.out_stride,
@@ -1247,7 +1247,7 @@ uint64_t* squeezenet_function_11(size_t cid, size_t group_id, int orow_divide, i
 #if thread_sync == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif   
-*/
+*//*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_squeeze11.batch_size,
@@ -1264,7 +1264,7 @@ uint64_t* squeezenet_function_11(size_t cid, size_t group_id, int orow_divide, i
 #if thread_sync == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif         
-        
+    */    
     // conv_2
     start = read_cycles();
     tiled_matmul_nn_auto_cid(conv_2_params_squeeze11.I, conv_2_params_squeeze11.J, conv_2_params_squeeze11.K, conv_2_params_squeeze11.out_stride,
@@ -1830,7 +1830,7 @@ uint64_t* squeezenet_block_function_11(size_t cid, size_t group_id, int orow_div
 #if thread_sync == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif   
-*/
+*//*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_squeeze11.batch_size,
@@ -1847,7 +1847,7 @@ uint64_t* squeezenet_block_function_11(size_t cid, size_t group_id, int orow_div
 #if thread_sync == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif         
-        
+    */    
     // conv_2
     start = read_cycles();
     tiled_matmul_nn_auto_cid(conv_2_params_squeeze11.I, conv_2_params_squeeze11.J, conv_2_params_squeeze11.K, conv_2_params_squeeze11.out_stride,
@@ -2417,7 +2417,7 @@ uint64_t* squeezenet_function_111(size_t cid, size_t group_id, int orow_divide, 
 #if thread_sync == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif   
-*/
+*//*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_squeeze111.batch_size,
@@ -2434,7 +2434,7 @@ uint64_t* squeezenet_function_111(size_t cid, size_t group_id, int orow_divide, 
 #if thread_sync == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif         
-        
+    */    
     // conv_2
     start = read_cycles();
     tiled_matmul_nn_auto_cid(conv_2_params_squeeze111.I, conv_2_params_squeeze111.J, conv_2_params_squeeze111.K, conv_2_params_squeeze111.out_stride,
@@ -3000,7 +3000,7 @@ uint64_t* squeezenet_block_function_111(size_t cid, size_t group_id, int orow_di
 #if thread_sync == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif   
-*/
+*//*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_squeeze111.batch_size,
@@ -3017,7 +3017,7 @@ uint64_t* squeezenet_block_function_111(size_t cid, size_t group_id, int orow_di
 #if thread_sync == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif         
-        
+    */    
     // conv_2
     start = read_cycles();
     tiled_matmul_nn_auto_cid(conv_2_params_squeeze111.I, conv_2_params_squeeze111.J, conv_2_params_squeeze111.K, conv_2_params_squeeze111.out_stride,
@@ -3587,7 +3587,7 @@ uint64_t* squeezenet_function_1111(size_t cid, size_t group_id, int orow_divide,
 #if thread_sync == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif   
-*/
+*//*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_squeeze1111.batch_size,
@@ -3604,7 +3604,7 @@ uint64_t* squeezenet_function_1111(size_t cid, size_t group_id, int orow_divide,
 #if thread_sync == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif         
-        
+    */    
     // conv_2
     start = read_cycles();
     tiled_matmul_nn_auto_cid(conv_2_params_squeeze1111.I, conv_2_params_squeeze1111.J, conv_2_params_squeeze1111.K, conv_2_params_squeeze1111.out_stride,
@@ -4170,7 +4170,7 @@ uint64_t* squeezenet_block_function_1111(size_t cid, size_t group_id, int orow_d
 #if thread_sync == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif   
-*/
+*//*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_squeeze1111.batch_size,
@@ -4187,7 +4187,7 @@ uint64_t* squeezenet_block_function_1111(size_t cid, size_t group_id, int orow_d
 #if thread_sync == 1
     //pthread_barrier_wait(barrier_squeeze);
 #endif         
-        
+    */    
     // conv_2
     start = read_cycles();
     tiled_matmul_nn_auto_cid(conv_2_params_squeeze1111.I, conv_2_params_squeeze1111.J, conv_2_params_squeeze1111.K, conv_2_params_squeeze1111.out_stride,
@@ -4758,6 +4758,7 @@ uint64_t* squeezenet_planaria_function_1(size_t cid, size_t group_id, size_t par
     pthread_barrier_wait(barrier_squeeze);
 #endif   
 */
+    /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_squeeze1.batch_size,
@@ -4774,7 +4775,7 @@ uint64_t* squeezenet_planaria_function_1(size_t cid, size_t group_id, size_t par
 #if thread_sync == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif         
-        
+      */  
     // conv_2
     start = read_cycles();
     tiled_matmul_nn_auto_cid(conv_2_params_squeeze1.I, conv_2_params_squeeze1.J, conv_2_params_squeeze1.K, conv_2_params_squeeze1.out_stride,
@@ -5350,7 +5351,7 @@ uint64_t* squeezenet_planaria_function_11(size_t cid, size_t group_id, size_t pa
 #if thread_sync == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif   
-*/
+*//*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_squeeze11.batch_size,
@@ -5367,7 +5368,7 @@ uint64_t* squeezenet_planaria_function_11(size_t cid, size_t group_id, size_t pa
 #if thread_sync == 1
     pthread_barrier_wait(barrier_squeeze);
 #endif         
-        
+    */    
     // conv_2
     start = read_cycles();
     tiled_matmul_nn_auto_cid(conv_2_params_squeeze11.I, conv_2_params_squeeze11.J, conv_2_params_squeeze11.K, conv_2_params_squeeze11.out_stride,

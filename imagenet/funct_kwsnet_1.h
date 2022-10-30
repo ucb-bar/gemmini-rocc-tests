@@ -903,7 +903,7 @@ uint64_t* kwsnet_block_function_1(size_t cid, size_t group_id, bool part1, bool 
 #if THREAD_SYNC == 1
       //pthread_barrier_wait(barrier_kws1);
 #endif
-   
+   /*
       start = read_cycles();
       tiled_pool_auto_cid(
           conv_1_params_kws1.batch_size,
@@ -920,7 +920,7 @@ uint64_t* kwsnet_block_function_1(size_t cid, size_t group_id, bool part1, bool 
 #if THREAD_SYNC == 1
       //pthread_barrier_wait(barrier_kws1);
 #endif
-          
+     */     
           
       // conv_2
       start = read_cycles();
@@ -2607,7 +2607,7 @@ uint64_t* kwsnet_block_function_11(size_t cid, size_t group_id, bool part1, bool
 #if THREAD_SYNC == 1
       //pthread_barrier_wait(barrier_kws11);
 #endif
-   
+   /*
       start = read_cycles();
       tiled_pool_auto_cid(
           conv_1_params_kws11.batch_size,
@@ -2624,7 +2624,7 @@ uint64_t* kwsnet_block_function_11(size_t cid, size_t group_id, bool part1, bool
 #if THREAD_SYNC == 1
       //pthread_barrier_wait(barrier_kws11);
 #endif
-          
+    */      
           
       // conv_2
       start = read_cycles();
@@ -4309,7 +4309,7 @@ uint64_t* kwsnet_block_function_111(size_t cid, size_t group_id, bool part1, boo
 #if THREAD_SYNC == 1
       //pthread_barrier_wait(barrier_kws111);
 #endif
-   
+   /*
       start = read_cycles();
       tiled_pool_auto_cid(
           conv_1_params_kws111.batch_size,
@@ -4326,7 +4326,7 @@ uint64_t* kwsnet_block_function_111(size_t cid, size_t group_id, bool part1, boo
 #if THREAD_SYNC == 1
       //pthread_barrier_wait(barrier_kws111);
 #endif
-          
+     */     
           
       // conv_2
       start = read_cycles();
@@ -6011,7 +6011,7 @@ uint64_t* kwsnet_block_function_1111(size_t cid, size_t group_id, bool part1, bo
 #if THREAD_SYNC == 1
       //pthread_barrier_wait(barrier_kws1111);
 #endif
-   
+   /*
       start = read_cycles();
       tiled_pool_auto_cid(
           conv_1_params_kws1111.batch_size,
@@ -6028,7 +6028,7 @@ uint64_t* kwsnet_block_function_1111(size_t cid, size_t group_id, bool part1, bo
 #if THREAD_SYNC == 1
       //pthread_barrier_wait(barrier_kws1111);
 #endif
-          
+     */     
           
       // conv_2
       start = read_cycles();

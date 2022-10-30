@@ -3155,7 +3155,7 @@ static void tiled_conv_A_stride_auto_stride( // for sw padding
   if(cid == 0){ 
     int workload_type = total_queue_type[gemmini_queue_id[group_id]];
     int queue_id = gemmini_queue_id[group_id];
-    total_queue_togo[queue_id] -= conv_prediction_cycles[workload_type-1][queue_id];
+    total_queue_togo[queue_id] -= conv_prediction_cycles[workload_type-1][total_queue_conv[queue_id]];
     total_queue_conv[queue_id] ++;
 //    gemmini_score[group_id] = this_score;
   }

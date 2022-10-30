@@ -54,7 +54,7 @@ uint64_t* yololitenet_function_1(size_t cid, size_t group_id, int orow_divide, i
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_yololite1.batch_size,
@@ -71,7 +71,7 @@ uint64_t* yololitenet_function_1(size_t cid, size_t group_id, int orow_divide, i
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
-        
+   */     
     // conv_2
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -94,7 +94,7 @@ uint64_t* yololitenet_function_1(size_t cid, size_t group_id, int orow_divide, i
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
-  
+ /* 
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_2_params_yololite1.batch_size,
@@ -111,7 +111,7 @@ uint64_t* yololitenet_function_1(size_t cid, size_t group_id, int orow_divide, i
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif              
-
+*/
     // conv_3
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -132,7 +132,7 @@ uint64_t* yololitenet_function_1(size_t cid, size_t group_id, int orow_divide, i
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_3_params_yololite1.batch_size,
@@ -149,7 +149,7 @@ uint64_t* yololitenet_function_1(size_t cid, size_t group_id, int orow_divide, i
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_4
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -172,7 +172,7 @@ uint64_t* yololitenet_function_1(size_t cid, size_t group_id, int orow_divide, i
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_4_params_yololite1.batch_size,
@@ -189,7 +189,7 @@ uint64_t* yololitenet_function_1(size_t cid, size_t group_id, int orow_divide, i
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-    
+   */ 
     // conv_5
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -212,7 +212,7 @@ uint64_t* yololitenet_function_1(size_t cid, size_t group_id, int orow_divide, i
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_5_params_yololite1.batch_size,
@@ -229,7 +229,7 @@ uint64_t* yololitenet_function_1(size_t cid, size_t group_id, int orow_divide, i
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_6
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -340,7 +340,7 @@ uint64_t* yololitenet_block_function_1(size_t cid, size_t group_id, int orow_div
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif        
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_yololite1.batch_size,
@@ -357,7 +357,7 @@ uint64_t* yololitenet_block_function_1(size_t cid, size_t group_id, int orow_div
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif        
-        
+   */     
     // conv_2
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -380,7 +380,7 @@ uint64_t* yololitenet_block_function_1(size_t cid, size_t group_id, int orow_div
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif        
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_2_params_yololite1.batch_size,
@@ -397,7 +397,7 @@ uint64_t* yololitenet_block_function_1(size_t cid, size_t group_id, int orow_div
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif              
-
+*/
     // conv_3
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -418,7 +418,7 @@ uint64_t* yololitenet_block_function_1(size_t cid, size_t group_id, int orow_div
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_3_params_yololite1.batch_size,
@@ -435,7 +435,7 @@ uint64_t* yololitenet_block_function_1(size_t cid, size_t group_id, int orow_div
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_4
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -458,7 +458,7 @@ uint64_t* yololitenet_block_function_1(size_t cid, size_t group_id, int orow_div
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_4_params_yololite1.batch_size,
@@ -475,7 +475,7 @@ uint64_t* yololitenet_block_function_1(size_t cid, size_t group_id, int orow_div
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-    
+    */
     // conv_5
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -498,7 +498,7 @@ uint64_t* yololitenet_block_function_1(size_t cid, size_t group_id, int orow_div
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_5_params_yololite1.batch_size,
@@ -515,7 +515,7 @@ uint64_t* yololitenet_block_function_1(size_t cid, size_t group_id, int orow_div
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_6
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -633,7 +633,7 @@ uint64_t* yololitenet_function_11(size_t cid, size_t group_id, int orow_divide, 
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_yololite11.batch_size,
@@ -650,7 +650,7 @@ uint64_t* yololitenet_function_11(size_t cid, size_t group_id, int orow_divide, 
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
-        
+   */     
     // conv_2
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -673,7 +673,7 @@ uint64_t* yololitenet_function_11(size_t cid, size_t group_id, int orow_divide, 
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_2_params_yololite11.batch_size,
@@ -690,7 +690,7 @@ uint64_t* yololitenet_function_11(size_t cid, size_t group_id, int orow_divide, 
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif              
-
+*/
     // conv_3
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -711,7 +711,7 @@ uint64_t* yololitenet_function_11(size_t cid, size_t group_id, int orow_divide, 
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_3_params_yololite11.batch_size,
@@ -728,7 +728,7 @@ uint64_t* yololitenet_function_11(size_t cid, size_t group_id, int orow_divide, 
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_4
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -751,7 +751,7 @@ uint64_t* yololitenet_function_11(size_t cid, size_t group_id, int orow_divide, 
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_4_params_yololite11.batch_size,
@@ -768,7 +768,7 @@ uint64_t* yololitenet_function_11(size_t cid, size_t group_id, int orow_divide, 
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-    
+    */
     // conv_5
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -791,7 +791,7 @@ uint64_t* yololitenet_function_11(size_t cid, size_t group_id, int orow_divide, 
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_5_params_yololite11.batch_size,
@@ -808,7 +808,7 @@ uint64_t* yololitenet_function_11(size_t cid, size_t group_id, int orow_divide, 
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_6
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -919,7 +919,7 @@ uint64_t* yololitenet_block_function_11(size_t cid, size_t group_id, int orow_di
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif        
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_yololite11.batch_size,
@@ -936,7 +936,7 @@ uint64_t* yololitenet_block_function_11(size_t cid, size_t group_id, int orow_di
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif        
-        
+   */     
     // conv_2
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -959,7 +959,7 @@ uint64_t* yololitenet_block_function_11(size_t cid, size_t group_id, int orow_di
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif        
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_2_params_yololite11.batch_size,
@@ -976,7 +976,7 @@ uint64_t* yololitenet_block_function_11(size_t cid, size_t group_id, int orow_di
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif              
-
+*/
     // conv_3
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -997,7 +997,7 @@ uint64_t* yololitenet_block_function_11(size_t cid, size_t group_id, int orow_di
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_3_params_yololite11.batch_size,
@@ -1014,7 +1014,7 @@ uint64_t* yololitenet_block_function_11(size_t cid, size_t group_id, int orow_di
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_4
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -1037,7 +1037,7 @@ uint64_t* yololitenet_block_function_11(size_t cid, size_t group_id, int orow_di
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_4_params_yololite11.batch_size,
@@ -1054,7 +1054,7 @@ uint64_t* yololitenet_block_function_11(size_t cid, size_t group_id, int orow_di
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-    
+    */
     // conv_5
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -1077,7 +1077,7 @@ uint64_t* yololitenet_block_function_11(size_t cid, size_t group_id, int orow_di
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_5_params_yololite11.batch_size,
@@ -1094,7 +1094,7 @@ uint64_t* yololitenet_block_function_11(size_t cid, size_t group_id, int orow_di
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-        
+  */      
     // conv_6
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -1212,7 +1212,7 @@ uint64_t* yololitenet_function_111(size_t cid, size_t group_id, int orow_divide,
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_yololite111.batch_size,
@@ -1229,7 +1229,7 @@ uint64_t* yololitenet_function_111(size_t cid, size_t group_id, int orow_divide,
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
-        
+   */     
     // conv_2
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -1252,7 +1252,7 @@ uint64_t* yololitenet_function_111(size_t cid, size_t group_id, int orow_divide,
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_2_params_yololite111.batch_size,
@@ -1269,7 +1269,7 @@ uint64_t* yololitenet_function_111(size_t cid, size_t group_id, int orow_divide,
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif              
-
+*/
     // conv_3
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -1290,7 +1290,7 @@ uint64_t* yololitenet_function_111(size_t cid, size_t group_id, int orow_divide,
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_3_params_yololite111.batch_size,
@@ -1307,7 +1307,7 @@ uint64_t* yololitenet_function_111(size_t cid, size_t group_id, int orow_divide,
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_4
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -1330,7 +1330,7 @@ uint64_t* yololitenet_function_111(size_t cid, size_t group_id, int orow_divide,
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_4_params_yololite111.batch_size,
@@ -1347,7 +1347,7 @@ uint64_t* yololitenet_function_111(size_t cid, size_t group_id, int orow_divide,
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-    
+    */
     // conv_5
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -1370,7 +1370,7 @@ uint64_t* yololitenet_function_111(size_t cid, size_t group_id, int orow_divide,
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_5_params_yololite111.batch_size,
@@ -1387,7 +1387,7 @@ uint64_t* yololitenet_function_111(size_t cid, size_t group_id, int orow_divide,
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_6
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -1498,7 +1498,7 @@ uint64_t* yololitenet_block_function_111(size_t cid, size_t group_id, int orow_d
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif        
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_yololite111.batch_size,
@@ -1515,7 +1515,7 @@ uint64_t* yololitenet_block_function_111(size_t cid, size_t group_id, int orow_d
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif        
-        
+   */     
     // conv_2
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -1538,7 +1538,7 @@ uint64_t* yololitenet_block_function_111(size_t cid, size_t group_id, int orow_d
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif        
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_2_params_yololite111.batch_size,
@@ -1555,7 +1555,7 @@ uint64_t* yololitenet_block_function_111(size_t cid, size_t group_id, int orow_d
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif              
-
+*/
     // conv_3
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -1576,7 +1576,7 @@ uint64_t* yololitenet_block_function_111(size_t cid, size_t group_id, int orow_d
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_3_params_yololite111.batch_size,
@@ -1593,7 +1593,7 @@ uint64_t* yololitenet_block_function_111(size_t cid, size_t group_id, int orow_d
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_4
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -1616,7 +1616,7 @@ uint64_t* yololitenet_block_function_111(size_t cid, size_t group_id, int orow_d
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_4_params_yololite111.batch_size,
@@ -1633,7 +1633,7 @@ uint64_t* yololitenet_block_function_111(size_t cid, size_t group_id, int orow_d
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-    
+    */
     // conv_5
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -1656,7 +1656,7 @@ uint64_t* yololitenet_block_function_111(size_t cid, size_t group_id, int orow_d
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_5_params_yololite111.batch_size,
@@ -1673,7 +1673,7 @@ uint64_t* yololitenet_block_function_111(size_t cid, size_t group_id, int orow_d
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_6
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -1791,7 +1791,7 @@ uint64_t* yololitenet_function_1111(size_t cid, size_t group_id, int orow_divide
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_yololite1111.batch_size,
@@ -1808,7 +1808,7 @@ uint64_t* yololitenet_function_1111(size_t cid, size_t group_id, int orow_divide
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
-        
+   */     
     // conv_2
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -1831,7 +1831,7 @@ uint64_t* yololitenet_function_1111(size_t cid, size_t group_id, int orow_divide
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_2_params_yololite1111.batch_size,
@@ -1848,7 +1848,7 @@ uint64_t* yololitenet_function_1111(size_t cid, size_t group_id, int orow_divide
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif              
-
+*/
     // conv_3
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -1869,7 +1869,7 @@ uint64_t* yololitenet_function_1111(size_t cid, size_t group_id, int orow_divide
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_3_params_yololite1111.batch_size,
@@ -1886,7 +1886,7 @@ uint64_t* yololitenet_function_1111(size_t cid, size_t group_id, int orow_divide
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_4
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -1909,7 +1909,7 @@ uint64_t* yololitenet_function_1111(size_t cid, size_t group_id, int orow_divide
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_4_params_yololite1111.batch_size,
@@ -1926,7 +1926,7 @@ uint64_t* yololitenet_function_1111(size_t cid, size_t group_id, int orow_divide
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-    
+    */
     // conv_5
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -1949,7 +1949,7 @@ uint64_t* yololitenet_function_1111(size_t cid, size_t group_id, int orow_divide
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_5_params_yololite1111.batch_size,
@@ -1966,7 +1966,7 @@ uint64_t* yololitenet_function_1111(size_t cid, size_t group_id, int orow_divide
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_6
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -2077,7 +2077,7 @@ uint64_t* yololitenet_block_function_1111(size_t cid, size_t group_id, int orow_
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif        
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_yololite1111.batch_size,
@@ -2094,7 +2094,7 @@ uint64_t* yololitenet_block_function_1111(size_t cid, size_t group_id, int orow_
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif        
-        
+   */     
     // conv_2
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -2117,7 +2117,7 @@ uint64_t* yololitenet_block_function_1111(size_t cid, size_t group_id, int orow_
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif        
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_2_params_yololite1111.batch_size,
@@ -2134,7 +2134,7 @@ uint64_t* yololitenet_block_function_1111(size_t cid, size_t group_id, int orow_
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif              
-
+*/
     // conv_3
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -2155,7 +2155,7 @@ uint64_t* yololitenet_block_function_1111(size_t cid, size_t group_id, int orow_
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_3_params_yololite1111.batch_size,
@@ -2172,7 +2172,7 @@ uint64_t* yololitenet_block_function_1111(size_t cid, size_t group_id, int orow_
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_4
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -2195,7 +2195,7 @@ uint64_t* yololitenet_block_function_1111(size_t cid, size_t group_id, int orow_
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_4_params_yololite1111.batch_size,
@@ -2212,7 +2212,7 @@ uint64_t* yololitenet_block_function_1111(size_t cid, size_t group_id, int orow_
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-    
+    */
     // conv_5
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -2235,7 +2235,7 @@ uint64_t* yololitenet_block_function_1111(size_t cid, size_t group_id, int orow_
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_5_params_yololite1111.batch_size,
@@ -2252,7 +2252,7 @@ uint64_t* yololitenet_block_function_1111(size_t cid, size_t group_id, int orow_
 #if THREAD_SYNC == 1
     //pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_6
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -2369,7 +2369,7 @@ uint64_t* yololitenet_planaria_function_1(size_t cid, size_t group_id, size_t pa
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
- 
+/* 
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_yololite1.batch_size,
@@ -2385,7 +2385,7 @@ uint64_t* yololitenet_planaria_function_1(size_t cid, size_t group_id, size_t pa
     pool_cycles[0] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
-#endif        
+#endif */        
     }
     if(part == 1){
     // conv_2
@@ -2410,7 +2410,7 @@ uint64_t* yololitenet_planaria_function_1(size_t cid, size_t group_id, size_t pa
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_2_params_yololite1.batch_size,
@@ -2427,7 +2427,7 @@ uint64_t* yololitenet_planaria_function_1(size_t cid, size_t group_id, size_t pa
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif              
-
+*/
     // conv_3
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -2448,7 +2448,7 @@ uint64_t* yololitenet_planaria_function_1(size_t cid, size_t group_id, size_t pa
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_3_params_yololite1.batch_size,
@@ -2465,7 +2465,7 @@ uint64_t* yololitenet_planaria_function_1(size_t cid, size_t group_id, size_t pa
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_4
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -2488,7 +2488,7 @@ uint64_t* yololitenet_planaria_function_1(size_t cid, size_t group_id, size_t pa
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_4_params_yololite1.batch_size,
@@ -2505,7 +2505,7 @@ uint64_t* yololitenet_planaria_function_1(size_t cid, size_t group_id, size_t pa
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-    
+    */
     // conv_5
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -2528,7 +2528,7 @@ uint64_t* yololitenet_planaria_function_1(size_t cid, size_t group_id, size_t pa
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_5_params_yololite1.batch_size,
@@ -2545,7 +2545,7 @@ uint64_t* yololitenet_planaria_function_1(size_t cid, size_t group_id, size_t pa
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_6
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -2662,7 +2662,7 @@ uint64_t* yololitenet_planaria_function_11(size_t cid, size_t group_id, size_t p
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
- 
+/* 
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_1_params_yololite11.batch_size,
@@ -2678,7 +2678,7 @@ uint64_t* yololitenet_planaria_function_11(size_t cid, size_t group_id, size_t p
     pool_cycles[0] = end - start;
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
-#endif        
+#endif   */     
     }
     if(part == 1){
     // conv_2
@@ -2703,7 +2703,7 @@ uint64_t* yololitenet_planaria_function_11(size_t cid, size_t group_id, size_t p
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif        
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_2_params_yololite11.batch_size,
@@ -2720,7 +2720,7 @@ uint64_t* yololitenet_planaria_function_11(size_t cid, size_t group_id, size_t p
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif              
-
+*/
     // conv_3
     start = read_cycles();
     tiled_conv_A_stride_auto_stride(
@@ -2741,7 +2741,7 @@ uint64_t* yololitenet_planaria_function_11(size_t cid, size_t group_id, size_t p
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_3_params_yololite11.batch_size,
@@ -2758,7 +2758,7 @@ uint64_t* yololitenet_planaria_function_11(size_t cid, size_t group_id, size_t p
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
       // conv_4
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -2781,7 +2781,7 @@ uint64_t* yololitenet_planaria_function_11(size_t cid, size_t group_id, size_t p
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-  
+  /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_4_params_yololite11.batch_size,
@@ -2798,7 +2798,7 @@ uint64_t* yololitenet_planaria_function_11(size_t cid, size_t group_id, size_t p
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-    
+    */
     // conv_5
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
@@ -2821,7 +2821,7 @@ uint64_t* yololitenet_planaria_function_11(size_t cid, size_t group_id, size_t p
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
- 
+ /*
     start = read_cycles();
     tiled_pool_auto_cid(
         conv_5_params_yololite11.batch_size,
@@ -2838,7 +2838,7 @@ uint64_t* yololitenet_planaria_function_11(size_t cid, size_t group_id, size_t p
 #if THREAD_SYNC == 1
     pthread_barrier_wait(barrier_yololite);
 #endif
-        
+   */     
     // conv_6
     start = read_cycles();
     tiled_conv_A_stride_auto_cid(
