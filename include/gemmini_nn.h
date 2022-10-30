@@ -170,12 +170,12 @@ static void tiled_matmul_nn_auto_stride(size_t dim_I, size_t dim_J, size_t dim_K
   const void * D, elem_t* C,
   int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
   enum tiled_matmul_type_t tiled_matmul_type,
-  size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id,
+  size_t orow_divide, size_t batch_divide, size_t cid, size_t total_cid,
   int target_util)
 {
   size_t* args_out;
   size_t args[10];
-  args_out = tiling_factor_matmul_calculate_auto(dim_I, dim_J, dim_K, orow_divide, batch_divide, cid, group_id, args, target_util);
+  args_out = tiling_factor_matmul_calculate_auto(dim_I, dim_J, dim_K, orow_divide, batch_divide, cid, total_cid, args, target_util);
   dim_I = args_out[3];
   dim_J = args_out[4];
   dim_K = args_out[5];
@@ -219,11 +219,10 @@ static void tiled_matmul_nn_auto_stride(size_t dim_I, size_t dim_J, size_t dim_K
 
   //update for the next layer
   if(cid == 0){ 
-    int workload_type = total_queue_type[gemmini_queue_id[group_id]];
-    int queue_id = gemmini_queue_id[group_id];
+    int workload_type = total_queue_type[gemmini_queue_id[total_cid]];
+    int queue_id = gemmini_queue_id[total_cid];
     total_queue_togo[queue_id] -= conv_prediction_cycles[workload_type-1][total_queue_conv[queue_id]];
     total_queue_conv[queue_id] ++;
-    //gemmini_score[group_id] = this_score;
   }
 }
 
@@ -234,7 +233,7 @@ static void tiled_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
   const void * D, elem_t* C,
   int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
   enum tiled_matmul_type_t tiled_matmul_type,
-  size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id,
+  size_t orow_divide, size_t batch_divide, size_t cid, size_t total_cid,
   int target_util){
 
   size_t stride_A = (dim_K % 128 == 0) ? dim_K + 64 : dim_K;
@@ -247,7 +246,7 @@ static void tiled_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
       A, B, D, C,
       act, scale, relu6_shift, repeating_bias,
       WS,
-      orow_divide, batch_divide, cid, group_id,
+      orow_divide, batch_divide, cid, total_cid,
       target_util);
 
 }
@@ -534,7 +533,7 @@ int64_t* next_target_util(
     int compute_target, // conv layer target (from pre-compiled)
     enum layer_type_t prev_layer_type, enum layer_tyepe_t next_layer_type,
     const struct ConvParams * prev_params,
-    size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id, size_t group_id){ // group_id: valid group id for only 1 core per workload running group 
+    size_t orow_divide, size_t batch_divide, size_t cid, size_t total_cid, size_t total_cid){ // total_cid: valid group id for only 1 core per workload running group 
 
   // remaining cycles: remain target cycles
   // prev macs: total macs before this layer
@@ -565,7 +564,7 @@ int64_t* next_target_util(
   else if(prev_layer_type == MATMUL){
     size_t args_in[10];
     size_t* args = tiling_factor_matmul_calculate_auto(prev_params->I, prev_params->J, prev_params->K,
-        orow_divide, batch_divide, cid, group_id, args_in, 0);
+        orow_divide, batch_divide, cid, total_cid, args_in, 0);
     uint64_t prev_layer_ideal = args[2];
     new_conv_ideal -= prev_layer_ideal;
   }
@@ -573,7 +572,7 @@ int64_t* next_target_util(
     size_t args_in[10];
     remaining_mem_cycles -= prev_cycles;
     size_t* args = tiling_factor_matmul_calculate_auto(prev_params->I, prev_params->J, prev_params->K,
-        orow_divide, batch_divide, cid, group_id, args_in, 0);
+        orow_divide, batch_divide, cid, total_cid, args_in, 0);
     uint64_t prev_layer_ideal = args[2];
     new_mem_ideal -= prev_layer_ideal;
   }
@@ -600,8 +599,8 @@ int64_t* next_target_util(
   uint64_t remaining_conv_target_cycles = remaining_cycles - (uint64_t)(new_mem_ideal / mem_target) - (uint64_t)(new_pool_ideal / mem_target * 2);
   next_conv_target = (int)(remaining_conv_target_cycles / new_conv_ideal); // Todo: reuse factor
   //}
-  if(group_id < NUM_CORE){
-    adjust[group_id] = remaining_conv_target_cycles - compute_target;
+  if(total_cid < NUM_CORE){
+    adjust[total_cid] = remaining_conv_target_cycles - compute_target;
   }
 
   int next_mem_target = new_mem_ideal;

@@ -50,12 +50,8 @@ static int gemmini_dram_util[NUM_SUB_GROUP] = {0};
 static int gemmini_score[NUM_SUB_GROUP] = {0}; // priority score scaled to 100 (for bw division when it gets over the limit)
 static uint64_t total_queue_togo[MAX_WORKLOAD] = {0};
 static uint64_t total_queue_conv[MAX_WORKLOAD] = {0};
-//static uint64_t gemmini_estimate_togo[NUM_SUB_GROUP] = {0};
-//static int gemmini_num_conv[NUM_SUB_GROUP] = {0};
-static int gemmini_queue_id[NUM_SUB_GROUP] = {0};
-static int64_t gemmini_start_time[NUM_SUB_GROUP] = {0}; // inner_start - temp_cycles
-//static uint64_t gemmini_dispatch_cycle[NUM_SUB_GROUP] = {0}; // to calculate slack
-
+static int gemmini_queue_id[NUM_CORE] = {0};
+static int64_t gemmini_start_time[NUM_CORE] = {0}; // inner_start - temp_cycles
 
 static int total_queue_type[MAX_WORKLOAD] = {-1};
 static uint64_t total_queue_dispatch[MAX_WORKLOAD] = {0}; // dispatched time (in order)

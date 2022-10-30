@@ -345,7 +345,7 @@ static size_t tiled_matmul_total_acc_rows(size_t I, size_t J) {
 // detect contention using estimated BW needed
 // calculate bubble, window cycles to configure MOCA hardware
 size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, size_t dim_K_in,
-  size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id, size_t args[], int dram_util){
+  size_t orow_divide, size_t batch_divide, size_t cid, size_t total_cid, size_t args[], int dram_util){
 
   int num_core = orow_divide > batch_divide ? orow_divide : batch_divide;
   if (orow_divide > 1 && batch_divide > 1)
@@ -541,13 +541,14 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
   uint64_t mem_ideal = total_from_dram / DRAM_BW + (total_mem - total_from_dram/num_core);
   uint64_t ideal_prediction = MAX(mem_ideal, ideal_runtime) + MIN(mem_ideal, ideal_runtime) * 0.5;
 
-  int workload_type = total_queue_type[gemmini_queue_id[group_id]];
-  int queue_id = gemmini_queue_id[group_id];
+  int workload_type = total_queue_type[gemmini_queue_id[total_cid]];
+  int queue_id = gemmini_queue_id[total_cid];
 #if PRINT_MOCA != 1
   // replace with pre-compiled data
   total_from_dram = from_dram[workload_type-1][total_queue_conv[queue_id]];
   ideal_prediction = conv_prediction_cycles[workload_type-1][total_queue_conv[queue_id]]; 
 #endif
+  int group_id = total_cid / SUB_GROUP;
   if(cid == 0 && dram_util == -1) gemmini_dram_util[group_id] = 0;
 
   // ideal exepected dram bandwidth
@@ -556,15 +557,15 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
 
   uint64_t dispatch_cycle = total_queue_dispatch[queue_id];
   uint64_t end = read_cycles();
-  uint64_t this_cycles = end - gemmini_start_time[group_id];
+  uint64_t this_cycles = end - gemmini_start_time[total_cid];
   uint64_t slack = (this_cycles > dispatch_cycle) ? this_cycles - dispatch_cycle : total_queue_target[queue_id];
   int priority = total_queue_priority[queue_id];
   // MOCA runtime dynamic priority score
   int this_score = (1+priority)/4 + round_divide_int(10*total_queue_togo[queue_id], slack);//max(1, (int)((10*total_queue_togo[queue_id])/slack));
   // update for the next conv layer
   if(cid == 0){ 
-    //gemmini_estimate_togo[group_id] -= conv_prediction_cycles[workload_type][gemmini_num_conv[group_id]];
-    //gemmini_num_conv[group_id] ++;
+    //gemmini_estimate_togo[total_cid] -= conv_prediction_cycles[workload_type][gemmini_num_conv[total_cid]];
+    //gemmini_num_conv[total_cid] ++;
     gemmini_score[group_id] = this_score;
   }
   // detect contention and partition
@@ -2014,7 +2015,7 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
     int stride, int dilation, int padding, int kernel_dim,
     int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
-    size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id){
+    size_t orow_divide, size_t batch_divide, size_t cid, size_t total_cid){
 
   const bool no_pool = pool_stride == 0;
   if (no_pool) { 
@@ -2324,8 +2325,8 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
   uint64_t total_mem = input_load + weight_load + bias_load + (ceil_divide_int)(out_channels, DIM) * pool_out_row * pool_out_dim * batch_size;
   uint64_t mem_ideal = total_from_dram / DRAM_BW + (total_mem-total_from_dram/num_core);
   uint64_t ideal_prediction = MAX(mem_ideal, ideal_runtime) + MIN(mem_ideal, ideal_runtime) * 0.5;
-  int workload_type = total_queue_type[gemmini_queue_id[group_id]];
-  int queue_id = gemmini_queue_id[group_id];
+  int workload_type = total_queue_type[gemmini_queue_id[total_cid]];
+  int queue_id = gemmini_queue_id[total_cid];
 #if PRINT_MOCA != 1
   // replace with pre-compiled data
   total_from_dram = from_dram[workload_type-1][total_queue_conv[queue_id]];
@@ -2334,18 +2335,19 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
   int ideal_dram_bw_exp = (100 * total_from_dram) / ideal_prediction;
   int ideal_dram_util = (ideal_dram_bw_exp / DRAM_BW);
 
+  int group_id = total_cid / SUB_GROUP;
   if(cid == 0 && dram_util == -1) gemmini_dram_util[group_id] = 0;
   uint64_t dispatch_cycle = total_queue_dispatch[queue_id];
   uint64_t end = read_cycles();
-  uint64_t this_cycles = end - gemmini_start_time[group_id];
+  uint64_t this_cycles = end - gemmini_start_time[total_cid];
   uint64_t slack = (this_cycles > dispatch_cycle) ? this_cycles - dispatch_cycle : total_queue_target[queue_id];
   int priority = total_queue_priority[queue_id];
   // MOCA runtime dynamic priority score
   int this_score = (1+priority)/4 + round_divide_int(10*(total_queue_togo[queue_id]), slack);//max(1, (int)((10*total_queue_togo[queue_id])/slack));
   // update for the next conv layer
   if(cid == 0){ 
-    //gemmini_estimate_togo[group_id] -= conv_prediction_cycles[workload_type][gemmini_num_conv[group_id]];
-    //gemmini_num_conv[group_id] ++;
+    //gemmini_estimate_togo[total_cid] -= conv_prediction_cycles[workload_type][gemmini_num_conv[total_cid]];
+    //gemmini_num_conv[total_cid] ++;
     gemmini_score[group_id] = this_score;
   }
 
@@ -2373,7 +2375,7 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
       dram_util = -1; // don't really have to use memory modulation
     }
     if(cid == 0) gemmini_dram_util[group_id] = ideal_dram_util;//(dram_util != -1) ? dram_util : ideal_dram_util;//ideal_dram_util;
-    //if(cid == 0) gemmini_dram_util[group_id] = ideal_dram_util;
+    //if(cid == 0) gemmini_dram_util[total_cid] = ideal_dram_util;
   }
 
   uint64_t prediction = (100 * total_from_dram) / (DRAM_BW * dram_util);
@@ -2870,7 +2872,7 @@ static void tiled_conv_A_stride_cid(
     int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
     enum tiled_matmul_type_t tiled_conv_type,
-    size_t och_divide, size_t orow_divide, size_t cid, size_t group_id,
+    size_t och_divide, size_t orow_divide, size_t cid, size_t total_cid,
     int window, int target_load){
 
   int input_dilation = 1;
@@ -3040,7 +3042,7 @@ static void tiled_conv_A_stride_auto_stride( // for sw padding
     int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
     enum tiled_matmul_type_t tiled_conv_type,
-    size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id, 
+    size_t orow_divide, size_t batch_divide, size_t cid, size_t total_cid, 
     int target_util){
 
   const bool no_pool = pool_stride == 0;
@@ -3058,7 +3060,7 @@ static void tiled_conv_A_stride_auto_stride( // for sw padding
 
    // tiling, calm configure
    int args_in[10] = {target_util, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-   int * args = tiled_conv_A_stride_bubble_calculate(args_in, batch_size, in_dim, in_channels, out_channels, out_dim, stride, dilation, padding, kernel_dim, pool_size, pool_stride, pool_padding, pool_ceil_dim, orow_divide, batch_divide, cid, group_id);
+   int * args = tiled_conv_A_stride_bubble_calculate(args_in, batch_size, in_dim, in_channels, out_channels, out_dim, stride, dilation, padding, kernel_dim, pool_size, pool_stride, pool_padding, pool_ceil_dim, orow_divide, batch_divide, cid, total_cid);
 
   int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
   if (pool_ceil_dim)
@@ -3123,7 +3125,7 @@ static void tiled_conv_A_stride_auto_stride( // for sw padding
           act, scale, relu6_shift,
           pool_size, no_pool ? 0 : pool_stride, pool_padding, pool_ceil_dim,
 
-          tiled_conv_type, och_divide, orow_divide, orow_cid, group_id,
+          tiled_conv_type, och_divide, orow_divide, orow_cid, total_cid,
           window, target_load);
 
   }else{
@@ -3146,18 +3148,18 @@ static void tiled_conv_A_stride_auto_stride( // for sw padding
         act, scale, relu6_shift,
         pool_size, no_pool ? 0 : pool_stride, pool_padding, pool_ceil_dim,
 
-        tiled_conv_type, och_divide, 1, orow_cid, group_id,
+        tiled_conv_type, och_divide, 1, orow_cid, total_cid,
         window, target_load);
 
   }
  
   //update for the next layer
   if(cid == 0){ 
-    int workload_type = total_queue_type[gemmini_queue_id[group_id]];
-    int queue_id = gemmini_queue_id[group_id];
+    int workload_type = total_queue_type[gemmini_queue_id[total_cid]];
+    int queue_id = gemmini_queue_id[total_cid];
     total_queue_togo[queue_id] -= conv_prediction_cycles[workload_type-1][total_queue_conv[queue_id]];
     total_queue_conv[queue_id] ++;
-//    gemmini_score[group_id] = this_score;
+//    gemmini_score[total_cid] = this_score;
   }
 }
 
@@ -3177,7 +3179,7 @@ static void tiled_conv_A_stride_auto_cid(
     int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
 
     enum tiled_matmul_type_t tiled_conv_type,
-    size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id,
+    size_t orow_divide, size_t batch_divide, size_t cid, size_t total_cid,
     int target_util){
 
   int in_stride = (in_channels % 128 == 0) ? in_channels + 64 : in_channels;
@@ -3199,7 +3201,7 @@ static void tiled_conv_A_stride_auto_cid(
      act, scale, relu6_shift,
      pool_size, pool_stride, pool_padding, pool_ceil_dim,
      tiled_conv_type,
-     orow_divide, batch_divide, cid, group_id,
+     orow_divide, batch_divide, cid, total_cid,
 
      target_util);
 }
@@ -3581,7 +3583,7 @@ int* tiled_resadd_bubble_calculate(
     int out_args[], // window, bubble, ideal cycles, tiling factors
     size_t I, size_t J, 
     size_t orow_divide, size_t batch_divide,
-    size_t group_id, int dram_util, int cid){
+    size_t total_cid, int dram_util, int cid){
 
   uint64_t total_from_dram = I * (ceil_divide_int(J, DIM)) * 3;
   //if (total_from_dram > CACHE_SIZE) total_from_dram += I * (ceil_divide_int(J, DIM));
@@ -3647,7 +3649,8 @@ int* tiled_resadd_bubble_calculate(
   int other_dram_util = 0;
   int other_score = 0;
   int other_weight_sum = 0;
-  // just use previous score 
+  // just use previous score
+  int group_id = total_cid / SUB_GROUP; 
   int this_score = gemmini_score[group_id];
   for(int i = 0; i < NUM_SUB_GROUP; i++)
     if(i != group_id) {
@@ -3669,11 +3672,11 @@ int* tiled_resadd_bubble_calculate(
       dram_util = -1; // don't really have to use memory modulation
     }
     // skip for resadd
-    //if(cid == 0) gemmini_dram_util[group_id] = ideal_dram_bw_exp;
+    //if(cid == 0) gemmini_dram_util[total_cid] = ideal_dram_bw_exp;
   }
   // but still udpate predicted to_go cycle
   if(cid == 0)
-    total_queue_togo[gemmini_queue_id[group_id]] -= ideal_prediction; 
+    total_queue_togo[gemmini_queue_id[total_cid]] -= ideal_prediction; 
 
   uint64_t prediction = (100 * total_from_dram) / (DRAM_BW * dram_util);
   int window = prediction / num_tile;
@@ -3712,7 +3715,7 @@ static void tiled_resadd_auto_stride(size_t I, size_t J,
     elem_t * C,
     bool relu,
     enum tiled_matmul_type_t matadd_type,
-    size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id,
+    size_t orow_divide, size_t batch_divide, size_t cid, size_t total_cid,
     int target_util) {
   if (matadd_type == CPU) {
     resadd_cpu(I, J,
@@ -3724,7 +3727,7 @@ static void tiled_resadd_auto_stride(size_t I, size_t J,
   size_t orow_cid = (size_t)(cid % orow_divide);
 
   int args_in[] = {0, 0, 0, 0, 0};
-  int * args = tiled_resadd_bubble_calculate(args_in, I, J, orow_divide, batch_divide, group_id, target_util, cid);
+  int * args = tiled_resadd_bubble_calculate(args_in, I, J, orow_divide, batch_divide, total_cid, target_util, cid);
 
   size_t batch_size = I / batch_divide;
   I = batch_size;
@@ -3814,7 +3817,7 @@ static void tiled_resadd_auto_cid(size_t I, size_t J,
     elem_t * C,
     bool relu,
     enum tiled_matmul_type_t matadd_type,
-    size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id,
+    size_t orow_divide, size_t batch_divide, size_t cid, size_t total_cid,
     int target_util) {
   
   size_t J_stride = (J % 128 == 0) ? J + 64 : J;
@@ -3822,7 +3825,7 @@ static void tiled_resadd_auto_cid(size_t I, size_t J,
       J_stride,
       A, B, C,
       relu, matadd_type,
-      orow_divide, batch_divide, cid, group_id,
+      orow_divide, batch_divide, cid, total_cid,
 		  target_util);
 
 }
@@ -3954,7 +3957,7 @@ static void tiled_pool(
     int act, acc_scale_t scale, size_t relu6_shift,
     int pool_size, int pool_stride, int pool_padding,
 
-		size_t orow_divide, size_t cid, size_t group_id, int window, int target_load) {
+		size_t orow_divide, size_t cid, size_t total_cid, int window, int target_load) {
 
 	 //int out_stride = channels * och_divide;
 
@@ -4019,7 +4022,7 @@ int* tiled_pool_bubble_calculate(
     int batch_size, int in_dim, int channels,
     int out_dim,
     int pool_size, int pool_stride, int pool_padding,
-    bool row_divide, size_t och_divide, size_t batch_divide, size_t cid, size_t group_id,
+    bool row_divide, size_t och_divide, size_t batch_divide, size_t cid, size_t total_cid,
     int target_util){
   
   batch_size = batch_size/batch_divide;
@@ -4137,7 +4140,7 @@ static void tiled_pool_auto_cid(int batch_size, int channels, int in_dim,
     int pool_size, int pool_stride, int pool_padding,
     const elem_t * A,
     elem_t * C,
-    size_t och_divide, size_t batch_divide, size_t cid, size_t group_id,
+    size_t och_divide, size_t batch_divide, size_t cid, size_t total_cid,
     int target_util) {
   
   bool relu = true;
@@ -4146,7 +4149,7 @@ static void tiled_pool_auto_cid(int batch_size, int channels, int in_dim,
   bool row_divide = (och_divide > 1 && channels < 64);
   int * args;
   int args_in[] = {0, 0, 0, 0};
-  args = tiled_pool_bubble_calculate(args_in, batch_size, in_dim, channels, pool_out_dim, pool_size, pool_stride, pool_padding, row_divide, och_divide, batch_divide, cid, group_id, target_util);
+  args = tiled_pool_bubble_calculate(args_in, batch_size, in_dim, channels, pool_out_dim, pool_size, pool_stride, pool_padding, row_divide, och_divide, batch_divide, cid, total_cid, target_util);
   
   size_t batch_cid = (size_t)(cid / och_divide);
   size_t och_cid = (size_t)(cid % och_divide);
@@ -4258,7 +4261,7 @@ static void tiled_pool_auto_cid(int batch_size, int channels, int in_dim,
         A + batch_in_offset + out_offset, C + batch_out_offset + out_offset,	
 				RELU, MVIN_SCALE_IDENTITY, 0,
 				pool_size, pool_stride, pool_padding,
-				och_divide, cid, group_id, window, target_load);
+				och_divide, cid, total_cid, window, target_load);
   
   //printf("C dram addr after pool: 0x%08lx\n", C);
 }

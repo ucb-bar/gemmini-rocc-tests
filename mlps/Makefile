@@ -2,14 +2,6 @@ include $(abs_top_srcdir)/Makefrag
 
 tests = \
 	test \
-	mlp1 \
-	mlp2 \
-	mlp3 \
-	mlp4 \
-	mlp1_32 \
-	mlp2_32 \
-	mlp3_32 \
-	mlp4_32
 
 tests_baremetal = $(tests:=-baremetal)
 runs_baremetal = $(addsuffix .run,$(tests_baremetal))

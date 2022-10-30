@@ -10,6 +10,7 @@
 #include <sys/mman.h>
 #endif
 #include <time.h>
+#include "include/gemmini_nn.h"
 #include "include/gemmini_testutils.h"
 
 static elem_t ZERO[DIM][DIM];

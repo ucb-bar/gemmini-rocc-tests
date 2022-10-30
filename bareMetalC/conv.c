@@ -29,8 +29,8 @@
 #else
 
 #define IN_DIM 17
-#define IN_CHANNELS 18
-#define OUT_CHANNELS 19
+#define IN_CHANNELS 48
+#define OUT_CHANNELS 59
 
 #endif
 
