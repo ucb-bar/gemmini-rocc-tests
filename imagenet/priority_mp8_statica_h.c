@@ -15,12 +15,12 @@
 
 #define NUM_CORE 8
 #define SEED 0
-#define total_workloads 350 // 100 each
+#define total_workloads 250 // 100 each
 #define WORKLOAD_CORE 2
 #define QUEUE_DEPTH 6
 #define NUM_ITER 3
 #define CAP 4 
-#define CAP_SCALE 1.3
+#define CAP_SCALE 1.2
 #define TARGET_SCALE 0.85
 #define INTER_SCALE 1.15
 

@@ -847,7 +847,7 @@ uint64_t workload_group_function(uint64_t inner_start, int queue_id, int group_q
   size_t core_id = sub_group_id * SUB_GROUP + cid; // 0 - 7
 
   //if(cid == 0){
-    gemmini_queue_id[core_id] = queue_id;
+    gemmini_queue_id[core_id] = cid == 0 ? queue_id : group_queue_id;
     gemmini_start_time[core_id] = inner_start;
   //}
   //int dram_util_half = (cid == 0) ? dram_util : (dram_util / 2) - 10;
