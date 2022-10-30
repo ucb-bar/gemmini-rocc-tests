@@ -317,6 +317,7 @@ int main (int argc, char * argv[]) {
     for(int j = 0; j < SUB_CORE; j++){
       max = max > total_queue_finish[j][i] ? max : total_queue_finish[j][i]; 
     }
+    if (max < tp_prediction_cycles[total_queue_type[i]-1]) max = tp_prediction_cycles[total_queue_type[i]-1];
 	  printf("queue id %d workload type: %d\n", i, total_queue_type[i]);
 	  printf("queue id %d dispatch to finish time: %llu\n", i, max); 
     printf("queue id %d priority: %d\n", i, total_queue_priority[i]);

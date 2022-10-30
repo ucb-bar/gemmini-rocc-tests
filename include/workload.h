@@ -309,7 +309,7 @@ void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32
   // priority (0: 15, 1: 18 / 2: 10, 4: 15, 6: 15, 8: 15 / 9: 10, 11: 2)
   for(int i = 0; i < MAX_WORKLOAD; i++)
     total_queue_status[i]= -1;
-
+  printf("total workload: %d, num_iter: %d, cap: %d, cap_scale: %d, inter_scale: %d\n", total_workloads, NUM_ITER, CAP, CAP_SCALE, INTER_SCALE);
   
   int first_dispatch_interval = 50000;
 
