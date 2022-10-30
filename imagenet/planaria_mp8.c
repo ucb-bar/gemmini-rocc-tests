@@ -451,7 +451,7 @@ int main (int argc, char * argv[]) {
     pthread_barrier_init(&barrier_global_end, NULL, NUM_CORE);
  
     printf("starting workload creation \n");
-    workload_mode_2(total_workloads, BATCH1, BATCH4, BATCH8, SEED, TARGET_SCALE, CAP_SCALE); 
+    workload_mode_2(total_workloads, true, false, false, SEED, TARGET_SCALE, CAP_SCALE); 
     printf("workload creation finished \n");
 
    // int queue_group = 1;

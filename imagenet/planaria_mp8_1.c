@@ -23,9 +23,9 @@
 #define CAP_SCALE 1.8
 #define TARGET_SCALE 1.0
 
-#define BATCH1 true
-#define BATCH4 false
-#define BATCH8 false
+#define true true
+#define false false
+#define false false
 
 #define debug_print 0
 
@@ -449,7 +449,7 @@ int main (int argc, char * argv[]) {
     pthread_barrier_init(&barrier_global_end, NULL, NUM_CORE);
  
     printf("starting workload creation \n");
-    workload_mode_2(total_workloads, BATCH1, BATCH4, BATCH8, SEED, TARGET_SCALE, CAP_SCALE); 
+    workload_mode_2(total_workloads, true, false, false, SEED, TARGET_SCALE, CAP_SCALE); 
     printf("workload creation finished \n");
 
    // int queue_group = 1;
