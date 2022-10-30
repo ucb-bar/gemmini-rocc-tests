@@ -20,7 +20,7 @@
 #define QUEUE_DEPTH 6
 #define NUM_ITER 3
 #define CAP 4 
-#define CAP_SCALE 1.26
+#define CAP_SCALE 1.3
 #define TARGET_SCALE 1.0
 #define INTER_SCALE 1.1
 
