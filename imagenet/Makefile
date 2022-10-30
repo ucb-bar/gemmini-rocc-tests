@@ -1,18 +1,24 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	planaria_mp8 \
-	planaria_mp8a \
-	planaria_mp8b \
+	priority_mp8_dynamic_h \
+	priority_mp8_static_h \
+	priority_mp8_dynamica_h \
+	priority_mp8_statica_h \
+	priority_mp8_dynamicb_h \
+	priority_mp8_staticb_h \
+	priority_mp8_dynamic_l \
+	priority_mp8_static_l \
+	priority_mp8_dynamica_l \
+	priority_mp8_statica_l \
+	priority_mp8_dynamicb_l \
+	priority_mp8_staticb_l \
 	priority_mp8_dynamic \
 	priority_mp8_static \
 	priority_mp8_dynamica \
 	priority_mp8_statica \
 	priority_mp8_dynamicb \
 	priority_mp8_staticb \
-	prema_mp8 \
-	prema_mp8_l \
-	prema_mp8_h \
 	motivation_4 \
 	motivation_3 \
 	motivation_2 \

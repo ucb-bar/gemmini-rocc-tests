@@ -1,5 +1,4 @@
 // code for each workload
-#if BATCH1 == true
 #include "imagenet/funct_resnet_1.h"
 #include "imagenet/funct_googlenet_1.h"
 #include "imagenet/funct_squeezenet_1.h"
@@ -7,7 +6,6 @@
 #include "imagenet/funct_alexnet_1.h"
 #include "imagenet/funct_yolonet_1.h"
 #include "imagenet/funct_yololitenet_1.h"
-#endif
 
 #define RESNET_1 1 // 4 blocks: [12, 25, 44, 54 (mem)] -> with squeezenet(4), yololitenet(7), kwsnet group1(5)
 #define ALEXNET_1 2 // 2 blocks: conv, fc -> googlenet(3), resnet group1 (1), kwsnet (5), yolonet group1&2(6)
@@ -731,8 +729,7 @@ uint64_t workload_function(int64_t inner_start, int queue_id, int workload_id, s
   }
   //gemmini_dispatch_cycle[sub_group_id] = total_queue_dispatch[queue_id];
   //gemmini_workload_id[sub_group_id] = workload_id - 1;
-#if BATCH1 == true
-  if(workload_id < 8){
+  if(group_id % 2 == 0){
     int orow_divide = num_gemmini;
     int batch_divide = 1; // 1 batch workload
     if(workload_id == 0){
@@ -777,86 +774,51 @@ dram_util = -1;
       total_runtime = *(cycles+14);
     }
   }
-#endif
-
-#if BATCH4 == true
-  if(workload_id >= 8 && workload_id < 16){
-    int orow_divide = 1;
-    int batch_divide = num_gemmini; // 4 batch workload 
-    if(workload_id == 8 + 0){
-      cycles = fcnnet_function_4(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
-      total_runtime = *(cycles+73);
+  else{
+    int orow_divide = num_gemmini;
+    int batch_divide = 1; // 1 batch workload
+    if(workload_id == 0){
+      //cycles = fcnnet_function_111(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      //total_runtime = *(cycles+73);
     }
-    else if(workload_id == 8 + 1){
-      cycles = resnet_function_4(cid, sub_group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
+    else if(workload_id == 1){
+      if(sub_group_id % 2 == 0) cycles = resnet_function_111(cid, sub_group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
+      else cycles = resnet_function_1111(cid, sub_group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+72);
     }
-    else if(workload_id == 8 + 2){
-      cycles = alexnet_function_4(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+    else if(workload_id == 2){
+      if(sub_group_id % 2 == 0) cycles = alexnet_function_111(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      else cycles = alexnet_function_1111(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+14);
     }
-    else if(workload_id == 8 + 3){
-      cycles = googlenet_function_4(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+    else if(workload_id == 3){
+      if(sub_group_id % 2 == 0) cycles = googlenet_function_111(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      else cycles = googlenet_function_1111(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+71);
     }
-    else if(workload_id == 8 + 4){
-      cycles = squeezenet_function_4(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+    else if(workload_id == 4){
+dram_util = -1;
+      if(sub_group_id % 2 == 0) cycles = squeezenet_function_111(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      else cycles = squeezenet_function_1111(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+29);
     }
-    else if(workload_id == 8 + 5){
-      cycles = kwsnet_function_4(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+    else if(workload_id == 5){
+      if(sub_group_id % 2 == 0) cycles = kwsnet_function_111(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      else cycles = kwsnet_function_1111(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+40);
     }
-    else if(workload_id == 8 + 6){
-      cycles = yolonet_function_4(cid, sub_group_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
+    else if(workload_id == 6){
+      if(sub_group_id % 2 == 0) cycles = yolonet_function_111(cid, sub_group_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
+      else cycles = yolonet_function_1111(cid, sub_group_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+26);
     }
-    else if(workload_id == 8 + 7){
-      cycles = yololitenet_function_4(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+    else if(workload_id == 7){
+dram_util = -1;
+      if(sub_group_id % 2 == 0) cycles = yololitenet_function_111(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      else cycles = yololitenet_function_1111(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+14);
     }
   }
-#endif
-
-
-#if BATCH8 == true
-  if(workload_id >= 16 && workload_id < 24){
-    int orow_divide = 1;
-    int batch_divide = num_gemmini; // 4 batch workload 
-    if(workload_id == 16 + 0){
-      cycles = fcnnet_function_8(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
-      total_runtime = *(cycles+73);
-    }
-    else if(workload_id == 16 + 1){
-      cycles = resnet_function_8(cid, sub_group_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
-      total_runtime = *(cycles+72);
-    }
-    else if(workload_id == 16 + 2){
-      cycles = alexnet_function_8(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
-      total_runtime = *(cycles+14);
-    }
-    else if(workload_id == 16 + 3){
-      cycles = googlenet_function_8(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
-      total_runtime = *(cycles+71);
-    }
-    else if(workload_id == 16 + 4){
-      cycles = squeezenet_function_8(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
-      total_runtime = *(cycles+29);
-    }
-    else if(workload_id == 16 + 5){
-      cycles = kwsnet_function_8(cid, sub_group_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
-      total_runtime = *(cycles+40);
-    }
-    else if(workload_id == 16 + 6){
-      cycles = yolonet_function_8(cid, sub_group_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
-      total_runtime = *(cycles+26);
-    }
-    else if(workload_id == 16 + 7){
-      cycles = yololitenet_function_8(cid, sub_group_id, orow_divide, batch_divide, dram_util, barrier_funct);
-      total_runtime = *(cycles+14);
-    }
-  }
-#endif
   if(cid == 0) {
     gemmini_dram_util[sub_group_id] = 0;
     total_queue_status[queue_id] = 100; // just store big value (finished)
@@ -883,289 +845,565 @@ uint64_t workload_group_function(uint64_t inner_start, int queue_id, int group_q
     gemmini_queue_id[sub_group_id] = queue_id;
     gemmini_start_time[sub_group_id] = inner_start;
   }
-#if BATCH1 == true
   //int dram_util_half = (cid == 0) ? dram_util : (dram_util / 2) - 10;
-  if(sub_group_id % 2 == 0){
-    //uint64_t start = read_cycles();
-    if(original_workload_id < 8){
-      int orow_divide = num_gemmini;
-      int batch_divide = 1; // 1 batch workload
-      if(original_workload_id == 1){
-        if(part1 || part2 || part3){
-          cycles = resnet_function_1(cid, sub_group_id, part1, part2, part3, false, orow_divide, batch_divide, dram_util, barrier_funct);
-         // total_runtime = *(cycles+72);
-        }
+  if(group_id % 2 == 0){
+      if(sub_group_id % 2 == 0){
+        //uint64_t start = read_cycles();
+        if(original_workload_id < 8){
+          int orow_divide = num_gemmini;
+          int batch_divide = 1; // 1 batch workload
+          if(original_workload_id == 1){
+            if(part1 || part2 || part3){
+              cycles = resnet_function_1(cid, sub_group_id, part1, part2, part3, false, orow_divide, batch_divide, dram_util, barrier_funct);
+             // total_runtime = *(cycles+72);
+            }
 
-        if(cid == 0){
-  //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
-  //	   dram_util += 10;
-  //	}
-          cycles = resnet_block_function_1(0, sub_group_id, false, false, false, true, 1, 1, dram_util);
-          total_runtime = *(cycles+72);
-        }
-        else{
-          if(grouped_workload_id == SQUEEZENET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = squeezenet_block_function_1(0, sub_group_id, 1, 1, dram_util); 
-            total_runtime = *(cycles+29);
-            total_queue_status[group_queue_id] = 50;
+            if(cid == 0){
+      //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
+      //	   dram_util += 10;
+      //	}
+              cycles = resnet_block_function_1(0, sub_group_id, false, false, false, true, 1, 1, dram_util);
+              total_runtime = *(cycles+72);
+            }
+            else{
+              if(grouped_workload_id == SQUEEZENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = squeezenet_block_function_1(0, sub_group_id, 1, 1, dram_util); 
+                total_runtime = *(cycles+29);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == YOLOLITENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+      //	  dram_util = 10;
+                cycles = yololitenet_block_function_1(0, sub_group_id, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == KWSNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = kwsnet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 40);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == ALEXNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = alexnet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == GOOGLENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = googlenet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util); 
+                total_runtime = *(cycles+71);
+                total_queue_status[group_queue_id] = 1;
+              }
+            }
           }
-          else if(grouped_workload_id == YOLOLITENET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-  //	  dram_util = 10;
-            cycles = yololitenet_block_function_1(0, sub_group_id, 1, 1, dram_util);
-            total_runtime = *(cycles + 14);
-            total_queue_status[group_queue_id] = 50;
+          else if(original_workload_id == 2){
+            if(part1){
+              cycles = alexnet_function_1(cid, sub_group_id, part1, false, orow_divide, batch_divide, dram_util, barrier_funct);
+              //total_runtime = *(cycles+14);
+            }
+
+            if(cid == 0){
+              cycles = alexnet_block_function_1(0, sub_group_id, false, true, 1, 1, dram_util);
+              total_runtime = *(cycles+14);
+            }
+            else{
+              if(grouped_workload_id == GOOGLENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = googlenet_block_function_1(0, sub_group_id, true, true, 1, 1, dram_util); 
+                total_runtime = *(cycles+71);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == YOLONET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = yolonet_block_function_1(0, sub_group_id, true, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 26);
+                total_queue_status[group_queue_id] = 2;
+              }
+              else if(grouped_workload_id == KWSNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = kwsnet_block_function_1(0, sub_group_id, true, true, 1, 1, dram_util);
+                total_runtime = *(cycles + 40);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == RESNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = resnet_block_function_1(0, sub_group_id, true, true, false, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 72);
+                total_queue_status[group_queue_id] = 2;
+              }
+            }
           }
-          else if(grouped_workload_id == KWSNET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = kwsnet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util);
-            total_runtime = *(cycles + 40);
-            total_queue_status[group_queue_id] = 1;
-          }
-          else if(grouped_workload_id == ALEXNET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = alexnet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util);
-            total_runtime = *(cycles + 14);
-            total_queue_status[group_queue_id] = 1;
-          }
-          else if(grouped_workload_id == GOOGLENET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = googlenet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util); 
-            total_runtime = *(cycles+71);
-            total_queue_status[group_queue_id] = 1;
+          else if(original_workload_id == 6){
+            if(part1 || part2){
+              cycles = yolonet_function_1(cid, sub_group_id, part1, part2, false, orow_divide, batch_divide, dram_util, barrier_funct);
+              //total_runtime = *(cycles+26);
+            }
+
+            if(cid == 0){
+      //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
+      //	   dram_util += 10;
+      //	}
+              cycles = yolonet_block_function_1(0, sub_group_id, false, false, true, 1, 1, dram_util);
+              total_runtime = *(cycles+26);
+            }
+            else{
+              if(grouped_workload_id == SQUEEZENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+      //	  dram_util = 10;
+                cycles = squeezenet_block_function_1(0, sub_group_id, 1, 1, dram_util); 
+                total_runtime = *(cycles+29);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == YOLOLITENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+      //	  dram_util = 10;
+                cycles = yololitenet_block_function_1(0, sub_group_id, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == KWSNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = kwsnet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 40);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == ALEXNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = alexnet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == GOOGLENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = googlenet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util); 
+                total_runtime = *(cycles+71);
+                total_queue_status[group_queue_id] = 1;
+              }
+            }
           }
         }
       }
-      else if(original_workload_id == 2){
-        if(part1){
-          cycles = alexnet_function_1(cid, sub_group_id, part1, false, orow_divide, batch_divide, dram_util, barrier_funct);
-          //total_runtime = *(cycles+14);
-        }
+      else{
+        if(original_workload_id < 8){
+          int orow_divide = num_gemmini;
+          int batch_divide = 1; // 1 batch workload
+          if(original_workload_id == 1){
+            if(part1 || part2 || part3){
+              cycles = resnet_function_11(cid, sub_group_id, part1, part2, part3, false, orow_divide, batch_divide, dram_util, barrier_funct);
+             // total_runtime = *(cycles+72);
+            }
 
-        if(cid == 0){
-          cycles = alexnet_block_function_1(0, sub_group_id, false, true, 1, 1, dram_util);
-          total_runtime = *(cycles+14);
-        }
-        else{
-          if(grouped_workload_id == GOOGLENET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = googlenet_block_function_1(0, sub_group_id, true, true, 1, 1, dram_util); 
-            total_runtime = *(cycles+71);
-            total_queue_status[group_queue_id] = 50;
+            if(cid == 0){
+      //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
+      //	   dram_util += 10;
+      //	}
+              cycles = resnet_block_function_11(0, sub_group_id, false, false, false, true, 1, 1, dram_util);
+              total_runtime = *(cycles+72);
+            }
+            else{
+              if(grouped_workload_id == SQUEEZENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = squeezenet_block_function_11(0, sub_group_id, 1, 1, dram_util); 
+                total_runtime = *(cycles+29);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == YOLOLITENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+      //	  dram_util = 10;
+                cycles = yololitenet_block_function_11(0, sub_group_id, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == KWSNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = kwsnet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 40);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == ALEXNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = alexnet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == GOOGLENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = googlenet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util); 
+                total_runtime = *(cycles+71);
+                total_queue_status[group_queue_id] = 1;
+              }
+            }
           }
-          else if(grouped_workload_id == YOLONET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = yolonet_block_function_1(0, sub_group_id, true, true, false, 1, 1, dram_util);
-            total_runtime = *(cycles + 26);
-            total_queue_status[group_queue_id] = 2;
+          else if(original_workload_id == 2){
+            if(part1){
+              cycles = alexnet_function_11(cid, sub_group_id, part1, false, orow_divide, batch_divide, dram_util, barrier_funct);
+              //total_runtime = *(cycles+14);
+            }
+
+            if(cid == 0){
+              cycles = alexnet_block_function_11(0, sub_group_id, false, true, 1, 1, dram_util);
+              total_runtime = *(cycles+14);
+            }
+            else{
+              if(grouped_workload_id == GOOGLENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = googlenet_block_function_11(0, sub_group_id, true, true, 1, 1, dram_util); 
+                total_runtime = *(cycles+71);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == YOLONET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = yolonet_block_function_11(0, sub_group_id, true, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 26);
+                total_queue_status[group_queue_id] = 2;
+              }
+              else if(grouped_workload_id == KWSNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = kwsnet_block_function_11(0, sub_group_id, true, true, 1, 1, dram_util);
+                total_runtime = *(cycles + 40);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == RESNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = resnet_block_function_11(0, sub_group_id, true, true, false, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 72);
+                total_queue_status[group_queue_id] = 2;
+              }
+            }
           }
-          else if(grouped_workload_id == KWSNET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = kwsnet_block_function_1(0, sub_group_id, true, true, 1, 1, dram_util);
-            total_runtime = *(cycles + 40);
-            total_queue_status[group_queue_id] = 50;
-          }
-          else if(grouped_workload_id == RESNET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = resnet_block_function_1(0, sub_group_id, true, true, false, false, 1, 1, dram_util);
-            total_runtime = *(cycles + 72);
-            total_queue_status[group_queue_id] = 2;
+          else if(original_workload_id == 6){
+            if(part1 || part2){
+              cycles = yolonet_function_11(cid, sub_group_id, part1, part2, false, orow_divide, batch_divide, dram_util, barrier_funct);
+              //total_runtime = *(cycles+26);
+            }
+
+            if(cid == 0){
+      //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
+      //	   dram_util += 10;
+      //	}
+              cycles = yolonet_block_function_11(0, sub_group_id, false, false, true, 1, 1, dram_util);
+              total_runtime = *(cycles+26);
+            }
+            else{
+              if(grouped_workload_id == SQUEEZENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+      //	  dram_util = 10;
+                cycles = squeezenet_block_function_11(0, sub_group_id, 1, 1, dram_util); 
+                total_runtime = *(cycles+29);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == YOLOLITENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+      //	  dram_util = 10;
+                cycles = yololitenet_block_function_11(0, sub_group_id, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == KWSNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = kwsnet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 40);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == ALEXNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = alexnet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == GOOGLENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = googlenet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util); 
+                total_runtime = *(cycles+71);
+                total_queue_status[group_queue_id] = 1;
+              }
+            }
           }
         }
       }
-      else if(original_workload_id == 6){
-        if(part1 || part2){
-          cycles = yolonet_function_1(cid, sub_group_id, part1, part2, false, orow_divide, batch_divide, dram_util, barrier_funct);
-          //total_runtime = *(cycles+26);
-        }
-
-        if(cid == 0){
-  //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
-  //	   dram_util += 10;
-  //	}
-          cycles = yolonet_block_function_1(0, sub_group_id, false, false, true, 1, 1, dram_util);
-          total_runtime = *(cycles+26);
-        }
-        else{
-          if(grouped_workload_id == SQUEEZENET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-  //	  dram_util = 10;
-            cycles = squeezenet_block_function_1(0, sub_group_id, 1, 1, dram_util); 
-            total_runtime = *(cycles+29);
-            total_queue_status[group_queue_id] = 50;
-          }
-          else if(grouped_workload_id == YOLOLITENET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-  //	  dram_util = 10;
-            cycles = yololitenet_block_function_1(0, sub_group_id, 1, 1, dram_util);
-            total_runtime = *(cycles + 14);
-            total_queue_status[group_queue_id] = 50;
-          }
-          else if(grouped_workload_id == KWSNET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = kwsnet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util);
-            total_runtime = *(cycles + 40);
-            total_queue_status[group_queue_id] = 1;
-          }
-          else if(grouped_workload_id == ALEXNET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = alexnet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util);
-            total_runtime = *(cycles + 14);
-            total_queue_status[group_queue_id] = 1;
-          }
-          else if(grouped_workload_id == GOOGLENET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = googlenet_block_function_1(0, sub_group_id, true, false, 1, 1, dram_util); 
-            total_runtime = *(cycles+71);
-            total_queue_status[group_queue_id] = 1;
-          }
-        }
-      }
-    }
   }
   else{
-    if(original_workload_id < 8){
-      int orow_divide = num_gemmini;
-      int batch_divide = 1; // 1 batch workload
-      if(original_workload_id == 1){
-        if(part1 || part2 || part3){
-          cycles = resnet_function_11(cid, sub_group_id, part1, part2, part3, false, orow_divide, batch_divide, dram_util, barrier_funct);
-         // total_runtime = *(cycles+72);
-        }
+      if(sub_group_id % 2 == 0){
+        //uint64_t start = read_cycles();
+        if(original_workload_id < 8){
+          int orow_divide = num_gemmini;
+          int batch_divide = 1; // 1 batch workload
+          if(original_workload_id == 1){
+            if(part1 || part2 || part3){
+              cycles = resnet_function_111(cid, sub_group_id, part1, part2, part3, false, orow_divide, batch_divide, dram_util, barrier_funct);
+             // total_runtime = *(cycles+72);
+            }
 
-        if(cid == 0){
-  //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
-  //	   dram_util += 10;
-  //	}
-          cycles = resnet_block_function_11(0, sub_group_id, false, false, false, true, 1, 1, dram_util);
-          total_runtime = *(cycles+72);
-        }
-        else{
-          if(grouped_workload_id == SQUEEZENET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = squeezenet_block_function_11(0, sub_group_id, 1, 1, dram_util); 
-            total_runtime = *(cycles+29);
-            total_queue_status[group_queue_id] = 50;
+            if(cid == 0){
+      //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
+      //	   dram_util += 10;
+      //	}
+              cycles = resnet_block_function_111(0, sub_group_id, false, false, false, true, 1, 1, dram_util);
+              total_runtime = *(cycles+72);
+            }
+            else{
+              if(grouped_workload_id == SQUEEZENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = squeezenet_block_function_111(0, sub_group_id, 1, 1, dram_util); 
+                total_runtime = *(cycles+29);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == YOLOLITENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+      //	  dram_util = 10;
+                cycles = yololitenet_block_function_111(0, sub_group_id, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == KWSNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = kwsnet_block_function_111(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 40);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == ALEXNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = alexnet_block_function_111(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == GOOGLENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = googlenet_block_function_111(0, sub_group_id, true, false, 1, 1, dram_util); 
+                total_runtime = *(cycles+71);
+                total_queue_status[group_queue_id] = 1;
+              }
+            }
           }
-          else if(grouped_workload_id == YOLOLITENET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-  //	  dram_util = 10;
-            cycles = yololitenet_block_function_11(0, sub_group_id, 1, 1, dram_util);
-            total_runtime = *(cycles + 14);
-            total_queue_status[group_queue_id] = 50;
+          else if(original_workload_id == 2){
+            if(part1){
+              cycles = alexnet_function_111(cid, sub_group_id, part1, false, orow_divide, batch_divide, dram_util, barrier_funct);
+              //total_runtime = *(cycles+14);
+            }
+
+            if(cid == 0){
+              cycles = alexnet_block_function_111(0, sub_group_id, false, true, 1, 1, dram_util);
+              total_runtime = *(cycles+14);
+            }
+            else{
+              if(grouped_workload_id == GOOGLENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = googlenet_block_function_111(0, sub_group_id, true, true, 1, 1, dram_util); 
+                total_runtime = *(cycles+71);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == YOLONET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = yolonet_block_function_111(0, sub_group_id, true, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 26);
+                total_queue_status[group_queue_id] = 2;
+              }
+              else if(grouped_workload_id == KWSNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = kwsnet_block_function_111(0, sub_group_id, true, true, 1, 1, dram_util);
+                total_runtime = *(cycles + 40);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == RESNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = resnet_block_function_111(0, sub_group_id, true, true, false, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 72);
+                total_queue_status[group_queue_id] = 2;
+              }
+            }
           }
-          else if(grouped_workload_id == KWSNET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = kwsnet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util);
-            total_runtime = *(cycles + 40);
-            total_queue_status[group_queue_id] = 1;
-          }
-          else if(grouped_workload_id == ALEXNET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = alexnet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util);
-            total_runtime = *(cycles + 14);
-            total_queue_status[group_queue_id] = 1;
-          }
-          else if(grouped_workload_id == GOOGLENET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = googlenet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util); 
-            total_runtime = *(cycles+71);
-            total_queue_status[group_queue_id] = 1;
+          else if(original_workload_id == 6){
+            if(part1 || part2){
+              cycles = yolonet_function_111(cid, sub_group_id, part1, part2, false, orow_divide, batch_divide, dram_util, barrier_funct);
+              //total_runtime = *(cycles+26);
+            }
+
+            if(cid == 0){
+      //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
+      //	   dram_util += 10;
+      //	}
+              cycles = yolonet_block_function_111(0, sub_group_id, false, false, true, 1, 1, dram_util);
+              total_runtime = *(cycles+26);
+            }
+            else{
+              if(grouped_workload_id == SQUEEZENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+      //	  dram_util = 10;
+                cycles = squeezenet_block_function_111(0, sub_group_id, 1, 1, dram_util); 
+                total_runtime = *(cycles+29);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == YOLOLITENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+      //	  dram_util = 10;
+                cycles = yololitenet_block_function_111(0, sub_group_id, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == KWSNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = kwsnet_block_function_111(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 40);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == ALEXNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = alexnet_block_function_111(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == GOOGLENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = googlenet_block_function_111(0, sub_group_id, true, false, 1, 1, dram_util); 
+                total_runtime = *(cycles+71);
+                total_queue_status[group_queue_id] = 1;
+              }
+            }
           }
         }
       }
-      else if(original_workload_id == 2){
-        if(part1){
-          cycles = alexnet_function_11(cid, sub_group_id, part1, false, orow_divide, batch_divide, dram_util, barrier_funct);
-          //total_runtime = *(cycles+14);
-        }
+      else{
+        if(original_workload_id < 8){
+          int orow_divide = num_gemmini;
+          int batch_divide = 1; // 1 batch workload
+          if(original_workload_id == 1){
+            if(part1 || part2 || part3){
+              cycles = resnet_function_1111(cid, sub_group_id, part1, part2, part3, false, orow_divide, batch_divide, dram_util, barrier_funct);
+             // total_runtime = *(cycles+72);
+            }
 
-        if(cid == 0){
-          cycles = alexnet_block_function_11(0, sub_group_id, false, true, 1, 1, dram_util);
-          total_runtime = *(cycles+14);
-        }
-        else{
-          if(grouped_workload_id == GOOGLENET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = googlenet_block_function_11(0, sub_group_id, true, true, 1, 1, dram_util); 
-            total_runtime = *(cycles+71);
-            total_queue_status[group_queue_id] = 50;
+            if(cid == 0){
+      //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
+      //	   dram_util += 10;
+      //	}
+              cycles = resnet_block_function_1111(0, sub_group_id, false, false, false, true, 1, 1, dram_util);
+              total_runtime = *(cycles+72);
+            }
+            else{
+              if(grouped_workload_id == SQUEEZENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = squeezenet_block_function_1111(0, sub_group_id, 1, 1, dram_util); 
+                total_runtime = *(cycles+29);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == YOLOLITENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+      //	  dram_util = 10;
+                cycles = yololitenet_block_function_1111(0, sub_group_id, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == KWSNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = kwsnet_block_function_1111(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 40);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == ALEXNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = alexnet_block_function_1111(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == GOOGLENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = googlenet_block_function_1111(0, sub_group_id, true, false, 1, 1, dram_util); 
+                total_runtime = *(cycles+71);
+                total_queue_status[group_queue_id] = 1;
+              }
+            }
           }
-          else if(grouped_workload_id == YOLONET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = yolonet_block_function_11(0, sub_group_id, true, true, false, 1, 1, dram_util);
-            total_runtime = *(cycles + 26);
-            total_queue_status[group_queue_id] = 2;
+          else if(original_workload_id == 2){
+            if(part1){
+              cycles = alexnet_function_1111(cid, sub_group_id, part1, false, orow_divide, batch_divide, dram_util, barrier_funct);
+              //total_runtime = *(cycles+14);
+            }
+
+            if(cid == 0){
+              cycles = alexnet_block_function_1111(0, sub_group_id, false, true, 1, 1, dram_util);
+              total_runtime = *(cycles+14);
+            }
+            else{
+              if(grouped_workload_id == GOOGLENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = googlenet_block_function_1111(0, sub_group_id, true, true, 1, 1, dram_util); 
+                total_runtime = *(cycles+71);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == YOLONET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = yolonet_block_function_1111(0, sub_group_id, true, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 26);
+                total_queue_status[group_queue_id] = 2;
+              }
+              else if(grouped_workload_id == KWSNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = kwsnet_block_function_1111(0, sub_group_id, true, true, 1, 1, dram_util);
+                total_runtime = *(cycles + 40);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == RESNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = resnet_block_function_1111(0, sub_group_id, true, true, false, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 72);
+                total_queue_status[group_queue_id] = 2;
+              }
+            }
           }
-          else if(grouped_workload_id == KWSNET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = kwsnet_block_function_11(0, sub_group_id, true, true, 1, 1, dram_util);
-            total_runtime = *(cycles + 40);
-            total_queue_status[group_queue_id] = 50;
-          }
-          else if(grouped_workload_id == RESNET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = resnet_block_function_11(0, sub_group_id, true, true, false, false, 1, 1, dram_util);
-            total_runtime = *(cycles + 72);
-            total_queue_status[group_queue_id] = 2;
+          else if(original_workload_id == 6){
+            if(part1 || part2){
+              cycles = yolonet_function_1111(cid, sub_group_id, part1, part2, false, orow_divide, batch_divide, dram_util, barrier_funct);
+              //total_runtime = *(cycles+26);
+            }
+
+            if(cid == 0){
+      //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
+      //	   dram_util += 10;
+      //	}
+              cycles = yolonet_block_function_1111(0, sub_group_id, false, false, true, 1, 1, dram_util);
+              total_runtime = *(cycles+26);
+            }
+            else{
+              if(grouped_workload_id == SQUEEZENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+      //	  dram_util = 10;
+                cycles = squeezenet_block_function_1111(0, sub_group_id, 1, 1, dram_util); 
+                total_runtime = *(cycles+29);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == YOLOLITENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+      //	  dram_util = 10;
+                cycles = yololitenet_block_function_1111(0, sub_group_id, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 50;
+              }
+              else if(grouped_workload_id == KWSNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = kwsnet_block_function_1111(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 40);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == ALEXNET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = alexnet_block_function_1111(0, sub_group_id, true, false, 1, 1, dram_util);
+                total_runtime = *(cycles + 14);
+                total_queue_status[group_queue_id] = 1;
+              }
+              else if(grouped_workload_id == GOOGLENET_1){
+               dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
+                cycles = googlenet_block_function_1111(0, sub_group_id, true, false, 1, 1, dram_util); 
+                total_runtime = *(cycles+71);
+                total_queue_status[group_queue_id] = 1;
+              }
+            }
           }
         }
       }
-      else if(original_workload_id == 6){
-        if(part1 || part2){
-          cycles = yolonet_function_11(cid, sub_group_id, part1, part2, false, orow_divide, batch_divide, dram_util, barrier_funct);
-          //total_runtime = *(cycles+26);
-        }
-
-        if(cid == 0){
-  //	if(grouped_workload_id == SQUEEZENET_1 || grouped_workload_id == YOLOLITENET_1){
-  //	   dram_util += 10;
-  //	}
-          cycles = yolonet_block_function_11(0, sub_group_id, false, false, true, 1, 1, dram_util);
-          total_runtime = *(cycles+26);
-        }
-        else{
-          if(grouped_workload_id == SQUEEZENET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-  //	  dram_util = 10;
-            cycles = squeezenet_block_function_11(0, sub_group_id, 1, 1, dram_util); 
-            total_runtime = *(cycles+29);
-            total_queue_status[group_queue_id] = 50;
-          }
-          else if(grouped_workload_id == YOLOLITENET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-  //	  dram_util = 10;
-            cycles = yololitenet_block_function_11(0, sub_group_id, 1, 1, dram_util);
-            total_runtime = *(cycles + 14);
-            total_queue_status[group_queue_id] = 50;
-          }
-          else if(grouped_workload_id == KWSNET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = kwsnet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util);
-            total_runtime = *(cycles + 40);
-            total_queue_status[group_queue_id] = 1;
-          }
-          else if(grouped_workload_id == ALEXNET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = alexnet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util);
-            total_runtime = *(cycles + 14);
-            total_queue_status[group_queue_id] = 1;
-          }
-          else if(grouped_workload_id == GOOGLENET_1){
-           dram_util = -1;//(dram_util == 0) ? 30 : dram_util;
-            cycles = googlenet_block_function_11(0, sub_group_id, true, false, 1, 1, dram_util); 
-            total_runtime = *(cycles+71);
-            total_queue_status[group_queue_id] = 1;
-          }
-        }
-      }
-    }
-
-
   }
-#endif
-
   if(cid == 0) {
     gemmini_dram_util[sub_group_id] = 0;
     total_queue_status[queue_id] = 80; // just store big value (finished)

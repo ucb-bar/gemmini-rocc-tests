@@ -21,10 +21,10 @@
 #define NUM_ITER 3
 #define CAP 4 
 #define CAP_SCALE 1.3
-#define TARGET_SCALE 1.0
+#define TARGET_SCALE 0.85
 #define INTER_SCALE 1.2
 
-#define WORKLOAD_A false
+#define WORKLOAD_A true
 #define WORKLOAD_B false
 // else: mixed (C)
 
