@@ -307,7 +307,7 @@ void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32
   // priority (0: 15, 1: 18 / 2: 10, 4: 15, 6: 15, 8: 15 / 9: 10, 11: 2)
   for(int i = 0; i < MAX_WORKLOAD; i++)
     total_queue_status[i]= -1;
-  printf("total workload: %d, num_iter: %d, cap: %d, cap_scale: %d, inter_scale: %d, target_scale: %d\n", total_workloads, NUM_ITER, CAP, (int)(100*CAP_SCALE), (int)(100*INTER_SCALE), (int)(100*target_scale));
+  printf("total workload: %d, num_iter: %d, cap: %d, cap_scale: %d, inter_scale: %d, target_scale: %d\n", total_workloads, NUM_ITER, CAP, (int)(100*cap_scale), (int)(100*INTER_SCALE), (int)(100*target_scale));
   
   int first_dispatch_interval = 50000;
 
@@ -739,39 +739,39 @@ uint64_t workload_function(int64_t inner_start, int queue_id, int workload_id, s
       //total_runtime = *(cycles+73);
     }
     else if(workload_id == 1){
-      if(core_id % 2 == 0) cycles = resnet_function_1(cid, core_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = resnet_function_1(cid, core_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = resnet_function_11(cid, core_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+72);
     }
     else if(workload_id == 2){
-      if(core_id % 2 == 0) cycles = alexnet_function_1(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = alexnet_function_1(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = alexnet_function_11(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+14);
     }
     else if(workload_id == 3){
-      if(core_id % 2 == 0) cycles = googlenet_function_1(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = googlenet_function_1(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = googlenet_function_11(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+71);
     }
     else if(workload_id == 4){
 dram_util = -1;
-      if(core_id % 2 == 0) cycles = squeezenet_function_1(cid, core_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = squeezenet_function_1(cid, core_id, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = squeezenet_function_11(cid, core_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+29);
     }
     else if(workload_id == 5){
-      if(core_id % 2 == 0) cycles = kwsnet_function_1(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = kwsnet_function_1(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = kwsnet_function_11(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+40);
     }
     else if(workload_id == 6){
-      if(core_id % 2 == 0) cycles = yolonet_function_1(cid, core_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = yolonet_function_1(cid, core_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = yolonet_function_11(cid, core_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+26);
     }
     else if(workload_id == 7){
 dram_util = -1;
-      if(core_id % 2 == 0) cycles = yololitenet_function_1(cid, core_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = yololitenet_function_1(cid, core_id, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = yololitenet_function_11(cid, core_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+14);
     }
@@ -784,39 +784,39 @@ dram_util = -1;
       //total_runtime = *(cycles+73);
     }
     else if(workload_id == 1){
-      if(core_id % 2 == 0) cycles = resnet_function_111(cid, core_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = resnet_function_111(cid, core_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = resnet_function_1111(cid, core_id, part1, part2, part3, part4, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+72);
     }
     else if(workload_id == 2){
-      if(core_id % 2 == 0) cycles = alexnet_function_111(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = alexnet_function_111(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = alexnet_function_1111(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+14);
     }
     else if(workload_id == 3){
-      if(core_id % 2 == 0) cycles = googlenet_function_111(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = googlenet_function_111(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = googlenet_function_1111(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+71);
     }
     else if(workload_id == 4){
 dram_util = -1;
-      if(core_id % 2 == 0) cycles = squeezenet_function_111(cid, core_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = squeezenet_function_111(cid, core_id, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = squeezenet_function_1111(cid, core_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+29);
     }
     else if(workload_id == 5){
-      if(core_id % 2 == 0) cycles = kwsnet_function_111(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = kwsnet_function_111(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = kwsnet_function_1111(cid, core_id, part1, part2, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+40);
     }
     else if(workload_id == 6){
-      if(core_id % 2 == 0) cycles = yolonet_function_111(cid, core_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = yolonet_function_111(cid, core_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = yolonet_function_1111(cid, core_id, part1, part2, part3, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+26);
     }
     else if(workload_id == 7){
 dram_util = -1;
-      if(core_id % 2 == 0) cycles = yololitenet_function_111(cid, core_id, orow_divide, batch_divide, dram_util, barrier_funct);
+      if(sub_group_id % 2 == 0) cycles = yololitenet_function_111(cid, core_id, orow_divide, batch_divide, dram_util, barrier_funct);
       else cycles = yololitenet_function_1111(cid, core_id, orow_divide, batch_divide, dram_util, barrier_funct);
       total_runtime = *(cycles+14);
     }

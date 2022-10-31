@@ -14,7 +14,7 @@
 //#define NUM_OUTPUT (20+34+16+3)
 
 #define NUM_CORE 8
-#define SEED 0
+#define SEED 2
 #define total_workloads 550 // 100 each
 #define WORKLOAD_CORE 2
 #define QUEUE_DEPTH 5
