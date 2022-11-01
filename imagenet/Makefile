@@ -19,10 +19,6 @@ tests = \
 	priority_mp8_statica \
 	priority_mp8_dynamicb \
 	priority_mp8_staticb \
-	motivation_4 \
-	motivation_3 \
-	motivation_2 \
-	motivation_1 \
 	#yolonet_batch1_8 \
 	#kwsnet_batch1_8 \
 	#resnet_batch1_8 \
