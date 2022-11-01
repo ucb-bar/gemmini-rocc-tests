@@ -12,6 +12,9 @@
 #include <limits.h>
 #include <stdbool.h>
 
+#define SEED 0
+#define total_workloads 250 // 100 each
+
 #include "include/gemmini_params.h"
 #include "include/define.h"
 #include "include/precompile.h"
@@ -559,6 +562,10 @@ size_t* tiling_factor_matmul_calculate_auto(size_t dim_I_in, size_t dim_J_in, si
   uint64_t end = read_cycles();
   uint64_t this_cycles = end - gemmini_start_time[total_cid];
   uint64_t slack = (this_cycles > dispatch_cycle) ? this_cycles - dispatch_cycle : total_queue_target[queue_id];
+  if(this_cycles > dispatch_cycle){
+    slack = (slack < total_queue_target[queue_id]) ? total_queue_target[queue_id] - slack : 10;
+    // to prevent underflow
+  }
   int priority = total_queue_priority[queue_id];
   // MOCA runtime dynamic priority score
   int this_score = (1+priority)/4 + round_divide_int(10*total_queue_togo[queue_id], slack);//max(1, (int)((10*total_queue_togo[queue_id])/slack));
@@ -2341,6 +2348,10 @@ int* tiled_conv_A_stride_bubble_calculate( // for sw padding
   uint64_t end = read_cycles();
   uint64_t this_cycles = end - gemmini_start_time[total_cid];
   uint64_t slack = (this_cycles > dispatch_cycle) ? this_cycles - dispatch_cycle : total_queue_target[queue_id];
+  if(this_cycles > dispatch_cycle){
+    slack = (slack < total_queue_target[queue_id]) ? total_queue_target[queue_id] - slack : 10;
+    // to prevent underflow
+  }
   int priority = total_queue_priority[queue_id];
   // MOCA runtime dynamic priority score
   int this_score = (1+priority)/4 + round_divide_int(10*(total_queue_togo[queue_id]), slack);//max(1, (int)((10*total_queue_togo[queue_id])/slack));

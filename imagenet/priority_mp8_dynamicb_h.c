@@ -14,14 +14,12 @@
 //#define NUM_OUTPUT (20+34+16+3)
 
 #define NUM_CORE 8
-#define SEED 2
-#define total_workloads 250 // 100 each
 #define WORKLOAD_CORE 2
 #define QUEUE_DEPTH 6
 #define NUM_ITER 3
 #define CAP 4 
-#define CAP_SCALE 1.45
-#define TARGET_SCALE 0.85
+#define CAP_SCALE 1.47
+#define TARGET_SCALE 0.8
 #define INTER_SCALE 1.15
 
 #define WORKLOAD_A false
@@ -348,7 +346,9 @@ int main (int argc, char * argv[]) {
     }
     if (max < tp_prediction_cycles[total_queue_type[i]-1]) max = tp_prediction_cycles[total_queue_type[i]-1];
 	  printf("queue id %d workload type: %d\n", i, total_queue_type[i]);
-	  printf("queue id %d dispatch to finish time: %llu\n", i, max); 
+	  printf("queue id %d dispatch to finish time: %llu\n", i, max);
+    printf("queue id %d togo: %llu\n", i, total_queue_togo[i]); 
+    printf("queue id %d conv: %d\n", i, total_queue_conv[i]);
     printf("queue id %d priority: %d\n", i, total_queue_priority[i]);
     printf("queue id %d dispatched time: %llu\n", i, total_queue_dispatch[i]);
     printf("queue id %d target: %llu\n", i, total_queue_target[i]);

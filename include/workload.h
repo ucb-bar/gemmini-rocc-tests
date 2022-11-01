@@ -18,7 +18,8 @@
 // some random cycles for dispatch interval
 #if WORKLOAD_CORE == 2
 static uint64_t sp_cycles[NUM_WORKLOAD] =
-{15070506,8382324,7070440,2608024,9458914,5132036,1978161};
+{15070506,8382324,7070440,2608024,9058914,5132036,1678161};
+//{15070506,8382324,7070440,2608024,9458914,5132036,1978161};
 #elif WORKLOAD_CORE == 4
 static uint64_t sp_cycles[NUM_WORKLOAD] = 
 {9829820,5539067,4923351,1538641,6203714,3314037,1998578};
@@ -346,7 +347,7 @@ void workload_mode_2(int workload, bool batch1, bool batch4, bool batch8, uint32
           priority_level = 11;
       }
       total_queue_priority[index] = priority_level;
-      total_queue_target[index] = target_cycles[workload_type] * target_scale;
+      total_queue_target[index] = target_cycles[workload_type-1] * target_scale;
       total_queue_togo[index] = tp_prediction_cycles[workload_type-1];
       total_queue_conv[index] = 0;
       for (int j = 0; j < SUB_CORE; j++){
