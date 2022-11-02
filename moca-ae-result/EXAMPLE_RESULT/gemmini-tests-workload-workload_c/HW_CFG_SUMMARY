@@ -1,0 +1,5 @@
+RuntimeHWConfig: firesim_eightcore_gemmini_moca
+DeployTriplet: FireSim-DDR3FRFCFS_FireSimGemminiMOCAConfig-MCRams_BaseF1Config
+AGFI: agfi-001bd1f383ffdd9ff
+XCLBIN: None
+CustomRuntimeConf: None
