@@ -11,7 +11,7 @@
 #include "include/rerocc.h" 
 #include "include/gemmini_testutils.h"
 
-#define N 4*4
+#define N 4*3
 #define OP 2
 
 #if (N*DIM) > (BANK_NUM*BANK_ROWS)
@@ -29,17 +29,30 @@ int main() {
   int r = rerocc_ntrackers();
   printf("number of trackers: %d\n", r);
   printf("attempting rerocc_acquire\n");
-  for(int i = 0; i < 4; i++)
+  for(int i = 0; i < 3; i++)
     while(!rerocc_acquire(i, 0xf)){}
 
   printf("rerocc acquired \n");
 
-  for (int i = 0; i < 4; i++) {
-    rerocc_assign(OP, i);
-    gemmini_flush(0);
-    gemmini_config_ld(DIM * sizeof(elem_t));
-    gemmini_config_st(DIM * sizeof(elem_t));
-  }
+  printf("Flush\n");
+
+  rerocc_assign(1, 0);
+  rerocc_assign(2, 1);
+  rerocc_assign(3, 2);
+
+  gemmini_opcode_flush(1, 0);
+  gemmini_opcode_config_ld(1, DIM*sizeof(elem_t));
+  gemmini_opcode_config_st(1, DIM*sizeof(elem_t));
+
+  gemmini_opcode_flush(2, 0);
+  gemmini_opcode_config_ld(2, DIM*sizeof(elem_t));
+  gemmini_opcode_config_st(2, DIM*sizeof(elem_t));
+
+
+  gemmini_opcode_flush(3, 0);
+  gemmini_opcode_config_ld(3, DIM*sizeof(elem_t));
+  gemmini_opcode_config_st(3, DIM*sizeof(elem_t));
+
 
   static elem_t In[N][DIM][DIM] row_align(1);
   static elem_t Out[N][DIM][DIM] row_align(1);
@@ -51,20 +64,23 @@ int main() {
 
 
 
-  for (size_t n = 0; n < N; n+=4) {
-    for(size_t i = 0; i < 4; i++){
-      rerocc_assign(OP, i);
-      int ni = n+i;
-      printf("Mvin %d i %d\n", n, i);
-      gemmini_mvin(In[ni], n*DIM);
-      printf("Mvout %d i %d\n", n, i);
-      gemmini_mvout(Out[ni], n*DIM);
-      printf("mvout done\n");
+  for (size_t n = 0; n < N; n+=3) {
+      printf("Mvin %d i %d\n", n, 0);
+      gemmini_opcode_mvin(1, In[n], n*DIM);
+      printf("Mvin %d i %d\n", n, 1);
+      gemmini_opcode_mvin(2, In[n+1], n*DIM);
+      printf("Mvin %d i %d\n", n, 2);
+      gemmini_opcode_mvin(3, In[n+2], n*DIM);
+      printf("Mvout %d i %d\n", n, 0);
+      gemmini_opcode_mvout(1, Out[n], n*DIM);
+      printf("Mvout %d i %d\n", n, 1);
+      gemmini_opcode_mvout(2, Out[n+1], n*DIM);
+      printf("Mvout %d i %d\n", n, 2);
+      gemmini_opcode_mvout(3, Out[n+2], n*DIM);
       gemmini_fence();
-    }
   }
   // Release all the trackers
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 3; i++) {
     rerocc_release(i);
   }
 

@@ -15,6 +15,9 @@
 #include "include/gemmini_params.h"
 #include "include/gemmini.h"
 
+#include "include/rerocc.h"
+#include "include/gemmini_re.h"
+
 #ifdef BAREMETAL
 #undef assert
 #define assert(expr) \

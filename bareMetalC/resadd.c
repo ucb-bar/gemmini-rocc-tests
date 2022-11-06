@@ -75,7 +75,8 @@ int main() {
 
     printf("Starting gemmini resadd\n");
     unsigned long start = read_cycles();
-    tiled_resadd_auto(MAT_DIM_I, MAT_DIM_J, A_SCALE, B_SCALE, C_SCALE, (elem_t*)A, (elem_t*)B,
+    tiled_resadd_auto(MAT_DIM_I, MAT_DIM_J, A_SCALE, B_SCALE, C_SCALE, MAT_DIM_J, false, false, false,
+            (elem_t*)A, (elem_t*)B,
             (elem_t*)C, USE_RELU, WS);
     unsigned long end = read_cycles();
     printf("Cycles taken: %u\n", end-start);
