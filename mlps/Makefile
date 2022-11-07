@@ -1,6 +1,8 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
+	mt_matmul_1 \
+	mt_matmul_2 \
 	mt_resadd_1 \
 	mt_resadd_2 \
 
