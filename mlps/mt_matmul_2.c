@@ -23,6 +23,7 @@
 #define NUM_ARRAY1 2
 #define NUM_ARRAY2 4
 
+#define THREAD_PRINT 1
 #define CHECK_RESULT 1
 #define OP 3
 
@@ -97,14 +98,16 @@ void *thread_matmul1(void *arg){
     struct thread_args * matmul_args = (struct thread_args *) arg;
     int cid = sched_getcpu();//matmul_args->i;
     pthread_mutex_lock(&array_mutex);
+#if THREAD_PRINT == 1
     printf("cid %d got lock\n", cid);
-
+#endif
     uint64_t total_start = read_cycles();
     for(int i = 0; i < NUM_ARRAY1; i++)
       while(!rerocc_acquire(i, 0xf)){}
     pthread_mutex_unlock(&array_mutex);
+#if THREAD_PRINT == 1
     printf("cid %d release lock\n", cid);
-
+#endif
     for (int i = 0; i < NUM_ARRAY1; i++) {
       rerocc_assign(OP, i);
       gemmini_flush(0);
@@ -125,11 +128,15 @@ void *thread_matmul1(void *arg){
     uint64_t end = read_cycles();
     matmul_args->cycles = end - start;
  
+#if THREAD_PRINT == 1
     printf("cid %d finish operation\n", cid);
+#endif
     for(int i = 0; i < NUM_ARRAY1; i++)
       rerocc_release(i);   
     uint64_t total_end = read_cycles();
+#if THREAD_PRINT == 1
     printf("cid %d release rerocc \n", cid);
+#endif
     matmul_args->total_cycles = total_end - total_start;
 }
 
@@ -137,14 +144,16 @@ void *thread_matmul2(void *arg){
     struct thread_args * matmul_args = (struct thread_args *) arg;
     int cid = sched_getcpu();//matmul_args->i;
     pthread_mutex_lock(&array_mutex);
+#if THREAD_PRINT == 1
     printf("cid %d got lock\n", cid);
-
+#endif
     uint64_t total_start = read_cycles();
     for(int i = 0; i < NUM_ARRAY2; i++)
       while(!rerocc_acquire(i, 0xf)){}
     pthread_mutex_unlock(&array_mutex);
+#if THREAD_PRINT == 1
     printf("cid %d release lock\n", cid);
-
+#endif
     for (int i = 0; i < NUM_ARRAY2; i++) {
       rerocc_assign(OP, i);
       gemmini_flush(0);
@@ -165,11 +174,15 @@ void *thread_matmul2(void *arg){
     uint64_t end = read_cycles();
     matmul_args->cycles = end - start;
  
+#if THREAD_PRINT == 1
     printf("cid %d finish operation\n", cid);
+#endif
     for(int i = 0; i < NUM_ARRAY2; i++)
       rerocc_release(i);   
     uint64_t total_end = read_cycles();
+#if THREAD_PRINT == 1
     printf("cid %d release rerocc \n", cid);
+#endif
     matmul_args->total_cycles = total_end - total_start;
 }
 
