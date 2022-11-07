@@ -406,7 +406,10 @@ static void tiled_opcode_matmul_nn_auto_multi(size_t dim_I, size_t dim_J, size_t
 
   bool no_bias = (D == NULL);
 
+#if rerocc_debug == 1
   printf("dim_I: %d, dim_J: %d, dim_K: %d, tile_I: %d, tile_J: %d, tile_K: %d\n", dim_I, dim_J, dim_K, tile_I, tile_J, tile_K);
+#endif
+
   tiled_opcode_matmul_outer(dim_I_original, dim_J_original, dim_K_original,
       dim_I, dim_J, dim_K,
       //sub_num_I, sub_num_J, sub_num_K,
@@ -1050,7 +1053,7 @@ static void tiled_opcode_conv(
         batch_size * out_channels * sizeof(elem_t) :
         out_stride * sizeof(elem_t);
     for(int i = start_tracker; i < start_tracker + num_array; i++){
-      rerocc_assign(OP3, i);
+      //rerocc_assign(OP3, i);
       gemmini_opcode_extended_config_st(OP3, out_direct_dram, st_dram_stride, act, scale);
       gemmini_opcode_extended3_config_ex(OP3, WEIGHT_STATIONARY, 0, 0, 0, relu6_shift, input_dilation, stride >> downsample, trans_input_3120, trans_weight_0132, 0, 0, 0, 0, 0, 0, 0, 0, 0, false);
     }
@@ -1069,7 +1072,7 @@ static void tiled_opcode_conv(
     
     int porows_outer = div_orow ? num_array * porows : porows;
     int pochs_outer = div_och ? num_array * pochs : pochs;
-    printf("div orow: %d, div och: %d, porows_outer: %d, pochs_outer: %d\n",div_orow, div_och, porows_outer, pochs_outer);
+   // printf("div orow: %d, div och: %d, porows_outer: %d, pochs_outer: %d\n",div_orow, div_och, porows_outer, pochs_outer);
 
     size_t a_spad_id = 0;
     size_t b_spad_id = 0;
@@ -1187,7 +1190,7 @@ static void tiled_opcode_conv(
                       out = out != NULL ? out + poch_inner : out;
                       size_t tracker = start_tracker + (int)(porow_inner/porows) + (int)(poch_inner/pochs);                  
                       rerocc_assign(OP3, tracker);
- //   printf("tracker: %d, porow: %d, porow_inner: %d, poch: %d, poch_inner: %d, porows_: %d, orows_: %d, irows_: %d, pochs_: %d\n", tracker, porow, porow_inner, poch, poch_inner, porows_, orows_, irows_, pochs_);
+    //printf("tracker: %d, porow: %d, porow_inner: %d, poch: %d, poch_inner: %d, porows_: %d, orows_: %d, irows_: %d, pochs_: %d\n", tracker, porow, porow_inner, poch, poch_inner, porows_, orows_, irows_, pochs_);
                       sp_tiled_conv(
                           batch_size, in_dim, in_channels,
                           out_channels, out_dim, pool_out_dim,
