@@ -139,7 +139,7 @@ void *thread_matmul1(void *arg){
       while(!rerocc_acquire(i, 0xf)){}
     pthread_mutex_unlock(&array_mutex);
 #if THREAD_PRINT == 1
-    printf("cid %d release lock\n", cid);
+    printf("cid %d got lock, need %d arrays\n", cid, matmul_args->num_array);
 #endif
     for (int i = 0; i < request_array; i++) {
       rerocc_assign(OP, i);
@@ -185,7 +185,7 @@ void *thread_matmul2(void *arg){
     int request_array = 0;//matmul_args->num_array;
     pthread_mutex_lock(&array_mutex);
 #if THREAD_PRINT == 1
-    printf("cid %d got lock\n", cid);
+    printf("cid %d got lock, need %d arrays\n", cid, matmul_args->num_array);
 #endif
 
     bool num_mutex_pass = false;
@@ -193,6 +193,7 @@ void *thread_matmul2(void *arg){
     while(!num_mutex_pass){
       pthread_mutex_lock(&num_mutex);
       if(num_available_array > 0){
+        request_array = matmul_args->num_array;
         if(request_array > num_available_array && num_available_array > 0){
           request_array = num_available_array;
           //num_available_array = 0;//-= request_array;
