@@ -111,7 +111,7 @@ void *thread_matmul1(void *arg){
       pthread_mutex_lock(&num_mutex);
       if(num_available_array > 0){
         request_array = matmul_args->num_array;
-        if(request_array < num_available_array && num_available_array > 0){
+        if(request_array > num_available_array && num_available_array > 0){
           request_array = num_available_array;
           //num_available_array = 0;//-= request_array;
         }
@@ -193,7 +193,7 @@ void *thread_matmul2(void *arg){
     while(!num_mutex_pass){
       pthread_mutex_lock(&num_mutex);
       if(num_available_array > 0){
-        if(request_array < num_available_array && num_available_array > 0){
+        if(request_array > num_available_array && num_available_array > 0){
           request_array = num_available_array;
           //num_available_array = 0;//-= request_array;
         }
