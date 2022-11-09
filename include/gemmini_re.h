@@ -427,6 +427,7 @@ static void tiled_opcode_matmul_nn_auto_multi(size_t dim_I, size_t dim_J, size_t
 
 static void tiled_opcode_matmul_nn_default(size_t dim_I, size_t dim_J, size_t dim_K,
   size_t stride_C,
+  bool A_direct_dram, bool B_direct_dram, bool D_direct_dram, bool C_direct_dram,
   elem_t* A, elem_t* B,
   void * D, elem_t* C,
   int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
@@ -441,7 +442,7 @@ static void tiled_opcode_matmul_nn_default(size_t dim_I, size_t dim_J, size_t di
   tiled_opcode_matmul_nn_auto_multi(
       dim_I, dim_J, dim_K,
       stride_A, stride_B, stride_C,
-      false, false, false, false, // direct dram
+      A_direct_dram, B_direct_dram, D_direct_dram, C_direct_dram,
       A, B, D, C,
       act, scale, relu6_shift, repeating_bias,
       WS, num_array, 0); // start tracker: 0
@@ -653,6 +654,7 @@ static void tiled_opcode_resadd_default(size_t I, size_t J,
     const scale_t A_scale,
     const scale_t B_scale,
     const acc_scale_t C_scale,
+    bool A_direct_dram, bool B_direct_dram, bool C_direct_dram,
     const elem_t * A,
     const elem_t * B,
     elem_t * C,
@@ -664,7 +666,7 @@ static void tiled_opcode_resadd_default(size_t I, size_t J,
   
   tiled_opcode_resadd_auto_multi(I, J, A_scale, B_scale, C_scale,
       J_stride,
-      false, false, false,
+      A_direct_dram, B_direct_dram, C_direct_dram,
       A, B, C,
       relu, WS, 
       num_array, 0);
@@ -1046,7 +1048,7 @@ static void tiled_opcode_conv(
         batch_size * out_channels * sizeof(elem_t) :
         out_stride * sizeof(elem_t);
     for(int i = start_tracker; i < start_tracker + num_array; i++){
-      //rerocc_assign(OP3, i);
+      rerocc_assign(OP3, i);
       gemmini_opcode_extended_config_st(OP3, out_direct_dram, st_dram_stride, act, scale);
       gemmini_opcode_extended3_config_ex(OP3, WEIGHT_STATIONARY, 0, 0, 0, relu6_shift, input_dilation, stride >> downsample, trans_input_3120, trans_weight_0132, 0, 0, 0, 0, 0, 0, 0, 0, 0, false);
     }
@@ -1065,7 +1067,7 @@ static void tiled_opcode_conv(
     
     int porows_outer = div_orow ? num_array * porows : porows;
     int pochs_outer = div_och ? num_array * pochs : pochs;
-   // printf("div orow: %d, div och: %d, porows_outer: %d, pochs_outer: %d\n",div_orow, div_och, porows_outer, pochs_outer);
+    //printf("div orow: %d, div och: %d, porows_outer: %d, pochs_outer: %d\n",div_orow, div_och, porows_outer, pochs_outer);
 
     size_t a_spad_id = 0;
     size_t b_spad_id = 0;
@@ -1090,8 +1092,10 @@ static void tiled_opcode_conv(
 
 
     for (int poch = 0; poch < out_channels; poch += pochs_outer) {
+      int pochs_outer_loop = (out_channels - poch >= pochs_outer) ? pochs_outer : out_channels - poch;
       for (int b = 0; b < batch_size; b += batches) {
         for (int porow = 0; porow < pool_out_dim; porow += porows_outer) {
+          int porows_outer_loop = (pool_out_dim - porow >= porows_outer) ? porows_outer : pool_out_dim - porow;
           for (int pocol = 0; pocol < pool_out_dim; pocol += pocols) {
             const int ocol = pocol * pool_stride - pool_padding;
             for (int krow = 0; krow < kernel_dim; krow += krows) {
@@ -1134,7 +1138,7 @@ static void tiled_opcode_conv(
                   }
 
                   if(b_reuse && (pocol + porow + b > 0)) weights_slice = NULL;
-                  for(int porow_inner = 0; porow_inner < porows_outer; porow_inner += porows){
+                  for(int porow_inner = 0; porow_inner < porows_outer_loop; porow_inner += porows){
                     const int orow = (porow + porow_inner) * pool_stride - pool_padding;
                     const int orow_floored = orow < 0 ? 0 : orow;
                     const int irow = orow_floored * stride + krow*kernel_dilation - padding;
@@ -1171,7 +1175,7 @@ static void tiled_opcode_conv(
                     }
                     if(a_reuse && (poch > 0)) in = NULL;
 
-                    for(int poch_inner  = 0; poch_inner < pochs_outer; poch_inner += pochs){
+                    for(int poch_inner  = 0; poch_inner < pochs_outer_loop; poch_inner += pochs){
                       const int pochs_ = out_channels - (poch + poch_inner) > pochs ? pochs : out_channels - (poch + poch_inner);
                       acc_t * bias_ = bias + poch + poch_inner;
                       if (krow > 0 ||
@@ -1292,7 +1296,7 @@ static void tiled_opcode_conv_auto(
     int kcols = tile_args[5];
     int kchs = tile_args[6];
 
-/*   
+/* 
     printf("batches = %d\n", batches);
     printf("orows   = %d\n", porows);
     printf("ocols   = %d\n", pocols);
@@ -1300,8 +1304,8 @@ static void tiled_opcode_conv_auto(
     printf("krows   = %d\n", krows);
     printf("kcols   = %d\n", kcols);
     printf("kchs    = %d\n\n", kchs);
-
-  
+*/
+/*  
     printf("total spad_rows reserved: %d\n", spad_rows);
     printf("total acc_rows reserved: %d\n\n", acc_rows);
 
@@ -1345,7 +1349,7 @@ static void tiled_opcode_conv_default(
         int stride, int kernel_dilation, int padding, int kernel_dim,
         int out_stride,
         //int in_stride, int weight_stride, int out_stride,
-        //bool in_direct_dram, bool weight_direct_dram, bool bias_direct_dram, bool out_direct_dram,
+        bool in_direct_dram, bool weight_direct_dram, bool bias_direct_dram, bool out_direct_dram,
 
         //bool wrot180, bool trans_output_1203, bool trans_input_3120,
         //bool trans_weight_1203, bool trans_weight_0132,
@@ -1367,7 +1371,7 @@ static void tiled_opcode_conv_default(
         out_channels, out_dim,
         stride, 1, kernel_dilation, padding, kernel_dim,
         in_stride, weight_stride, out_stride,
-        false, false, false, false,
+        in_direct_dram, weight_direct_dram, bias_direct_dram, out_direct_dram,
 
         false, false, false,
         false, false,
