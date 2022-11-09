@@ -17,6 +17,7 @@ struct ConvParams {
     int in_channels;
     int out_channels;
     int stride;
+    int out_stride, weight_stride, in_stride;
     int padding;
     bool bias;
     bool depthwise;
@@ -33,6 +34,7 @@ struct FcParams {
     int batch_size;
     int in_features;
     int out_features;
+    int out_stride;
     acc_scale_t output_scale;
     bool bias;
 
@@ -70,7 +72,7 @@ struct FcParams {
         if (count > 0) \
             printf("%d: %d times\n", num, count); \
     }
-
+/*
 // This function runs a tiled matrix multiplication, with explicit tiling
 // factors
 static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
@@ -539,6 +541,6 @@ void pool_with_col2im(size_t I, size_t J,
         }
     }
 }
-
+*/
 #endif // GEMMINI_NN_H
 

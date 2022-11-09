@@ -424,11 +424,11 @@ static void tiled_opcode_matmul_nn_auto_multi(size_t dim_I, size_t dim_J, size_t
       (int)tiled_matmul_type,
       num_array, start_tracker);
 }
-/*
-static void tiled_opcode_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t dim_K,
+
+static void tiled_opcode_matmul_nn_default(size_t dim_I, size_t dim_J, size_t dim_K,
   size_t stride_C,
   elem_t* A, elem_t* B,
-  const void * D, elem_t* C,
+  void * D, elem_t* C,
   int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
   enum tiled_matmul_type_t tiled_matmul_type,
   size_t num_array){
@@ -444,16 +444,10 @@ static void tiled_opcode_matmul_nn_auto_cid(size_t dim_I, size_t dim_J, size_t d
       false, false, false, false, // direct dram
       A, B, D, C,
       act, scale, relu6_shift, repeating_bias,
-      WS, num_array);
+      WS, num_array, 0); // start tracker: 0
       //orow_divide, batch_divide, cid, group_id);
 
 }
-*/
-
-// TODO: CONV
-
-
-
 
 static void sp_tiled_opcode_resadd(size_t I, size_t J,
         const scale_t A_scale,
@@ -655,7 +649,7 @@ static void tiled_opcode_resadd_auto_multi(size_t I, size_t J,
   }
 }
 
-static void tiled_opcode_resadd_auto_cid(size_t I, size_t J,
+static void tiled_opcode_resadd_default(size_t I, size_t J,
     const scale_t A_scale,
     const scale_t B_scale,
     const acc_scale_t C_scale,
@@ -663,8 +657,7 @@ static void tiled_opcode_resadd_auto_cid(size_t I, size_t J,
     const elem_t * B,
     elem_t * C,
     bool relu,
-    enum tiled_matmul_type_t matadd_type,
-    size_t num_array, size_t start_tracker){
+    size_t num_array){
     //size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id) {
  // printf("resadd\n");
   size_t J_stride = (J % 128 == 0) ? J + 64 : J;
@@ -673,8 +666,8 @@ static void tiled_opcode_resadd_auto_cid(size_t I, size_t J,
       J_stride,
       false, false, false,
       A, B, C,
-      relu, matadd_type,
-      num_array, start_tracker);
+      relu, WS, 
+      num_array, 0);
       //orow_divide, batch_divide, cid, group_id);
 
 }
@@ -1253,7 +1246,7 @@ static void tiled_opcode_conv_auto(
         elem_t * output,
 
         int act, acc_scale_t scale, size_t relu6_shift,
-        int pool_size, int pool_stride, int pool_padding,
+        int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
         int num_array, int start_tracker, 
 
         enum tiled_matmul_type_t tiled_conv_type) {
@@ -1339,10 +1332,51 @@ static void tiled_opcode_conv_auto(
         output,
 
         act, scale, relu6_shift,
-        pool_size, no_pool ? 0 : pool_stride, pool_padding, false, //pool_ceil_dim
+        pool_size, no_pool ? 0 : pool_stride, pool_padding, pool_ceil_dim,
 
         tiled_conv_type,
         div_orow, div_och,
         num_array, start_tracker);
 }
 
+static void tiled_opcode_conv_default(
+        int batch_size, int in_dim, int in_channels,
+        int out_channels, int out_dim,
+        int stride, int kernel_dilation, int padding, int kernel_dim,
+        int out_stride,
+        //int in_stride, int weight_stride, int out_stride,
+        //bool in_direct_dram, bool weight_direct_dram, bool bias_direct_dram, bool out_direct_dram,
+
+        //bool wrot180, bool trans_output_1203, bool trans_input_3120,
+        //bool trans_weight_1203, bool trans_weight_0132,
+
+        elem_t * input,
+        elem_t * weights,
+        acc_t * bias,
+        elem_t * output,
+
+        int act, acc_scale_t scale, size_t relu6_shift,
+        int pool_size, int pool_stride, int pool_padding, bool pool_ceil_dim,
+        int num_array) {
+
+    int in_stride = (in_channels % 128 == 0) ? in_channels + 64 : in_channels;
+    int weight_stride = (out_channels % 128 == 0) ? out_channels + 64 : out_channels;
+
+    tiled_opcode_conv_auto(
+        batch_size, in_dim, in_channels,
+        out_channels, out_dim,
+        stride, 1, kernel_dilation, padding, kernel_dim,
+        in_stride, weight_stride, out_stride,
+        false, false, false, false,
+
+        false, false, false,
+        false, false,
+        
+        input, weights, bias, output,
+
+        act, scale, relu6_shift,
+        pool_size, pool_stride, pool_padding, pool_ceil_dim,
+        
+        num_array, 0, WS);
+
+}
