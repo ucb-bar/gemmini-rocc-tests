@@ -8,7 +8,7 @@
 #define THREAD_SYNC 0
 
 
-uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int num_array){
+uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, bool input_direct_dram, bool weight_direct_dram, bool bias_direct_dram, bool output_direct_dram, int num_array){
 #define num_cycle (20+34+16+3)
   static uint64_t cycles[num_cycle];
     uint64_t start, end;
@@ -32,7 +32,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_1_params_res1.batch_size, conv_1_params_res1.in_dim, conv_1_params_res1.in_channels,
           conv_1_params_res1.out_channels, conv_1_params_res1.out_dim,
           conv_1_params_res1.stride, 1, conv_1_params_res1.padding, conv_1_params_res1.kernel_size,
-          conv_1_params_res1.out_stride,
+          conv_1_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)image3, (elem_t*)conv_1_w_res1, (acc_t*)conv_1_b_res1, (elem_t*)conv_1_out_res1_pooled,
 
@@ -50,7 +50,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
 #endif             
       // conv_2
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_2_params_res1.I, conv_2_params_res1.J, conv_2_params_res1.K, conv_2_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_2_params_res1.I, conv_2_params_res1.J, conv_2_params_res1.K, conv_2_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_1_out_res1_pooled, (elem_t*)conv_2_w_res1, (acc_t*)conv_2_b_res1, (elem_t*)conv_2_out_res1,
           RELU, conv_2_params_res1.output_scale, 0, true,
           WS,
@@ -70,7 +70,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_3_params_res1.batch_size, conv_3_params_res1.in_dim, conv_3_params_res1.in_channels,
           conv_3_params_res1.out_channels, conv_3_params_res1.out_dim,
           conv_3_params_res1.stride, 1, conv_3_params_res1.padding, conv_3_params_res1.kernel_size,
-          conv_3_params_res1.out_stride,
+          conv_3_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_2_out_res1, (elem_t*)conv_3_w_res1, (acc_t*)conv_3_b_res1, (elem_t*)conv_3_out_res1,
 
@@ -89,7 +89,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_4
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_4_params_res1.I, conv_4_params_res1.J, conv_4_params_res1.K, conv_4_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_4_params_res1.I, conv_4_params_res1.J, conv_4_params_res1.K, conv_4_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_3_out_res1, (elem_t*)conv_4_w_res1, (acc_t*)conv_4_b_res1, (elem_t*)conv_4_out_res1,
           NO_ACTIVATION, conv_4_params_res1.output_scale, 0, true,
           WS,
@@ -105,7 +105,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
       // Downsampling conv_1_out_res1_pooled
       // conv_5
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_5_params_res1.I, conv_5_params_res1.J, conv_5_params_res1.K, conv_5_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_5_params_res1.I, conv_5_params_res1.J, conv_5_params_res1.K, conv_5_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_1_out_res1_pooled, (elem_t*)conv_5_w_res1, (acc_t*)conv_5_b_res1, (elem_t*)conv_5_out_res1,
           NO_ACTIVATION, conv_5_params_res1.output_scale, 0, true,
           WS,
@@ -124,6 +124,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_4_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_5_out_res1,
           (elem_t*)conv_4_out_res1,
           (elem_t*)conv_4_out_res1,
@@ -139,7 +140,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_6
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_6_params_res1.I, conv_6_params_res1.J, conv_6_params_res1.K, conv_6_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_6_params_res1.I, conv_6_params_res1.J, conv_6_params_res1.K, conv_6_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_4_out_res1, (elem_t*)conv_6_w_res1, (acc_t*)conv_6_b_res1, (elem_t*)conv_6_out_res1,
           RELU, conv_6_params_res1.output_scale, 0, true,
           WS,
@@ -158,7 +159,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_7_params_res1.batch_size, conv_7_params_res1.in_dim, conv_7_params_res1.in_channels,
           conv_7_params_res1.out_channels, conv_7_params_res1.out_dim,
           conv_7_params_res1.stride, 1, conv_7_params_res1.padding, conv_7_params_res1.kernel_size,
-          conv_7_params_res1.out_stride,
+          conv_7_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_6_out_res1, (elem_t*)conv_7_w_res1, (acc_t*)conv_7_b_res1, (elem_t*)conv_7_out_res1,
 
@@ -176,7 +177,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_8
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_8_params_res1.I, conv_8_params_res1.J, conv_8_params_res1.K, conv_8_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_8_params_res1.I, conv_8_params_res1.J, conv_8_params_res1.K, conv_8_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_7_out_res1, (elem_t*)conv_8_w_res1, (acc_t*)conv_8_b_res1, (elem_t*)conv_8_out_res1,
           NO_ACTIVATION, conv_8_params_res1.output_scale, 0, true,
           WS,
@@ -195,6 +196,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_8_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_4_out_res1,
           (elem_t*)conv_8_out_res1,
           (elem_t*)conv_8_out_res1,
@@ -210,7 +212,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_9
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_9_params_res1.I, conv_9_params_res1.J, conv_9_params_res1.K, conv_9_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_9_params_res1.I, conv_9_params_res1.J, conv_9_params_res1.K, conv_9_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_8_out_res1, (elem_t*)conv_9_w_res1, (acc_t*)conv_9_b_res1, (elem_t*)conv_9_out_res1,
           RELU, conv_9_params_res1.output_scale, 0, true,
           WS,
@@ -229,7 +231,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_10_params_res1.batch_size, conv_10_params_res1.in_dim, conv_10_params_res1.in_channels,
           conv_10_params_res1.out_channels, conv_10_params_res1.out_dim,
           conv_10_params_res1.stride, 1, conv_10_params_res1.padding, conv_10_params_res1.kernel_size,
-          conv_10_params_res1.out_stride,
+          conv_10_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_9_out_res1, (elem_t*)conv_10_w_res1, (acc_t*)conv_10_b_res1, (elem_t*)conv_10_out_res1,
 
@@ -247,7 +249,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_11
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_11_params_res1.I, conv_11_params_res1.J, conv_11_params_res1.K, conv_11_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_11_params_res1.I, conv_11_params_res1.J, conv_11_params_res1.K, conv_11_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_10_out_res1, (elem_t*)conv_11_w_res1, (acc_t*)conv_11_b_res1, (elem_t*)conv_11_out_res1,
           NO_ACTIVATION, conv_11_params_res1.output_scale, 0, true,
           WS,
@@ -266,6 +268,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_11_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_8_out_res1,
           (elem_t*)conv_11_out_res1,
           (elem_t*)conv_11_out_res1,
@@ -281,7 +284,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_12
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_12_params_res1.I, conv_12_params_res1.J, conv_12_params_res1.K, conv_12_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_12_params_res1.I, conv_12_params_res1.J, conv_12_params_res1.K, conv_12_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_11_out_res1, (elem_t*)conv_12_w_res1, (acc_t*)conv_12_b_res1, (elem_t*)conv_12_out_res1,
           RELU, conv_12_params_res1.output_scale, 0, true,
           WS,
@@ -302,7 +305,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_13_params_res1.batch_size, conv_13_params_res1.in_dim, conv_13_params_res1.in_channels,
           conv_13_params_res1.out_channels, conv_13_params_res1.out_dim,
           conv_13_params_res1.stride, 1, conv_13_params_res1.padding, conv_13_params_res1.kernel_size,
-          conv_13_params_res1.out_stride,
+          conv_13_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_12_out_res1, (elem_t*)conv_13_w_res1, (acc_t*)conv_13_b_res1, (elem_t*)conv_13_out_res1,
 
@@ -320,7 +323,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_14
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_14_params_res1.I, conv_14_params_res1.J, conv_14_params_res1.K, conv_14_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_14_params_res1.I, conv_14_params_res1.J, conv_14_params_res1.K, conv_14_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_13_out_res1, (elem_t*)conv_14_w_res1, (acc_t*)conv_14_b_res1, (elem_t*)conv_14_out_res1,
           NO_ACTIVATION, conv_14_params_res1.output_scale, 0, true,
           WS,
@@ -340,7 +343,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_15_params_res1.batch_size, conv_15_params_res1.in_dim, conv_15_params_res1.in_channels,
           conv_15_params_res1.out_channels, conv_15_params_res1.out_dim,
           conv_15_params_res1.stride, 1, conv_15_params_res1.padding, conv_15_params_res1.kernel_size,
-          conv_15_params_res1.out_stride,
+          conv_15_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_11_out_res1, (elem_t*)conv_15_w_res1, (acc_t*)conv_15_b_res1, (elem_t*)conv_15_out_res1,
 
@@ -362,6 +365,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_14_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_15_out_res1,
           (elem_t*)conv_14_out_res1,
           (elem_t*)conv_14_out_res1,
@@ -377,7 +381,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_16
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_16_params_res1.I, conv_16_params_res1.J, conv_16_params_res1.K, conv_16_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_16_params_res1.I, conv_16_params_res1.J, conv_16_params_res1.K, conv_16_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_14_out_res1, (elem_t*)conv_16_w_res1, (acc_t*)conv_16_b_res1, (elem_t*)conv_16_out_res1,
           RELU, conv_16_params_res1.output_scale, 0, true,
           WS,
@@ -396,7 +400,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_17_params_res1.batch_size, conv_17_params_res1.in_dim, conv_17_params_res1.in_channels,
           conv_17_params_res1.out_channels, conv_17_params_res1.out_dim,
           conv_17_params_res1.stride, 1, conv_17_params_res1.padding, conv_17_params_res1.kernel_size,
-          conv_17_params_res1.out_stride,
+          conv_17_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_16_out_res1, (elem_t*)conv_17_w_res1, (acc_t*)conv_17_b_res1, (elem_t*)conv_17_out_res1,
 
@@ -414,7 +418,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_18
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_18_params_res1.I, conv_18_params_res1.J, conv_18_params_res1.K, conv_18_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_18_params_res1.I, conv_18_params_res1.J, conv_18_params_res1.K, conv_18_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_17_out_res1, (elem_t*)conv_18_w_res1, (acc_t*)conv_18_b_res1, (elem_t*)conv_18_out_res1,
           NO_ACTIVATION, conv_18_params_res1.output_scale, 0, true,
           WS,
@@ -433,6 +437,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_18_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_14_out_res1,
           (elem_t*)conv_18_out_res1,
           (elem_t*)conv_18_out_res1,
@@ -448,7 +453,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_19
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_19_params_res1.I, conv_19_params_res1.J, conv_19_params_res1.K, conv_19_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_19_params_res1.I, conv_19_params_res1.J, conv_19_params_res1.K, conv_19_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_18_out_res1, (elem_t*)conv_19_w_res1, (acc_t*)conv_19_b_res1, (elem_t*)conv_19_out_res1,
           RELU, conv_19_params_res1.output_scale, 0, true,
           WS,
@@ -467,7 +472,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_20_params_res1.batch_size, conv_20_params_res1.in_dim, conv_20_params_res1.in_channels,
           conv_20_params_res1.out_channels, conv_20_params_res1.out_dim,
           conv_20_params_res1.stride, 1, conv_20_params_res1.padding, conv_20_params_res1.kernel_size,
-          conv_20_params_res1.out_stride,
+          conv_20_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_19_out_res1, (elem_t*)conv_20_w_res1, (acc_t*)conv_20_b_res1, (elem_t*)conv_20_out_res1,
 
@@ -485,7 +490,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_21
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_21_params_res1.I, conv_21_params_res1.J, conv_21_params_res1.K, conv_21_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_21_params_res1.I, conv_21_params_res1.J, conv_21_params_res1.K, conv_21_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_20_out_res1, (elem_t*)conv_21_w_res1, (acc_t*)conv_21_b_res1, (elem_t*)conv_21_out_res1,
           NO_ACTIVATION, conv_21_params_res1.output_scale, 0, true,
           WS,
@@ -504,6 +509,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_21_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_18_out_res1,
           (elem_t*)conv_21_out_res1,
           (elem_t*)conv_21_out_res1,
@@ -519,7 +525,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_22
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_22_params_res1.I, conv_22_params_res1.J, conv_22_params_res1.K, conv_22_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_22_params_res1.I, conv_22_params_res1.J, conv_22_params_res1.K, conv_22_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_21_out_res1, (elem_t*)conv_22_w_res1, (acc_t*)conv_22_b_res1, (elem_t*)conv_22_out_res1,
           RELU, conv_22_params_res1.output_scale, 0, true,
           WS,
@@ -538,7 +544,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_23_params_res1.batch_size, conv_23_params_res1.in_dim, conv_23_params_res1.in_channels,
           conv_23_params_res1.out_channels, conv_23_params_res1.out_dim,
           conv_23_params_res1.stride, 1, conv_23_params_res1.padding, conv_23_params_res1.kernel_size,
-          conv_23_params_res1.out_stride,
+          conv_23_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_22_out_res1, (elem_t*)conv_23_w_res1, (acc_t*)conv_23_b_res1, (elem_t*)conv_23_out_res1,
 
@@ -556,7 +562,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_24
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_24_params_res1.I, conv_24_params_res1.J, conv_24_params_res1.K, conv_24_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_24_params_res1.I, conv_24_params_res1.J, conv_24_params_res1.K, conv_24_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_23_out_res1, (elem_t*)conv_24_w_res1, (acc_t*)conv_24_b_res1, (elem_t*)conv_24_out_res1,
           NO_ACTIVATION, conv_24_params_res1.output_scale, 0, true,
           WS,
@@ -575,6 +581,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_24_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_21_out_res1,
           (elem_t*)conv_24_out_res1,
           (elem_t*)conv_24_out_res1,
@@ -590,7 +597,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_25
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_25_params_res1.I, conv_25_params_res1.J, conv_25_params_res1.K, conv_25_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_25_params_res1.I, conv_25_params_res1.J, conv_25_params_res1.K, conv_25_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_24_out_res1, (elem_t*)conv_25_w_res1, (acc_t*)conv_25_b_res1, (elem_t*)conv_25_out_res1,
           RELU, conv_25_params_res1.output_scale, 0, true,
           WS,
@@ -611,7 +618,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_26_params_res1.batch_size, conv_26_params_res1.in_dim, conv_26_params_res1.in_channels,
           conv_26_params_res1.out_channels, conv_26_params_res1.out_dim,
           conv_26_params_res1.stride, 1, conv_26_params_res1.padding, conv_26_params_res1.kernel_size,
-          conv_26_params_res1.out_stride,
+          conv_26_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_25_out_res1, (elem_t*)conv_26_w_res1, (acc_t*)conv_26_b_res1, (elem_t*)conv_26_out_res1,
 
@@ -629,7 +636,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_27
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_27_params_res1.I, conv_27_params_res1.J, conv_27_params_res1.K, conv_27_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_27_params_res1.I, conv_27_params_res1.J, conv_27_params_res1.K, conv_27_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_26_out_res1, (elem_t*)conv_27_w_res1, (acc_t*)conv_27_b_res1, (elem_t*)conv_27_out_res1,
           NO_ACTIVATION, conv_27_params_res1.output_scale, 0, true,
           WS,
@@ -649,7 +656,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_28_params_res1.batch_size, conv_28_params_res1.in_dim, conv_28_params_res1.in_channels,
           conv_28_params_res1.out_channels, conv_28_params_res1.out_dim,
           conv_28_params_res1.stride, 1, conv_28_params_res1.padding, conv_28_params_res1.kernel_size,
-          conv_28_params_res1.out_stride,
+          conv_28_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_24_out_res1, (elem_t*)conv_28_w_res1, (acc_t*)conv_28_b_res1, (elem_t*)conv_28_out_res1,
 
@@ -671,6 +678,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_27_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_28_out_res1,
           (elem_t*)conv_27_out_res1,
           (elem_t*)conv_27_out_res1,
@@ -686,7 +694,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_29
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_29_params_res1.I, conv_29_params_res1.J, conv_29_params_res1.K, conv_29_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_29_params_res1.I, conv_29_params_res1.J, conv_29_params_res1.K, conv_29_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_27_out_res1, (elem_t*)conv_29_w_res1, (acc_t*)conv_29_b_res1, (elem_t*)conv_29_out_res1,
           RELU, conv_29_params_res1.output_scale, 0, true,
           WS,
@@ -705,7 +713,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_30_params_res1.batch_size, conv_30_params_res1.in_dim, conv_30_params_res1.in_channels,
           conv_30_params_res1.out_channels, conv_30_params_res1.out_dim,
           conv_30_params_res1.stride, 1, conv_30_params_res1.padding, conv_30_params_res1.kernel_size,
-          conv_30_params_res1.out_stride,
+          conv_30_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_29_out_res1, (elem_t*)conv_30_w_res1, (acc_t*)conv_30_b_res1, (elem_t*)conv_30_out_res1,
 
@@ -723,7 +731,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_31
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_31_params_res1.I, conv_31_params_res1.J, conv_31_params_res1.K, conv_31_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_31_params_res1.I, conv_31_params_res1.J, conv_31_params_res1.K, conv_31_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_30_out_res1, (elem_t*)conv_31_w_res1, (acc_t*)conv_31_b_res1, (elem_t*)conv_31_out_res1,
           NO_ACTIVATION, conv_31_params_res1.output_scale, 0, true,
           WS,
@@ -742,6 +750,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_31_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_27_out_res1,
           (elem_t*)conv_31_out_res1,
           (elem_t*)conv_31_out_res1,
@@ -757,7 +766,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_32
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_32_params_res1.I, conv_32_params_res1.J, conv_32_params_res1.K, conv_32_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_32_params_res1.I, conv_32_params_res1.J, conv_32_params_res1.K, conv_32_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_31_out_res1, (elem_t*)conv_32_w_res1, (acc_t*)conv_32_b_res1, (elem_t*)conv_32_out_res1,
           RELU, conv_32_params_res1.output_scale, 0, true,
           WS,
@@ -776,7 +785,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_33_params_res1.batch_size, conv_33_params_res1.in_dim, conv_33_params_res1.in_channels,
           conv_33_params_res1.out_channels, conv_33_params_res1.out_dim,
           conv_33_params_res1.stride, 1, conv_33_params_res1.padding, conv_33_params_res1.kernel_size,
-          conv_33_params_res1.out_stride,
+          conv_33_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_32_out_res1, (elem_t*)conv_33_w_res1, (acc_t*)conv_33_b_res1, (elem_t*)conv_33_out_res1,
 
@@ -794,7 +803,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_34
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_34_params_res1.I, conv_34_params_res1.J, conv_34_params_res1.K, conv_34_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_34_params_res1.I, conv_34_params_res1.J, conv_34_params_res1.K, conv_34_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_33_out_res1, (elem_t*)conv_34_w_res1, (acc_t*)conv_34_b_res1, (elem_t*)conv_34_out_res1,
           NO_ACTIVATION, conv_34_params_res1.output_scale, 0, true,
           WS,
@@ -813,6 +822,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_34_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_31_out_res1,
           (elem_t*)conv_34_out_res1,
           (elem_t*)conv_34_out_res1,
@@ -828,7 +838,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_35
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_35_params_res1.I, conv_35_params_res1.J, conv_35_params_res1.K, conv_35_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_35_params_res1.I, conv_35_params_res1.J, conv_35_params_res1.K, conv_35_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_34_out_res1, (elem_t*)conv_35_w_res1, (acc_t*)conv_35_b_res1, (elem_t*)conv_35_out_res1,
           RELU, conv_35_params_res1.output_scale, 0, true,
           WS,
@@ -847,7 +857,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_36_params_res1.batch_size, conv_36_params_res1.in_dim, conv_36_params_res1.in_channels,
           conv_36_params_res1.out_channels, conv_36_params_res1.out_dim,
           conv_36_params_res1.stride, 1, conv_36_params_res1.padding, conv_36_params_res1.kernel_size,
-          conv_36_params_res1.out_stride,
+          conv_36_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_35_out_res1, (elem_t*)conv_36_w_res1, (acc_t*)conv_36_b_res1, (elem_t*)conv_36_out_res1,
 
@@ -865,7 +875,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_37
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_37_params_res1.I, conv_37_params_res1.J, conv_37_params_res1.K, conv_37_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_37_params_res1.I, conv_37_params_res1.J, conv_37_params_res1.K, conv_37_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_36_out_res1, (elem_t*)conv_37_w_res1, (acc_t*)conv_37_b_res1, (elem_t*)conv_37_out_res1,
           NO_ACTIVATION, conv_37_params_res1.output_scale, 0, true,
           WS,
@@ -884,6 +894,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_37_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_34_out_res1,
           (elem_t*)conv_37_out_res1,
           (elem_t*)conv_37_out_res1,
@@ -899,7 +910,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_38
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_38_params_res1.I, conv_38_params_res1.J, conv_38_params_res1.K, conv_38_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_38_params_res1.I, conv_38_params_res1.J, conv_38_params_res1.K, conv_38_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_37_out_res1, (elem_t*)conv_38_w_res1, (acc_t*)conv_38_b_res1, (elem_t*)conv_38_out_res1,
           RELU, conv_38_params_res1.output_scale, 0, true,
           WS,
@@ -918,7 +929,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_39_params_res1.batch_size, conv_39_params_res1.in_dim, conv_39_params_res1.in_channels,
           conv_39_params_res1.out_channels, conv_39_params_res1.out_dim,
           conv_39_params_res1.stride, 1, conv_39_params_res1.padding, conv_39_params_res1.kernel_size,
-          conv_39_params_res1.out_stride,
+          conv_39_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_38_out_res1, (elem_t*)conv_39_w_res1, (acc_t*)conv_39_b_res1, (elem_t*)conv_39_out_res1,
 
@@ -936,7 +947,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_40
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_40_params_res1.I, conv_40_params_res1.J, conv_40_params_res1.K, conv_40_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_40_params_res1.I, conv_40_params_res1.J, conv_40_params_res1.K, conv_40_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_39_out_res1, (elem_t*)conv_40_w_res1, (acc_t*)conv_40_b_res1, (elem_t*)conv_40_out_res1,
           NO_ACTIVATION, conv_40_params_res1.output_scale, 0, true,
           WS,
@@ -955,6 +966,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_40_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_37_out_res1,
           (elem_t*)conv_40_out_res1,
           (elem_t*)conv_40_out_res1,
@@ -970,7 +982,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_41
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_41_params_res1.I, conv_41_params_res1.J, conv_41_params_res1.K, conv_41_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_41_params_res1.I, conv_41_params_res1.J, conv_41_params_res1.K, conv_41_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_40_out_res1, (elem_t*)conv_41_w_res1, (acc_t*)conv_41_b_res1, (elem_t*)conv_41_out_res1,
           RELU, conv_41_params_res1.output_scale, 0, true,
           WS,
@@ -989,7 +1001,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_42_params_res1.batch_size, conv_42_params_res1.in_dim, conv_42_params_res1.in_channels,
           conv_42_params_res1.out_channels, conv_42_params_res1.out_dim,
           conv_42_params_res1.stride, 1, conv_42_params_res1.padding, conv_42_params_res1.kernel_size,
-          conv_42_params_res1.out_stride,
+          conv_42_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_41_out_res1, (elem_t*)conv_42_w_res1, (acc_t*)conv_42_b_res1, (elem_t*)conv_42_out_res1,
 
@@ -1007,7 +1019,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_43
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_43_params_res1.I, conv_43_params_res1.J, conv_43_params_res1.K, conv_43_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_43_params_res1.I, conv_43_params_res1.J, conv_43_params_res1.K, conv_43_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_42_out_res1, (elem_t*)conv_43_w_res1, (acc_t*)conv_43_b_res1, (elem_t*)conv_43_out_res1,
           NO_ACTIVATION, conv_43_params_res1.output_scale, 0, true,
           WS,
@@ -1026,6 +1038,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_43_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_40_out_res1,
           (elem_t*)conv_43_out_res1,
           (elem_t*)conv_43_out_res1,
@@ -1041,7 +1054,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
     
         // conv_44
         start = read_cycles();
-        tiled_opcode_matmul_nn_default(conv_44_params_res1.I, conv_44_params_res1.J, conv_44_params_res1.K, conv_44_params_res1.out_stride,
+        tiled_opcode_matmul_nn_default(conv_44_params_res1.I, conv_44_params_res1.J, conv_44_params_res1.K, conv_44_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
             (elem_t*)conv_43_out_res1, (elem_t*)conv_44_w_res1, (acc_t*)conv_44_b_res1, (elem_t*)conv_44_out_res1,
             RELU, conv_44_params_res1.output_scale, 0, true,
             WS,
@@ -1062,7 +1075,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_45_params_res1.batch_size, conv_45_params_res1.in_dim, conv_45_params_res1.in_channels,
           conv_45_params_res1.out_channels, conv_45_params_res1.out_dim,
           conv_45_params_res1.stride, 1, conv_45_params_res1.padding, conv_45_params_res1.kernel_size,
-          conv_45_params_res1.out_stride,
+          conv_45_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_44_out_res1, (elem_t*)conv_45_w_res1, (acc_t*)conv_45_b_res1, (elem_t*)conv_45_out_res1,
 
@@ -1080,7 +1093,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_46
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_46_params_res1.I, conv_46_params_res1.J, conv_46_params_res1.K, conv_46_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_46_params_res1.I, conv_46_params_res1.J, conv_46_params_res1.K, conv_46_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_45_out_res1, (elem_t*)conv_46_w_res1, (acc_t*)conv_46_b_res1, (elem_t*)conv_46_out_res1,
           NO_ACTIVATION, conv_46_params_res1.output_scale, 0, true,
           WS,
@@ -1100,7 +1113,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_47_params_res1.batch_size, conv_47_params_res1.in_dim, conv_47_params_res1.in_channels,
           conv_47_params_res1.out_channels, conv_47_params_res1.out_dim,
           conv_47_params_res1.stride, 1, conv_47_params_res1.padding, conv_47_params_res1.kernel_size,
-          conv_47_params_res1.out_stride,
+          conv_47_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_43_out_res1, (elem_t*)conv_47_w_res1, (acc_t*)conv_47_b_res1, (elem_t*)conv_47_out_res1,
 
@@ -1122,6 +1135,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_46_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_47_out_res1,
           (elem_t*)conv_46_out_res1,
           (elem_t*)conv_46_out_res1,
@@ -1137,7 +1151,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_48
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_48_params_res1.I, conv_48_params_res1.J, conv_48_params_res1.K, conv_48_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_48_params_res1.I, conv_48_params_res1.J, conv_48_params_res1.K, conv_48_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_46_out_res1, (elem_t*)conv_48_w_res1, (acc_t*)conv_48_b_res1, (elem_t*)conv_48_out_res1,
           RELU, conv_48_params_res1.output_scale, 0, true,
           WS,
@@ -1156,7 +1170,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_49_params_res1.batch_size, conv_49_params_res1.in_dim, conv_49_params_res1.in_channels,
           conv_49_params_res1.out_channels, conv_49_params_res1.out_dim,
           conv_49_params_res1.stride, 1, conv_49_params_res1.padding, conv_49_params_res1.kernel_size,
-          conv_49_params_res1.out_stride,
+          conv_49_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_48_out_res1, (elem_t*)conv_49_w_res1, (acc_t*)conv_49_b_res1, (elem_t*)conv_49_out_res1,
 
@@ -1174,7 +1188,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_50
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_50_params_res1.I, conv_50_params_res1.J, conv_50_params_res1.K, conv_50_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_50_params_res1.I, conv_50_params_res1.J, conv_50_params_res1.K, conv_50_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_49_out_res1, (elem_t*)conv_50_w_res1, (acc_t*)conv_50_b_res1, (elem_t*)conv_50_out_res1,
           NO_ACTIVATION, conv_50_params_res1.output_scale, 0, true,
           WS,
@@ -1193,6 +1207,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_50_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_46_out_res1,
           (elem_t*)conv_50_out_res1,
           (elem_t*)conv_50_out_res1,
@@ -1208,7 +1223,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_51
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_51_params_res1.I, conv_51_params_res1.J, conv_51_params_res1.K, conv_51_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_51_params_res1.I, conv_51_params_res1.J, conv_51_params_res1.K, conv_51_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_50_out_res1, (elem_t*)conv_51_w_res1, (acc_t*)conv_51_b_res1, (elem_t*)conv_51_out_res1,
           RELU, conv_51_params_res1.output_scale, 0, true,
           WS,
@@ -1227,7 +1242,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_52_params_res1.batch_size, conv_52_params_res1.in_dim, conv_52_params_res1.in_channels,
           conv_52_params_res1.out_channels, conv_52_params_res1.out_dim,
           conv_52_params_res1.stride, 1, conv_52_params_res1.padding, conv_52_params_res1.kernel_size,
-          conv_52_params_res1.out_stride,
+          conv_52_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
 
           (elem_t*)conv_51_out_res1, (elem_t*)conv_52_w_res1, (acc_t*)conv_52_b_res1, (elem_t*)conv_52_out_res1,
 
@@ -1245,7 +1260,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           
       // conv_53
       start = read_cycles();
-      tiled_opcode_matmul_nn_default(conv_53_params_res1.I, conv_53_params_res1.J, conv_53_params_res1.K, conv_53_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(conv_53_params_res1.I, conv_53_params_res1.J, conv_53_params_res1.K, conv_53_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)conv_52_out_res1, (elem_t*)conv_53_w_res1, (acc_t*)conv_53_b_res1, (elem_t*)conv_53_out_res1,
           NO_ACTIVATION, conv_53_params_res1.output_scale, 0, true,
           WS,
@@ -1264,6 +1279,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
           conv_53_params_res1.res_scale,
           MVIN_SCALE_IDENTITY,
           ACC_SCALE_IDENTITY,
+          output_direct_dram, output_direct_dram, output_direct_dram,
           (elem_t*)conv_50_out_res1,
           (elem_t*)conv_53_out_res1,
           (elem_t*)conv_53_out_res1,
@@ -1280,7 +1296,7 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
       // Global averaging
       
       static elem_t average[1][2048] row_align(MAX_BLOCK_LEN);
-
+/*
       start = read_cycles();
       tiled_global_average_auto(conv_53_out_res1, average, conv_53_params_res1.batch_size,                         
            conv_53_params_res1.out_channels, conv_53_params_res1.out_dim, WS);
@@ -1288,11 +1304,12 @@ uint64_t* resnet_function_1(bool part1, bool part2, bool part3, bool part4, int 
       other_cycles = end - start;
 #if THREAD_SYNC == 1
       pthread_barrier_wait(barrier_res);
-#endif  
+#endif 
+*/
       // fc_54
       start = read_cycles();
 
-      tiled_opcode_matmul_nn_default(fc_54_params_res1.I, fc_54_params_res1.J, fc_54_params_res1.K, fc_54_params_res1.out_stride,
+      tiled_opcode_matmul_nn_default(fc_54_params_res1.I, fc_54_params_res1.J, fc_54_params_res1.K, fc_54_params_res1.out_stride, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram,
           (elem_t*)average, (elem_t*)fc_54_w_res1, (acc_t*)fc_54_b_res1, (elem_t*)fc_54_out_res1,
           NO_ACTIVATION, fc_54_params_res1.output_scale, 0, false,
           WS, num_array);

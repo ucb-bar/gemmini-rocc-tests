@@ -21,9 +21,9 @@
 
 #include "funct_resnet_1.h"
 
-#define NUM_ARRAY 2
+#define NUM_ARRAY 1
 
-#define RESNET_REPEAT 7
+#define RESNET_REPEAT 6
 
 
 #define MAT_DIM_I 512
@@ -39,13 +39,18 @@ struct thread_args{
     uint64_t matmul_cycles[num_layer];
 	uint64_t other_cycles; //global average
     //uint64_t target_cycles;
-    int num_array; 
+    int num_array;
+    bool input_dram, output_dram, weight_dram, bias_dram;
 };
 
 void *thread_NN(void *arg){
 	int cid = sched_getcpu();
 	struct thread_args * nn_args = (struct thread_args *) arg;
     int num_array = nn_args->num_array;
+    bool input_direct_dram = nn_args->input_dram;
+    bool weight_direct_dram = nn_args->weight_dram;
+    bool output_direct_dram = nn_args->output_dram;
+    bool bias_direct_dram = nn_args->bias_dram;
 	uint64_t* cycles;
 
     uint64_t thread_start = read_cycles();
@@ -57,7 +62,7 @@ void *thread_NN(void *arg){
       gemmini_flush(0);
     }
     
-    cycles = resnet_function_1(true, true, true, true, num_array);
+    cycles = resnet_function_1(true, true, true, true, input_direct_dram, weight_direct_dram, bias_direct_dram, output_direct_dram, num_array);
     
     for(int i = 0; i < num_array; i++)
       rerocc_release(i);   
@@ -115,17 +120,42 @@ int main (int argc, char * argv[]) {
 
    // for(int i = 0; i < OROW_DIVIDE; i++)
    //     nn_args[i].target_cycles = RESNET_TARGET;
-    
+    bool input_dram = false;
+    bool output_dram = false;
+    bool weight_dram = false;
+    bool bias_dram = false;
     for(int r = 0; r < RESNET_REPEAT; r++){
+     if(r == 2){
+         bias_dram = true;
+     }
+     else if(r == 3){
+         bias_dram = false;
+         input_dram = true;
+         output_dram = true;
+     }
+     else if(r == 4){
+         input_dram = false;
+         output_dram = false;
+         weight_dram = true;
+     }
+     else if(r == 5){
+         output_dram = true;
+         input_dram = true;
+         bias_dram = true;
+         weight_dram = true;
+     }
 	 for(int i = 0; i < num_proc; i++){
-		  nn_args[i].num_array = NUM_ARRAY;
-		  pthread_create(&thread[i], &attr[i], thread_NN, &nn_args[i]);
+        nn_args[i].input_dram = input_dram;
+        nn_args[i].output_dram = output_dram;
+        nn_args[i].weight_dram = weight_dram;
+        nn_args[i].bias_dram = bias_dram;
+		nn_args[i].num_array = NUM_ARRAY;
+		pthread_create(&thread[i], &attr[i], thread_NN, &nn_args[i]);
 	 }
 	 for(int i = 0; i < num_proc; i++)
 		  pthread_join(thread[i], NULL);
 	
 //	 printf("resnet repeat %d total cycles with threading overhead: %llu \n", r, end - start);
-
 	 uint64_t matmul_cycles = nn_args[0].total_matmul_cycles;
      uint64_t conv_cycles = nn_args[0].total_conv_cycles;
      uint64_t resadd_cycles = nn_args[0].total_resadd_cycles;
@@ -134,9 +164,10 @@ int main (int argc, char * argv[]) {
      uint64_t thread_cycles = nn_args[0].total_thread_cycles;
 		  
 	
-	  printf("\nresnet repeat %d total thread cycles: %llu\n", r, thread_cycles);
-	  printf("resnet repeat %d total cycles: %llu\n", r, total_cycles);
+	 printf("\nresnet repeat %d total thread cycles: %llu\n", r, thread_cycles);
+	 printf("resnet repeat %d total cycles: %llu\n", r, total_cycles);
 	
+     printf("resnet repeat %d input dram: %d, output dram: %d, weight dram: %d, bias dram: %d\n", r, input_dram, output_dram, weight_dram, bias_dram);
 
 	 for(int i = 0; i < 54; i++)    
 
