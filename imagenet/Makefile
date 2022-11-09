@@ -1,9 +1,7 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	resnet50 \
-	mobilenet \
-	# alexnet \
+	resnet_batch1_1 \
 
 tests_baremetal = $(tests:=-baremetal)
 runs_baremetal = $(addsuffix .run,$(tests_baremetal))
@@ -29,6 +27,7 @@ CFLAGS := $(CFLAGS) \
 	-fno-builtin-printf \
 	-march=rv64gc -Wa,-march=rv64gcxhwacha \
 	-lm \
+	-lpthread \
 	-lgcc \
 	-I$(abs_top_srcdir)/riscv-tests \
 	-I$(abs_top_srcdir)/riscv-tests/env \
@@ -50,7 +49,9 @@ CFLAGS_BAREMETAL := \
 	-T $(BENCH_COMMON)/test.ld \
 	-DBAREMETAL=1 \
 
-all: $(tests_baremetal) $(tests_linux) $(tests_pk)
+#all: $(tests_baremetal) $(tests_linux) $(tests_pk)
+all: $(tests_linux) 
+
 
 vpath %.c $(src_dir)
 
