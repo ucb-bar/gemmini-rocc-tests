@@ -9,7 +9,9 @@
 #define OP3 3
 #endif
 
+#ifndef rerocc_debug
 #define rerocc_debug 0
+#endif
 
 // mvin and mvout
 #define gemmini_opcode_extended_mvin(OPCODE, dram_addr, spad_addr, cols, rows) \
@@ -1447,9 +1449,6 @@ static void tiled_opcode_diagonal_outer(size_t dim_I_original, size_t dim_J_orig
   const size_t sizeof_C = full_C ? sizeof(acc_t) : sizeof(elem_t);
 
   for(int i = start_tracker; i < start_tracker + num_array; i++){
-#if rerocc_debug == 1
-    printf("config for tracker: %d\n", i);
-#endif
     rerocc_assign(OP3, i);
     gemmini_opcode_extended_config_ex(OP3, WS, act, 0, relu6_shift, 1, a_transpose, b_transpose);
     gemmini_opcode_extended_config_st(OP3, C_direct_dram, stride_C * sizeof_C, act, scale);
@@ -1464,8 +1463,10 @@ static void tiled_opcode_diagonal_outer(size_t dim_I_original, size_t dim_J_orig
   bool a_reuse = false;
   bool b_reuse = false;
 
-  // printf("I0: %d, J0: %d, K0: %d, last_I: %d, num_array: %d\n", I0, J0, K0, last_I, num_array);
-   
+  int J0 = I0;
+#if rerocc_debug == 1
+  printf("I0: %d, J0: %d, K0: %d, last_I: %d, num_array: %d\n", I0, J0, K0, last_I, num_array);
+#endif  
 
   int num_array_store = num_array;
  
@@ -1492,6 +1493,9 @@ static void tiled_opcode_diagonal_outer(size_t dim_I_original, size_t dim_J_orig
         size_t I = i0 < I0-1 ? outer_tile_I : last_I;
         size_t J = j0 < J0-1 ? outer_tile_J : last_J;
         size_t K = k0 < K0-1 ? tile_K : last_K; // entire K
+#if rerocc_debug == 1
+    printf("i0 %d k0 %d: I (%d), J (%d), K (%d)\n", i0, k0, I, J, K);
+#endif
 
         // if last iteration, I/K is the sum of all subarrays
         const bool last = i0 == I0-1;         
