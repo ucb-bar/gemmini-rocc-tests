@@ -198,10 +198,12 @@ static void sp_tiled_opcode_matmul_ws(elem_t * A, elem_t * B,
       if(div_I && !last){
         if (A!=NULL) A = A + A_row_stride * T0 * DIM;
         if (C!=NULL) C = C+C_row_stride*T0*DIM;
-        if (D!=NULL && !no_bias) D = (acc_t*)(D+D_row_stride*T0*DIM);
+        if (D!=NULL && !no_bias)
+            D = &(((acc_t*)D)[D_row_stride*T0*DIM]); //D = (acc_t*)(D+D_row_stride*T0*DIM);
       }
       if(div_J && !last){
-        if (B!=NULL) B = B + T0 * DIM;
+        // both div_I, div_J -> diagonal (transposed)
+        if (B!=NULL) B = (div_I) ? B + B_row_stride * T0 * DIM : B + T0 * DIM;
         if (C!=NULL) C = C+T0*DIM;
         if (D!=NULL && !no_bias)
            D = &(((acc_t*)D)[T0*DIM]); //D = (acc_t*)(D+T0*DIM);
@@ -1384,3 +1386,207 @@ static void tiled_opcode_conv_default(
         num_array, 0, WS);
 
 }
+
+
+// dim_I, dim_J are already fully dividied into subarray size
+static void tiled_opcode_diagonal_outer(size_t dim_I_original, size_t dim_J_original, size_t dim_K_original,
+        //size_t dim_I, size_t dim_J, size_t dim_K,
+        size_t dim_K, // dim_I, dim_J: DIM
+        elem_t* A, elem_t* B,
+        void * D, void * C,
+        size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
+        bool A_direct_dram, bool B_direct_dram, bool D_direct_dram, bool C_direct_dram,
+        scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
+        size_t tile_K, // tile_I, tile_J: 1
+        int zone,
+        int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias,
+        //bool a_transpose, bool b_transpose,
+        bool full_C, bool low_D,
+        uint8_t weightA,
+        int num_array, int start_tracker) {
+ 
+  bool a_transpose = false;
+  bool b_transpose = true; // for block mvin
+
+  int tile_I = 1;
+  int tile_J = 1;
+  int dim_K_eff = DIM * zone; 
+  // based on original dimension
+  const size_t dim_I_padded = (dim_I_original / DIM + (dim_I_original % DIM != 0)) * DIM;
+  const size_t dim_J_padded = (dim_J_original / DIM + (dim_J_original % DIM != 0)) * DIM;
+  const size_t dim_K_eff_padded = (dim_K_eff / DIM + (dim_K_eff % DIM != 0)) * DIM;
+
+  // need to iterate outer tile granularity
+  size_t outer_tile_I = tile_I * num_array;
+  size_t outer_tile_J = tile_J * num_array;
+
+  // to increase loop iter factor by +1
+  const size_t I0 = dim_I_padded / (outer_tile_I*DIM) + (dim_I_padded % (outer_tile_I*DIM) != 0);
+  const size_t J0 = dim_J_padded / (outer_tile_J*DIM) + (dim_J_padded % (outer_tile_J*DIM) != 0);
+  const size_t K0 = dim_K_eff_padded / (tile_K*DIM) + (dim_K_eff_padded % (tile_K*DIM) != 0);
+
+  // These lines here are supposed to help us deal with when the dimensions of
+  // the systolic array aren't divisible by the tiling factors
+  const size_t last_I = dim_I_padded % (outer_tile_I*DIM) == 0 ? outer_tile_I : (dim_I_padded/DIM) % outer_tile_I;
+  const size_t last_J = last_I; //dim_J_padded % (outer_tile_J*DIM) == 0 ? outer_tile_J : (dim_J_padded/DIM) % outer_tile_J;
+  const size_t last_K = dim_K_eff_padded % (tile_K*DIM) == 0 ? tile_K : (dim_K_eff_padded/DIM) % tile_K;
+
+  // These lines are supposed to figure out how much padding the hardware is
+  // supposed to add for the final tile
+  const size_t padding_I = dim_I_padded - dim_I_original;
+  const size_t padding_J = dim_J_padded - dim_J_original;
+  const size_t padding_K = dim_K_eff_padded - dim_K_eff;
+
+  const bool no_bias = D == NULL;
+
+  if (no_bias) {
+    D = (void*) 1; // Dummy address which isn't NULL
+  }
+
+  const size_t sizeof_D = low_D ? sizeof(elem_t) : sizeof(acc_t) ;
+  const size_t sizeof_C = full_C ? sizeof(acc_t) : sizeof(elem_t);
+
+  for(int i = start_tracker; i < start_tracker + num_array; i++){
+#if rerocc_debug == 1
+    printf("config for tracker: %d\n", i);
+#endif
+    rerocc_assign(OP3, i);
+    gemmini_opcode_extended_config_ex(OP3, WS, act, 0, relu6_shift, 1, a_transpose, b_transpose);
+    gemmini_opcode_extended_config_st(OP3, C_direct_dram, stride_C * sizeof_C, act, scale);
+    // both div_I, div_J -> diagonal (transposed)
+    gemmini_opcode_extended3_config_ld(OP3, A_direct_dram, stride_A * sizeof(elem_t), A_scale_factor, false, 0);
+    gemmini_opcode_extended3_config_ld(OP3, B_direct_dram, stride_B * sizeof(elem_t), B_scale_factor, false, 1)
+    gemmini_opcode_extended3_config_ld(OP3, D_direct_dram, repeating_bias ? 0 : (stride_D * sizeof_D), D_scale_factor, low_D, 2);
+  }
+  size_t a_spad_id = 0;
+  size_t b_spad_id = 0;
+
+  bool a_reuse = false;
+  bool b_reuse = false;
+
+  // printf("I0: %d, J0: %d, K0: %d, last_I: %d, num_array: %d\n", I0, J0, K0, last_I, num_array);
+   
+
+  int num_array_store = num_array;
+ 
+  for (size_t i0 = 0; i0 < I0; i0++){
+    //for (size_t j0 = 0; j0 < J0; j0++)
+      size_t j0 = i0;
+      for (size_t k0 = 0; k0 < K0; k0++) {
+        if(a_reuse)
+          a_spad_id = ((i0+k0) == 0) ? 1 : 2;
+        if(b_reuse)
+          b_spad_id = ((j0+k0) == 0) ? 1 : 2;
+
+        void * pre;
+        if (k0 != 0) {
+          pre = NULL;
+        } else {
+          size_t bias_row = repeating_bias ? 0 : i0*outer_tile_I*DIM;
+           pre = &(((acc_t*)D)[bias_row * stride_D + j0 * outer_tile_J * DIM]);
+          //pre = (int8_t*)D + (bias_row * stride_D + j0 * outer_tile_J * DIM)*sizeof_D;
+        }
+
+        void * out = k0 == K0-1 ? (int8_t*)C + (i0*outer_tile_I*DIM*stride_C + j0*outer_tile_J*DIM)*sizeof_C : NULL;
+
+        size_t I = i0 < I0-1 ? outer_tile_I : last_I;
+        size_t J = j0 < J0-1 ? outer_tile_J : last_J;
+        size_t K = k0 < K0-1 ? tile_K : last_K; // entire K
+
+        // if last iteration, I/K is the sum of all subarrays
+        const bool last = i0 == I0-1;         
+        num_array_store = num_array;
+        if(last){
+          if(last_I <= num_array){
+            num_array_store = last_I;
+          }
+        }
+        const size_t pad_I = i0 == I0-1 ? padding_I : 0;
+        const size_t pad_J = j0 == J0-1 ? padding_J : 0;
+        const size_t pad_K = k0 == K0-1 ? padding_K : 0;
+
+        elem_t * a = a_transpose ? (A + k0*tile_K*DIM*stride_A + i0*outer_tile_I*DIM)
+          : (A + i0*outer_tile_I*DIM*stride_A + k0*tile_K*DIM);
+
+        elem_t * b = b_transpose ? (B + j0*outer_tile_J*DIM*stride_B + k0*tile_K*DIM)
+          : (B + k0*tile_K*DIM*stride_B + j0*outer_tile_J*DIM);
+
+        if(a_reuse && j0 >= 1) a = NULL;
+        if(b_reuse && i0 >= 1) b = NULL;
+        sp_tiled_opcode_matmul_ws(a, b, pre, out,// NULL,
+              A_scale_factor, B_scale_factor, D_scale_factor,
+              //sub_num_I, sub_num_J, sub_num_K,
+              I, J, K,
+              pad_I, pad_J, pad_K,
+              stride_A, stride_B, stride_D, stride_C,
+              a_transpose, b_transpose,
+              full_C, low_D,
+              no_bias, repeating_bias,
+              weightA,
+              true, true,
+              //div_I, div_J,
+              num_array_store, start_tracker,
+              a_spad_id, b_spad_id);
+       // }
+      }
+  }
+  for (int i = start_tracker; i < start_tracker + num_array; i++)
+    rerocc_fence(i);
+  //gemmini_opcode_fence();
+}
+
+
+
+static void tiled_opcode_diagonal_auto(size_t dim_I, size_t dim_J, size_t dim_K,
+  size_t stride_A, size_t stride_B, size_t stride_C,
+  bool A_direct_dram, bool B_direct_dram, bool D_direct_dram, bool C_direct_dram,  
+  elem_t* A, elem_t* B,
+  void * D, elem_t* C,
+  int zone, // how many DIMs it needs to multiply around the diagonal
+  const size_t num_array, size_t start_tracker)
+// orow_divide -> total, num_array -> inner
+// for now assume one workload (no cid, orow_divide)
+{
+  int act = 0;
+  acc_scale_t scale = 1;
+  int relu6_shift = 0;
+  bool repeating_bias = false;
+  bool no_bias = true;
+
+  size_t* args_out;
+  size_t args[10];
+  size_t dim_J_original = dim_J;
+  size_t dim_K_original = dim_K;
+  size_t dim_I_original = dim_I;
+  dim_I = DIM; // row by row
+  dim_J = DIM; // col by col (diagonal)
+  
+  args_out = tiling_factor_matmul_calculate_auto(dim_I, dim_J, dim_K, 1, 1, 0, 0, args, 0);
+
+  dim_I = args_out[3];
+  dim_J = args_out[4];
+  dim_K = args_out[5];
+  size_t tile_I = args_out[8];
+  size_t tile_J = args_out[9];
+  size_t tile_K = args_out[10];
+
+  size_t orow_offset_floor = args_out[6];
+#if rerocc_debug == 1
+  printf("dim_I: %d, dim_J: %d, dim_K: %d, tile_I: %d, tile_J: %d, tile_K: %d\n", dim_I, dim_J, dim_K, tile_I, tile_J, tile_K);
+#endif
+
+  tiled_opcode_diagonal_outer(dim_I_original, dim_J_original, dim_K_original,
+      //dim_I, dim_J, dim_K,
+      dim_K,
+      A, B, no_bias ? NULL : D, C, // for now, disable global workload division
+      //A + A_orow_offset + A_batch_offset, B + out_offset, no_bias ? NULL : D + out_offset*sizeof(acc_t), C + C_orow_offset + out_offset + C_batch_offset,
+      stride_A, stride_B, stride_B, stride_C,
+      A_direct_dram, B_direct_dram, D_direct_dram, C_direct_dram,
+      MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+      tile_K, // tile_I, tile_J: 1
+      zone,
+      act, scale, relu6_shift, repeating_bias,
+      false, false, 3,
+      num_array, start_tracker);
+}
+
