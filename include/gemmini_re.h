@@ -1463,7 +1463,6 @@ static void tiled_opcode_diagonal_outer(size_t dim_I_original, size_t dim_J_orig
   bool a_reuse = false;
   bool b_reuse = false;
 
-  int J0 = I0;
 #if rerocc_debug == 1
   printf("I0: %d, J0: %d, K0: %d, last_I: %d, num_array: %d\n", I0, J0, K0, last_I, num_array);
 #endif  
