@@ -56,7 +56,7 @@ int main() {
   }
     printf("Starting gemmini matmul\n");
     unsigned long start = read_cycles();
-
+    unsigned long end = 0;
     for(int z = 1; z < ZONE; z++){
        tiled_opcode_diagonal_auto(MAT_DIM, MAT_DIM, MAT_DIM,
             MAT_DIM_S, MAT_DIM_S, MAT_DIM_S, 
@@ -64,10 +64,9 @@ int main() {
             (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
             z,
             NUM_ARRAY, 0);
+       end = read_cycles();
+       printf("Zone %d Cycles taken: %u\n", z, end-start);
     }
-    unsigned long end = read_cycles();
-    printf("Cycles taken: %u\n", end-start);
-
     // Release all the trackers
     for (int i = 0; i < NUM_ARRAY; i++) {
       rerocc_release(i);
