@@ -16,7 +16,7 @@
 #define REPEATING_BIAS 1
 
 #define A_TRANSPOSE 0
-#define B_TRANSPOSE 1
+#define B_TRANSPOSE 0
 
 #ifndef BAREMETAL
 
