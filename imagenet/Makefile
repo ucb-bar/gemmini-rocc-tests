@@ -3,7 +3,6 @@ include $(abs_top_srcdir)/Makefrag
 tests = \
 	resnet50 \
 	mobilenet \
-	profile_resadd_tutorial \
 	# alexnet \
 
 tests_baremetal = $(tests:=-baremetal)
