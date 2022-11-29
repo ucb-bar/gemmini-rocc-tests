@@ -1057,10 +1057,9 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
 
         for (size_t j = 0; j < DIM_J; j++) {
           c_buffer[j] -= mean;
-          c_buffer[j] /= stddev;
 
           elem_t* c = C + (i * stride_C) + j;
-          *c = scale_and_sat(c_buffer[j], act, scale, bert_scale);
+          *c = scale_and_sat(c_buffer[j], act, (1.f / (float) stddev) * scale, bert_scale);
         }
       } else if (act == SOFTMAX) {
         const scale_t a = 0.3585;
@@ -1086,7 +1085,8 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
           acc_t z = (acc_t) (-q * qln2_inv) >> 16;
           acc_t qp = q + z * qln2;
           acc_t q_exp = (qp + qb)*(qp + qb) + qc;
-          c_buffer[j] = q_exp >> z;
+          // bug where z > 32 shifts z % 32 bits
+          c_buffer[j] = (z >= sizeof(acc_t) * 8) ? 0 : q_exp >> z;
           sum_exp += c_buffer[j];
         }
 
@@ -1094,7 +1094,7 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
         scale_t factor = (127.f) / (float) sum_exp; // what corresponds to 1 in output?
         for (size_t j = 0; j < DIM_J; j++) {
           elem_t* c = C + (i * stride_C) + j;
-          *c = scale_and_sat(c_buffer[j], act, factor, bert_scale);
+          *c = scale_and_sat(c_buffer[j], act, factor * scale, bert_scale);
         }
       }
     }
@@ -1274,8 +1274,8 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
     size_t tile_I, tile_J, tile_K;
 
     // columns DIM*tile_J*<approx_split>+ (incl.) is approximated; to disable, approx_split = 0
-    // by default, this is enabled; set to 1 because we stretch tile_J as much as possible
-    size_t approx_split = 1;
+    // by default, this is disabled; set to 1 to stretch tile_J as much as possible
+    size_t approx_split = 0;
 
     if (act == LAYERNORM || act == SOFTMAX) {
        tile_I = 1;
