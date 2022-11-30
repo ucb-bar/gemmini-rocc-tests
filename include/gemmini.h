@@ -1059,7 +1059,8 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
           c_buffer[j] -= mean;
 
           elem_t* c = C + (i * stride_C) + j;
-          *c = scale_and_sat(c_buffer[j], act, (1.f / (float) stddev) * scale, bert_scale);
+          volatile acc_scale_t inv_stddev = (1.f / (float) stddev); // fp error, must use volatile
+          *c = scale_and_sat(c_buffer[j], act, inv_stddev * scale, bert_scale);
         }
       } else if (act == SOFTMAX) {
         const scale_t a = 0.3585;
@@ -1091,7 +1092,7 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
         }
 
         // pass 3: divide by sum
-        scale_t factor = (127.f) / (float) sum_exp; // what corresponds to 1 in output?
+        volatile scale_t factor = (127.f) / (float) sum_exp; // 127 corresponds to 1 in output
         for (size_t j = 0; j < DIM_J; j++) {
           elem_t* c = C + (i * stride_C) + j;
           *c = scale_and_sat(c_buffer[j], act, factor * scale, bert_scale);
