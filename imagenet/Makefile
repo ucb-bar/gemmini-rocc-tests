@@ -1,24 +1,25 @@
 include $(abs_top_srcdir)/Makefrag
 
+# delete all the tests under "tests" when running the provided binary, to prevent overriding copied binaries
 tests = \
-	#priority_mp8_dynamic_h \
-	#priority_mp8_static_h \
-	#priority_mp8_dynamica_h \
-	#priority_mp8_statica_h \
-	#priority_mp8_dynamicb_h \
-	#priority_mp8_staticb_h \
-	#priority_mp8_dynamic_l \
-	#priority_mp8_static_l \
-	#priority_mp8_dynamica_l \
-	#priority_mp8_statica_l \
-	#priority_mp8_dynamicb_l \
-	#priority_mp8_staticb_l \
-	#priority_mp8_dynamic \
-	#priority_mp8_static \
-	#priority_mp8_dynamica \
-	#priority_mp8_statica \
-	#priority_mp8_dynamicb \
-	#priority_mp8_staticb 
+	priority_mp8_dynamic_h \
+	priority_mp8_static_h \
+	priority_mp8_dynamica_h \
+	priority_mp8_statica_h \
+	priority_mp8_dynamicb_h \
+	priority_mp8_staticb_h \
+	priority_mp8_dynamic_l \
+	priority_mp8_static_l \
+	priority_mp8_dynamica_l \
+	priority_mp8_statica_l \
+	priority_mp8_dynamicb_l \
+	priority_mp8_staticb_l \
+	priority_mp8_dynamic \
+	priority_mp8_static \
+	priority_mp8_dynamica \
+	priority_mp8_statica \
+	priority_mp8_dynamicb \
+	priority_mp8_staticb 
 
 tests_baremetal = $(tests:=-baremetal)
 runs_baremetal = $(addsuffix .run,$(tests_baremetal))
