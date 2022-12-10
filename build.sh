@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+sudo yum install autoconf
+
 if [ ! -d "build" ] ; then
     autoconf && \
         mkdir build && cd build && \
