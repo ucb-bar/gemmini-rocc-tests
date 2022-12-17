@@ -25,30 +25,25 @@ typedef elem_t ACC_T;
 
 #ifndef BAREMETAL
 
-#define MAT_DIM_I 32
-#define MAT_DIM_K 240
-#define MAT_DIM_J 512
+#define MAT_DIM_N 240
 
 #else
-//#define MAT_DIM_I 63
-//#define MAT_DIM_K 240
-//#define MAT_DIM_J 256
-#define MAT_DIM_I 30
-#define MAT_DIM_K 30
-#define MAT_DIM_J 30
+//#define MAT_DIM_N 30
+#define MAT_DIM_N 64
+
 #endif
 
-void full_printMatrix(elem_t m[MAT_DIM_I][MAT_DIM_J]) {
-  for (size_t i = 0; i < MAT_DIM_I; ++i) {
-    for (size_t j = 0; j < MAT_DIM_J; ++j)
+void full_printMatrix(elem_t m[MAT_DIM_N][MAT_DIM_N]) {
+  for (size_t i = 0; i < MAT_DIM_N; ++i) {
+    for (size_t j = 0; j < MAT_DIM_N; ++j)
       printf("%d ", m[i][j]);
     printf("\n");
   }
 }
 
-int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]) {
-  for (size_t i = 0; i < MAT_DIM_I; ++i)
-    for (size_t j = 0; j < MAT_DIM_J; ++j)
+int full_is_equal(elem_t x[MAT_DIM_N][MAT_DIM_N], elem_t y[MAT_DIM_N][MAT_DIM_N]) {
+  for (size_t i = 0; i < MAT_DIM_N; ++i)
+    for (size_t j = 0; j < MAT_DIM_N; ++j)
       if (x[i][j] != y[i][j])
         return 0;
   return 1;
@@ -66,67 +61,75 @@ int main() {
     }
 #endif
 
-    printf("MAT_DIM_I: %d\n", MAT_DIM_I);
-    printf("MAT_DIM_J: %d\n", MAT_DIM_J);
-    printf("MAT_DIM_K: %d\n", MAT_DIM_K);
+    printf("MAT_DIM_N: %d\n", MAT_DIM_N);
     printf("NO_BIAS: %d\n", NO_BIAS);
 
     gemmini_flush(0);
 
-    static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
-    static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
-    static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
-    static ACC_T full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
+    static elem_t A[MAT_DIM_N][MAT_DIM_N] row_align(1);
+    static elem_t B[MAT_DIM_N][MAT_DIM_N] row_align(1);
+    static elem_t C[MAT_DIM_N][MAT_DIM_N] row_align(1);
+    static elem_t D[MAT_DIM_N][MAT_DIM_N] row_align(1);
+    static elem_t t0[MAT_DIM_N][MAT_DIM_N] row_align(1);
+    static elem_t t1[MAT_DIM_N][MAT_DIM_N] row_align(1);
+    static elem_t t0_gold[MAT_DIM_N][MAT_DIM_N] row_align(1);
+    static elem_t t1_gold[MAT_DIM_N][MAT_DIM_N] row_align(1);
+    static ACC_T bias0[MAT_DIM_N][MAT_DIM_N] row_align_acc(1);
+    static ACC_T bias1[MAT_DIM_N][MAT_DIM_N] row_align_acc(1);
+    static ACC_T bias2[MAT_DIM_N][MAT_DIM_N] row_align_acc(1);
 
-    static elem_t gold[MAT_DIM_I][MAT_DIM_J];
+    static elem_t gold[MAT_DIM_N][MAT_DIM_N];
+    static elem_t res[MAT_DIM_N][MAT_DIM_N];
+
+    acc_scale_t scale0 = 2.5; // normal matmul
+    acc_scale_t scale1 = 10.0; // layer norm
+    acc_scale_t scale2 = 1.0; // softmax
 
 #if CHECK_RESULT == 1
-    // printf("Init A\n");
-    for (size_t i = 0; i < MAT_DIM_I; ++i) {
-      for (size_t j = 0; j < MAT_DIM_K; ++j) {
-        full_A[i][j] = (rand() % 3) - 1;
-      }
-    }
-
-    // printf("Init B\n");
-    for (size_t i = 0; i < MAT_DIM_K; ++i) {
-      for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_B[i][j] = (rand() % 3) - 1;
-      }
-    }
-
-    // printf("Init D\n");
-    for (size_t i = 0; i < MAT_DIM_I; ++i) {
-      for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        full_D[i][j] = NO_BIAS ? 0 : (rand() % 3) - 1;
+    printf("Initializing matrices\n");
+    for (size_t i = 0; i < MAT_DIM_N; ++i) {
+      for (size_t j = 0; j < MAT_DIM_N; ++j) {
+        A[i][j] = (rand() % 15) - 7;
+        B[i][j] = (rand() % 15) - 7;
+        C[i][j] = (rand() % 15) - 7;
+        D[i][j] = (rand() % 15) - 7;
       }
     }
 
     printf("Starting slow CPU matmul\n");
     unsigned long cpu_start = read_cycles();
 
-#ifndef APPROX
-    tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)gold,
-            MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
+//     gold/res = scale2 * sm(scale1 * (ln((scale0 * (A * B + bias0)) * C + bias1)) * D + bias2)
+
+    tiled_matmul_auto(MAT_DIM_N, MAT_DIM_N, MAT_DIM_N,
+            (elem_t*)A, (elem_t*)B, NO_BIAS ? NULL : &bias0[0][0], (elem_t*)t0_gold,
+            MAT_DIM_N, MAT_DIM_N, MAT_DIM_N, MAT_DIM_N,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-            LAYERNORM, ACC_SCALE_IDENTITY, 0, false,
+            NO_ACTIVATION, scale0, 0, false,
             false, false,
             false, !FULL_BIAS_WIDTH,
             0,
             CPU);
-#else
-//    tiled_matmul(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-//            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)gold,
-//            MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
-//            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-//            LAYERNORM, ACC_SCALE_IDENTITY, 0, false,
-//            2, 2 /* tile J */, 2, 2 /* approx split */,
-//            false, false,
-//            false, !FULL_BIAS_WIDTH,
-//            0,
-//            CPU);
-#endif
+
+    tiled_matmul_auto(MAT_DIM_N, MAT_DIM_N, MAT_DIM_N,
+            (elem_t*)t0_gold, (elem_t*)C, NO_BIAS ? NULL : &bias1[0][0], (elem_t*)t1_gold,
+            MAT_DIM_N, MAT_DIM_N, MAT_DIM_N, MAT_DIM_N,
+            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+            LAYERNORM, scale1, 0, false,
+            false, false,
+            false, !FULL_BIAS_WIDTH,
+            0,
+            CPU);
+
+    tiled_matmul_auto(MAT_DIM_N, MAT_DIM_N, MAT_DIM_N,
+            (elem_t*)t1_gold, (elem_t*)D, NO_BIAS ? NULL : &bias2[0][0], (elem_t*)gold,
+            MAT_DIM_N, MAT_DIM_N, MAT_DIM_N, MAT_DIM_N,
+            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+            SOFTMAX, scale2, 0.05, false,
+            false, false,
+            false, !FULL_BIAS_WIDTH,
+            0,
+            CPU);
 
     unsigned long cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
@@ -136,33 +139,36 @@ int main() {
     printf("Starting gemmini matmul\n");
     unsigned long start = read_cycles();
 
-#ifndef APPROX
-    tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-    // tiled_matmul(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
-            MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
+    tiled_matmul_auto(MAT_DIM_N, MAT_DIM_N, MAT_DIM_N,
+            (elem_t*)A, (elem_t*)B, NO_BIAS ? NULL : &bias0[0][0], (elem_t*)t0,
+            MAT_DIM_N, MAT_DIM_N, MAT_DIM_N, MAT_DIM_N,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-            LAYERNORM, ACC_SCALE_IDENTITY, 0, false,
-
-            // 1, 48, 32,
-
+            NO_ACTIVATION, scale0, 0, false,
             false, false,
             false, !FULL_BIAS_WIDTH,
             0,
             WS);
-#else
-    tiled_matmul(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
-            MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
+
+    tiled_matmul_auto(MAT_DIM_N, MAT_DIM_N, MAT_DIM_N,
+            (elem_t*)t0, (elem_t*)C, NO_BIAS ? NULL : &bias1[0][0], (elem_t*)t1,
+            MAT_DIM_N, MAT_DIM_N, MAT_DIM_N, MAT_DIM_N,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-            LAYERNORM, ACC_SCALE_IDENTITY, 0, false,
-            /* 2, 5, 2, 0, */ // no approximation
-            2, 2 /* tile J */, 2, 2 /* approx split */,
+            LAYERNORM, scale1, 0, false,
             false, false,
             false, !FULL_BIAS_WIDTH,
             0,
             WS);
-#endif
+    gemmini_fence();
+
+    tiled_matmul_auto(MAT_DIM_N, MAT_DIM_N, MAT_DIM_N,
+            (elem_t*)t1, (elem_t*)D, NO_BIAS ? NULL : &bias2[0][0], (elem_t*)res,
+            MAT_DIM_N, MAT_DIM_N, MAT_DIM_N, MAT_DIM_N,
+            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+            SOFTMAX, scale2, 0.05, false,
+            false, false,
+            false, !FULL_BIAS_WIDTH,
+            0,
+            WS);
 
     gemmini_fence();
 
@@ -170,9 +176,22 @@ int main() {
     printf("Cycles taken: %u\n", end-start);
 
 #if CHECK_RESULT == 1
-    if (!full_is_equal(full_C, gold)) {
-      printf("C:\n");
-      full_printMatrix(full_C);
+    if (!full_is_equal(res, gold)) {
+      printf("Mismatch\n");
+//      if (!full_is_equal(t0, t0_gold)) {
+//        printf("t0\n");
+//        full_printMatrix(t0);
+//        printf("t0_gold\n");
+//        full_printMatrix(t0_gold);
+//      }
+//      if (!full_is_equal(t1, t1_gold)) {
+//        printf("t1\n");
+//        full_printMatrix(t1);
+//        printf("t1_gold\n");
+//        full_printMatrix(t1_gold);
+//      }
+      printf("Result:\n");
+      full_printMatrix(res);
       printf("Gold:\n");
       full_printMatrix(gold);
       printf("\n");
