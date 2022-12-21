@@ -315,6 +315,10 @@ uint64_t encoder_decoder(
 #define PRINT_ENCODER_DECODER(name, is_encoder, hidden_dim, expansion_dim, num_heads, cross_num_heads, seq_len, compression_factor) { \
     static const elem_t input[seq_len][hidden_dim]; \
     static const elem_t enc_out[seq_len][hidden_dim]; \
+    \
+    RANDOMIZE_ARRAY(elem_t, input); \
+    RANDOMIZE_ARRAY(elem_t, enc_out); \
+    \
     static elem_t output[seq_len][hidden_dim]; \
     \
     char * type_str = is_encoder ? "encoder" : "decoder"; \
