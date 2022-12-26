@@ -11,7 +11,8 @@
 #ifndef BAREMETAL
 
 #define BATCH_SIZE 3
-#define IN_DIM 112
+#define IN_ROW_DIM 112
+#define IN_COL_DIM 112
 #define CHANNELS 17
 #define KERNEL_DIM 3
 #define PADDING 1
@@ -21,12 +22,14 @@
 
 #ifdef FAST
 
-#define IN_DIM 9
+#define IN_ROW_DIM 9
+#define IN_COL_DIM 9
 #define CHANNELS 5
 
 #else
 
-#define IN_DIM 17
+#define IN_ROW_DIM 17
+#define IN_COL_DIM 17
 #define CHANNELS 15
 
 #endif
@@ -40,7 +43,8 @@
 
 #define NO_BIAS false
 
-#define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
+#define OUT_ROW_DIM ((IN_ROW_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
+#define OUT_COL_DIM ((IN_COL_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 
 bool vec_is_equal(elem_t * a, elem_t * b, int len) {
     for (int i = 0; i < len; i++)
@@ -91,12 +95,12 @@ int main() {
 
     // assert((in_dim + 2*padding - kernel_dim) % stride == 0);
 
-    printf("Output dimension: %u\n\n", OUT_DIM);
+    printf("Output dimensions: %u by %u\n\n", OUT_ROW_DIM, OUT_COL_DIM);
 
-    static elem_t input[BATCH_SIZE][IN_DIM][IN_DIM][CHANNELS];
+    static elem_t input[BATCH_SIZE][IN_ROW_DIM][IN_COL_DIM][CHANNELS];
     static elem_t weights[CHANNELS][KERNEL_DIM][KERNEL_DIM];
     static acc_t bias[CHANNELS];
-    static elem_t output[BATCH_SIZE][OUT_DIM][OUT_DIM][CHANNELS];
+    static elem_t output[BATCH_SIZE][OUT_ROW_DIM][OUT_COL_DIM][CHANNELS];
 
     printf("Randomize inputs...\n");
     init_random(&input[0][0][0][0], sizeof(input) / sizeof(elem_t));
@@ -113,7 +117,8 @@ int main() {
     printf("CPU conv...\n");
     uint64_t start_cpu = read_cycles();
 #ifndef FAST
-    tiled_conv_dw_auto(BATCH_SIZE, IN_DIM, CHANNELS, OUT_DIM,
+    tiled_conv_dw_auto(BATCH_SIZE, IN_ROW_DIM, IN_COL_DIM,
+            CHANNELS, OUT_ROW_DIM, OUT_COL_DIM,
             STRIDE, PADDING, KERNEL_DIM,
 
             (elem_t*)input,
@@ -128,11 +133,12 @@ int main() {
     uint64_t end_cpu = read_cycles();
     printf("CPU conv took %llu cycles\n", end_cpu - start_cpu);
 
-    static elem_t output_mat[BATCH_SIZE][OUT_DIM][OUT_DIM][CHANNELS];
+    static elem_t output_mat[BATCH_SIZE][OUT_ROW_DIM][OUT_COL_DIM][CHANNELS];
 
     printf("Gemmini conv...\n");
     uint64_t start_gemmini = read_cycles();
-    tiled_conv_dw_auto(BATCH_SIZE, IN_DIM, CHANNELS, OUT_DIM,
+    tiled_conv_dw_auto(BATCH_SIZE, IN_ROW_DIM, IN_COL_DIM,
+            CHANNELS, OUT_ROW_DIM, OUT_COL_DIM,
             STRIDE, PADDING, KERNEL_DIM,
 
             (elem_t*)input,
@@ -187,9 +193,9 @@ int main() {
         printf("input:\n");
         for (int batch = 0; batch < BATCH_SIZE; batch++) {
             printf("[");
-            for (int irow = 0; irow < IN_DIM; irow++) {
+            for (int irow = 0; irow < IN_ROW_DIM; irow++) {
                 printf("[");
-                for (int icol = 0; icol < IN_DIM; icol++) {
+                for (int icol = 0; icol < IN_COL_DIM; icol++) {
                     printf("[");
                     for (int ich = 0; ich < CHANNELS; ich++) {
                         printf("%d,", input[batch][irow][icol][ich]);
@@ -205,9 +211,9 @@ int main() {
         printf("output:\n");
         for (int batch = 0; batch < BATCH_SIZE; batch++) {
             printf("[");
-            for (int orow = 0; orow < OUT_DIM; orow++) {
+            for (int orow = 0; orow < OUT_ROW_DIM; orow++) {
                 printf("[");
-                for (int ocol = 0; ocol < OUT_DIM; ocol++) {
+                for (int ocol = 0; ocol < OUT_COL_DIM; ocol++) {
                     printf("[");
                     for (int och = 0; och < CHANNELS; och++) {
                         printf("%d,", output[batch][orow][ocol][och]);
@@ -223,9 +229,9 @@ int main() {
         printf("output_mat:\n");
         for (int batch = 0; batch < BATCH_SIZE; batch++) {
             printf("[");
-            for (int orow = 0; orow < OUT_DIM; orow++) {
+            for (int orow = 0; orow < OUT_ROW_DIM; orow++) {
                 printf("[");
-                for (int ocol = 0; ocol < OUT_DIM; ocol++) {
+                for (int ocol = 0; ocol < OUT_COL_DIM; ocol++) {
                     printf("[");
                     for (int och = 0; och < CHANNELS; och++) {
                         printf("%d,", output_mat[batch][orow][ocol][och]);
