@@ -756,6 +756,11 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
     gemmini_config_norm(qln2_inv, 1, 0, 1, 0, qb, qc);
   }
 
+  if (act == RELU || act == TANH){
+    // Set MSB of activation function
+    gemmini_config_norm(0, 0, 0, 1, 0, 0, 0);
+  }
+
   void (*inner)(const elem_t *, const elem_t *, const void *, void *,
         scale_t, scale_t, scale_acc_t,
         size_t, size_t, size_t, size_t, size_t, size_t,
@@ -2569,6 +2574,9 @@ static void tiled_conv_auto(
         pool_stride = 1;
         pool_padding = 0;
     }
+
+    // Set MSB of activation function
+    gemmini_config_norm(0, 0, 0, act >> 2, 0, 0, 0);
 
     const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
