@@ -349,6 +349,7 @@ static void counter_reset() {
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(weightA) << 8) | ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((B_transpose) << 1) | (A_transpose), k_LOOP_WS) \
   }
 
+// jamie: look at this later
 // weight-stationary conv loop
 // #define gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, activation, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120, max_pixels_per_row) 
 // po - pool rows, cols, channels
@@ -1229,9 +1230,9 @@ static void sp_tiled_conv(
     C_sp_addr_row = (C_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
   }
 
-  gemmini_loop_conv_ws(batch_size, in_row_dim, in_col_dim, in_channels, out_channels, out_row_dim, out_col_dim, pool_out_row_dim, pool_out_col_dim, stride, padding, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, act, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120, max_pixels_per_row);
+  // gemmini_loop_conv_ws(batch_size, in_row_dim, in_col_dim, in_channels, out_channels, out_row_dim, out_col_dim, pool_out_row_dim, pool_out_col_dim, stride, padding, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, act, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120, max_pixels_per_row);
 
-  /*
+  // /*
   // TODO: JAMIE: look at this
   // mvin bias
   if (bias != NULL) {
@@ -1318,11 +1319,11 @@ static void sp_tiled_conv(
 
             const bool is_zeros = irow < 0 || irow >= irows_unpadded || icol < 0 || icol >= icols_unpadded;
 
-            const elem_t * in = input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels + ich;
+            const elem_t * in = input + (b*in_row_dim*in_col_dim + irow*in_col_dim + icol) * in_channels + ich;
             if (is_zeros) {
               in = NULL;
             } else if (trans_input_3120) {
-              in = input + (ich*in_dim*in_dim + irow*in_dim + icol) * batch_size + b;
+              in = input + (ich*in_row_dim*in_col_dim + irow*in_col_dim + icol) * batch_size + b;
             }
 
             gemmini_extended_mvin(in,
@@ -1393,7 +1394,7 @@ static void sp_tiled_conv(
     const int ocol_it = trans_input_3120 ? 1 : (DIM << input_dilated);
 
     if (trans_input_3120) {
-      gemmini_extended3_config_ex(0, 0, 0, 0, 0, 0, orows * ocols, irows * icols, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, true);
+      gemmini_extended3_config_ex(0, 0, 0, 0, 0, orows * ocols, irows * icols, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, true);
     }
 
     for (int och = 0; och < ochs; och += DIM) {
@@ -1500,9 +1501,9 @@ static void sp_tiled_conv(
 
               const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * orows * ocols + b * orows * ocols + orow * ocols + ocol;
 
-              elem_t * out = output + (b*out_dim*out_dim + orow*out_dim + ocol) * out_channels + och;
+              elem_t * out = output + (b*out_row_dim*out_col_dim + orow*out_col_dim + ocol) * out_channels + och;
               if (trans_output_1203) {
-                out = output + (orow*out_dim*batch_size + ocol*batch_size + b) * out_channels + och;
+                out = output + (orow*out_col_dim*batch_size + ocol*batch_size + b) * out_channels + och;
               }
 
               gemmini_extended_mvout(out,
@@ -1511,13 +1512,14 @@ static void sp_tiled_conv(
             }
           }
     } else {
-      gemmini_extended2_config_st(out_channels * sizeof(elem_t), act, scale, pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
+      // TODO: jamie - should pool_out_dim be pool_out_row_dim or pool_out_col_dim (?) or add another?
+      gemmini_extended2_config_st(out_channels * sizeof(elem_t), act, scale, pool_stride, pool_size, pool_out_row_dim, porows, pocols, orows, ocols, pupad, plpad);
 
       for (int b = 0; b < batches; b++) {
         for (int poch = 0; poch < pochs; poch += DIM) {
           const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
 
-          elem_t * pout = output + (b * pool_out_dim * pool_out_dim)*out_channels + poch;
+          elem_t * pout = output + (b * pool_out_row_dim * pool_out_col_dim)*out_channels + poch;
 
           const uint32_t C_sp_addr = C_sp_addr_start + (poch / DIM) * batches * orows * ocols + b * orows * ocols;
 
@@ -1530,7 +1532,7 @@ static void sp_tiled_conv(
       gemmini_extended_config_st(out_channels * sizeof(elem_t), act, scale);
     }
   }
-  */
+  // */
 }
 
 
