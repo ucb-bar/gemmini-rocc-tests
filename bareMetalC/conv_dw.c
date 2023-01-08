@@ -28,8 +28,18 @@
 
 #else
 
+#ifdef RECT
+
+#define IN_ROW_DIM 17
+#define IN_COL_DIM 9
+
+#else
+
 #define IN_ROW_DIM 17
 #define IN_COL_DIM 17
+
+#endif
+
 #define CHANNELS 15
 
 #endif
@@ -95,6 +105,7 @@ int main() {
 
     // assert((in_dim + 2*padding - kernel_dim) % stride == 0);
 
+    printf("Input dimensions: %u by %u\n", IN_ROW_DIM, IN_COL_DIM);
     printf("Output dimensions: %u by %u\n\n", OUT_ROW_DIM, OUT_COL_DIM);
 
     static elem_t input[BATCH_SIZE][IN_ROW_DIM][IN_COL_DIM][CHANNELS];

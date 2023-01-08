@@ -43,6 +43,16 @@ test-baremetal-bareMetalC:
 		RISCVTOOLS=$(RISCVTOOLS) \
 		RUNNER=$(RUNNER) \
 		run-baremetal
+	make -C bareMetalC	\
+	        -f $(abs_top_srcdir)/bareMetalC/Makefile \
+                TARGET_MAKEFILE=$(abs_top_srcdir)/bareMetalC/Makefile \
+		abs_top_srcdir=$(abs_top_srcdir) \
+	 	src_dir=$(abs_top_srcdir)/bareMetalC \
+	 	XLEN=$(XLEN) \
+	 	PREFIX=$(ROCC)-bareMetalC \
+		RISCVTOOLS=$(RISCVTOOLS) \
+		RUNNER=$(RUNNER) \
+		run-rect-baremetal
 
 test-baremetal: test-baremetal-bareMetalC
 	make -C mlps	\
