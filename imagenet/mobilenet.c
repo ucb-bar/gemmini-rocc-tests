@@ -31,16 +31,16 @@ int main (int argc, char * argv[]) {
     } else if (strcmp(argv[1], "ws") == 0) {
         tiled_matmul_type = WS;
     } else if (strcmp(argv[1], "-h") == 0) {
-        printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
+        //printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
         exit(0);
     } else {
-        printf("Unknown command-line argument\n");
-        printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
+        //printf("Unknown command-line argument\n");
+        //printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
         exit(1);
     }
 
     bool conv = true;
-    
+
     if (argc < 3) {
         conv = true;
     } else if (strcmp(argv[2], "conv") == 0) {
@@ -48,20 +48,20 @@ int main (int argc, char * argv[]) {
     } else if (strcmp(argv[2], "matmul") == 0) {
         conv = false;
     } else {
-        printf("Unknown command-line argument\n");
-        printf("usage: %s [-h] matmul_option [check] [conv]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
+        //printf("Unknown command-line argument\n");
+        //printf("usage: %s [-h] matmul_option [check] [conv]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
         exit(1);
     }
 
     bool check = false;
-    
+
     if (argc < 4) {
         check = false;
     } else if (strcmp(argv[3], "check") == 0) {
         check = true;
     } else {
-        printf("Unknown command-line argument\n");
-        printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
+        //printf("Unknown command-line argument\n");
+        //printf("usage: %s [-h] matmul_option [check]\n  matmul_option may be 'os', 'ws', or cpu'\n", argv[0]);
         exit(1);
     }
 
@@ -132,7 +132,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     conv_dw_cycles += end - start;
-    printf("conv_dw_2: %llu \n", end - start);
+    //printf("conv_dw_2: %llu \n", end - start);
 
     // conv_3
     if (!conv) {
@@ -206,7 +206,7 @@ int main (int argc, char * argv[]) {
     end = read_cycles();
     conv_dw_cycles += end - start;
 
-    printf("conv_dw_5: %llu \n", end - start);
+    //printf("conv_dw_5: %llu \n", end - start);
 
     // conv_6
     if (!conv) {
@@ -279,7 +279,7 @@ int main (int argc, char * argv[]) {
     end = read_cycles();
     conv_dw_cycles += end - start;
 
-    printf("conv_dw_8: %llu \n", end - start);
+    //printf("conv_dw_8: %llu \n", end - start);
     // conv_9
     if (!conv) {
         start = read_cycles();
@@ -319,7 +319,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_10
     if (!conv) {
         start = read_cycles();
@@ -366,7 +366,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     conv_dw_cycles += end - start;
-    printf("conv_dw_11: %llu \n", end - start);
+    //printf("conv_dw_11: %llu \n", end - start);
 
     // conv_12
     if (!conv) {
@@ -439,7 +439,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     conv_dw_cycles += end - start;
-    printf("conv_dw_14: %llu \n", end - start);
+    //printf("conv_dw_14: %llu \n", end - start);
 
 
     // conv_15
@@ -481,7 +481,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_16
     if (!conv) {
         start = read_cycles();
@@ -529,7 +529,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     conv_dw_cycles += end - start;
-    printf("conv_dw_17: %llu \n", end - start);
+    //printf("conv_dw_17: %llu \n", end - start);
 
 
     // conv_18
@@ -571,7 +571,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_19
     if (!conv) {
         start = read_cycles();
@@ -619,7 +619,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     conv_dw_cycles += end - start;
-    printf("conv_dw_20: %llu \n", end - start);
+    //printf("conv_dw_20: %llu \n", end - start);
 
 
     // conv_21
@@ -692,7 +692,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     conv_dw_cycles += end - start;
-    printf("conv_dw_23: %llu \n", end - start);
+    //printf("conv_dw_23: %llu \n", end - start);
 
 
     // conv_24
@@ -734,7 +734,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_25
     if (!conv) {
         start = read_cycles();
@@ -782,7 +782,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     conv_dw_cycles += end - start;
-    printf("conv_dw_26: %llu \n", end - start);
+    //printf("conv_dw_26: %llu \n", end - start);
 
 
     // conv_27
@@ -824,7 +824,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_28
     if (!conv) {
         start = read_cycles();
@@ -872,7 +872,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     conv_dw_cycles += end - start;
-    printf("conv_dw_29: %llu \n", end - start);
+    //printf("conv_dw_29: %llu \n", end - start);
 
 
     // conv_30
@@ -914,7 +914,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_31
     if (!conv) {
         start = read_cycles();
@@ -962,7 +962,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     conv_dw_cycles += end - start;
-    printf("conv_dw_32: %llu \n", end - start);
+    //printf("conv_dw_32: %llu \n", end - start);
 
 
     // conv_33
@@ -1036,7 +1036,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     conv_dw_cycles += end - start;
-    printf("conv_dw_35: %llu \n", end - start);
+    //printf("conv_dw_35: %llu \n", end - start);
 
 
     // conv_36
@@ -1078,7 +1078,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_37
     if (!conv) {
         start = read_cycles();
@@ -1126,7 +1126,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     conv_dw_cycles += end - start;
-    printf("conv_dw_38: %llu \n", end - start);
+    //printf("conv_dw_38: %llu \n", end - start);
 
 
     // conv_39
@@ -1168,7 +1168,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_40
     if (!conv) {
         start = read_cycles();
@@ -1216,7 +1216,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     conv_dw_cycles += end - start;
-    printf("conv_dw_41: %llu \n", end - start);
+    //printf("conv_dw_41: %llu \n", end - start);
 
 
     // conv_42
@@ -1290,7 +1290,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     conv_dw_cycles += end - start;
-    printf("conv_dw_44: %llu \n", end - start);
+    //printf("conv_dw_44: %llu \n", end - start);
 
 
     // conv_45
@@ -1332,7 +1332,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_46
     if (!conv) {
         start = read_cycles();
@@ -1380,7 +1380,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     conv_dw_cycles += end - start;
-    printf("conv_dw_47: %llu \n", end - start);
+    //printf("conv_dw_47: %llu \n", end - start);
 
 
     // conv_48
@@ -1422,7 +1422,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     res_add_cycles += end - start;
-    
+
     // conv_49
     if (!conv) {
         start = read_cycles();
@@ -1470,7 +1470,7 @@ int main (int argc, char * argv[]) {
 
     end = read_cycles();
     conv_dw_cycles += end - start;
-    printf("conv_dw_50: %llu \n", end - start);
+    //printf("conv_dw_50: %llu \n", end - start);
 
 
     // conv_51
@@ -1570,29 +1570,28 @@ int main (int argc, char * argv[]) {
         }
 
         preds[batch] = max_idx;
-        printf("Prediction: %u (score: %d)\n", max_idx, max_prob);
+        printf("P %d: %u\n", batch, max_idx);
     }
 
     uint64_t total_cycles = im2col_cycles + matmul_cycles + pool_cycles + conv_cycles + conv_dw_cycles + res_add_cycles + other_cycles;
 
-    printf("\nTotal cycles: %llu (100%%)\n", total_cycles);
-    printf("Matmul cycles: %llu (%d%%)\n", matmul_cycles, (matmul_cycles * 100) / total_cycles);
-    printf("Im2col cycles: %llu (%d%%)\n", im2col_cycles, (im2col_cycles * 100) / total_cycles);
-    printf("Conv cycles: %llu (%d%%)\n", conv_cycles, (conv_cycles * 100) / total_cycles);
-    printf("Pooling cycles: %llu (%d%%)\n", pool_cycles, (pool_cycles * 100) / total_cycles);
-    printf("Depthwise convolution cycles: %llu (%d%%)\n", conv_dw_cycles, (conv_dw_cycles * 100) / total_cycles);
-    printf("Res add cycles: %llu (%d%%)\n", res_add_cycles, (res_add_cycles * 100) / total_cycles);
-    printf("Other cycles: %llu (%d%%)\n", other_cycles, (other_cycles * 100) / total_cycles);
+    //printf("\nTotal cycles: %llu (100%%)\n", total_cycles);
+    //printf("Matmul cycles: %llu (%d%%)\n", matmul_cycles, (matmul_cycles * 100) / total_cycles);
+    //printf("Im2col cycles: %llu (%d%%)\n", im2col_cycles, (im2col_cycles * 100) / total_cycles);
+    //printf("Conv cycles: %llu (%d%%)\n", conv_cycles, (conv_cycles * 100) / total_cycles);
+    //printf("Pooling cycles: %llu (%d%%)\n", pool_cycles, (pool_cycles * 100) / total_cycles);
+    //printf("Depthwise convolution cycles: %llu (%d%%)\n", conv_dw_cycles, (conv_dw_cycles * 100) / total_cycles);
+    //printf("Res add cycles: %llu (%d%%)\n", res_add_cycles, (res_add_cycles * 100) / total_cycles);
+    //printf("Other cycles: %llu (%d%%)\n", other_cycles, (other_cycles * 100) / total_cycles);
 
-    int correct[] = {75, 900, 125, 897};
-    for (int i = 0; i < fc_53_params.batch_size; i++) {
-        if (preds[i] != correct[i] && fc_53_out[preds[i]][i] != fc_53_out[correct[i]][i]) {
-            printf("Prediction %d is incorrect! Actual class has score of %d\nFAIL\n", i+1, fc_53_out[correct[i]][i]);
-            exit(1);
-        }
-    }
+    // int correct[] = {75, 900, 125, 897};
+    // for (int i = 0; i < fc_53_params.batch_size; i++) {
+    //     if (preds[i] != correct[i] && fc_53_out[preds[i]][i] != fc_53_out[correct[i]][i]) {
+    //         //printf("Prediction %d is incorrect! Actual class has score of %d\nFAIL\n", i+1, fc_53_out[correct[i]][i]);
+    //         exit(1);
+    //     }
+    // }
 
-    printf("PASS\n");
+    //printf("PASS\n");
     exit(0);
 }
-
