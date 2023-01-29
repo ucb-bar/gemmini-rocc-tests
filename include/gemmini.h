@@ -1946,7 +1946,7 @@ static void conv_dw_cpu_without_pool(
             for (int kcol = 0; kcol < kernel_dim; kcol++) {
               const int icol = ocol * stride + kcol - padding;
 
-              const elem_t * in = input + (b * in_row_dim * in_col_dim + irow * in_row_dim + icol) * channels + ch;
+              const elem_t * in = input + (b * in_row_dim * in_col_dim + irow * in_col_dim + icol) * channels + ch;
 
               const elem_t ipixel = irow < 0 || irow >= in_row_dim || icol < 0 || icol >= in_col_dim ?
                   0 : *in;
