@@ -2340,7 +2340,7 @@ static void tiled_conv(
 
                                 const elem_t * in = input + (b *in_row_dim * in_col_dim + ((irow+upad)>>input_dilated) * in_col_dim + ((icol+lpad)>>input_dilated)) * in_channels + kch;
                                 if (trans_input_3120) {
-                                  in = input + (kch * in_row_dim * in_col_dim + ((irow+upad)>>input_dilated) * in_row_dim + ((icol+lpad)>>input_dilated)) * batch_size + b;
+                                  in = input + (kch * in_row_dim * in_col_dim + ((irow+upad)>>input_dilated) * in_col_dim + ((icol+lpad)>>input_dilated)) * batch_size + b;
                                 }
 
                                 sp_tiled_conv(
