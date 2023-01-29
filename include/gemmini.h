@@ -2781,6 +2781,15 @@ static void tiled_conv_downsample(
 
         enum tiled_matmul_type_t tiled_conv_type) {
 
+    // Rectangular dimensions for this function are currently not supported
+    if (in_row_dim != in_col_dim || out_row_dim != out_col_dim) {
+        printf("Rectangular convolutions for tiled_conv_downsample are currently not supported.\n");
+        exit(1);
+    }
+
+    const int in_dim = in_row_dim;
+    const int out_dim = out_row_dim;
+
     const int stride = 2;
 
     for (int b = 0; b < batch_size; b++) {
@@ -2791,10 +2800,10 @@ static void tiled_conv_downsample(
             const int J = out_channels;
             const int K = in_channels;
 
-            const elem_t * A = input + (b * in_row_dim + irow) * in_col_dim * in_channels;
+            const elem_t * A = input + (b * in_dim + irow) * in_dim * in_channels;
             const elem_t * B = weights;
             const acc_t * D = bias;
-            elem_t * C = output + (b * out_row_dim + orow) * out_col_dim * out_channels;
+            elem_t * C = output + (b * out_dim + orow) * out_dim * out_channels;
 
             const int A_stride = in_channels * 2;
             const int B_stride = out_channels;
