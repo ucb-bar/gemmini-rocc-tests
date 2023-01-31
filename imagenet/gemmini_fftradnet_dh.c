@@ -12,7 +12,6 @@
 // The NN model is FFTRadNet
 // Below is only a part of it - Detection_Header (DH)
 
-
 int main (int argc, char * argv[]) {
 #ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
