@@ -112,8 +112,8 @@ int main (int argc, char * argv[]) {
     } else {
 
       tiled_conv_auto(
-          BATCH_SIZE, IN_DIM, IN_CHANNELS,
-          OUT_CHANNELS, OUT_DIM,
+          BATCH_SIZE, IN_DIM, IN_DIM, IN_CHANNELS,
+          OUT_CHANNELS, OUT_DIM, OUT_DIM,
           STRIDE, 1, 1, PADDING, KERNEL_DIM,
           false, false, false, false, false,
 
