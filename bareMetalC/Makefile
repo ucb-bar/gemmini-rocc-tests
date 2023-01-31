@@ -53,7 +53,6 @@ tests = \
 	template \
 
 tests_baremetal = $(tests:=-baremetal)
-tests_rect_baremetal = $(tests:=-rect-baremetal)
 
 ifeq ($(findstring spike,$(RUNNER)),spike)
 # Currently don't support conv or conv-with-pool on spike
@@ -62,8 +61,6 @@ else
 # Don't run very long benchmarks for RTL sim
 runs_baremetal = $(addsuffix .run,$(filter-out tiled_matmul_cpu-baremetal tiled_matmul_option-baremetal,$(tests_baremetal)))
 endif
-
-runs_rect_baremetal = $(addsuffix .run,$(tests_rect_baremetal))
 
 ifdef BAREMETAL_ONLY
 	tests_linux =
@@ -108,25 +105,12 @@ CFLAGS_BAREMETAL := \
 	-T $(BENCH_COMMON)/test.ld \
 	-DBAREMETAL=1 \
 
-CFLAGS_RECT_BAREMETAL := \
-	$(CFLAGS) \
-	-nostdlib \
-	-nostartfiles \
-	-static \
-	-T $(BENCH_COMMON)/test.ld \
-	-DRECT=1 \
-	-DBAREMETAL=1 \
-
-all: $(tests_rect_baremetal) $(tests_baremetal) $(tests_linux) $(tests_pk)
+all: $(tests_baremetal) $(tests_linux) $(tests_pk)
 
 vpath %.c $(src_dir)
 
 %-baremetal: %.c $(GEMMINI_HEADERS)
 	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \
-		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
-
-%-rect-baremetal: %.c $(GEMMINI_HEADERS)
-	$(CC_BAREMETAL) $(CFLAGS_RECT_BAREMETAL) $< $(LFLAGS) -o $@ \
 		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
 
 %-linux: %.c $(GEMMINI_HEADERS)
@@ -137,12 +121,7 @@ vpath %.c $(src_dir)
 
 run-baremetal: $(runs_baremetal)
 
-run-rect-baremetal: $(runs_rect_baremetal)
-
 %-baremetal.run: %-baremetal
-	$(RUNNER)$(abs_top_srcdir)/build/bareMetalC/$^
-
-%-rect-baremetal.run: %-rect-baremetal
 	$(RUNNER)$(abs_top_srcdir)/build/bareMetalC/$^
 
 junk += $(tests_baremetal) $(tests_linux) $(tests_pk)

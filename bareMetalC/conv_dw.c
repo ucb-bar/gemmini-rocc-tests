@@ -28,18 +28,8 @@
 
 #else
 
-#ifdef RECT
-
-#define IN_ROW_DIM 17
-#define IN_COL_DIM 9
-
-#else
-
 #define IN_ROW_DIM 17
 #define IN_COL_DIM 17
-
-#endif
-
 #define CHANNELS 15
 
 #endif

@@ -31,15 +31,8 @@
 #define IN_CHANNELS 5
 #define OUT_CHANNELS 7
 #else
-
-#ifdef RECT
-#define IN_ROW_DIM 17
-#define IN_COL_DIM 23
-#else
 #define IN_ROW_DIM 17
 #define IN_COL_DIM 17
-#endif
-
 #define IN_CHANNELS 18
 #define OUT_CHANNELS 19
 #endif
