@@ -2510,8 +2510,8 @@ static void tiled_conv_dw(
                             }
 
                             const int batches_ = batch_size - b > batches ? batches : batch_size - b;
-                            const int porows_ = pool_out_dim - porow > porows ? porows : pool_out_dim - porow;
-                            const int pocols_ = pool_out_dim - pocol > pocols ? pocols : pool_out_dim - pocol;
+                            const int porows_ = pool_out_row_dim - porow > porows ? porows : pool_out_row_dim - porow;
+                            const int pocols_ = pool_out_col_dim - pocol > pocols ? pocols : pool_out_col_dim - pocol;
                             const int krows_ = kernel_dim - krow > krows ? krows : kernel_dim - krow;
                             const int kcols_ = kernel_dim - kcol > kcols ? kcols : kernel_dim - kcol;
 
