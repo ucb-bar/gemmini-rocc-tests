@@ -8,44 +8,20 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#ifndef BAREMETAL
-
-#define BATCH_SIZE 4
+#define BATCH_SIZE 1
 #define IN_DIM 224
 #define IN_CHANNELS 3
-#define OUT_CHANNELS 32
-#define KERNEL_DIM 3
-#define PADDING 1
+#define OUT_CHANNELS 64
+#define KERNEL_DIM 7
+#define PADDING 3
 #define STRIDE 2
 
 #define POOL_SIZE 3
 #define POOL_STRIDE 2
 #define POOL_PADDING 1
-
-#else
-
-#ifdef FAST
-#define IN_DIM 9
-#define IN_CHANNELS 5
-#define OUT_CHANNELS 7
-#else
-#define IN_DIM 17
-#define IN_CHANNELS 18
-#define OUT_CHANNELS 19
-#endif
-
-#define BATCH_SIZE 2
-#define KERNEL_DIM 3
-#define PADDING 1
-#define STRIDE 2
-
-#define POOL_SIZE 3
-#define POOL_STRIDE 2
-#define POOL_PADDING 1
-
-#endif
 
 #define NO_BIAS false
+#define NUM_ARRAY 4
 
 #define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
@@ -221,6 +197,7 @@ int main() {
     static elem_t output[BATCH_SIZE][OUT_DIM][OUT_DIM][OUT_CHANNELS];
     static elem_t pool_output[BATCH_SIZE][POOL_OUT_DIM][POOL_OUT_DIM][OUT_CHANNELS];
 
+#if CHECK_RESULT == 1
     printf("Randomize inputs...\n");
     init_random(&input[0][0][0][0], sizeof(input) / sizeof(elem_t));
 
@@ -233,7 +210,6 @@ int main() {
     else
         init_random_acc(&bias[0], sizeof(bias) / sizeof(acc_t));
 
-#ifndef FAST
     printf("CPU conv...\n");
     uint64_t start_cpu = read_cycles();
     conv(BATCH_SIZE, IN_CHANNELS, IN_DIM,
@@ -262,40 +238,39 @@ int main() {
     static elem_t weights_mat[PATCH_SIZE][OUT_CHANNELS];
     static elem_t output_mat[N_PATCHES][OUT_CHANNELS];
     static elem_t pool_output_mat[BATCH_SIZE*POOL_OUT_DIM*POOL_OUT_DIM][OUT_CHANNELS];
-
+#if CHECK_RESULT == 1
     printf("Flatten weights...\n");
     flatten_weights(OUT_CHANNELS, KERNEL_DIM, IN_CHANNELS,
             PATCH_SIZE,
             weights,
             weights_mat);
-
+#endif
     printf("Gemmini conv...\n");
     uint64_t start_gemmini = read_cycles();
 
-    tiled_conv_auto(
+    tiled_opcode_conv_auto(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
         STRIDE, 1, 1, PADDING, KERNEL_DIM,
+        IN_CHANNELS, OUT_CHANNELS, OUT_CHANNELS,
+        false, false, false, false,
         false, false, false, false, false,
-
-        // 1,
-        // 1, 1, 1,
-        // 1, 1, 1,
-
+ 
         (elem_t*)input,
         (elem_t*)weights_mat,
         NO_BIAS ? NULL : (acc_t*)bias,
         (elem_t*)pool_output_mat,
 
         NO_ACTIVATION, ACC_SCALE_IDENTITY, 0,
-        POOL_SIZE, NO_POOL ? 0 : POOL_STRIDE, POOL_PADDING,
+        POOL_SIZE, NO_POOL ? 0 : POOL_STRIDE, POOL_PADDING, false,
+        NUM_ARRAY, 0,
 
         WS);
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 
     assert(sizeof(pool_output_mat) == sizeof(pool_output));
-
+#if CHECK_RESULT == 1
 #ifdef FAST
     bool success = true;
     for (int orow = 0; orow < BATCH_SIZE * POOL_OUT_DIM * POOL_OUT_DIM; orow++) {
@@ -417,6 +392,6 @@ int main() {
 
         return 1;
     }
-
+#endif
     return 0;
 }

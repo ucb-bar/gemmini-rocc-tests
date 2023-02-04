@@ -1,10 +1,11 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	mt_matmul_1 \
-	mt_matmul_2 \
-	mt_resadd_1 \
-	mt_resadd_2 \
+	bert \
+	#full_cpu \
+	#chol_ge \
+	#schur_cpu \
+	#ge_gemm
 
 tests_baremetal = $(tests:=-baremetal)
 runs_baremetal = $(addsuffix .run,$(tests_baremetal))
@@ -30,7 +31,6 @@ CFLAGS := $(CFLAGS) \
 	-fno-builtin-printf \
 	-march=rv64gc -Wa,-march=rv64gcxhwacha \
 	-lm \
-	-lpthread \
 	-lgcc \
 	-I$(abs_top_srcdir)/riscv-tests \
 	-I$(abs_top_srcdir)/riscv-tests/env \
@@ -51,7 +51,7 @@ CFLAGS_BAREMETAL := \
 	-T $(BENCH_COMMON)/test.ld \
 	-DBAREMETAL=1 \
 
-all: $(tests_linux)
+all: $(tests_baremetal) $(tests_linux)
 
 vpath %.c $(src_dir)
 

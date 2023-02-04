@@ -200,17 +200,20 @@ static void sp_tiled_opcode_matmul_ws(elem_t * A, elem_t * B,
       if(div_I && !last){
         if (A!=NULL) A = A + A_row_stride * T0 * DIM;
         if (C!=NULL) C = C+C_row_stride*T0*DIM;
-        if (D!=NULL && !no_bias)
-            D = &(((acc_t*)D)[D_row_stride*T0*DIM]); //D = (acc_t*)(D+D_row_stride*T0*DIM);
+        if (D!=NULL && !no_bias){
+          if(low_D) D = (int8_t*)D + (D_row_stride*T0*DIM)*sizeof(elem_t);
+          else  D = &(((acc_t*)D)[D_row_stride*T0*DIM]); //D = (acc_t*)(D+D_row_stride*T0*DIM);
+        }
       }
       if(div_J && !last){
         // both div_I, div_J -> diagonal (transposed)
         if (B!=NULL) B = (div_I) ? B + B_row_stride * T0 * DIM : B + T0 * DIM;
         if (C!=NULL) C = C+T0*DIM;
-        if (D!=NULL && !no_bias)
-           D = &(((acc_t*)D)[T0*DIM]); //D = (acc_t*)(D+T0*DIM);
+        if (D!=NULL && !no_bias){
+          if(low_D) D = (int8_t*)D + (T0*DIM)*sizeof(elem_t);
+          else D = &(((acc_t*)D)[T0*DIM]); //D = (acc_t*)(D+T0*DIM); 
+        }
       }
-      
       T -= T0;
       num_array --;
     }
@@ -309,8 +312,8 @@ static void tiled_opcode_matmul_outer(size_t dim_I_original, size_t dim_J_origin
           pre = NULL;
         } else {
           size_t bias_row = repeating_bias ? 0 : i0*outer_tile_I*DIM;
-           pre = &(((acc_t*)D)[bias_row * stride_D + j0 * outer_tile_J * DIM]);
-          //pre = (int8_t*)D + (bias_row * stride_D + j0 * outer_tile_J * DIM)*sizeof_D;
+          pre = &(((acc_t*)D)[bias_row * stride_D + j0 * outer_tile_J * DIM]);
+          if(low_D) pre = (int8_t*)D + (bias_row * stride_D + j0 * outer_tile_J * DIM)*sizeof_D;
         }
 
         void * out = k0 == K0-1 ? (int8_t*)C + (i0*outer_tile_I*DIM*stride_C + j0*outer_tile_J*DIM)*sizeof_C : NULL;
@@ -363,7 +366,72 @@ static void tiled_opcode_matmul_outer(size_t dim_I_original, size_t dim_J_origin
 }
 
 
+static void tiled_opcode_matmul_auto_multi(size_t dim_I, size_t dim_J, size_t dim_K,
+  //const size_t sub_num_I, const size_t sub_num_J, const size_t sub_num_K,
+  size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
+  bool A_direct_dram, bool B_direct_dram, bool D_direct_dram, bool C_direct_dram,  
+  elem_t* A, elem_t* B,
+  void * D, elem_t* C, 
+  scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
+  bool A_transpose, bool B_transpose,
+  int act, acc_scale_t scale, size_t relu6_shift, bool repeating_bias, bool low_D,
+  enum tiled_matmul_type_t tiled_matmul_type,
+  //size_t orow_divide, size_t batch_divide, size_t cid, size_t group_id,
+  const size_t num_array, size_t start_tracker)
+// orow_divide -> total, num_array -> inner
+// for now assume one workload (no cid, orow_divide)
+{
 
+  size_t* args_out;
+  size_t args[10];
+  size_t dim_J_original = dim_J;
+  size_t dim_K_original = dim_K;
+  size_t dim_I_original = dim_I;
+  if(dim_J >= num_array * DIM * MAX_BLOCK_LEN){
+    dim_J = ceil_divide_int(dim_J, num_array);
+    if(dim_J % DIM != 0){
+      dim_J = ceil_divide_int(dim_J, DIM) * DIM;
+    }
+  }
+  else{
+    dim_I = ceil_divide_int(dim_I, num_array);
+    if(dim_I % DIM != 0){
+      dim_I = ceil_divide_int(dim_I, DIM) * DIM;
+    }
+  }
+
+  args_out = tiling_factor_matmul_calculate_auto(dim_I, dim_J, dim_K, 1, 1, 0, 0, args, 0);
+
+  dim_I = args_out[3];
+  dim_J = args_out[4];
+  dim_K = args_out[5];
+  size_t tile_I = args_out[8];
+  size_t tile_J = args_out[9];
+  size_t tile_K = args_out[10];
+
+  size_t orow_offset_floor = args_out[6];
+  bool row_divisible = (args_out[7] != 0);
+
+  bool no_bias = (D == NULL);
+
+#if rerocc_debug == 1
+  printf("dim_I: %d, dim_J: %d, dim_K: %d, tile_I: %d, tile_J: %d, tile_K: %d\n", dim_I, dim_J, dim_K, tile_I, tile_J, tile_K);
+#endif
+
+  tiled_opcode_matmul_outer(dim_I_original, dim_J_original, dim_K_original,
+      dim_I, dim_J, dim_K,
+      //sub_num_I, sub_num_J, sub_num_K,
+      A, B, no_bias ? NULL : D, C, // for now, disable global workload division
+      //A + A_orow_offset + A_batch_offset, B + out_offset, no_bias ? NULL : D + out_offset*sizeof(acc_t), C + C_orow_offset + out_offset + C_batch_offset,
+      stride_A, stride_B, stride_C, stride_C,
+      A_direct_dram, B_direct_dram, D_direct_dram, C_direct_dram,
+      A_scale_factor, B_scale_factor, D_scale_factor,
+      tile_I, tile_J, tile_K,
+      act, scale, relu6_shift, repeating_bias,
+      A_transpose, B_transpose, false, low_D, 3,
+      (int)tiled_matmul_type,
+      num_array, start_tracker);
+}
 static void tiled_opcode_matmul_nn_auto_multi(size_t dim_I, size_t dim_J, size_t dim_K,
   //const size_t sub_num_I, const size_t sub_num_J, const size_t sub_num_K,
   size_t stride_A, size_t stride_B, size_t stride_C,
@@ -419,7 +487,7 @@ static void tiled_opcode_matmul_nn_auto_multi(size_t dim_I, size_t dim_J, size_t
       //sub_num_I, sub_num_J, sub_num_K,
       A, B, no_bias ? NULL : D, C, // for now, disable global workload division
       //A + A_orow_offset + A_batch_offset, B + out_offset, no_bias ? NULL : D + out_offset*sizeof(acc_t), C + C_orow_offset + out_offset + C_batch_offset,
-      stride_A, stride_B, stride_B, stride_C,
+      stride_A, stride_B, stride_C, stride_C,
       A_direct_dram, B_direct_dram, D_direct_dram, C_direct_dram,
       MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
       tile_I, tile_J, tile_K,

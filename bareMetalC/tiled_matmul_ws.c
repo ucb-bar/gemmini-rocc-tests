@@ -26,9 +26,9 @@ typedef elem_t ACC_T;
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM_I 64
-#define MAT_DIM_K 64
-#define MAT_DIM_J 64
+#define MAT_DIM_I 512
+#define MAT_DIM_K 128
+#define MAT_DIM_J 256
 #endif
 
 void print_tile(elem_t* in, int tile_dim) {
@@ -150,6 +150,7 @@ int main() {
     tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
             (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
+            false, false, false, false,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
             false, false,

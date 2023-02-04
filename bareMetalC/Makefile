@@ -1,7 +1,9 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	conv_re \
+	tiled_matmul_ws \
+	resadd_re \
+	#mt_resadd_re3 \
 
 tests_baremetal = $(tests:=-baremetal)
 

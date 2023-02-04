@@ -1,7 +1,7 @@
 import random
 
 NO_BIAS = False
-IN_DIM = 14
+IN_DIM = 7
 STRIDE = 1
 IN_CHANNELS = 64
 OUT_CHANNELS = 64

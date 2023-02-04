@@ -343,6 +343,12 @@ static void counter_reset() {
   gemmini_counter_access(placeholder, config_reg);
 }
 
+int abs_diff(int a, int b){
+    if (a > b) return a-b;
+    else if (a < b) return b-a;
+    else return 0;
+}
+
 int ceil_divide_int(int a, int b){
   int c = (a % b == 0) ? ((int)(a/b)) :(((int)(a/b)) + 1); 
   if(a < b) c = 1;
@@ -1044,13 +1050,13 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
   bool a_reuse = false;
   bool b_reuse = false;
   
-
+#ifndef BAREMETAL
   if(J0 * K0 <= 2) 
     b_reuse = true;
   if(I0 * K0 <= 2)
     a_reuse = true;
-  
-  printf("I0: %d, J0: %d, K0: %d, a_reuse: %d, b_reuse: %d \n", I0, J0, K0, a_reuse, b_reuse);
+#endif
+  //printf("I0: %d, J0: %d, K0: %d, a_reuse: %d, b_reuse: %d \n", I0, J0, K0, a_reuse, b_reuse);
 
 
   for (size_t i0 = 0; i0 < I0; i0++)
@@ -1079,7 +1085,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         const size_t pad_I = i0 == I0-1 ? padding_I : 0;
         const size_t pad_J = j0 == J0-1 ? padding_J : 0;
         const size_t pad_K = k0 == K0-1 ? padding_K : 0;
-printf("A: %llu, B: %llu\n", A, B);
+//printf("A: %llu, B: %llu\n", A, B);
         const elem_t * a = a_transpose ? (A + k0*tile_K*DIM*stride_A + i0*tile_I*DIM)
           : (A + i0*tile_I*DIM*stride_A + k0*tile_K*DIM);
 
@@ -1088,7 +1094,7 @@ printf("A: %llu, B: %llu\n", A, B);
 
         if(a_reuse && j0 >= 1) a = NULL;
         if(b_reuse && i0 >= 1) b = NULL;
-printf("a_reuse: %d, b_reuse: %d, a_spad_id: %d, b_spad_id: %d, a: %llu, b: %llu \n", a_reuse, b_reuse, a_spad_id, b_spad_id, a, b);
+//printf("a_reuse: %d, b_reuse: %d, a_spad_id: %d, b_spad_id: %d, a: %llu, b: %llu \n", a_reuse, b_reuse, a_spad_id, b_spad_id, a, b);
         (*inner)(a, b, pre, out,
             A_scale_factor, B_scale_factor, D_scale_factor,
             I, J, K,
@@ -3112,7 +3118,7 @@ static void tiled_conv(
        pocols = pocols / 2;
        porows = porows * 2;
     }
-    printf("batches: %d, porows: %d, pocols: %d, pochs: %d, krows: %d, kcols: %d, kchs: %d\n", batches, porows, pocols, pochs, krows, kcols, kchs);
+    //printf("batches: %d, porows: %d, pocols: %d, pochs: %d, krows: %d, kcols: %d, kchs: %d\n", batches, porows, pocols, pochs, krows, kcols, kchs);
     
     size_t a_spad_id = 0;
     size_t b_spad_id = 0;

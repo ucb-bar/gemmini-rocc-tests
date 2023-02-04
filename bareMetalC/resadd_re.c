@@ -18,15 +18,15 @@
 #define MAT_DIM_I 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM_I 32
-#define MAT_DIM_J 32
+#define MAT_DIM_I 64
+#define MAT_DIM_J 64
 #endif
 
 #define A_SCALE 1
 #define B_SCALE MVIN_SCALE_IDENTITY
 #define C_SCALE ACC_SCALE_IDENTITY
 #define USE_RELU true
-#define NUM_ARRAY 2
+#define NUM_ARRAY 4
 #define NUM_ARRAY1 1
 
 void full_printMatrix(elem_t m[MAT_DIM_I][MAT_DIM_J]) {
