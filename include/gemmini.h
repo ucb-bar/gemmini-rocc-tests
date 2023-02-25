@@ -3286,6 +3286,8 @@ static void tiled_global_average_auto(const elem_t * input, elem_t * output,
       channel_tile_size);
 }
 
+#ifdef HAS_NORMALIZATIONS
+
 static void sp_tiled_norm(const size_t I, const size_t J,
         const acc_t * in, elem_t * out,
         size_t A_row_stride, size_t C_row_stride,
@@ -3453,6 +3455,8 @@ static void tiled_norm_auto(const size_t I, const size_t J,
       exit(1);
     }
 }
+
+#endif // HAS_NORMALIZATIONS
 
 #undef abs
 
