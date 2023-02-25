@@ -3286,6 +3286,174 @@ static void tiled_global_average_auto(const elem_t * input, elem_t * output,
       channel_tile_size);
 }
 
+static void sp_tiled_norm(const size_t I, const size_t J,
+        const acc_t * in, elem_t * out,
+        size_t A_row_stride, size_t C_row_stride,
+        int act) {
+
+    size_t A_blocks = (J/DIM + (J % DIM != 0));
+    if (A_blocks > MAX_BLOCK_LEN_ACC) A_blocks = MAX_BLOCK_LEN_ACC;
+    size_t C_blocks = (J/DIM + (J % DIM != 0));
+    if (C_blocks > MAX_BLOCK_LEN) C_blocks = MAX_BLOCK_LEN;
+
+    const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
+    const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2);
+
+    const size_t rounded_up_J = (J / DIM + (J % DIM != 0)) * DIM;
+
+    for (size_t i = 0; i < I; i += DIM) {
+        // Mvin
+        for (size_t j = 0; j < J; j += A_blocks * DIM) {
+            const size_t cols = j + A_blocks*DIM <= J ? A_blocks*DIM : J-j;
+            const size_t rows = i + DIM <= I ? DIM : I-i;
+
+            const acc_t * const A_dram_addr = in + i * A_row_stride + j;
+            const uint32_t A_sp_addr = D_sp_addr_start + i * (rounded_up_J/DIM) + j;
+
+            gemmini_extended_mvin(A_dram_addr, A_sp_addr, cols, rows);
+        }
+
+        // Mvout
+        if (act == LAYERNORM) {
+            uint32_t norm_cmds[][2] = {{1,2},{3,4},{0,0}};
+            const int norm_cmds_size = sizeof(norm_cmds) / sizeof(norm_cmds[0]);
+            const size_t rows = I - i < DIM ? I - i : DIM;
+            for (size_t row = 0; row < rows; row += NORM_STAT_IDS) {
+                const size_t stat_ids = rows - row > NORM_STAT_IDS ?
+                    NORM_STAT_IDS : rows - row;
+                for (int cmd = 0; cmd < norm_cmds_size; cmd++) {
+                    for (size_t stat_id = 0; stat_id < stat_ids; stat_id++) {
+                        gemmini_config_norm(0, 0, 0, 0, stat_id, 0, 0);
+                        const size_t r = row + stat_id;
+                        for (size_t jj = 0; jj < J; jj += C_blocks * DIM) {
+                            uint32_t norm_C_sp_addr = C_sp_addr_start + i * (rounded_up_J/DIM) + jj + r;
+                            if (jj + C_blocks*DIM >= J) {
+                                norm_C_sp_addr |= (norm_cmds[cmd][1] << 26); // Final mean/inv-std-dev calculation
+                            } else {
+                                norm_C_sp_addr |= (norm_cmds[cmd][0] << 26); // Accumulate sum/variance
+                            }
+                            void * const C_dram_addr = (int8_t*)out +
+                                (i*C_row_stride + jj) * sizeof(elem_t) +
+                                r * C_row_stride * sizeof(elem_t);
+                            const size_t cols = J - jj < C_blocks * DIM ? J - jj : C_blocks * DIM;
+                            gemmini_extended_mvout(C_dram_addr, norm_C_sp_addr, cols, 1);
+                        }
+                    }
+                }
+            }
+        } else if (act == SOFTMAX) {
+            uint32_t norm_cmds[][2] = {{5,5},{6,7},{0,0}};
+            const int norm_cmds_size = sizeof(norm_cmds) / sizeof(norm_cmds[0]);
+            const size_t rows = I - i < DIM ? I - i : DIM;
+            for (size_t row = 0; row < rows; row += NORM_STAT_IDS) {
+                const size_t stat_ids = rows - row > NORM_STAT_IDS ?
+                    NORM_STAT_IDS : rows - row;
+                for (int cmd = 0; cmd < norm_cmds_size; cmd++) {
+                    for (size_t stat_id = 0; stat_id < stat_ids; stat_id++) {
+                        // set stat id only
+                        gemmini_config_norm(0, 0, 1, 0, stat_id, 0, 0);
+                        const size_t r = row + stat_id;
+                        for (size_t jj = 0; jj < J; jj += C_blocks * DIM) {
+                            uint32_t norm_C_sp_addr = C_sp_addr_start + i * (rounded_up_J/DIM) + jj + r;
+                            if (jj + C_blocks*DIM >= J) {
+                                norm_C_sp_addr |= (norm_cmds[cmd][1] << 26); // Final mean/inv-std-dev calculation
+                            } else {
+                                norm_C_sp_addr |= (norm_cmds[cmd][0] << 26); // Accumulate sum/variance
+                            }
+                            void * const C_dram_addr = (int8_t*)out +
+                                (i*C_row_stride + jj) * sizeof(elem_t) +
+                                r * C_row_stride * sizeof(elem_t);
+                            const size_t cols = J - jj < C_blocks * DIM ? J - jj : C_blocks * DIM;
+                            gemmini_extended_mvout(C_dram_addr, norm_C_sp_addr, cols, 1);
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+}
+
+static void tiled_norm(const size_t I, const size_t J,
+        const size_t tile_I, const size_t tile_J,
+        const acc_t * in,
+        elem_t * out,
+        const acc_scale_t C_scale,
+        int act,
+        enum tiled_matmul_type_t norm_type) {
+
+    gemmini_extended_config_st(J * sizeof(elem_t), act & 3, C_scale);
+    gemmini_config_ex(WS, 0, 0); // TODO is this actually required?
+
+    gemmini_extended4_config_ld(J * sizeof(acc_t), MVIN_SCALE_IDENTITY, false, DIM, 0);
+    gemmini_extended4_config_ld(J * sizeof(acc_t), MVIN_SCALE_IDENTITY, false, DIM, 1);
+
+    if (act == SOFTMAX) {
+        const scale_t a = 0.3585;
+        const scale_t b = 1.353;
+        const scale_t c = 0.344;
+
+        // TODO let bert-scale be set by the programmer
+        acc_scale_t bert_scale = 0.05;
+        const acc_t qln2 = (int) (0.693147 / bert_scale);
+        const acc_t qln2_inv = 65536 / qln2;
+        const acc_t qb = b / bert_scale;
+        const acc_t qc = c / (a*bert_scale*bert_scale);
+
+        gemmini_config_norm(qln2, 0, 0, 1, 0, qb, qc);
+        gemmini_config_norm(qln2_inv, 1, 0, 1, 0, qb, qc);
+    }
+
+    for (size_t i = 0; i < I; i += tile_I) {
+        for (size_t j = 0; j < J; j += tile_J) {
+            const size_t I_tile = i + tile_I <= I ? tile_I : I - i;
+            const size_t J_tile = j + tile_J <= J ? tile_J : J - j;
+
+            const acc_t * in_ = in + i * J + j;
+            elem_t * out_ = out + i * J + j;
+
+            sp_tiled_norm(I_tile, J_tile,
+                    in_, out_,
+                    J, J,
+                    act);
+        }
+    }
+
+    gemmini_fence();
+}
+
+static void tiled_norm_auto(const size_t I, const size_t J,
+        const acc_t * in,
+        elem_t * out,
+        const acc_scale_t C_scale,
+        int act,
+        enum tiled_matmul_type_t norm_type) {
+
+    size_t tile_I = I, tile_J = J;
+    size_t total_acc_rows = (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
+
+    while (total_acc_rows > ACC_ROWS) {
+        if (tile_I > 1) {
+            tile_I--;
+        } else {
+            // TODO we should be able to tile over J as well to avoid this issue
+            printf("Can't fit pre-normalized tensor into accumulator");
+            exit(1);
+        }
+
+        total_acc_rows = (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
+    }
+
+    if (norm_type) {
+      tiled_norm(I, J, tile_I, tile_J,
+            in, out,
+            C_scale, act, norm_type);
+    } else {
+      printf("Unsupported type\n");
+      exit(1);
+    }
+}
+
 #undef abs
 
 #endif // SRC_MAIN_C_GEMMINI_H
