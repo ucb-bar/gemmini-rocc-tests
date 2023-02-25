@@ -3352,7 +3352,7 @@ static void tiled_norm(const size_t I, const size_t J,
         const scale_t c = 0.344;
 
         // TODO let bert-scale be set by the programmer
-        acc_scale_t bert_scale = 1.0;
+        acc_scale_t bert_scale = 0.05;
         const acc_t qln2 = (int) (0.693147 / bert_scale);
         const acc_t qln2_inv = 65536 / qln2;
         const acc_t qb = b / bert_scale;
