@@ -74,8 +74,8 @@ int main (int argc, char * argv[]) {
     start = read_cycles();
 
     tiled_conv_auto(
-        conv_1_params.batch_size, conv_1_params.in_dim, conv_1_params.in_channels,
-        conv_1_params.out_channels, conv_1_params.out_dim,
+        conv_1_params.batch_size, conv_1_params.in_row_dim, conv_1_params.in_col_dim, conv_1_params.in_channels,
+        conv_1_params.out_channels, conv_1_params.out_row_dim, conv_1_params.out_col_dim,
         conv_1_params.stride, 1, 1, conv_1_params.padding, conv_1_params.kernel_size,
         false, false, false, false, false,
 
@@ -96,8 +96,8 @@ int main (int argc, char * argv[]) {
     start = read_cycles();
 
     tiled_conv_auto(
-        conv_2_params.batch_size, conv_2_params.in_dim, conv_2_params.in_channels,
-        conv_2_params.out_channels, conv_2_params.out_dim,
+        conv_2_params.batch_size, conv_2_params.in_row_dim, conv_2_params.in_col_dim, conv_2_params.in_channels,
+        conv_2_params.out_channels, conv_2_params.out_row_dim, conv_2_params.out_col_dim,
         conv_2_params.stride, 1, 1, conv_2_params.padding, conv_2_params.kernel_size,
         false, false, false, false, false,
 
@@ -118,8 +118,8 @@ int main (int argc, char * argv[]) {
     start = read_cycles();
 
     tiled_conv_auto(
-        conv_3_params.batch_size, conv_3_params.in_dim, conv_3_params.in_channels,
-        conv_3_params.out_channels, conv_3_params.out_dim,
+        conv_3_params.batch_size, conv_3_params.in_row_dim, conv_3_params.in_col_dim, conv_3_params.in_channels,
+        conv_3_params.out_channels, conv_3_params.out_row_dim, conv_3_params.out_col_dim, 
         conv_3_params.stride, 1, 1, conv_3_params.padding, conv_3_params.kernel_size,
         false, false, false, false, false,
 
@@ -140,8 +140,8 @@ int main (int argc, char * argv[]) {
     start = read_cycles();
 
     tiled_conv_auto(
-        conv_4_params.batch_size, conv_4_params.in_dim, conv_4_params.in_channels,
-        conv_4_params.out_channels, conv_4_params.out_dim,
+        conv_4_params.batch_size, conv_4_params.in_row_dim, conv_4_params.in_col_dim, conv_4_params.in_channels,
+        conv_4_params.out_channels, conv_4_params.out_row_dim, conv_4_params.out_col_dim,
         conv_4_params.stride, 1, 1, conv_4_params.padding, conv_4_params.kernel_size,
         false, false, false, false, false,
 
@@ -162,8 +162,8 @@ int main (int argc, char * argv[]) {
     start = read_cycles();
 
     tiled_conv_auto(
-        conv_5_params.batch_size, conv_5_params.in_dim, conv_5_params.in_channels,
-        conv_5_params.out_channels, conv_5_params.out_dim,
+        conv_5_params.batch_size, conv_5_params.in_row_dim, conv_5_params.in_col_dim, conv_5_params.in_channels,
+        conv_5_params.out_channels, conv_5_params.out_row_dim, conv_5_params.out_col_dim,
         conv_5_params.stride, 1, 1, conv_5_params.padding, conv_5_params.kernel_size,
         false, false, false, false, false,
 
@@ -184,8 +184,8 @@ int main (int argc, char * argv[]) {
     start = read_cycles();
 
     tiled_conv_auto(
-        conv_6_params.batch_size, conv_6_params.in_dim, conv_6_params.in_channels,
-        conv_6_params.out_channels, conv_6_params.out_dim,
+        conv_6_params.batch_size, conv_6_params.in_row_dim, conv_6_params.in_col_dim, conv_6_params.in_channels,
+        conv_6_params.out_channels, conv_6_params.out_row_dim, conv_6_params.out_col_dim,
         conv_6_params.stride, 1, 1, conv_6_params.padding, conv_6_params.kernel_size,
         false, false, false, false, false,
 

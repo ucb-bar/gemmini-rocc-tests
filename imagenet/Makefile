@@ -5,7 +5,7 @@ tests = \
 	mobilenet \
 	vgg16 \
 	vgg_ssd \
-	gemmini_fftradnet_dh \
+	#gemmini_fftradnet_dh \
 	# alexnet \
 
 tests_baremetal = $(tests:=-baremetal)
@@ -30,7 +30,7 @@ CFLAGS := $(CFLAGS) \
 	-ffast-math \
 	-fno-common \
 	-fno-builtin-printf \
-	-march=rv64gc -Wa,-march=rv64gcxhwacha \
+	-march=rv64gc -Wa,-march=rv64gc \
 	-lm \
 	-lgcc \
 	-I$(abs_top_srcdir)/riscv-tests \

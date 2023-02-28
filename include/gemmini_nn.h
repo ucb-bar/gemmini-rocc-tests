@@ -12,7 +12,10 @@
 
 struct ConvParams {
     int batch_size;
-    int in_dim, out_dim;
+    int in_row_dim;
+    int in_col_dim;
+    int out_row_dim;
+    int out_col_dim;
     int kernel_size;
     int in_channels;
     int out_channels;
@@ -172,18 +175,21 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 }
 
 static void conv_dw(size_t I, size_t J,
-    const size_t batch_size, const size_t channels, const size_t in_dim, const size_t out_dim, const size_t kernel_size,
-    const elem_t input[batch_size][in_dim][in_dim][channels],
+    const size_t batch_size, const size_t channels,
+    const size_t in_row_dim, const size_t in_col_dim,
+    const size_t out_row_dim, const size_t out_col_dim,
+    const size_t kernel_size,
+    const elem_t input[batch_size][in_row_dim][in_col_dim][channels],
     const elem_t weight[channels][kernel_size][kernel_size],
     const acc_t * bias,
-    // elem_t output [batch_size][out_dim][out_dim][channels],
+    // elem_t output [batch_size][out_row_dim][out_col_dim][channels],
     elem_t output [I][J],
     const struct ConvParams * params)
 {
     for (int batch = 0; batch < batch_size; batch++) {
         for (int channel = 0; channel < channels; channel++) {
-            for (int out_row = 0; out_row < out_dim; out_row++) {
-                for (int out_col = 0; out_col < out_dim; out_col++) {
+            for (int out_row = 0; out_row < out_row_dim; out_row++) {
+                for (int out_col = 0; out_col < out_col_dim; out_col++) {
                     int in_row = out_row * params->stride - params->padding;
 
                     acc_t result = 0;
@@ -195,7 +201,7 @@ static void conv_dw(size_t I, size_t J,
                         int in_col = out_col * params->stride - params->padding;
 
                         for (int kernel_col = 0; kernel_col < params->kernel_size; kernel_col++) {
-                            if (in_row >= 0 && in_row < params->in_dim && in_col >= 0 && in_col < params->in_dim) {
+                            if (in_row >= 0 && in_row < params->in_row_dim && in_col >= 0 && in_col < params->in_col_dim) {
                                 result += input[batch][in_row][in_col][channel] * weight[channel][kernel_row][kernel_col];
                             }
 
@@ -217,7 +223,7 @@ static void conv_dw(size_t I, size_t J,
                         scaled = elem_t_min;
                     }
                     
-                    size_t r = batch * params->out_dim * params->out_dim + out_row * params->out_dim + out_col;
+                    size_t r = batch * params->out_row_dim * params->out_col_dim + out_row * params->out_col_dim + out_col;
                     output[r][channel] = scaled;
                     // output[batch][out_row][out_col][channel] = scaled;
                 }
@@ -227,7 +233,8 @@ static void conv_dw(size_t I, size_t J,
 }
 
 static void conv_dw_with_col2im(size_t prev_I, size_t prev_J, size_t I, size_t J,
-    const size_t batch_size, const size_t channels, const size_t out_dim, const size_t kernel_size,
+    const size_t batch_size, const size_t channels,
+    const size_t out_row_dim, const size_t out_col_dim, const size_t kernel_size,
     const elem_t input[prev_I][prev_J],
     const elem_t weight[channels][kernel_size][kernel_size],
     const acc_t * bias,
@@ -237,8 +244,8 @@ static void conv_dw_with_col2im(size_t prev_I, size_t prev_J, size_t I, size_t J
 {
     for (int batch = 0; batch < batch_size; batch++) {
         for (int channel = 0; channel < channels; channel++) {
-            for (int out_row = 0; out_row < out_dim; out_row++) {
-                for (int out_col = 0; out_col < out_dim; out_col++) {
+            for (int out_row = 0; out_row < out_row_dim; out_row++) {
+                for (int out_col = 0; out_col < out_col_dim; out_col++) {
                     int in_row = out_row * params->stride - params->padding;
 
                     acc_t result = 0;
@@ -250,10 +257,10 @@ static void conv_dw_with_col2im(size_t prev_I, size_t prev_J, size_t I, size_t J
                         int in_col = out_col * params->stride - params->padding;
 
                         for (int kernel_col = 0; kernel_col < params->kernel_size; kernel_col++) {
-                            if (in_row >= 0 && in_row < params->in_dim && in_col >= 0 && in_col < params->in_dim) {
+                            if (in_row >= 0 && in_row < params->in_row_dim && in_col >= 0 && in_col < params->in_col_dim) {
                                 // result += input[batch][in_row][in_col][channel] * weight[channel][kernel_row][kernel_col];
 
-                                size_t r = batch * params->in_dim * params->in_dim + in_row * params->in_dim + in_col;
+                                size_t r = batch * params->in_row_dim * params->in_col_dim + in_row * params->in_col_dim + in_col;
 
                                 result += input[r][channel] * weight[channel][kernel_row][kernel_col];
                             }
@@ -276,7 +283,7 @@ static void conv_dw_with_col2im(size_t prev_I, size_t prev_J, size_t I, size_t J
                         scaled = elem_t_min;
                     }
                     
-                    size_t r = batch * params->out_dim * params->out_dim + out_row * params->out_dim + out_col;
+                    size_t r = batch * params->out_row_dim * params->out_col_dim + out_row * params->out_col_dim + out_col;
                     output[r][channel] = scaled;
                     // output[batch][out_row][out_col][channel] = scaled;
                 }
@@ -285,17 +292,17 @@ static void conv_dw_with_col2im(size_t prev_I, size_t prev_J, size_t I, size_t J
     }
 }
 
-static void im2col(size_t batch_size, size_t channels, size_t im_dim,
+static void im2col(size_t batch_size, size_t channels, size_t im_row_dim, size_t im_col_dim,
     size_t I, size_t K,
-    const elem_t input[batch_size][im_dim][im_dim][channels],
+    const elem_t input[batch_size][im_row_dim][im_col_dim][channels],
     elem_t output[I][K],
     const struct ConvParams * params)
 {
     int patch_row = 0;
 
     for (int n_batch = 0; n_batch < params->batch_size; n_batch++) {
-        for (int im_row = -params->padding; im_row < params->in_dim - params->kernel_size + params->padding + 1; im_row += params->stride) {
-            for (int im_col = -params->padding; im_col < params->in_dim - params->kernel_size + params->padding + 1; im_col += params->stride) {
+        for (int im_row = -params->padding; im_row < params->in_row_dim - params->kernel_size + params->padding + 1; im_row += params->stride) {
+            for (int im_col = -params->padding; im_col < params->in_col_dim - params->kernel_size + params->padding + 1; im_col += params->stride) {
                 int patch_col = 0;
 
                 for (int filter_row = 0; filter_row < params->kernel_size; filter_row++) {
@@ -304,8 +311,8 @@ static void im2col(size_t batch_size, size_t channels, size_t im_dim,
                             int pixel_row = im_row + filter_row;
                             int pixel_col = im_col + filter_col;
                             
-                            if (pixel_row < 0 || pixel_row >= params->in_dim
-                                || pixel_col < 0 || pixel_col >= params->in_dim) {
+                            if (pixel_row < 0 || pixel_row >= params->in_row_dim
+                                || pixel_col < 0 || pixel_col >= params->in_col_dim) {
                                 // output[patch_row][patch_col] = 0;
                             } else {
                                 output[patch_row][patch_col] = input[n_batch][pixel_row][pixel_col][im_channel];
@@ -331,8 +338,8 @@ static void im2col_with_col2im(size_t prev_I, size_t prev_J,
     int out_row = 0;
 
     for (int n_batch = 0; n_batch < params->batch_size; n_batch++) {
-        for (int im_row = -params->padding; im_row < params->in_dim - params->kernel_size + params->padding + 1; im_row += params->stride) {
-            for (int im_col = -params->padding; im_col < params->in_dim - params->kernel_size + params->padding + 1; im_col += params->stride) {
+        for (int im_row = -params->padding; im_row < params->in_row_dim - params->kernel_size + params->padding + 1; im_row += params->stride) {
+            for (int im_col = -params->padding; im_col < params->in_col_dim - params->kernel_size + params->padding + 1; im_col += params->stride) {
                 int out_col = 0;
 
                 for (int filter_row = 0; filter_row < params->kernel_size; filter_row++) {
@@ -341,11 +348,11 @@ static void im2col_with_col2im(size_t prev_I, size_t prev_J,
                             int pixel_row = im_row + filter_row;
                             int pixel_col = im_col + filter_col;
 
-                            if (pixel_row < 0 || pixel_row >= params->in_dim
-                                || pixel_col < 0 || pixel_col >= params->in_dim) {
+                            if (pixel_row < 0 || pixel_row >= params->in_row_dim
+                                || pixel_col < 0 || pixel_col >= params->in_col_dim) {
                                 // output[out_row][out_col] = 0;
                             } else {
-                                int in_row = n_batch * params->in_dim * params->in_dim + pixel_row * params->in_dim + pixel_col;
+                                int in_row = n_batch * params->in_row_dim * params->in_col_dim + pixel_row * params->in_col_dim + pixel_col;
                                 int in_col = im_channel;
 
                                 output[out_row][out_col] = input[in_row][in_col];
@@ -467,9 +474,10 @@ void resadd3(const size_t I, const size_t J,
 }
 
 // Pooling
-void pool(size_t batch_size, size_t channels, size_t in_dim, size_t out_dim,
-    elem_t input[batch_size][in_dim][in_dim][channels],
-    elem_t output[batch_size][out_dim][out_dim][channels],
+void pool(size_t batch_size, size_t channels, size_t in_row_dim, size_t in_col_dim,
+    size_t out_row_dim, size_t out_col_dim,
+    elem_t input[batch_size][in_row_dim][in_col_dim][channels],
+    elem_t output[batch_size][out_row_dim][out_col_dim][channels],
     const struct ConvParams * params)
 {
     size_t kernel_size = params->pool_size;
@@ -479,8 +487,8 @@ void pool(size_t batch_size, size_t channels, size_t in_dim, size_t out_dim,
 
     for (int batch = 0; batch < batch_size; batch++) {
         for (int channel = 0; channel < channels; channel++) {
-            for (int out_row = 0; out_row < out_dim; out_row++) {
-                for (int out_col = 0; out_col < out_dim; out_col++) {
+            for (int out_row = 0; out_row < out_row_dim; out_row++) {
+                for (int out_col = 0; out_col < out_col_dim; out_col++) {
                     int in_row = out_row * stride - padding;
 
                     elem_t result = elem_t_min;
@@ -489,7 +497,7 @@ void pool(size_t batch_size, size_t channels, size_t in_dim, size_t out_dim,
                         int in_col = out_col * stride - padding;
 
                         for (int kernel_col = 0; kernel_col < kernel_size; kernel_col++) {
-                            if (in_row >= 0 && in_row < in_dim && in_col >= 0 && in_col < in_dim) {
+                            if (in_row >= 0 && in_row < in_row_dim && in_col >= 0 && in_col < in_col_dim) {
                                 if (input[batch][in_row][in_col][channel] > result) {
                                     result = input[batch][in_row][in_col][channel];
                                 }
@@ -511,20 +519,21 @@ void pool(size_t batch_size, size_t channels, size_t in_dim, size_t out_dim,
 }
 
 void pool_with_col2im(size_t I, size_t J,
-    size_t batch_size, size_t channels, size_t out_dim,
+    size_t batch_size, size_t channels, size_t out_row_dim, size_t out_col_dim,
     elem_t input[I][J],
-    elem_t output[batch_size][out_dim][out_dim][channels],
+    elem_t output[batch_size][out_row_dim][out_col_dim][channels],
     const struct ConvParams * params)
 {
     size_t kernel_size = params->pool_size;
     size_t stride = params->pool_stride;
-    size_t in_dim = params->out_dim;
+    size_t in_row_dim = params->out_row_dim;
+    size_t in_col_dim = params->out_col_dim;
     size_t padding = params->pool_padding;
 
     for (int batch = 0; batch < batch_size; batch++) {
         for (int channel = 0; channel < channels; channel++) {
-            for (int out_row = 0; out_row < out_dim; out_row++) {
-                for (int out_col = 0; out_col < out_dim; out_col++) {
+            for (int out_row = 0; out_row < out_row_dim; out_row++) {
+                for (int out_col = 0; out_col < out_col_dim; out_col++) {
                     int in_row = out_row * stride - padding;
 
                     elem_t result = elem_t_min;
@@ -533,9 +542,9 @@ void pool_with_col2im(size_t I, size_t J,
                         int in_col = out_col * stride - padding;
 
                         for (int kernel_col = 0; kernel_col < kernel_size; kernel_col++) {
-                            if (in_row >= 0 && in_row < in_dim && in_col >= 0 && in_col < in_dim) {
-                                if (input[batch * in_dim * in_dim + in_row * in_dim + in_col][channel] > result) {
-                                    result = input[batch * in_dim * in_dim + in_row * in_dim + in_col][channel];
+                            if (in_row >= 0 && in_row < in_row_dim && in_col >= 0 && in_col < in_col_dim) {
+                                if (input[batch * in_row_dim * in_col_dim + in_row * in_col_dim + in_col][channel] > result) {
+                                    result = input[batch * in_row_dim * in_col_dim + in_row * in_col_dim + in_col][channel];
                                 }
                             } else if (0 > result) {
                                 result = 0;
