@@ -3,6 +3,9 @@ include $(abs_top_srcdir)/Makefrag
 tests = \
 	resnet50 \
 	mobilenet \
+	vgg16 \
+	vgg_ssd \
+	gemmini_fftradnet_dh \
 	# alexnet \
 
 tests_baremetal = $(tests:=-baremetal)
