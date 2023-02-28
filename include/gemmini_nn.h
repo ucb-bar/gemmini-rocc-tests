@@ -29,6 +29,20 @@ struct ConvParams {
     int I, J, K;
 };
 
+struct ConvParamsSimple{
+    int batch_size;
+    int in_dim, out_dim;
+    int kernel_size;
+    int in_channels;
+    int out_channels;
+    int stride;
+    int padding;
+    bool bias;
+    bool depthwise;
+    acc_scale_t output_scale;
+    int pool_size, pool_stride, pool_padding, out_dim_pooled;
+};
+
 struct FcParams {
     int batch_size;
     int in_features;

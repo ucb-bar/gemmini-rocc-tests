@@ -54,6 +54,7 @@
 #define CONFIG_LD 1
 #define CONFIG_ST 2
 #define CONFIG_BERT 3
+#define CONFIG_ACT 4
 
 #define GARBAGE_ADDR ((uint32_t)(-1))
 #define OUTPUT_STATIONARY 0
@@ -285,6 +286,9 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 
 #define gemmini_config_norm(q_const, q_const_type, set_stats_id_only, act_msb, stat_id, igelu_qb, igelu_qc) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (((uint64_t) ((uint32_t) q_const)) << 32) | ((q_const_type & 1) << 18) | ((set_stats_id_only & 1) << 17) | ((act_msb & 1) << 16) | ((uint64_t)stat_id << 8) | CONFIG_BERT, ((uint64_t)((uint32_t)(igelu_qc)) << 32) | ((uint64_t)((uint32_t)(igelu_qb))), k_CONFIG)
+
+#define gemmini_config_activation(offset, shift, activation) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)offset << 48) | ((uint64_t)shift << 32) | ((uint64_t) activation << 2) | ((uint64_t) CONFIG_ACT), 0, k_CONFIG)
 
 // flush
 #define gemmini_flush(skip) \
@@ -2576,7 +2580,7 @@ static void tiled_conv_auto(
     }
 
     // Set MSB of activation function
-    gemmini_config_norm(0, 0, 0, act >> 2, 0, 0, 0);
+    //gemmini_config_norm(0, 0, 0, act >> 2, 0, 0, 0);
 
     const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
 
@@ -3255,6 +3259,75 @@ static void tiled_global_average_auto(const elem_t * input, elem_t * output,
 }
 
 #undef abs
+
+// Given input and output shape automatically calculate parameters to transform transposed conv
+// into the equivalent convolution
+// For doubling input size: stride=2, kernel_dim=2
+static void tiled_transposed_conv_auto(
+        int batch_size, int in_dim, int channels, int out_dim,
+        int stride, int padding, int kernel_dim,
+
+        const elem_t * input,
+        const elem_t * weights,
+        elem_t * output,
+
+        acc_scale_t scale
+        ) {
+
+        //TODO
+        // Fixed: batch_size, in_dim, channels, out_dim, kernel_dim
+        // Free: dilation, padding -> to calculate
+
+        // For every convolution there exists a corresponding transposed convolution with:
+        //    k_tick = k
+        //    s_tick = 1
+        //    p_tick = k - p - 1
+        //    input_dilation = s - 1 (for gemmini: s-1+1)
+        //    a = (i + 2p - k ) % s (currently must be zero)
+        //    o_tick = s(i_tick - 1) + a + k - 2p
+        //
+        // Special case where a = 0:
+        //    o_tick = s(i_tick - 1) + k - 2p
+        //
+        // Gemmini supports maximum of input_dilation = 2 (corresponds to one zero between input elements)
+
+        int input_dilation = stride;
+
+        #ifdef GEMMINI_ASSERTIONS
+          if(input_dilation > 2){
+            printf("stride can't be greater than two.\n");
+            exit(1);
+          }
+        #endif
+
+        int a = (in_dim + 2*padding - kernel_dim) % stride; //add a num of zeros to bottom and right of input
+        // TODO find a way to pad these zeros
+        if (a != 0){
+          printf("Configurations where in_dim+2p-k=%d is not a multiple of s=%d are not yet supported.\n", in_dim+2*padding-kernel_dim, stride);
+          exit(1);
+        }
+
+        int transposed_padding = kernel_dim - padding - 1;
+        if(transposed_padding < 0){
+          printf("Selected padding results in shrinking image: padding must be <= %d", kernel_dim-1);
+        }
+
+        tiled_conv_auto(
+            batch_size, in_dim, channels,
+            channels, out_dim,
+            1, input_dilation, 1, transposed_padding, kernel_dim,
+            false, false, false, false, false,
+
+            (elem_t*)input,
+            (elem_t*)weights,
+            NULL,
+            (elem_t*)output,
+
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0,
+
+            WS);
+  
+}
 
 #endif // SRC_MAIN_C_GEMMINI_H
 
