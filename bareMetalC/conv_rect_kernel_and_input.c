@@ -12,11 +12,11 @@
 
 #define BATCH_SIZE 4
 #define IN_ROW_DIM 224
-#define IN_COL_DIM 224
-#define IN_CHANNELS 17
+#define IN_COL_DIM 448
+#define IN_CHANNELS 3
 #define OUT_CHANNELS 32
 #define KERNEL_ROW_DIM 3
-#define KERNEL_COL_DIM 3
+#define KERNEL_COL_DIM 4
 #define PADDING 1
 #define STRIDE 2
 
@@ -31,8 +31,8 @@
 
 #else
 
-#define IN_ROW_DIM 17
-#define IN_COL_DIM 17
+#define IN_ROW_DIM 224
+#define IN_COL_DIM 448
 #define IN_CHANNELS 18
 #define OUT_CHANNELS 19
 
@@ -40,7 +40,7 @@
 
 #define BATCH_SIZE 2
 #define KERNEL_ROW_DIM 3
-#define KERNEL_COL_DIM 3
+#define KERNEL_COL_DIM 4
 #define PADDING 1
 #define STRIDE 2
 
@@ -48,12 +48,65 @@
 
 #define NO_BIAS false
 
-#define TRANS_OUTPUT_1203 true
-
 #define OUT_ROW_DIM ((IN_ROW_DIM + 2*PADDING - KERNEL_ROW_DIM) / STRIDE + 1)
 #define OUT_COL_DIM ((IN_COL_DIM + 2*PADDING - KERNEL_COL_DIM) / STRIDE + 1)
 #define PATCH_SIZE (KERNEL_ROW_DIM * KERNEL_COL_DIM * IN_CHANNELS)
 #define N_PATCHES (BATCH_SIZE * OUT_ROW_DIM * OUT_COL_DIM)
+
+void conv(int batch_size, int in_channels,
+        int in_row_dim, int in_col_dim,
+        int out_channels, int kernel_row_dim, int kernel_col_dim,
+        int out_row_dim, int out_col_dim,
+        int stride, int padding,
+        elem_t input[batch_size][in_row_dim][in_col_dim][in_channels],
+        elem_t weights[out_channels][kernel_row_dim][kernel_col_dim][in_channels],
+        acc_t bias[out_channels],
+        elem_t output[batch_size][out_row_dim][out_col_dim][out_channels]) {
+
+#ifdef GEMMINI_ASSERTIONS
+    if (out_row_dim != (in_row_dim + 2 * padding - kernel_row_dim) / stride + 1) {
+        printf("conv out_row_dim is not correct\n");
+        exit(1);
+    }
+
+    if (out_col_dim != (in_col_dim + 2 * padding - kernel_col_dim) / stride + 1) {
+        printf("conv out_col_dim is not correct\n");
+        exit(1);
+    }
+#endif
+
+    for (int b = 0; b < batch_size; b++) {
+        for (int orow = 0; orow < out_row_dim; orow++) {
+            for (int ocol = 0; ocol < out_col_dim; ocol++) {
+                for (int och = 0; och < out_channels; och++) {
+                    acc_t result = bias[och];
+
+                    for (int krow = 0; krow < kernel_row_dim; krow++) {
+                        for (int kcol = 0; kcol < kernel_col_dim; kcol++) {
+                            for (int kch = 0; kch < in_channels; kch++) {
+                                int irow = orow * stride + krow - padding;
+                                int icol = ocol * stride + kcol - padding;
+
+                                elem_t pixel = irow < 0 || irow >= in_row_dim ||
+                                    icol < 0 || icol >= in_col_dim ?
+                                    0 : input[b][irow][icol][kch];
+
+                                result +=
+                                    weights[och][krow][kcol][kch] *
+                                    pixel;
+                            }
+                        }
+                    }
+
+                    // Clip result
+                    result = result > elem_t_max ? elem_t_max : (result < elem_t_min ? elem_t_min : result);
+
+                    output[b][orow][ocol][och] = result;
+                }
+            }
+        }
+    }
+}
 
 void flatten_weights(int out_channels, int kernel_row_dim, int kernel_col_dim, int in_channels,
         int patch_size,
@@ -127,11 +180,12 @@ int main() {
 
     // assert((in_dim + 2*padding - kernel_dim) % stride == 0);
 
-    printf("Input dimensions: %u by %u\n", IN_ROW_DIM, IN_COL_DIM);
-    printf("Output dimensions: %u by %u\n\n", OUT_ROW_DIM, OUT_COL_DIM);
+    printf("Kernel dimensions (rows by columns): %u by %u\n", KERNEL_ROW_DIM, KERNEL_COL_DIM);
+    printf("Input dimensions (rows by columns): %u by %u\n", IN_ROW_DIM, IN_COL_DIM);
+    printf("Output dimensions (rows by columns): %u by %u\n\n", OUT_ROW_DIM, OUT_COL_DIM);
 
     static elem_t input[BATCH_SIZE][IN_ROW_DIM][IN_COL_DIM][IN_CHANNELS];
-    static elem_t weights[OUT_CHANNELS][KERNEL_ROW_DIM][KERNEL_COL_DIM][IN_CHANNELS];
+    static elem_t weights[OUT_CHANNELS][KERNEL_ROW_DIM][KERNEL_ROW_DIM][IN_CHANNELS];
     static acc_t bias[OUT_CHANNELS];
     static elem_t output[BATCH_SIZE][OUT_ROW_DIM][OUT_COL_DIM][OUT_CHANNELS];
 
@@ -147,6 +201,22 @@ int main() {
     else
         init_random_acc(&bias[0], sizeof(bias) / sizeof(acc_t));
 
+    printf("CPU conv...\n");
+    uint64_t start_cpu = read_cycles();
+#ifndef FAST
+    conv(BATCH_SIZE, IN_CHANNELS,
+            IN_ROW_DIM, IN_COL_DIM,
+            OUT_CHANNELS, KERNEL_ROW_DIM, KERNEL_COL_DIM,
+            OUT_ROW_DIM, OUT_COL_DIM,
+            STRIDE, PADDING,
+            input,
+            weights,
+            bias,
+            output);
+#endif
+    uint64_t end_cpu = read_cycles();
+    printf("CPU conv took %llu cycles\n", end_cpu - start_cpu);
+
     static elem_t weights_mat[PATCH_SIZE][OUT_CHANNELS];
     static elem_t output_mat[N_PATCHES][OUT_CHANNELS];
 
@@ -156,34 +226,13 @@ int main() {
             weights,
             weights_mat);
 
-    printf("CPU conv...\n");
-    uint64_t start_cpu = read_cycles();
-#ifndef FAST
-    tiled_conv_auto(
-        BATCH_SIZE, IN_ROW_DIM, IN_COL_DIM, IN_CHANNELS,
-        OUT_CHANNELS, OUT_ROW_DIM, OUT_COL_DIM,
-        STRIDE, 1, 1, PADDING, KERNEL_ROW_DIM, KERNEL_COL_DIM,
-        false, TRANS_OUTPUT_1203, false, false, false,
-
-        (elem_t*)input,
-        (elem_t*)weights_mat,
-        NO_BIAS ? NULL : (acc_t*)bias,
-        (elem_t*)output,
-
-        NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0,
-
-        CPU);
-#endif
-    uint64_t end_cpu = read_cycles();
-    printf("CPU conv took %llu cycles\n", end_cpu - start_cpu);
-
     printf("Gemmini conv...\n");
     uint64_t start_gemmini = read_cycles();
     tiled_conv_auto(
         BATCH_SIZE, IN_ROW_DIM, IN_COL_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_ROW_DIM, OUT_COL_DIM,
         STRIDE, 1, 1, PADDING, KERNEL_ROW_DIM, KERNEL_COL_DIM,
-        false, TRANS_OUTPUT_1203, false, false, false,
+        false, false, false, false, false,
 
         (elem_t*)input,
         (elem_t*)weights_mat,

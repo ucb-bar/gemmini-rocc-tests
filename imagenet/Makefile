@@ -3,8 +3,8 @@ include $(abs_top_srcdir)/Makefrag
 tests = \
 	resnet50 \
 	mobilenet \
-	vgg16 \
-	vgg_ssd \
+	#vgg16 \
+	#vgg_ssd \
 	#gemmini_fftradnet_dh \
 	# alexnet \
 

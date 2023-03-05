@@ -97,7 +97,7 @@ int main (int argc, char * argv[]) {
             conv_1_params.batch_size, conv_1_params.in_row_dim, conv_1_params.in_col_dim,
             conv_1_params.in_channels,
             conv_1_params.out_channels, conv_1_params.out_row_dim, conv_1_params.out_col_dim,
-            conv_1_params.stride, 1, 1, conv_1_params.padding, conv_1_params.kernel_size,
+            conv_1_params.stride, 1, 1, conv_1_params.padding, conv_1_params.kernel_size, conv_1_params.kernel_size,
             false, false, false, false, false,
 
             (elem_t*)images, (elem_t*)conv_1_w, (acc_t*)conv_1_b, (elem_t*)conv_1_out,

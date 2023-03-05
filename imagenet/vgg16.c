@@ -80,7 +80,7 @@ int main (int argc, char * argv[]) {
         conv_1_params.in_channels, conv_1_params.out_channels, 
         conv_1_params.out_dim, conv_1_params.out_dim,
         conv_1_params.stride, 1, 1, conv_1_params.padding, 
-        conv_1_params.kernel_size,
+        conv_1_params.kernel_size, conv_1_params.kernel_size,
         false, false, false, false, false,
 
         (elem_t*)conv_1_in, (elem_t*)conv_1_w, (acc_t*)conv_1_b, (elem_t*)conv_1_out,
@@ -99,7 +99,7 @@ int main (int argc, char * argv[]) {
         conv_2_params.in_channels, conv_2_params.out_channels, 
         conv_2_params.out_dim, conv_2_params.out_dim,
         conv_2_params.stride, 1, 1, conv_2_params.padding, 
-        conv_2_params.kernel_size,
+        conv_2_params.kernel_size, conv_2_params.kernel_size,
         false, false, false, false, false,
 
         (elem_t*)conv_1_out, (elem_t*)conv_2_w, (acc_t*)conv_2_b, (elem_t*)conv_1_out,
@@ -117,7 +117,7 @@ int main (int argc, char * argv[]) {
         conv_3_params.in_channels, conv_3_params.out_channels, 
         conv_3_params.out_dim, conv_3_params.out_dim,
         conv_3_params.stride, 1, 1, conv_3_params.padding, 
-        conv_3_params.kernel_size,
+        conv_3_params.kernel_size, conv_3_params.kernel_size,
         false, false, false, false, false,
 
         (elem_t*)conv_2_out, (elem_t*)conv_3_w, (acc_t*)conv_3_b, (elem_t*)conv_3_out,
@@ -135,7 +135,7 @@ int main (int argc, char * argv[]) {
         conv_4_params.in_channels, conv_4_params.out_channels, 
         conv_4_params.out_dim, conv_4_params.out_dim,
         conv_4_params.stride, 1, 1, conv_4_params.padding, 
-        conv_4_params.kernel_size,
+        conv_4_params.kernel_size, conv_4_params.kernel_size,
         false, false, false, false, false,
 
         (elem_t*)conv_3_out, (elem_t*)conv_4_w, (acc_t*)conv_4_b, (elem_t*)conv_4_out,
@@ -153,7 +153,7 @@ int main (int argc, char * argv[]) {
         conv_5_params.in_channels, conv_5_params.out_channels, 
         conv_5_params.out_dim, conv_5_params.out_dim,
         conv_5_params.stride, 1, 1, conv_5_params.padding, 
-        conv_5_params.kernel_size,
+        conv_5_params.kernel_size, conv_5_params.kernel_size,
         false, false, false, false, false,
 
         (elem_t*)conv_4_out, (elem_t*)conv_5_w, (acc_t*)conv_5_b, (elem_t*)conv_5_out,
@@ -171,7 +171,7 @@ int main (int argc, char * argv[]) {
         conv_6_params.in_channels, conv_6_params.out_channels, 
         conv_6_params.out_dim, conv_6_params.out_dim,
         conv_6_params.stride, 1, 1, conv_6_params.padding, 
-        conv_6_params.kernel_size,
+        conv_6_params.kernel_size, conv_6_params.kernel_size,
         false, false, false, false, false,
 
         (elem_t*)conv_5_out, (elem_t*)conv_6_w, (acc_t*)conv_6_b, (elem_t*)conv_6_out,
@@ -190,7 +190,7 @@ int main (int argc, char * argv[]) {
         conv_7_params.in_channels, conv_7_params.out_channels, 
         conv_7_params.out_dim, conv_7_params.out_dim,
         conv_7_params.stride, 1, 1, conv_7_params.padding, 
-        conv_7_params.kernel_size,
+        conv_7_params.kernel_size, conv_7_params.kernel_size,
         false, false, false, false, false,
 
         (elem_t*)conv_6_out, (elem_t*)conv_7_w, (acc_t*)conv_7_b, (elem_t*)conv_7_out,
@@ -208,7 +208,7 @@ int main (int argc, char * argv[]) {
         conv_8_params.in_channels, conv_8_params.out_channels, 
         conv_8_params.out_dim, conv_8_params.out_dim,
         conv_8_params.stride, 1, 1, conv_8_params.padding, 
-        conv_8_params.kernel_size,
+        conv_8_params.kernel_size, conv_8_params.kernel_size,
         false, false, false, false, false,
 
         (elem_t*)conv_7_out, (elem_t*)conv_8_w, (acc_t*)conv_8_b, (elem_t*)conv_8_out,
@@ -226,7 +226,7 @@ int main (int argc, char * argv[]) {
         conv_9_params.in_channels, conv_9_params.out_channels, 
         conv_9_params.out_dim, conv_9_params.out_dim,
         conv_9_params.stride, 1, 1, conv_9_params.padding, 
-        conv_9_params.kernel_size,
+        conv_9_params.kernel_size, conv_9_params.kernel_size,
         false, false, false, false, false,
 
         (elem_t*)conv_8_out, (elem_t*)conv_9_w, (acc_t*)conv_9_b, (elem_t*)conv_9_out,
@@ -244,7 +244,7 @@ int main (int argc, char * argv[]) {
         conv_10_params.in_channels, conv_10_params.out_channels, 
         conv_10_params.out_dim, conv_10_params.out_dim,
         conv_10_params.stride, 1, 1, conv_10_params.padding, 
-        conv_10_params.kernel_size,
+        conv_10_params.kernel_size, conv_10_params.kernel_size,
         false, false, false, false, false,
 
         (elem_t*)conv_9_out, (elem_t*)conv_10_w, (acc_t*)conv_10_b, (elem_t*)conv_10_out,
@@ -262,7 +262,7 @@ int main (int argc, char * argv[]) {
         conv_11_params.in_channels, conv_11_params.out_channels, 
         conv_11_params.out_dim, conv_11_params.out_dim,
         conv_11_params.stride, 1, 1, conv_11_params.padding, 
-        conv_11_params.kernel_size,
+        conv_11_params.kernel_size, conv_11_params.kernel_size,
         false, false, false, false, false,
 
         (elem_t*)conv_10_out, (elem_t*)conv_11_w, (acc_t*)conv_11_b, (elem_t*)conv_11_out,
@@ -280,7 +280,7 @@ int main (int argc, char * argv[]) {
         conv_12_params.in_channels, conv_12_params.out_channels, 
         conv_12_params.out_dim, conv_12_params.out_dim,
         conv_12_params.stride, 1, 1, conv_12_params.padding, 
-        conv_12_params.kernel_size,
+        conv_12_params.kernel_size, conv_12_params.kernel_size,
         false, false, false, false, false,
 
         (elem_t*)conv_11_out, (elem_t*)conv_12_w, (acc_t*)conv_12_b, (elem_t*)conv_12_out,
@@ -298,7 +298,7 @@ int main (int argc, char * argv[]) {
         conv_13_params.in_channels, conv_13_params.out_channels, 
         conv_13_params.out_dim, conv_13_params.out_dim,
         conv_13_params.stride, 1, 1, conv_13_params.padding, 
-        conv_13_params.kernel_size,
+        conv_13_params.kernel_size, conv_13_params.kernel_size,
         false, false, false, false, false,
 
         (elem_t*)conv_12_out, (elem_t*)conv_13_w, (acc_t*)conv_13_b, (elem_t*)conv_13_out,
