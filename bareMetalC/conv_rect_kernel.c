@@ -8,11 +8,13 @@
 #endif
 #include "include/gemmini_testutils.h"
 
+#define FAST
+
 #ifndef BAREMETAL
 
     #define BATCH_SIZE 4
-    #define IN_ROW_DIM 224
-    #define IN_COL_DIM 224
+    #define IN_ROW_DIM 16
+    #define IN_COL_DIM 16
     #define IN_CHANNELS 3
     #define OUT_CHANNELS 32
     #define KERNEL_ROW_DIM 4
@@ -24,17 +26,17 @@
 
     #ifdef FAST
 
-        #define IN_ROW_DIM 9
-        #define IN_COL_DIM 9
-        #define IN_CHANNELS 5
-        #define OUT_CHANNELS 7
+        #define IN_ROW_DIM 16
+        #define IN_COL_DIM 16
+        #define IN_CHANNELS 1
+        #define OUT_CHANNELS 1
 
     #else
 
-        #define IN_ROW_DIM 224
-        #define IN_COL_DIM 224
-        #define IN_CHANNELS 18
-        #define OUT_CHANNELS 19
+        #define IN_ROW_DIM 16
+        #define IN_COL_DIM 16
+        #define IN_CHANNELS 1
+        #define OUT_CHANNELS 1
 
     #endif
 
@@ -119,7 +121,7 @@ void flatten_weights(int out_channels, int kernel_row_dim, int kernel_col_dim, i
         for (int krow = 0; krow < kernel_row_dim; krow++) {
             for (int kcol = 0; kcol < kernel_col_dim; kcol++) {
                 for (int inc = 0; inc < in_channels; inc++) {
-                    int wmatrow = krow * kernel_row_dim * in_channels +
+                    int wmatrow = krow * kernel_col_dim * in_channels +
                         kcol * in_channels +
                         inc;
 

@@ -155,7 +155,7 @@ void flatten_weights(int out_channels, int kernel_row_dim, int kernel_col_dim, i
         for (int krow = 0; krow < kernel_row_dim; krow++) {
             for (int kcol = 0; kcol < kernel_col_dim; kcol++) {
                 for (int inc = 0; inc < in_channels; inc++) {
-                    int wmatrow = krow * kernel_row_dim * in_channels +
+                    int wmatrow = krow * kernel_col_dim * in_channels +
                         kcol * in_channels +
                         inc;
 
