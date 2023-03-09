@@ -15,6 +15,7 @@
 #include "include/gemmini_params.h"
 
 #define GEMMINI_ASSERTIONS
+#define PRINT_TILE
 
 // Accelerator interface
 #include "rocc-software/src/xcustom.h"
@@ -1297,7 +1298,6 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
     }
 
 #ifdef PRINT_TILE
-#if PRINT_TILE
     const int spad_rows = tiled_matmul_total_spad_rows(tile_I, tile_J, tile_K);
     const int acc_rows = tiled_matmul_total_acc_rows(tile_I, tile_J);
 
@@ -1312,7 +1312,6 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
     printf("acc_row utilization: %d%%\n\n", (acc_rows * 100) / max_acc_rows);
 
     exit(EXIT_SUCCESS);
-#endif
 #endif
 
     tiled_matmul(dim_I, dim_J, dim_K,
@@ -1397,6 +1396,7 @@ static void sp_tiled_conv(
       input_dilated || kernel_dilation > 1 ||
       ichs > DIM ? 1 : DIM/ichs;
   if (max_pixels_per_row > kcols) max_pixels_per_row = kcols;
+  if (kernel_col_dim != kernel_row_dim) max_pixels_per_row = 1; //TODO currently not supported
 #else
   const int max_pixels_per_row = 1;
 #endif
@@ -1580,13 +1580,13 @@ static void sp_tiled_conv(
               B_sp_addr = B_sp_addr_start + (kch / DIM) * krows * kcols * ochs + krow * kcols * ochs + kcol * ochs + och;
             }
 
-            const elem_t * w = weights + (krow*kernel_row_dim*in_channels + kcol*in_channels + kch) * out_channels + och; //TODO Check
+            const elem_t * w = weights + (krow*kernel_col_dim*in_channels + kcol*in_channels + kch) * out_channels + och; //TODO Check
             if (dw) {
-              w = weights + krow * kernel_row_dim + kcol; //TODO Check
+              w = weights + krow * kernel_col_dim + kcol; //TODO Check
             } else if (trans_weight_1203) {
-              w = weights + (kch * kernel_row_dim * kernel_col_dim + krow * kernel_row_dim + kcol) * out_channels + och; //TODO Check
+              w = weights + (kch * kernel_row_dim * kernel_col_dim + krow * kernel_col_dim + kcol) * out_channels + och; //TODO Check
             } else if (trans_weight_0132) {
-              w = weights + (krow * kernel_row_dim * out_channels + kcol * out_channels + och) * in_channels + kch; //TODO Check
+              w = weights + (krow * kernel_col_dim * out_channels + kcol * out_channels + och) * in_channels + kch; //TODO Check
             }
 
             gemmini_extended_mvin2(w, B_sp_addr, J, K);
@@ -2737,7 +2737,6 @@ static void tiled_conv_auto(
     */
 
 #ifdef PRINT_TILE
-#if PRINT_TILE
     printf("batches = %d\n", batches);
     printf("orows   = %d\n", orows);
     printf("ocols   = %d\n", ocols);
@@ -2753,7 +2752,6 @@ static void tiled_conv_auto(
     printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
 
     printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
-#endif
 #endif
 
     tiled_conv(
