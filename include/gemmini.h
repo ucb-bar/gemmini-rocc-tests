@@ -15,7 +15,7 @@
 #include "include/gemmini_params.h"
 
 #define GEMMINI_ASSERTIONS
-#define PRINT_TILE
+//#define PRINT_TILE
 
 // Accelerator interface
 #include "rocc-software/src/xcustom.h"
@@ -1580,13 +1580,13 @@ static void sp_tiled_conv(
               B_sp_addr = B_sp_addr_start + (kch / DIM) * krows * kcols * ochs + krow * kcols * ochs + kcol * ochs + och;
             }
 
-            const elem_t * w = weights + (krow*kernel_col_dim*in_channels + kcol*in_channels + kch) * out_channels + och; //TODO Check
+            const elem_t * w = weights + (krow*kernel_col_dim*in_channels + kcol*in_channels + kch) * out_channels + och;
             if (dw) {
               w = weights + krow * kernel_col_dim + kcol; //TODO Check
             } else if (trans_weight_1203) {
-              w = weights + (kch * kernel_row_dim * kernel_col_dim + krow * kernel_col_dim + kcol) * out_channels + och; //TODO Check
+              w = weights + (kch * kernel_row_dim * kernel_col_dim + krow * kernel_row_dim + kcol) * out_channels + och;
             } else if (trans_weight_0132) {
-              w = weights + (krow * kernel_col_dim * out_channels + kcol * out_channels + och) * in_channels + kch; //TODO Check
+              w = weights + (krow * kernel_row_dim * out_channels + kcol * out_channels + och) * in_channels + kch;
             }
 
             gemmini_extended_mvin2(w, B_sp_addr, J, K);
