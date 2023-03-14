@@ -17,6 +17,8 @@ struct ConvParams {
     int out_row_dim;
     int out_col_dim;
     int kernel_size;
+    int kernel_row_dim;
+    int kernel_col_dim;
     int in_channels;
     int out_channels;
     int stride;
