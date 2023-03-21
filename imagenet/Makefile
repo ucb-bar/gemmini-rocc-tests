@@ -50,7 +50,7 @@ CFLAGS_BAREMETAL := \
 	-T $(BENCH_COMMON)/test.ld \
 	-DBAREMETAL=1 \
 
-all: $(tests_baremetal) $(tests_linux) $(tests_pk)
+all: $(tests_baremetal)
 
 vpath %.c $(src_dir)
 
@@ -70,4 +70,3 @@ run-baremetal: $(runs_baremetal)
 	$(RUNNER)$^
 
 junk += $(tests_baremetal) $(tests_linux) $(tests_pk)
-
