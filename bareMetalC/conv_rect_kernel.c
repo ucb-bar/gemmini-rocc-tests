@@ -32,8 +32,8 @@
 
     #else
 
-        #define IN_ROW_DIM 16
-        #define IN_COL_DIM 16
+        #define IN_ROW_DIM 17
+        #define IN_COL_DIM 17
         #define IN_CHANNELS 1
         #define OUT_CHANNELS 1
 
