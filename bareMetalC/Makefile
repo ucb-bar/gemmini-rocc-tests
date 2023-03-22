@@ -19,6 +19,10 @@ tests = \
 	mvin_scale \
 	conv \
 	conv_rect \
+	conv_rect_kernel \
+	conv_rect_kernel_trans_weight_0132 \
+	conv_rect_kernel_trans_weight_1203 \
+	conv_rect_kernel_and_input \
 	conv_with_pool \
 	conv_with_rot180 \
 	conv_with_kernel_dilation \

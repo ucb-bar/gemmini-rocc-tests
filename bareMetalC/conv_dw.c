@@ -8,13 +8,23 @@
 #endif
 #include "include/gemmini_testutils.h"
 
+#define RECT_KERNEL
+
 #ifndef BAREMETAL
 
 #define BATCH_SIZE 3
 #define IN_ROW_DIM 112
 #define IN_COL_DIM 112
 #define CHANNELS 17
-#define KERNEL_DIM 3
+
+#ifdef RECT_KERNEL
+#define KERNEL_ROW_DIM 4
+#define KERNEL_COL_DIM 2
+#else
+#define KERNEL_ROW_DIM 3
+#define KERNEL_COL_DIM 3
+#endif
+
 #define PADDING 1
 #define STRIDE 2
 
@@ -30,21 +40,31 @@
 
 #define IN_ROW_DIM 17
 #define IN_COL_DIM 17
-#define CHANNELS 15
+#define CHANNELS 2
 
 #endif
 
 #define BATCH_SIZE 3
-#define KERNEL_DIM 3
+
+#ifdef RECT_KERNEL
+#define KERNEL_ROW_DIM 4
+#define KERNEL_COL_DIM 2
+#else
+#define KERNEL_ROW_DIM 3
+#define KERNEL_COL_DIM 3
+#endif
+
 #define PADDING 1
 #define STRIDE 2
 
 #endif
 
+
+
 #define NO_BIAS false
 
-#define OUT_ROW_DIM ((IN_ROW_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
-#define OUT_COL_DIM ((IN_COL_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
+#define OUT_ROW_DIM ((IN_ROW_DIM + 2*PADDING - KERNEL_ROW_DIM) / STRIDE + 1)
+#define OUT_COL_DIM ((IN_COL_DIM + 2*PADDING - KERNEL_COL_DIM) / STRIDE + 1)
 
 bool vec_is_equal(elem_t * a, elem_t * b, int len) {
     for (int i = 0; i < len; i++)
@@ -57,11 +77,11 @@ void init_random(elem_t * buf, int len) {
     elem_t i = 0;
     for (elem_t * ptr = buf; ptr < buf + len; ptr++) {
         // *ptr = (rand() % 32) - 16;
-#ifdef FAST
+//#ifdef FAST
       *ptr = 1;
-#else
-      *ptr = (rand() % 5) - 2;
-#endif
+//#else
+//      *ptr = (rand() % 5) - 2;
+//#endif
     }
 }
 
@@ -99,7 +119,7 @@ int main() {
     printf("Output dimensions: %u by %u\n\n", OUT_ROW_DIM, OUT_COL_DIM);
 
     static elem_t input[BATCH_SIZE][IN_ROW_DIM][IN_COL_DIM][CHANNELS];
-    static elem_t weights[CHANNELS][KERNEL_DIM][KERNEL_DIM];
+    static elem_t weights[CHANNELS][KERNEL_ROW_DIM][KERNEL_COL_DIM];
     static acc_t bias[CHANNELS];
     static elem_t output[BATCH_SIZE][OUT_ROW_DIM][OUT_COL_DIM][CHANNELS];
 
@@ -120,7 +140,7 @@ int main() {
 #ifndef FAST
     tiled_conv_dw_auto(BATCH_SIZE, IN_ROW_DIM, IN_COL_DIM,
             CHANNELS, OUT_ROW_DIM, OUT_COL_DIM,
-            STRIDE, PADDING, KERNEL_DIM,
+            STRIDE, PADDING, KERNEL_ROW_DIM, KERNEL_COL_DIM,
 
             (elem_t*)input,
             (elem_t*)weights,
@@ -140,7 +160,7 @@ int main() {
     uint64_t start_gemmini = read_cycles();
     tiled_conv_dw_auto(BATCH_SIZE, IN_ROW_DIM, IN_COL_DIM,
             CHANNELS, OUT_ROW_DIM, OUT_COL_DIM,
-            STRIDE, PADDING, KERNEL_DIM,
+            STRIDE, PADDING, KERNEL_ROW_DIM, KERNEL_COL_DIM,
 
             (elem_t*)input,
             (elem_t*)weights,
@@ -180,9 +200,9 @@ int main() {
         printf("weights:\n");
         for (int och = 0; och < CHANNELS; och++) {
             printf("[");
-            for (int wrow = 0; wrow < KERNEL_DIM; wrow++) {
+            for (int wrow = 0; wrow < KERNEL_ROW_DIM; wrow++) {
                 printf("[");
-                for (int wcol = 0; wcol < KERNEL_DIM; wcol++) {
+                for (int wcol = 0; wcol < KERNEL_COL_DIM; wcol++) {
                     printf("%d,", weights[och][wrow][wcol]);
                 }
                 printf("\b],\n");

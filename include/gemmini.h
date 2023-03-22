@@ -15,6 +15,7 @@
 #include "include/gemmini_params.h"
 
 #define GEMMINI_ASSERTIONS
+//#define PRINT_TILE
 
 // Accelerator interface
 #include "rocc-software/src/xcustom.h"
@@ -54,6 +55,7 @@
 #define CONFIG_LD 1
 #define CONFIG_ST 2
 #define CONFIG_BERT 3
+#define CONFIG_ACT 4
 
 #define GARBAGE_ADDR ((uint32_t)(-1))
 #define OUTPUT_STATIONARY 0
@@ -283,6 +285,9 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 
 #define gemmini_config_norm(q_const, q_const_type, set_stats_id_only, act_msb, stat_id, igelu_qb, igelu_qc) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (((uint64_t) ((uint32_t) q_const)) << 32) | ((q_const_type & 1) << 18) | ((set_stats_id_only & 1) << 17) | ((act_msb & 1) << 16) | ((uint64_t)stat_id << 8) | CONFIG_BERT, ((uint64_t)((uint32_t)(igelu_qc)) << 32) | ((uint64_t)((uint32_t)(igelu_qb))), k_CONFIG)
+
+#define gemmini_config_activation(offset, shift, activation) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)offset << 48) | ((uint64_t)shift << 32) | ((uint64_t) activation << 2) | ((uint64_t) CONFIG_ACT), 0, k_CONFIG)
 
 // flush
 #define gemmini_flush(skip) \
@@ -1328,7 +1333,7 @@ static void sp_tiled_conv(
         int out_channels, int out_row_dim, int out_col_dim,
         int pool_out_row_dim, int pool_out_col_dim,
 
-        int stride, int padding, int kernel_dim, int kernel_dilation,
+        int stride, int padding, int kernel_row_dim, int kernel_col_dim, int kernel_dilation,
 
         int pool_size, int pool_stride, int pool_padding,
 
@@ -1386,6 +1391,7 @@ static void sp_tiled_conv(
       input_dilated || kernel_dilation > 1 ||
       ichs > DIM ? 1 : DIM/ichs;
   if (max_pixels_per_row > kcols) max_pixels_per_row = kcols;
+  if (kernel_col_dim != kernel_row_dim) max_pixels_per_row = 1; //TODO currently not supported
 #else
   const int max_pixels_per_row = 1;
 #endif
@@ -1413,8 +1419,8 @@ static void sp_tiled_conv(
     C_sp_addr_row = (C_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
   }
 
-  if (in_row_dim == in_col_dim && out_row_dim == out_col_dim && pool_out_row_dim == pool_out_col_dim) {
-    gemmini_loop_conv_ws(batch_size, in_row_dim, in_channels, out_channels, out_row_dim, pool_out_row_dim, stride, padding, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, act, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120, max_pixels_per_row, dw);
+  if (in_row_dim == in_col_dim && out_row_dim == out_col_dim && pool_out_row_dim == pool_out_col_dim && kernel_row_dim == kernel_col_dim) {
+    gemmini_loop_conv_ws(batch_size, in_row_dim, in_channels, out_channels, out_row_dim, pool_out_row_dim, stride, padding, kernel_row_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, act, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120, max_pixels_per_row, dw);
     return;
   }
 
@@ -1540,7 +1546,7 @@ static void sp_tiled_conv(
     if (dw) {
       dram_stride = sizeof(elem_t);
     } else if (trans_weight_1203) {
-      dram_stride = kernel_dim * kernel_dim * out_channels * sizeof(elem_t);
+      dram_stride = kernel_row_dim * kernel_col_dim * out_channels * sizeof(elem_t);
     } else if (trans_weight_0132) {
       dram_stride = in_channels * sizeof(elem_t);
     }
@@ -1569,13 +1575,13 @@ static void sp_tiled_conv(
               B_sp_addr = B_sp_addr_start + (kch / DIM) * krows * kcols * ochs + krow * kcols * ochs + kcol * ochs + och;
             }
 
-            const elem_t * w = weights + (krow*kernel_dim*in_channels + kcol*in_channels + kch) * out_channels + och;
+            const elem_t * w = weights + (krow*kernel_col_dim*in_channels + kcol*in_channels + kch) * out_channels + och;
             if (dw) {
-              w = weights + krow * kernel_dim + kcol;
+              w = weights + krow * kernel_col_dim + kcol;
             } else if (trans_weight_1203) {
-              w = weights + (kch * kernel_dim * kernel_dim + krow * kernel_dim + kcol) * out_channels + och;
+              w = weights + (kch * kernel_row_dim * kernel_col_dim + krow * kernel_col_dim + kcol) * out_channels + och;
             } else if (trans_weight_0132) {
-              w = weights + (krow * kernel_dim * out_channels + kcol * out_channels + och) * in_channels + kch;
+              w = weights + (krow * kernel_col_dim * out_channels + kcol * out_channels + och) * in_channels + kch;
             }
 
             gemmini_extended_mvin2(w, B_sp_addr, J, K);
@@ -1810,7 +1816,7 @@ static int tiled_conv_total_spad_rows(bool acc,
 static void conv_cpu_without_pool(
         int batch_size, int in_row_dim, int in_col_dim, int in_channels,
         int out_channels, int out_row_dim, int out_col_dim,
-        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
+        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_row_dim, int kernel_col_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
         bool trans_weight_1203, bool trans_weight_0132,
 
@@ -1830,13 +1836,13 @@ static void conv_cpu_without_pool(
 
           acc_t opixel = no_bias ? 0 : bias[och];
 
-          for (int krow = 0; krow < kernel_dim; krow++) {
+          for (int krow = 0; krow < kernel_row_dim; krow++) {
             if ((orow * stride + krow * kernel_dilation - padding) % input_dilation != 0)
               continue;
 
             const int irow = (orow * stride + krow * kernel_dilation - padding) / input_dilation;
 
-            for (int kcol = 0; kcol < kernel_dim; kcol++) {
+            for (int kcol = 0; kcol < kernel_col_dim; kcol++) {
               if ((ocol * stride + kcol * kernel_dilation - padding) % input_dilation != 0)
                 continue;
 
@@ -1852,16 +1858,16 @@ static void conv_cpu_without_pool(
                 elem_t ipixel = irow < 0 || irow >= in_row_dim || icol < 0 || icol >= in_col_dim ?
                     0 : *in;
 
-                const int krow_ = wrot180 ? kernel_dim - krow - 1 : krow;
-                const int kcol_ = wrot180 ? kernel_dim - kcol - 1 : kcol;
+                const int krow_ = wrot180 ? kernel_row_dim - krow - 1 : krow;
+                const int kcol_ = wrot180 ? kernel_col_dim - kcol - 1 : kcol;
 
-                elem_t weight = *(weights + (krow_ * kernel_dim * in_channels + kcol_ * in_channels + kch) * out_channels + och);
+                elem_t weight = *(weights + (krow_ * kernel_col_dim * in_channels + kcol_ * in_channels + kch) * out_channels + och); //TODO Check
                 if (trans_weight_1203) {
                   // HWIO to WIHO
-                  weight = *(weights + (kch * kernel_dim * kernel_dim  + krow_ * kernel_dim + kcol_) * out_channels + och);
+                  weight = *(weights + (kch * kernel_row_dim * kernel_col_dim  + krow_ * kernel_col_dim + kcol_) * out_channels + och); //TODO Check
                 } else if (trans_weight_0132) {
                   // HWIO to HWOI
-                  weight = *(weights + (krow_ * kernel_dim * out_channels + kcol_ * out_channels + och) * in_channels + kch);
+                  weight = *(weights + (krow_ * kernel_col_dim * out_channels + kcol_ * out_channels + och) * in_channels + kch);
                 }
 
                 opixel += weight * ipixel;
@@ -1886,7 +1892,7 @@ static void conv_cpu_without_pool(
 static void conv_dw_cpu_without_pool(
         int batch_size, int in_row_dim, int in_col_dim,
         int channels, int out_row_dim, int out_col_dim,
-        int stride, int padding, int kernel_dim,
+        int stride, int padding, int kernel_row_dim, int kernel_col_dim,
 
         const elem_t * input,
         const elem_t * weights,
@@ -1903,10 +1909,10 @@ static void conv_dw_cpu_without_pool(
         for (int ch = 0; ch < channels; ch++) {
           acc_t opixel = no_bias ? 0 : bias[ch];
 
-          for (int krow = 0; krow < kernel_dim; krow++) {
+          for (int krow = 0; krow < kernel_row_dim; krow++) {
             const int irow = orow * stride + krow - padding;
 
-            for (int kcol = 0; kcol < kernel_dim; kcol++) {
+            for (int kcol = 0; kcol < kernel_col_dim; kcol++) {
               const int icol = ocol * stride + kcol - padding;
 
               const elem_t * in = input + (b * in_row_dim * in_col_dim + irow * in_col_dim + icol) * channels + ch;
@@ -1914,7 +1920,7 @@ static void conv_dw_cpu_without_pool(
               const elem_t ipixel = irow < 0 || irow >= in_row_dim || icol < 0 || icol >= in_col_dim ?
                   0 : *in;
 
-              const elem_t weight = *(weights + (ch * kernel_dim + krow) * kernel_dim  + kcol);
+              const elem_t weight = *(weights + (ch * kernel_col_dim + krow) * kernel_row_dim  + kcol);
 
               opixel += weight * ipixel;
             }
@@ -1933,7 +1939,7 @@ static void conv_dw_cpu_without_pool(
 static void conv_cpu(
         int batch_size, int in_row_dim, int in_col_dim, int in_channels,
         int out_channels, int out_row_dim, int out_col_dim,
-        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
+        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_row_dim, int kernel_col_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
         bool trans_weight_1203, bool trans_weight_0132,
 
@@ -1950,7 +1956,7 @@ static void conv_cpu(
     conv_cpu_without_pool(
         batch_size, in_row_dim, in_col_dim, in_channels,
         out_channels, out_row_dim, out_col_dim,
-        stride, input_dilation, kernel_dilation, padding, kernel_dim,
+        stride, input_dilation, kernel_dilation, padding, kernel_row_dim, kernel_col_dim,
         wrot180, trans_output_1203, trans_input_3120,
         trans_weight_1203, trans_weight_0132,
         input, weights, bias, output,
@@ -1985,13 +1991,13 @@ static void conv_cpu(
 
                 acc_t opixel = no_bias ? 0 : bias[poch];
 
-                for (int krow = 0; krow < kernel_dim; krow++) {
+                for (int krow = 0; krow < kernel_row_dim; krow++) {
                   if ((orow * stride + krow * kernel_dilation - padding) % input_dilation != 0)
                     continue;
 
                   const int irow = (orow * stride + krow * kernel_dilation - padding) / input_dilation;
 
-                  for (int kcol = 0; kcol < kernel_dim; kcol++) {
+                  for (int kcol = 0; kcol < kernel_col_dim; kcol++) {
                     if ((ocol * stride + kcol * kernel_dilation - padding) % input_dilation != 0)
                       continue;
 
@@ -2007,16 +2013,16 @@ static void conv_cpu(
                       elem_t ipixel = irow < 0 || irow >= in_row_dim || icol < 0 || icol >= in_col_dim ?
                           0 : *in;
 
-                      const int krow_ = wrot180 ? kernel_dim - krow - 1 : krow;
-                      const int kcol_ = wrot180 ? kernel_dim - kcol - 1 : kcol;
+                      const int krow_ = wrot180 ? kernel_row_dim - krow - 1 : krow;
+                      const int kcol_ = wrot180 ? kernel_col_dim - kcol - 1 : kcol;
 
-                      elem_t weight = *(weights + (krow_ * kernel_dim * in_channels + kcol_ * in_channels + kch) * out_channels + poch);
+                      elem_t weight = *(weights + (krow_ * kernel_col_dim * in_channels + kcol_ * in_channels + kch) * out_channels + poch);
                       if (trans_weight_1203) {
                         // HWIO to WIHO
-                        weight = *(weights + (kch * kernel_dim * kernel_dim  + krow_ * kernel_dim + kcol_) * out_channels + poch);
+                        weight = *(weights + (kch * kernel_row_dim * kernel_col_dim  + krow_ * kernel_col_dim + kcol_) * out_channels + poch);
                       } else if (trans_weight_0132) {
                         // HWIO to HWOI
-                        weight = *(weights + (krow_ * kernel_dim * out_channels + kcol_ * out_channels + poch) * in_channels + kch);
+                        weight = *(weights + (krow_ * kernel_col_dim * out_channels + kcol_ * out_channels + poch) * in_channels + kch);
                       }
 
                       opixel += weight * ipixel;
@@ -2052,7 +2058,7 @@ static void conv_cpu(
 static void conv_dw_cpu(
         int batch_size, int in_row_dim, int in_col_dim,
         int channels, int out_row_dim, int out_col_dim,
-        int stride, int padding, int kernel_dim,
+        int stride, int padding, int kernel_row_dim, int kernel_col_dim,
 
         const elem_t * input,
         const elem_t * weights,
@@ -2067,7 +2073,7 @@ static void conv_dw_cpu(
     conv_dw_cpu_without_pool(
         batch_size, in_row_dim, in_col_dim,
         channels, out_row_dim, out_col_dim,
-        stride, padding, kernel_dim,
+        stride, padding, kernel_row_dim, kernel_col_dim,
         input, weights, bias, output,
         act, scale);
     return;
@@ -2100,10 +2106,10 @@ static void conv_dw_cpu(
 
                 acc_t opixel = no_bias ? 0 : bias[ch];
 
-                for (int krow = 0; krow < kernel_dim; krow++) {
+                for (int krow = 0; krow < kernel_row_dim; krow++) {
                   const int irow = orow * stride + krow - padding;
 
-                  for (int kcol = 0; kcol < kernel_dim; kcol++) {
+                  for (int kcol = 0; kcol < kernel_col_dim; kcol++) {
                     const int icol = ocol * stride + kcol - padding;
 
                     const elem_t * in = input + (b * in_row_dim * in_col_dim + irow * in_col_dim + icol) * channels + ch;
@@ -2111,7 +2117,7 @@ static void conv_dw_cpu(
                     elem_t ipixel = irow < 0 || irow >= in_row_dim || icol < 0 || icol >= in_col_dim ?
                         0 : *in;
 
-                    const elem_t weight = *(weights + (ch * kernel_dim + krow) * kernel_dim  + kcol);
+                    const elem_t weight = *(weights + (ch * kernel_col_dim + krow) * kernel_row_dim  + kcol);
 
                     opixel += weight * ipixel;
                   }
@@ -2142,7 +2148,8 @@ static void tiled_conv(
         int batch_size,
         int in_row_dim, int in_col_dim, int in_channels,
         int out_channels, int out_row_dim, int out_col_dim,
-        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
+        int stride, int input_dilation, int kernel_dilation, int padding, 
+        int kernel_row_dim, int kernel_col_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
         bool trans_weight_1203, bool trans_weight_0132,
 
@@ -2177,7 +2184,7 @@ static void tiled_conv(
       conv_cpu(
         batch_size, in_row_dim, in_col_dim, in_channels,
         out_channels, out_row_dim, out_col_dim,
-        stride, input_dilation, kernel_dilation, padding, kernel_dim,
+        stride, input_dilation, kernel_dilation, padding, kernel_row_dim, kernel_col_dim,
         wrot180, trans_output_1203, trans_input_3120,
         trans_weight_1203, trans_weight_0132,
         input, weights, bias, output,
@@ -2204,7 +2211,7 @@ static void tiled_conv(
         pool_padding = 0;
     }
 
-    const bool downsample = stride == 2 && kernel_dim == 1 && in_row_dim % 2 == 0 && in_col_dim % 2 == 0
+    const bool downsample = stride == 2 && kernel_row_dim == 1 && kernel_col_dim == 1 && in_row_dim % 2 == 0 && in_col_dim % 2 == 0
       && padding == 0 && no_pool && input_dilation == 1 && !trans_input_3120;
 
     const int input_dilated = input_dilation == 2;
@@ -2230,7 +2237,7 @@ static void tiled_conv(
             printf("not enough accumulator space to store outputs\n");
             exit(1);
         }
-        if (kernel_dim <= padding) {
+        if (kernel_row_dim <= padding || kernel_col_dim <= padding) {
             printf("kernel_dim must be larger than padding\n");
             exit(1);
         }
@@ -2273,11 +2280,11 @@ static void tiled_conv(
                 const int ocol = pocol * pool_stride - pool_padding;
 
                 for (int poch = 0; poch < out_channels; poch += pochs) {
-                    for (int krow = 0; krow < kernel_dim; krow += krows) {
+                    for (int krow = 0; krow < kernel_row_dim; krow += krows) {
                         const int orow_floored = orow < 0 ? 0 : orow;
                         int irow = orow_floored * stride + krow * kernel_dilation - padding;
 
-                        for (int kcol = 0; kcol < kernel_dim; kcol += kcols) {
+                        for (int kcol = 0; kcol < kernel_col_dim; kcol += kcols) {
                             const int ocol_floored = ocol < 0 ? 0 : ocol;
                             int icol = ocol_floored * stride + kcol * kernel_dilation - padding;
 
@@ -2287,8 +2294,8 @@ static void tiled_conv(
                                     out = output + (porow * pool_out_col_dim * batch_size + pocol * batch_size + b) * out_channels + poch;
                                 }
 
-                                if (krow + krows < kernel_dim ||
-                                        kcol + kcols < kernel_dim ||
+                                if (krow + krows < kernel_row_dim ||
+                                        kcol + kcols < kernel_col_dim ||
                                         kch + kchs < in_channels) {
                                     out = NULL;
                                 }
@@ -2304,8 +2311,8 @@ static void tiled_conv(
                                 const int porows_ = pool_out_row_dim - porow > porows ? porows : pool_out_row_dim - porow;
                                 const int pocols_ = pool_out_col_dim - pocol > pocols ? pocols : pool_out_col_dim - pocol;
                                 const int pochs_ = out_channels - poch > pochs ? pochs : out_channels - poch;
-                                const int krows_ = kernel_dim - krow > krows ? krows : kernel_dim - krow;
-                                const int kcols_ = kernel_dim - kcol > kcols ? kcols : kernel_dim - kcol;
+                                const int krows_ = kernel_row_dim - krow > krows ? krows : kernel_row_dim - krow;
+                                const int kcols_ = kernel_col_dim - kcol > kcols ? kcols : kernel_col_dim - kcol;
                                 const int kchs_ = in_channels - kch > kchs ? kchs : in_channels - kch;
 
                                 const int ocols_ = pocols_ * pool_stride + pool_size - 1;
@@ -2337,15 +2344,17 @@ static void tiled_conv(
                                 int krow_ = krow;
                                 int kcol_ = kcol;
                                 if (wrot180) {
-                                  krow_ = kernel_dim - krow - krows_;
-                                  kcol_ = kernel_dim - kcol - kcols_;
+                                  krow_ = kernel_row_dim - krow - krows_;
+                                  kcol_ = kernel_col_dim - kcol - kcols_;
                                 }
 
-                                const elem_t * weights_slice = weights + (krow_*kernel_dim*in_channels + kcol_*in_channels + kch) * out_channels + poch;
+                                const elem_t * weights_slice = weights + (krow_*kernel_col_dim*in_channels + kcol_*in_channels + kch) * out_channels + poch;
                                 if (trans_weight_1203) {
-                                  weights_slice = weights + (kch*kernel_dim*kernel_dim + krow_*kernel_dim+kcol_) * out_channels + poch;
+                                  // HWIO to WIHO
+                                  weights_slice = weights + (kch*kernel_row_dim*kernel_col_dim + krow_*kernel_col_dim+kcol_) * out_channels + poch; //TODO check
                                 } else if (trans_weight_0132) {
-                                  weights_slice = weights + (krow_*kernel_dim*out_channels + kcol_*out_channels + poch) * in_channels + kch;
+                                  // HWIO to HWOI
+                                  weights_slice = weights + (krow_*kernel_col_dim*out_channels + kcol_*out_channels + poch) * in_channels + kch; //TODO check
                                 }
 
                                 const elem_t * in = input + (b *in_row_dim * in_col_dim + ((irow+upad)>>input_dilated) * in_col_dim + ((icol+lpad)>>input_dilated)) * in_channels + kch;
@@ -2358,7 +2367,7 @@ static void tiled_conv(
                                     out_channels, out_row_dim, out_col_dim,
                                     pool_out_row_dim, pool_out_col_dim,
 
-                                    stride, padding, kernel_dim, kernel_dilation,
+                                    stride, padding, kernel_row_dim, kernel_col_dim, kernel_dilation,
 
                                     pool_size, pool_stride, pool_padding,
 
@@ -2395,7 +2404,7 @@ static void tiled_conv(
 static void tiled_conv_dw(
     int batch_size, int in_row_dim, int in_col_dim,
     int channels, int out_row_dim, int out_col_dim,
-    int stride, int padding, int kernel_dim,
+    int stride, int padding, int kernel_row_dim, int kernel_col_dim,
 
     int batches,
     int porows, int pocols,
@@ -2419,7 +2428,7 @@ static void tiled_conv_dw(
       conv_dw_cpu(
         batch_size, in_row_dim, in_col_dim,
         channels, out_row_dim, out_col_dim,
-        stride, padding, kernel_dim,
+        stride, padding, kernel_row_dim, kernel_col_dim,
         input, weights, bias, output,
         act, scale,
         pool_size, pool_stride, pool_padding);
@@ -2465,8 +2474,12 @@ static void tiled_conv_dw(
             printf("not enough accumulator space to store outputs\n");
             exit(1);
         }
-        if (kernel_dim <= padding) {
-            printf("kernel_dim must be larger than padding\n");
+        if (kernel_col_dim <= padding ) {
+            printf("kernel_col_dim must be larger than padding\n");
+            exit(1);
+        }
+        if (kernel_row_dim <= padding){
+          printf("kernel_row_dim must be larger than padding\n");
             exit(1);
         }
     }
@@ -2488,18 +2501,18 @@ static void tiled_conv_dw(
                 const int ocol = pocol * pool_stride - pool_padding;
 
                 for (int ch = 0; ch < channels; ch++) {
-                    for (int krow = 0; krow < kernel_dim; krow += krows) {
+                    for (int krow = 0; krow < kernel_row_dim; krow += krows) {
                         const int orow_floored = orow < 0 ? 0 : orow;
                         int irow = orow_floored * stride + krow - padding;
 
-                        for (int kcol = 0; kcol < kernel_dim; kcol += kcols) {
+                        for (int kcol = 0; kcol < kernel_col_dim; kcol += kcols) {
                             const int ocol_floored = ocol < 0 ? 0 : ocol;
                             int icol = ocol_floored * stride + kcol - padding;
 
                             elem_t * out = output + (b * pool_out_row_dim * pool_out_col_dim + porow * pool_out_col_dim + pocol) * channels + ch;
 
-                            if (krow + krows < kernel_dim ||
-                                    kcol + kcols < kernel_dim) {
+                            if (krow + krows < kernel_row_dim ||
+                                    kcol + kcols < kernel_col_dim) {
                                 out = NULL;
                             }
 
@@ -2512,8 +2525,8 @@ static void tiled_conv_dw(
                             const int batches_ = batch_size - b > batches ? batches : batch_size - b;
                             const int porows_ = pool_out_row_dim - porow > porows ? porows : pool_out_row_dim - porow;
                             const int pocols_ = pool_out_col_dim - pocol > pocols ? pocols : pool_out_col_dim - pocol;
-                            const int krows_ = kernel_dim - krow > krows ? krows : kernel_dim - krow;
-                            const int kcols_ = kernel_dim - kcol > kcols ? kcols : kernel_dim - kcol;
+                            const int krows_ = kernel_row_dim - krow > krows ? krows : kernel_row_dim - krow;
+                            const int kcols_ = kernel_col_dim - kcol > kcols ? kcols : kernel_col_dim - kcol;
 
                             const int ocols_ = pocols_ * pool_stride + pool_size - 1;
                             const int orows_ = porows_ * pool_stride + pool_size - 1;
@@ -2531,7 +2544,7 @@ static void tiled_conv_dw(
                             int upad = irow < 0 ? -irow : 0;
                             int dpad = irow + irows_ > in_row_dim ? irow + irows_ - in_row_dim : 0;
 
-                            const elem_t * weights_slice = weights + (ch*kernel_dim + krow) * kernel_dim + kcol;
+                            const elem_t * weights_slice = weights + (ch*kernel_col_dim + krow) * kernel_row_dim + kcol;
 
                             const elem_t *in = input + (b * in_row_dim * in_col_dim + (irow+upad) * in_col_dim + (icol+lpad)) * channels + ch;
 
@@ -2540,7 +2553,7 @@ static void tiled_conv_dw(
                                 channels, out_row_dim, out_col_dim,
                                 pool_out_row_dim, pool_out_col_dim,
 
-                                stride, padding, kernel_dim, 1,
+                                stride, padding, kernel_row_dim, kernel_col_dim, 1,
 
                                 pool_size, pool_stride, pool_padding,
 
@@ -2576,7 +2589,7 @@ static void tiled_conv_dw(
 static void tiled_conv_auto(
         int batch_size, int in_row_dim, int in_col_dim, int in_channels,
         int out_channels, int out_row_dim, int out_col_dim,
-        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
+        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_row_dim, int kernel_col_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
         bool trans_weight_1203, bool trans_weight_0132,
 
@@ -2600,13 +2613,13 @@ static void tiled_conv_auto(
     const int pool_out_row_dim = (out_row_dim + 2 * pool_padding - pool_size) / pool_stride + 1;
     const int pool_out_col_dim = (out_col_dim + 2 * pool_padding - pool_size) / pool_stride + 1;
 
-    const bool downsample = stride == 2 && kernel_dim == 1 && padding == 0 && no_pool && in_row_dim % 2 == 0 && in_col_dim % 2 == 0;
+    const bool downsample = stride == 2 && kernel_row_dim == 1 && kernel_col_dim == 1 && padding == 0 && no_pool && in_row_dim % 2 == 0 && in_col_dim % 2 == 0;
 
     // Tile convolution params
 
     // int args[] = {batch_size, porows, pocols, pochs, krows, kcols, kchs};
-    int args[] = {batch_size, pool_out_row_dim, pool_out_col_dim, out_channels, kernel_dim, kernel_dim, in_channels};
-    const int max_args[] = {batch_size, pool_out_row_dim, pool_out_col_dim, out_channels, kernel_dim, kernel_dim, in_channels};
+    int args[] = {batch_size, pool_out_row_dim, pool_out_col_dim, out_channels, kernel_row_dim, kernel_col_dim, in_channels}; //kernel_row_dim, kernel_col_dim
+    const int max_args[] = {batch_size, pool_out_row_dim, pool_out_col_dim, out_channels, kernel_row_dim, kernel_col_dim, in_channels}; //kernel_row_dim, kernel_col_dim
 
     const int orows_idx = 1;
     const int ocols_idx = 2;
@@ -2747,7 +2760,7 @@ static void tiled_conv_auto(
     tiled_conv(
         batch_size, in_row_dim, in_col_dim, in_channels,
         out_channels, out_row_dim, out_col_dim,
-        stride, input_dilation, kernel_dilation, padding, kernel_dim,
+        stride, input_dilation, kernel_dilation, padding, kernel_row_dim, kernel_col_dim,
         wrot180, trans_output_1203, trans_input_3120,
         trans_weight_1203, trans_weight_0132,
 
@@ -2823,7 +2836,7 @@ static void tiled_conv_downsample(
 static void tiled_conv_dw_auto(
     int batch_size, int in_row_dim, int in_col_dim,
     int channels, int out_row_dim, int out_col_dim,
-    int stride, int padding, int kernel_dim,
+    int stride, int padding, int kernel_row_dim, int kernel_col_dim,
 
     elem_t * input,
     elem_t * weights,
@@ -2848,8 +2861,8 @@ static void tiled_conv_dw_auto(
     // Tile convolution params
 
     // int args[] = {batch_size, porows, pocols, pochs, krows, kcols, kchs};
-    int args[] = {batch_size, pool_out_row_dim, pool_out_col_dim, 1, kernel_dim, kernel_dim, 1};
-    const int max_args[] = {batch_size, pool_out_row_dim, pool_out_col_dim, 1, kernel_dim, kernel_dim, 1};
+    int args[] = {batch_size, pool_out_row_dim, pool_out_col_dim, 1, kernel_row_dim, kernel_col_dim, 1};
+    const int max_args[] = {batch_size, pool_out_row_dim, pool_out_col_dim, 1, kernel_row_dim, kernel_col_dim, 1};
 
     const int orows_idx = 1;
     const int ocols_idx = 2;
@@ -2985,7 +2998,7 @@ static void tiled_conv_dw_auto(
     tiled_conv_dw(
         batch_size, in_row_dim, in_col_dim,
         channels, out_row_dim, out_col_dim,
-        stride, padding, kernel_dim,
+        stride, padding, kernel_row_dim, kernel_col_dim,
 
         batches,
         orows, ocols,
@@ -3287,6 +3300,75 @@ static void tiled_global_average_auto(const elem_t * input, elem_t * output,
 }
 
 #undef abs
+
+// Given input and output shape automatically calculate parameters to transform transposed conv
+// into the equivalent convolution
+// For doubling input size: stride=2, kernel_dim=2
+static void tiled_transposed_conv_auto(
+        int batch_size, int in_dim, int channels, int out_dim,
+        int stride, int padding, int kernel_dim,
+
+        const elem_t * input,
+        const elem_t * weights,
+        elem_t * output,
+
+        acc_scale_t scale
+        ) {
+
+        //TODO
+        // Fixed: batch_size, in_dim, channels, out_dim, kernel_dim
+        // Free: dilation, padding -> to calculate
+
+        // For every convolution there exists a corresponding transposed convolution with:
+        //    k_tick = k
+        //    s_tick = 1
+        //    p_tick = k - p - 1
+        //    input_dilation = s - 1 (for gemmini: s-1+1)
+        //    a = (i + 2p - k ) % s (currently must be zero)
+        //    o_tick = s(i_tick - 1) + a + k - 2p
+        //
+        // Special case where a = 0:
+        //    o_tick = s(i_tick - 1) + k - 2p
+        //
+        // Gemmini supports maximum of input_dilation = 2 (corresponds to one zero between input elements)
+
+        int input_dilation = stride;
+
+        #ifdef GEMMINI_ASSERTIONS
+          if(input_dilation > 2){
+            printf("stride can't be greater than two.\n");
+            exit(1);
+          }
+        #endif
+
+        int a = (in_dim + 2*padding - kernel_dim) % stride; //add a num of zeros to bottom and right of input
+        // TODO find a way to pad these zeros
+        if (a != 0){
+          printf("Configurations where in_dim+2p-k=%d is not a multiple of s=%d are not yet supported.\n", in_dim+2*padding-kernel_dim, stride);
+          exit(1);
+        }
+
+        int transposed_padding = kernel_dim - padding - 1;
+        if(transposed_padding < 0){
+          printf("Selected padding results in shrinking image: padding must be <= %d", kernel_dim-1);
+        }
+
+        tiled_conv_auto(
+            batch_size, in_dim, in_dim, channels,
+            channels, out_dim, out_dim,
+            1, input_dilation, 1, transposed_padding, kernel_dim, kernel_dim,
+            false, false, false, false, false,
+
+            (elem_t*)input,
+            (elem_t*)weights,
+            NULL,
+            (elem_t*)output,
+
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0,
+
+            WS);
+  
+}
 
 #endif // SRC_MAIN_C_GEMMINI_H
 
