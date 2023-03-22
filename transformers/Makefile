@@ -25,6 +25,7 @@ CFLAGS := $(CFLAGS) \
 	-ffast-math \
 	-fno-common \
 	-fno-builtin-printf \
+	-fno-tree-loop-distribute-patterns \
 	-march=rv64gc -Wa,-march=rv64gc \
 	-lm \
 	-lgcc \
