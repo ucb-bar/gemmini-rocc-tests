@@ -27,19 +27,19 @@
 
         #define IN_ROW_DIM 16
         #define IN_COL_DIM 16
-        #define IN_CHANNELS 1
-        #define OUT_CHANNELS 1
+        #define IN_CHANNELS 9
+        #define OUT_CHANNELS 10
 
     #else
 
         #define IN_ROW_DIM 17
         #define IN_COL_DIM 17
-        #define IN_CHANNELS 1
-        #define OUT_CHANNELS 1
+        #define IN_CHANNELS 18
+        #define OUT_CHANNELS 19
 
     #endif
 
-    #define BATCH_SIZE 2
+    #define BATCH_SIZE 1
     #define KERNEL_ROW_DIM 4
     #define KERNEL_COL_DIM 2
     #define PADDING 1
@@ -144,7 +144,7 @@ void init_random(elem_t * buf, int len) {
     for (elem_t * ptr = buf; ptr < buf + len; ptr++) {
         // *ptr = (rand() % 32) - 16;
 #ifdef FAST
-      *ptr = 1;
+    *ptr = 1;
 #else
       *ptr = (rand() % 5) - 2;
 #endif

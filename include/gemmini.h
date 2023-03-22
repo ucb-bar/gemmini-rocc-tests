@@ -66,8 +66,6 @@
 #define LAYERNORM 2
 #define IGELU 3
 #define SOFTMAX 4
-#define SIGMOID 5
-#define TANH 6
 
 #ifdef ELEM_T_IS_FLOAT
 elem_t elem_t_bits_to_elem_t(elem_t_bits x) {
@@ -761,11 +759,6 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
     gemmini_config_norm(qln2_inv, 1, 0, 1, 0, qb, qc);
   }
 
-  if (act == RELU || act == TANH){
-    // Set MSB of activation function
-    gemmini_config_norm(0, 0, 0, 1, 0, 0, 0);
-  }
-
   void (*inner)(const elem_t *, const elem_t *, const void *, void *,
         scale_t, scale_t, scale_acc_t,
         size_t, size_t, size_t, size_t, size_t, size_t,
@@ -1298,6 +1291,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
     }
 
 #ifdef PRINT_TILE
+#if PRINT_TILE
     const int spad_rows = tiled_matmul_total_spad_rows(tile_I, tile_J, tile_K);
     const int acc_rows = tiled_matmul_total_acc_rows(tile_I, tile_J);
 
@@ -1312,6 +1306,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
     printf("acc_row utilization: %d%%\n\n", (acc_rows * 100) / max_acc_rows);
 
     exit(EXIT_SUCCESS);
+#endif
 #endif
 
     tiled_matmul(dim_I, dim_J, dim_K,
@@ -1582,11 +1577,11 @@ static void sp_tiled_conv(
 
             const elem_t * w = weights + (krow*kernel_col_dim*in_channels + kcol*in_channels + kch) * out_channels + och;
             if (dw) {
-              w = weights + krow * kernel_col_dim + kcol; //TODO Check
+              w = weights + krow * kernel_col_dim + kcol;
             } else if (trans_weight_1203) {
-              w = weights + (kch * kernel_row_dim * kernel_col_dim + krow * kernel_row_dim + kcol) * out_channels + och;
+              w = weights + (kch * kernel_row_dim * kernel_col_dim + krow * kernel_col_dim + kcol) * out_channels + och;
             } else if (trans_weight_0132) {
-              w = weights + (krow * kernel_row_dim * out_channels + kcol * out_channels + och) * in_channels + kch;
+              w = weights + (krow * kernel_col_dim * out_channels + kcol * out_channels + och) * in_channels + kch;
             }
 
             gemmini_extended_mvin2(w, B_sp_addr, J, K);
@@ -1866,13 +1861,13 @@ static void conv_cpu_without_pool(
                 const int krow_ = wrot180 ? kernel_row_dim - krow - 1 : krow;
                 const int kcol_ = wrot180 ? kernel_col_dim - kcol - 1 : kcol;
 
-                elem_t weight = *(weights + (krow_ * kernel_row_dim * in_channels + kcol_ * in_channels + kch) * out_channels + och); //TODO Check
+                elem_t weight = *(weights + (krow_ * kernel_col_dim * in_channels + kcol_ * in_channels + kch) * out_channels + och); //TODO Check
                 if (trans_weight_1203) {
                   // HWIO to WIHO
-                  weight = *(weights + (kch * kernel_row_dim * kernel_col_dim  + krow_ * kernel_row_dim + kcol_) * out_channels + och); //TODO Check //TODO Check
+                  weight = *(weights + (kch * kernel_row_dim * kernel_col_dim  + krow_ * kernel_col_dim + kcol_) * out_channels + och); //TODO Check
                 } else if (trans_weight_0132) {
                   // HWIO to HWOI
-                  weight = *(weights + (krow_ * kernel_row_dim * out_channels + kcol_ * out_channels + och) * in_channels + kch);
+                  weight = *(weights + (krow_ * kernel_col_dim * out_channels + kcol_ * out_channels + och) * in_channels + kch);
                 }
 
                 opixel += weight * ipixel;
@@ -2021,13 +2016,13 @@ static void conv_cpu(
                       const int krow_ = wrot180 ? kernel_row_dim - krow - 1 : krow;
                       const int kcol_ = wrot180 ? kernel_col_dim - kcol - 1 : kcol;
 
-                      elem_t weight = *(weights + (krow_ * kernel_row_dim * in_channels + kcol_ * in_channels + kch) * out_channels + poch);
+                      elem_t weight = *(weights + (krow_ * kernel_col_dim * in_channels + kcol_ * in_channels + kch) * out_channels + poch);
                       if (trans_weight_1203) {
                         // HWIO to WIHO
-                        weight = *(weights + (kch * kernel_row_dim * kernel_col_dim  + krow_ * kernel_row_dim + kcol_) * out_channels + poch);
+                        weight = *(weights + (kch * kernel_row_dim * kernel_col_dim  + krow_ * kernel_col_dim + kcol_) * out_channels + poch);
                       } else if (trans_weight_0132) {
                         // HWIO to HWOI
-                        weight = *(weights + (krow_ * kernel_row_dim * out_channels + kcol_ * out_channels + poch) * in_channels + kch);
+                        weight = *(weights + (krow_ * kernel_col_dim * out_channels + kcol_ * out_channels + poch) * in_channels + kch);
                       }
 
                       opixel += weight * ipixel;
@@ -2353,11 +2348,13 @@ static void tiled_conv(
                                   kcol_ = kernel_col_dim - kcol - kcols_;
                                 }
 
-                                const elem_t * weights_slice = weights + (krow_*kernel_row_dim*in_channels + kcol_*in_channels + kch) * out_channels + poch;
+                                const elem_t * weights_slice = weights + (krow_*kernel_col_dim*in_channels + kcol_*in_channels + kch) * out_channels + poch;
                                 if (trans_weight_1203) {
-                                  weights_slice = weights + (kch*kernel_row_dim*kernel_col_dim + krow_*kernel_row_dim+kcol_) * out_channels + poch; //TODO check kernel
+                                  // HWIO to WIHO
+                                  weights_slice = weights + (kch*kernel_row_dim*kernel_col_dim + krow_*kernel_col_dim+kcol_) * out_channels + poch; //TODO check
                                 } else if (trans_weight_0132) {
-                                  weights_slice = weights + (krow_*kernel_row_dim*out_channels + kcol_*out_channels + poch) * in_channels + kch; //TODO check
+                                  // HWIO to HWOI
+                                  weights_slice = weights + (krow_*kernel_col_dim*out_channels + kcol_*out_channels + poch) * in_channels + kch; //TODO check
                                 }
 
                                 const elem_t * in = input + (b *in_row_dim * in_col_dim + ((irow+upad)>>input_dilated) * in_col_dim + ((icol+lpad)>>input_dilated)) * in_channels + kch;
@@ -2741,6 +2738,7 @@ static void tiled_conv_auto(
     */
 
 #ifdef PRINT_TILE
+#if PRINT_TILE
     printf("batches = %d\n", batches);
     printf("orows   = %d\n", orows);
     printf("ocols   = %d\n", ocols);
@@ -2756,6 +2754,7 @@ static void tiled_conv_auto(
     printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
 
     printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
+#endif
 #endif
 
     tiled_conv(
