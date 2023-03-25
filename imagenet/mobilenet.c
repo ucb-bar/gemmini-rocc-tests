@@ -17,6 +17,7 @@ int main (int argc, char * argv[]) {
       exit(1);
     }
 #endif
+    printf("Starting test...\n");
 
     gemmini_flush(0);
 
