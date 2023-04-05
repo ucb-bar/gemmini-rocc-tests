@@ -15,6 +15,8 @@
 #define NO_BIAS 0
 #define FULL_BIAS_WIDTH 1
 
+#define APPROX
+
 #if FULL_BIAS_WIDTH
 typedef acc_t ACC_T;
 #else
@@ -30,7 +32,7 @@ typedef elem_t ACC_T;
 #else
 #define MAT_DIM_I 31
 #define MAT_DIM_K 30
-#define MAT_DIM_J 66
+#define MAT_DIM_J 130
 #endif
 
 void full_printMatrix(elem_t m[MAT_DIM_I][MAT_DIM_J]) {
@@ -100,6 +102,7 @@ int main() {
     printf("Starting slow CPU matmul\n");
     unsigned long cpu_start = read_cycles();
 
+#ifndef APPROX
     tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
             (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)gold,
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
@@ -109,6 +112,18 @@ int main() {
             false, !FULL_BIAS_WIDTH,
             0,
             CPU);
+#else
+    tiled_matmul(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)gold,
+            MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
+            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+            LAYERNORM, ACC_SCALE_IDENTITY, 0, false,
+            2, 2 /* tile J */, 2, 2 /* approx split */,
+            false, false,
+            false, !FULL_BIAS_WIDTH,
+            0,
+            CPU);
+#endif
 
     unsigned long cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
@@ -118,6 +133,7 @@ int main() {
     printf("Starting gemmini matmul\n");
     unsigned long start = read_cycles();
 
+#ifndef APPROX
     tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
     // tiled_matmul(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
             (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
@@ -131,6 +147,19 @@ int main() {
             false, !FULL_BIAS_WIDTH,
             0,
             WS);
+#else
+    tiled_matmul(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
+            MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
+            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+            LAYERNORM, ACC_SCALE_IDENTITY, 0, false,
+            /* 2, 5, 2, 0, */ // no approximation
+            2, 2 /* tile J */, 2, 2 /* approx split */,
+            false, false,
+            false, !FULL_BIAS_WIDTH,
+            0,
+            WS);
+#endif
 
     gemmini_fence();
 
