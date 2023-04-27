@@ -254,8 +254,11 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 
 // Note: The "pixel_repeats" parameter below is still experimental, andthere is
 // a high chance that it will be removed in future releases.
+#define gemmini_extended6_config_ld(stride, scale, shrunk, block_mvin_stride, pixel_repeats, padding_value, id) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale_t_to_scale_t_bits(scale)) << 32) | ((uint64_t)(block_mvin_stride) << 16) | ((uint64_t)(pixel_repeats) << 8) | ((id) << 3) | ((shrunk) << 2) | CONFIG_LD, ((uint64_t)(padding_value) << 32) | stride, k_CONFIG)
+
 #define gemmini_extended5_config_ld(stride, scale, shrunk, block_mvin_stride, pixel_repeats, id) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(scale_t_to_scale_t_bits(scale)) << 32) | ((uint64_t)(block_mvin_stride) << 16) | ((uint64_t)(pixel_repeats) << 8) | ((id) << 3) | ((shrunk) << 2) | CONFIG_LD, stride, k_CONFIG)
+  gemmini_extended6_config_ld(stride, scale, shrunk, block_mvin_stride, pixel_repeats, 0, id) \
 
 #define gemmini_extended4_config_ld(stride, scale, shrunk, block_mvin_stride, id) \
   gemmini_extended5_config_ld(stride, scale, shrunk, block_mvin_stride, 1, id) \
@@ -351,7 +354,7 @@ static void counter_reset() {
   }
 
 // weight-stationary conv loop
-#define gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, activation, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120, max_pixels_per_row, dw) \
+#define gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, padding_value, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, activation, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120, max_pixels_per_row, dw) \
   { \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(out_channels) << 48) | ((uint64_t)(in_channels) << 32) | ((uint64_t)(in_dim) << 16) | (uint64_t)(batch_size), \
       ((uint64_t)(padding) << 48) | ((uint64_t)(stride) << 32) | ((uint64_t)(pool_out_dim) << 16) | (uint64_t)(out_dim), k_LOOP_CONV_WS_CONFIG_1) \
@@ -365,7 +368,7 @@ static void counter_reset() {
       output, k_LOOP_CONV_WS_CONFIG_5) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, bias, \
       input, k_LOOP_CONV_WS_CONFIG_6) \
-    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(max_pixels_per_row) << 8) | ((dw) << 6) | ((trans_input_3120) << 5) | ((trans_weight_0132) << 4) | ((trans_weight_1203) << 3) | ((trans_output_1203) << 2) | ((wrot180) << 1) | (no_bias), \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(padding_value) << 48) | ((uint64_t)(max_pixels_per_row) << 8) | ((dw) << 6) | ((trans_input_3120) << 5) | ((trans_weight_0132) << 4) | ((trans_weight_1203) << 3) | ((trans_output_1203) << 2) | ((wrot180) << 1) | (no_bias), \
       ((activation) << 3)| ((input_dilated) << 2) | ((downsample) << 1) | (no_pool), \
       k_LOOP_CONV_WS) \
   }
@@ -1327,7 +1330,7 @@ static void sp_tiled_conv(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim, int pool_out_dim,
 
-        int stride, int padding, int kernel_dim, int kernel_dilation,
+        int stride, int padding, elem_t padding_value, int kernel_dim, int kernel_dilation,
 
         int pool_size, int pool_stride, int pool_padding,
 
@@ -1412,7 +1415,7 @@ static void sp_tiled_conv(
     C_sp_addr_row = (C_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
   }
 
-  gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, act, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120, max_pixels_per_row, dw);
+  gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, padding_value, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, act, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120, max_pixels_per_row, dw);
 
   /*
   // mvin bias
@@ -1796,7 +1799,7 @@ static int tiled_conv_total_spad_rows(bool acc,
 static void conv_cpu_without_pool(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
-        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
+        int stride, int input_dilation, int kernel_dilation, int padding, elem_t padding_value, int kernel_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
         bool trans_weight_1203, bool trans_weight_0132,
 
@@ -1836,7 +1839,7 @@ static void conv_cpu_without_pool(
                 }
 
                 elem_t ipixel = irow < 0 || irow >= in_dim || icol < 0 || icol >= in_dim ?
-                    0 : *in;
+                    padding_value : *in;
 
                 const int krow_ = wrot180 ? kernel_dim - krow - 1 : krow;
                 const int kcol_ = wrot180 ? kernel_dim - kcol - 1 : kcol;
@@ -1871,7 +1874,7 @@ static void conv_cpu_without_pool(
 
 static void conv_dw_cpu_without_pool(
         int batch_size, int in_dim, int channels, int out_dim,
-        int stride, int padding, int kernel_dim,
+        int stride, int padding, elem_t padding_value, int kernel_dim,
 
         const elem_t * input,
         const elem_t * weights,
@@ -1897,7 +1900,7 @@ static void conv_dw_cpu_without_pool(
               const elem_t * in = input + (b * in_dim * in_dim + irow * in_dim + icol) * channels + ch;
 
               const elem_t ipixel = irow < 0 || irow >= in_dim || icol < 0 || icol >= in_dim ?
-                  0 : *in;
+                  padding_value : *in;
 
               const elem_t weight = *(weights + (ch * kernel_dim + krow) * kernel_dim  + kcol);
 
@@ -1918,7 +1921,7 @@ static void conv_dw_cpu_without_pool(
 static void conv_cpu(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
-        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
+        int stride, int input_dilation, int kernel_dilation, int padding, elem_t padding_value, int kernel_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
         bool trans_weight_1203, bool trans_weight_0132,
 
@@ -1935,7 +1938,7 @@ static void conv_cpu(
     conv_cpu_without_pool(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
-        stride, input_dilation, kernel_dilation, padding, kernel_dim,
+        stride, input_dilation, kernel_dilation, padding, padding_value, kernel_dim,
         wrot180, trans_output_1203, trans_input_3120,
         trans_weight_1203, trans_weight_0132,
         input, weights, bias, output,
@@ -1989,7 +1992,7 @@ static void conv_cpu(
                       }
 
                       elem_t ipixel = irow < 0 || irow >= in_dim || icol < 0 || icol >= in_dim ?
-                          0 : *in;
+                          padding_value : *in;
 
                       const int krow_ = wrot180 ? kernel_dim - krow - 1 : krow;
                       const int kcol_ = wrot180 ? kernel_dim - kcol - 1 : kcol;
@@ -2035,7 +2038,7 @@ static void conv_cpu(
 
 static void conv_dw_cpu(
         int batch_size, int in_dim, int channels, int out_dim,
-        int stride, int padding, int kernel_dim,
+        int stride, int padding, elem_t padding_value, int kernel_dim,
 
         const elem_t * input,
         const elem_t * weights,
@@ -2049,7 +2052,7 @@ static void conv_dw_cpu(
   if (no_pool) {
     conv_dw_cpu_without_pool(
         batch_size, in_dim, channels, out_dim,
-        stride, padding, kernel_dim,
+        stride, padding, padding_value, kernel_dim,
         input, weights, bias, output,
         act, scale);
     return;
@@ -2090,7 +2093,7 @@ static void conv_dw_cpu(
                     const elem_t * in = input + (b * in_dim * in_dim + irow * in_dim + icol) * channels + ch;
 
                     elem_t ipixel = irow < 0 || irow >= in_dim || icol < 0 || icol >= in_dim ?
-                        0 : *in;
+                        padding_value : *in;
 
                     const elem_t weight = *(weights + (ch * kernel_dim + krow) * kernel_dim  + kcol);
 
@@ -2122,7 +2125,7 @@ static void conv_dw_cpu(
 static void tiled_conv(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
-        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
+        int stride, int input_dilation, int kernel_dilation, int padding, elem_t padding_value, int kernel_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
         bool trans_weight_1203, bool trans_weight_0132,
 
@@ -2155,7 +2158,7 @@ static void tiled_conv(
       conv_cpu(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
-        stride, input_dilation, kernel_dilation, padding, kernel_dim,
+        stride, input_dilation, kernel_dilation, padding, padding_value, kernel_dim,
         wrot180, trans_output_1203, trans_input_3120,
         trans_weight_1203, trans_weight_0132,
         input, weights, bias, output,
@@ -2333,7 +2336,7 @@ static void tiled_conv(
                                     batch_size, in_dim, in_channels,
                                     out_channels, out_dim, pool_out_dim,
 
-                                    stride, padding, kernel_dim, kernel_dilation,
+                                    stride, padding, padding_value, kernel_dim, kernel_dilation,
 
                                     pool_size, pool_stride, pool_padding,
 
@@ -2369,7 +2372,7 @@ static void tiled_conv(
 
 static void tiled_conv_dw(
     int batch_size, int in_dim, int channels, int out_dim,
-    int stride, int padding, int kernel_dim,
+    int stride, int padding, elem_t padding_value, int kernel_dim,
 
     int batches,
     int porows, int pocols,
@@ -2392,7 +2395,7 @@ static void tiled_conv_dw(
 
       conv_dw_cpu(
         batch_size, in_dim, channels, out_dim,
-        stride, padding, kernel_dim,
+        stride, padding, padding_value, kernel_dim,
         input, weights, bias, output,
         act, scale,
         pool_size, pool_stride, pool_padding);
@@ -2511,7 +2514,7 @@ static void tiled_conv_dw(
                                 batch_size, in_dim, channels, channels,
                                 out_dim, pool_out_dim,
 
-                                stride, padding, kernel_dim, 1,
+                                stride, padding, padding_value, kernel_dim, 1,
 
                                 pool_size, pool_stride, pool_padding,
 
@@ -2547,7 +2550,7 @@ static void tiled_conv_dw(
 static void tiled_conv_auto(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
-        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
+        int stride, int input_dilation, int kernel_dilation, int padding, elem_t padding_value, int kernel_dim,
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
         bool trans_weight_1203, bool trans_weight_0132,
 
@@ -2717,7 +2720,7 @@ static void tiled_conv_auto(
     tiled_conv(
         batch_size, in_dim, in_channels,
         out_channels, out_dim,
-        stride, input_dilation, kernel_dilation, padding, kernel_dim,
+        stride, input_dilation, kernel_dilation, padding, padding_value, kernel_dim,
         wrot180, trans_output_1203, trans_input_3120,
         trans_weight_1203, trans_weight_0132,
 
@@ -2783,7 +2786,7 @@ static void tiled_conv_downsample(
 //for mobilenet's depthwise convs
 static void tiled_conv_dw_auto(
     int batch_size, int in_dim, int channels, int out_dim,
-    int stride, int padding, int kernel_dim,
+    int stride, int padding, elem_t padding_value, int kernel_dim,
 
     elem_t * input,
     elem_t * weights,
@@ -2943,7 +2946,7 @@ static void tiled_conv_dw_auto(
 
     tiled_conv_dw(
         batch_size, in_dim, channels, out_dim,
-        stride, padding, kernel_dim,
+        stride, padding, padding_value, kernel_dim,
 
         batches,
         orows, ocols,

@@ -157,7 +157,7 @@ int main() {
     tiled_conv_auto(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
-        STRIDE, 1, 1, PADDING, KERNEL_DIM,
+        STRIDE, 1, 1, PADDING, 0, KERNEL_DIM,
         false, TRANS_OUTPUT_1203, false, TRANS_WEIGHT_1203, TRANS_WEIGHT_0132,
 
         (elem_t*)input,
@@ -177,7 +177,7 @@ int main() {
     tiled_conv_auto(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
-        STRIDE, 1, 1, PADDING, KERNEL_DIM,
+        STRIDE, 1, 1, PADDING, 0, KERNEL_DIM,
         false, TRANS_OUTPUT_1203, false, TRANS_WEIGHT_1203, TRANS_WEIGHT_0132,
 
         (elem_t*)input,

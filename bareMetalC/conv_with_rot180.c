@@ -254,7 +254,7 @@ int main() {
     tiled_conv_auto(
         BATCH_SIZE, IN_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_DIM,
-        STRIDE, INPUT_DILATION, 1, PADDING, KERNEL_DIM,
+        STRIDE, INPUT_DILATION, 1, PADDING, 0, KERNEL_DIM,
         WROT180, false, false, false, false,
 
         (elem_t*)input,
