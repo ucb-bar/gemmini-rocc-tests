@@ -166,7 +166,7 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 
 // need to specify stride
 // auto tiling calc
-static void tiled_matmul_nn_full(size_t dim_I, size_t dim_J, size_t dim_K,
+static void tiled_matmul_nn_stride_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         const size_t A_stride, const size_t B_stride, const size_t C_stride,
         const elem_t * A, const elem_t * B, const void * D, const elem_t * C,
         int act, acc_scale_t scale, bool repeating_bias,

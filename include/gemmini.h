@@ -2581,11 +2581,12 @@ static void tiled_conv_dw(
 }
 
 // need to specify each operand/output's stride
-static void tiled_conv_full(
+// stride only for trans == false, wrot == false
+static void tiled_conv_stride_auto(
         int batch_size, int in_row_dim, int in_col_dim, int in_channels,
         int out_channels, int out_row_dim, int out_col_dim,
         int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
-        int in_stride, int weight_stride, int out_stride,
+        int in_stride, int weight_stride, int out_stride, // specify in/output's stride
         bool wrot180, bool trans_output_1203, bool trans_input_3120,
         bool trans_weight_1203, bool trans_weight_0132,
 
@@ -2797,7 +2798,7 @@ static void tiled_conv_auto(
     int in_stride = in_channels;
     int out_stride = out_channels;
     int weight_stride = out_channels;
-    tiled_conv_full(
+    tiled_conv_stride_auto(
         batch_size, in_row_dim, in_col_dim, in_channels,
         out_channels, out_row_dim, out_col_dim,
         stride, input_dilation, kernel_dilation, padding, kernel_dim,
@@ -3176,7 +3177,7 @@ static void tiled_resadd(const size_t I, const size_t J,
 
 // Compute (A >> A_shift) + B = C
 // specify stride
-static void tiled_resadd_full(const size_t I, const size_t J,
+static void tiled_resadd_stride_auto(const size_t I, const size_t J,
         const scale_t A_scale,
         const scale_t B_scale,
         const acc_scale_t C_scale,
@@ -3232,7 +3233,7 @@ static void tiled_resadd_auto(const size_t I, const size_t J,
         elem_t * C,
         bool relu,
         enum tiled_matmul_type_t matadd_type) {
-    tiled_resadd_full(I, J, 
+    tiled_resadd_stride_auto(I, J, 
         A_scale, B_scale, C_scale,
         J,
         A, B, C,

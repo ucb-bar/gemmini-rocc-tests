@@ -50,6 +50,7 @@ tests = \
 	transpose \
 	matrix_add \
 	resadd \
+	resadd_stride \
 	global_average \
 	gemmini_counter \
 	template \
