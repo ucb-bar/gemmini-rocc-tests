@@ -23,9 +23,9 @@
 
 #define IN_ROW_DIM 14
 #define IN_COL_DIM 14
-#define IN_CHANNELS 18
-#define OUT_CHANNELS 19
-#define BATCH_SIZE 1
+#define IN_CHANNELS 16
+#define OUT_CHANNELS 18
+#define BATCH_SIZE 2
 #define KERNEL_DIM 3
 #define PADDING 1
 #define STRIDE 2
@@ -39,9 +39,9 @@
 #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
 #define N_PATCHES (BATCH_SIZE * OUT_ROW_DIM * OUT_COL_DIM)
 
-#define IN_STRIDE (IN_CHANNELS + 4)
-#define WEIGHT_STRIDE (OUT_CHANNELS + 13)
-#define OUT_STRIDE (OUT_CHANNELS + 5)
+#define IN_STRIDE (IN_CHANNELS + 6)
+#define WEIGHT_STRIDE (OUT_CHANNELS + 14)
+#define OUT_STRIDE (OUT_CHANNELS + 2)
 
 void conv(int batch_size, int in_channels,
         int in_row_dim, int in_col_dim,
@@ -211,7 +211,7 @@ int main() {
 
     printf("Gemmini conv...\n");
     uint64_t start_gemmini = read_cycles();
-    tiled_conv_full(
+    tiled_conv_stride_auto(
         BATCH_SIZE, IN_ROW_DIM, IN_COL_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_ROW_DIM, OUT_COL_DIM,
         STRIDE, 1, 1, PADDING, KERNEL_DIM,
