@@ -620,6 +620,7 @@ int main (int argc, char * argv[]) {
             conv_15_params.batch_size, conv_15_params.in_row_dim, conv_15_params.in_col_dim,
             conv_15_params.in_channels,
             conv_15_params.out_channels, conv_15_params.out_row_dim, conv_15_params.out_col_dim,
+            conv_15_params.in_channels, conv_15_params.out_channels, conv_15_params.out_channels,
             // conv_15_params.stride, 1, 1, conv_15_params.padding, conv_15_params.kernel_size,
             // false, false, false, false, false,
 
@@ -1101,6 +1102,7 @@ int main (int argc, char * argv[]) {
             conv_28_params.batch_size, conv_28_params.in_row_dim, conv_28_params.in_col_dim,
             conv_28_params.in_channels,
             conv_28_params.out_channels, conv_28_params.out_row_dim, conv_28_params.out_col_dim,
+            conv_28_params.in_channels, conv_28_params.out_channels, conv_28_params.out_channels,
             // conv_28_params.stride, 1, 1, conv_28_params.padding, conv_28_params.kernel_size,
             // false, false, false, false, false,
 
