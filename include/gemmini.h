@@ -818,7 +818,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
 
         if(a_reuse && j0 >= 1) a = NULL;
         if(b_reuse && i0 >= 1) b = NULL;
-        printf("a_reuse: %d, b_reuse: %d, a_spad_id: %d, b_spad_id: %d, a: %llu, b: %llu \n", a_reuse, b_reuse, a_spad_id, b_spad_id, a, b);
+        //printf("a_reuse: %d, b_reuse: %d, a_spad_id: %d, b_spad_id: %d, a: %llu, b: %llu \n", a_reuse, b_reuse, a_spad_id, b_spad_id, a, b);
         (*inner)(a, b, pre, out,
             A_scale_factor, B_scale_factor, D_scale_factor,
             I, J, K,
@@ -2408,7 +2408,7 @@ static void tiled_conv(
                                 }
                                 if(b_reuse && (pocol + (porow - porow_start) + b > 0)) weights_slice = NULL;
 							    if(a_reuse && (poch > 0)) in = NULL;
-                                printf("a_reuse: %d, b_reuse: %d, a_spad_id: %d, b_spad_id: %d, in: %llu, weight: %llu \n", a_reuse, b_reuse, a_spad_id, b_spad_id, in, weights_slice);
+                                //printf("a_reuse: %d, b_reuse: %d, a_spad_id: %d, b_spad_id: %d, in: %llu, weight: %llu \n", a_reuse, b_reuse, a_spad_id, b_spad_id, in, weights_slice);
  
                                 sp_tiled_conv(
                                     batch_size, in_row_dim, in_col_dim, in_channels,
