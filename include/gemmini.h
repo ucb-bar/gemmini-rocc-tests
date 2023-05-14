@@ -346,14 +346,14 @@ int ceil_divide_int(int a, int b){
 }
 
 // weight-stationary matmul loop
-#define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, A_transpose, B_transpose, full_C, low_D, ex_accumulate, act, a_spad_id, b_spad_id) \
+#define gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_stride, B_stride, D_stride, C_stride, A_transpose, B_transpose, full_C, low_D, ex_accumulate, act, a_spad_id, b_spad_id, is_resadd) \
   { \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(pad_K) << 32) | ((uint64_t)(pad_J) << 16) | (uint64_t)(pad_I), ((uint64_t)(K) << 32) | ((uint64_t)(J) << 16) | (uint64_t)(I), k_LOOP_WS_CONFIG_BOUNDS) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_LOOP_WS_CONFIG_ADDRS_AB) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D, C, k_LOOP_WS_CONFIG_ADDRS_DC) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A_stride, B_stride, k_LOOP_WS_CONFIG_STRIDES_AB) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D_stride, C_stride, k_LOOP_WS_CONFIG_STRIDES_DC) \
-    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(a_spad_id) << 18) | ((uint64_t)(b_spad_id) << 16) | ((uint64_t)(act) << 8) | ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((B_transpose) << 1) | (A_transpose), k_LOOP_WS) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(a_spad_id) << 18) | ((uint64_t)(b_spad_id) << 16) | ((uint64_t)(act) << 8) | ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((is_resadd) << 2) | ((B_transpose) << 1) | (A_transpose), k_LOOP_WS) \
   }
 
 // weight-stationary conv loop
@@ -685,7 +685,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
     A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
     a_transpose, b_transpose,
     full_C, low_D, !no_bias || D == NULL,
-    act, a_spad_id, b_spad_id);
+    act, a_spad_id, b_spad_id, false);
 }
 
 
@@ -3137,6 +3137,13 @@ static void sp_tiled_resadd(const size_t I, const size_t J,
         size_t A_row_stride, size_t B_row_stride, size_t C_row_stride,
         bool relu) {
 
+    int pad_I = ((I%DIM) == 0) ? 0 : DIM - (I % DIM);
+    int pad_J = ((J%DIM) == 0) ? 0 : DIM - (J % DIM);
+    int tile_I = (I%DIM == 0) ? (int)(I/DIM) : (int)(I/DIM) + 1;
+    int tile_J = (J%DIM == 0) ? (int)(J/DIM) : (int)(J/DIM) + 1;
+    //printf("pad I: %d, pad_J: %d, tile_I: %d, tile_J: %d\n", pad_I, pad_J, tile_I, tile_J);
+    gemmini_loop_ws(tile_I, tile_J, 0, pad_I, pad_J, 0, A, B, NULL, C, A_row_stride, B_row_stride, 0, C_row_stride, false, false, false, false, false, relu, 0, 0, true);
+    /*
     // Use the new mvin2 command to overlap mvin A, mvin B, and mvout C
 
     size_t blocks = (J/DIM + (J % DIM != 0));
@@ -3186,6 +3193,7 @@ static void sp_tiled_resadd(const size_t I, const size_t J,
             gemmini_extended_mvout(C_dram_addr, C_sp_addr, cols, rows);
         }
     }
+    */
 }
 
 // Compute MVIN_SCALE(A, A_scale) + MVIN_SCALE(B, B_scale) = C
@@ -3252,17 +3260,20 @@ static void tiled_resadd_stride_auto(const size_t I, const size_t J,
     size_t total_acc_rows = (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
 
     // TODO this is a very inefficient way of doing this...
-    while (total_acc_rows > ACC_ROWS) {
-        if (tile_I >= tile_J)
-            tile_I--;
+    while (total_acc_rows > ACC_ROWS / 2) {
+        //if(tile_J > MAX_BLOCK_LEN * DIM)
+        //    tile_J = MAX_BLOCK_LEN * DIM;
+        //else 
+        if (tile_I >= tile_J || tile_J <= DIM)
+            tile_I /= 2;
         else
-            tile_J--;
+            tile_J -= DIM;
 
         total_acc_rows = (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
     }
 
-    // printf("tile_I: %llu\n", tile_I);
-    // printf("tile_J: %llu\n", tile_J);
+     printf("tile_I: %llu\n", tile_I);
+     printf("tile_J: %llu\n", tile_J);
 
     if (matadd_type == WS) {
       tiled_resadd(I, J, stride, tile_I, tile_J,
