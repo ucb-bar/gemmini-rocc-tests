@@ -3272,8 +3272,8 @@ static void tiled_resadd_stride_auto(const size_t I, const size_t J,
         total_acc_rows = (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
     }
 
-     printf("tile_I: %llu\n", tile_I);
-     printf("tile_J: %llu\n", tile_J);
+    // printf("tile_I: %llu\n", tile_I);
+    // printf("tile_J: %llu\n", tile_J);
 
     if (matadd_type == WS) {
       tiled_resadd(I, J, stride, tile_I, tile_J,
