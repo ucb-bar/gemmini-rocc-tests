@@ -72,7 +72,8 @@ int main (int argc, char * argv[]) {
     if (!conv) {
       start = read_cycles();
 
-        im2col(conv_1_params.batch_size, conv_1_params.in_channels, conv_1_params.in_dim,
+        im2col(conv_1_params.batch_size, conv_1_params.in_channels,
+            conv_1_params.in_row_dim, conv_1_params.in_col_dim,
             conv_1_params.I, conv_1_params.K,
             images, conv_1_in, &conv_1_params);
 
@@ -93,8 +94,9 @@ int main (int argc, char * argv[]) {
         start = read_cycles();
 
         tiled_conv_auto(
-            conv_1_params.batch_size, conv_1_params.in_dim, conv_1_params.in_channels,
-            conv_1_params.out_channels, conv_1_params.out_dim,
+            conv_1_params.batch_size, conv_1_params.in_row_dim, conv_1_params.in_col_dim,
+            conv_1_params.in_channels,
+            conv_1_params.out_channels, conv_1_params.out_row_dim, conv_1_params.out_col_dim,
             conv_1_params.stride, 1, 1, conv_1_params.padding, 0, conv_1_params.kernel_size,
             false, false, false, false, false,
 
@@ -115,12 +117,15 @@ int main (int argc, char * argv[]) {
 
     if (!conv) {
         conv_dw_with_col2im(conv_1_params.I, conv_1_params.J, conv_dw_2_params.I, conv_dw_2_params.J,
-            conv_dw_2_params.batch_size, conv_dw_2_params.in_channels, conv_dw_2_params.out_dim, conv_dw_2_params.kernel_size,
+            conv_dw_2_params.batch_size, conv_dw_2_params.in_channels,
+            conv_dw_2_params.out_row_dim, conv_dw_2_params.out_col_dim,
+            conv_dw_2_params.kernel_size,
             conv_1_out, conv_dw_2_w, conv_dw_2_b, conv_dw_2_out, &conv_dw_2_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_2_params.batch_size, conv_dw_2_params.in_dim, conv_dw_2_params.in_channels,
-            conv_dw_2_params.out_dim,
+            conv_dw_2_params.batch_size, conv_dw_2_params.in_row_dim, conv_dw_2_params.in_col_dim,
+            conv_dw_2_params.in_channels,
+            conv_dw_2_params.out_row_dim, conv_dw_2_params.out_col_dim,
             conv_dw_2_params.stride, conv_dw_2_params.padding, 0, conv_dw_2_params.kernel_size,
 
             (elem_t*)conv_1_out, (elem_t*)conv_dw_2_w, (acc_t*)conv_dw_2_b, (elem_t*)conv_dw_2_out,
@@ -192,12 +197,15 @@ int main (int argc, char * argv[]) {
 
     if (!conv) {
         conv_dw_with_col2im(conv_4_params.I, conv_4_params.J, conv_dw_5_params.I, conv_dw_5_params.J,
-            conv_dw_5_params.batch_size, conv_dw_5_params.in_channels, conv_dw_5_params.out_dim, conv_dw_5_params.kernel_size,
+            conv_dw_5_params.batch_size, conv_dw_5_params.in_channels,
+            conv_dw_5_params.out_row_dim, conv_dw_5_params.out_col_dim,
+            conv_dw_5_params.kernel_size,
             conv_4_out, conv_dw_5_w, conv_dw_5_b, conv_dw_5_out, &conv_dw_5_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_5_params.batch_size, conv_dw_5_params.in_dim, conv_dw_5_params.in_channels,
-            conv_dw_5_params.out_dim,
+            conv_dw_5_params.batch_size, conv_dw_5_params.in_row_dim, conv_dw_5_params.in_col_dim,
+            conv_dw_5_params.in_channels,
+            conv_dw_5_params.out_row_dim, conv_dw_5_params.out_col_dim,
             conv_dw_5_params.stride, conv_dw_5_params.padding, 0, conv_dw_5_params.kernel_size,
 
             (elem_t*)conv_4_out, (elem_t*)conv_dw_5_w, (acc_t*)conv_dw_5_b, (elem_t*)conv_dw_5_out,
@@ -269,12 +277,16 @@ int main (int argc, char * argv[]) {
     start = read_cycles();
     if (!conv) {
         conv_dw_with_col2im(conv_7_params.I, conv_7_params.J, conv_dw_8_params.I, conv_dw_8_params.J,
-            conv_dw_8_params.batch_size, conv_dw_8_params.in_channels, conv_dw_8_params.out_dim, conv_dw_8_params.kernel_size,
+            conv_dw_8_params.batch_size, conv_dw_8_params.in_channels,
+            conv_dw_8_params.out_row_dim,
+            conv_dw_8_params.out_col_dim,
+            conv_dw_8_params.kernel_size,
             conv_7_out, conv_dw_8_w, conv_dw_8_b, conv_dw_8_out, &conv_dw_8_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_8_params.batch_size, conv_dw_8_params.in_dim, conv_dw_8_params.in_channels,
-            conv_dw_8_params.out_dim,
+            conv_dw_8_params.batch_size, conv_dw_8_params.in_row_dim, conv_dw_8_params.in_col_dim,
+            conv_dw_8_params.in_channels,
+            conv_dw_8_params.out_row_dim, conv_dw_8_params.out_col_dim,
             conv_dw_8_params.stride, conv_dw_8_params.padding, 0, conv_dw_8_params.kernel_size,
 
             (elem_t*)conv_7_out, (elem_t*)conv_dw_8_w, (acc_t*)conv_dw_8_b, (elem_t*)conv_dw_8_out,
@@ -362,12 +374,15 @@ int main (int argc, char * argv[]) {
     start = read_cycles();
     if (!conv) {
         conv_dw_with_col2im(conv_10_params.I, conv_10_params.J, conv_dw_11_params.I, conv_dw_11_params.J,
-            conv_dw_11_params.batch_size, conv_dw_11_params.in_channels, conv_dw_11_params.out_dim, conv_dw_11_params.kernel_size,
+            conv_dw_11_params.batch_size, conv_dw_11_params.in_channels,
+            conv_dw_11_params.out_row_dim, conv_dw_11_params.out_col_dim,
+            conv_dw_11_params.kernel_size,
             conv_10_out, conv_dw_11_w, conv_dw_11_b, conv_dw_11_out, &conv_dw_11_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_11_params.batch_size, conv_dw_11_params.in_dim, conv_dw_11_params.in_channels,
-            conv_dw_11_params.out_dim,
+            conv_dw_11_params.batch_size, conv_dw_11_params.in_row_dim, conv_dw_11_params.in_col_dim,
+            conv_dw_11_params.in_channels,
+            conv_dw_11_params.out_row_dim, conv_dw_11_params.out_col_dim,
             conv_dw_11_params.stride, conv_dw_11_params.padding, 0, conv_dw_11_params.kernel_size,
 
             (elem_t*)conv_10_out, (elem_t*)conv_dw_11_w, (acc_t*)conv_dw_11_b, (elem_t*)conv_dw_11_out,
@@ -439,12 +454,15 @@ int main (int argc, char * argv[]) {
 
     if (!conv) {
         conv_dw_with_col2im(conv_13_params.I, conv_13_params.J, conv_dw_14_params.I, conv_dw_14_params.J,
-            conv_dw_14_params.batch_size, conv_dw_14_params.in_channels, conv_dw_14_params.out_dim, conv_dw_14_params.kernel_size,
+            conv_dw_14_params.batch_size, conv_dw_14_params.in_channels,
+            conv_dw_14_params.out_row_dim, conv_dw_14_params.out_col_dim,
+            conv_dw_14_params.kernel_size,
             conv_13_out, conv_dw_14_w, conv_dw_14_b, conv_dw_14_out, &conv_dw_14_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_14_params.batch_size, conv_dw_14_params.in_dim, conv_dw_14_params.in_channels,
-            conv_dw_14_params.out_dim,
+            conv_dw_14_params.batch_size, conv_dw_14_params.in_row_dim, conv_dw_14_params.in_col_dim,
+            conv_dw_14_params.in_channels,
+            conv_dw_14_params.out_row_dim, conv_dw_14_params.out_col_dim,
             conv_dw_14_params.stride, conv_dw_14_params.padding, 0, conv_dw_14_params.kernel_size,
 
             (elem_t*)conv_13_out, (elem_t*)conv_dw_14_w, (acc_t*)conv_dw_14_b, (elem_t*)conv_dw_14_out,
@@ -532,12 +550,15 @@ int main (int argc, char * argv[]) {
 
     if (!conv) {
         conv_dw_with_col2im(conv_16_params.I, conv_16_params.J, conv_dw_17_params.I, conv_dw_17_params.J,
-            conv_dw_17_params.batch_size, conv_dw_17_params.in_channels, conv_dw_17_params.out_dim, conv_dw_17_params.kernel_size,
+            conv_dw_17_params.batch_size, conv_dw_17_params.in_channels,
+            conv_dw_17_params.out_row_dim, conv_dw_17_params.out_col_dim,
+            conv_dw_17_params.kernel_size,
             conv_16_out, conv_dw_17_w, conv_dw_17_b, conv_dw_17_out, &conv_dw_17_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_17_params.batch_size, conv_dw_17_params.in_dim, conv_dw_17_params.in_channels,
-            conv_dw_17_params.out_dim,
+            conv_dw_17_params.batch_size, conv_dw_17_params.in_row_dim, conv_dw_17_params.in_col_dim,
+            conv_dw_17_params.in_channels,
+            conv_dw_17_params.out_row_dim, conv_dw_17_params.out_col_dim,
             conv_dw_17_params.stride, conv_dw_17_params.padding, 0, conv_dw_17_params.kernel_size,
 
             (elem_t*)conv_16_out, (elem_t*)conv_dw_17_w, (acc_t*)conv_dw_17_b, (elem_t*)conv_dw_17_out,
@@ -625,12 +646,15 @@ int main (int argc, char * argv[]) {
 
     if (!conv) {
         conv_dw_with_col2im(conv_19_params.I, conv_19_params.J, conv_dw_20_params.I, conv_dw_20_params.J,
-            conv_dw_20_params.batch_size, conv_dw_20_params.in_channels, conv_dw_20_params.out_dim, conv_dw_20_params.kernel_size,
+            conv_dw_20_params.batch_size, conv_dw_20_params.in_channels,
+            conv_dw_20_params.out_row_dim, conv_dw_20_params.out_col_dim,
+            conv_dw_20_params.kernel_size,
             conv_19_out, conv_dw_20_w, conv_dw_20_b, conv_dw_20_out, &conv_dw_20_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_20_params.batch_size, conv_dw_20_params.in_dim, conv_dw_20_params.in_channels,
-            conv_dw_20_params.out_dim,
+            conv_dw_20_params.batch_size, conv_dw_20_params.in_row_dim, conv_dw_20_params.in_col_dim,
+            conv_dw_20_params.in_channels,
+            conv_dw_20_params.out_row_dim, conv_dw_20_params.out_col_dim,
             conv_dw_20_params.stride, conv_dw_20_params.padding, 0, conv_dw_20_params.kernel_size,
 
             (elem_t*)conv_19_out, (elem_t*)conv_dw_20_w, (acc_t*)conv_dw_20_b, (elem_t*)conv_dw_20_out,
@@ -701,12 +725,15 @@ int main (int argc, char * argv[]) {
     start = read_cycles();
     if (!conv) {
         conv_dw_with_col2im(conv_22_params.I, conv_22_params.J, conv_dw_23_params.I, conv_dw_23_params.J,
-            conv_dw_23_params.batch_size, conv_dw_23_params.in_channels, conv_dw_23_params.out_dim, conv_dw_23_params.kernel_size,
+            conv_dw_23_params.batch_size, conv_dw_23_params.in_channels,
+            conv_dw_23_params.out_row_dim, conv_dw_23_params.out_col_dim,
+            conv_dw_23_params.kernel_size,
             conv_22_out, conv_dw_23_w, conv_dw_23_b, conv_dw_23_out, &conv_dw_23_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_23_params.batch_size, conv_dw_23_params.in_dim, conv_dw_23_params.in_channels,
-            conv_dw_23_params.out_dim,
+            conv_dw_23_params.batch_size, conv_dw_23_params.in_row_dim, conv_dw_23_params.in_col_dim,
+            conv_dw_23_params.in_channels,
+            conv_dw_23_params.out_row_dim, conv_dw_23_params.out_col_dim,
             conv_dw_23_params.stride, conv_dw_23_params.padding, 0, conv_dw_23_params.kernel_size,
 
             (elem_t*)conv_22_out, (elem_t*)conv_dw_23_w, (acc_t*)conv_dw_23_b, (elem_t*)conv_dw_23_out,
@@ -794,12 +821,15 @@ int main (int argc, char * argv[]) {
 
     if (!conv) {
         conv_dw_with_col2im(conv_25_params.I, conv_25_params.J, conv_dw_26_params.I, conv_dw_26_params.J,
-            conv_dw_26_params.batch_size, conv_dw_26_params.in_channels, conv_dw_26_params.out_dim, conv_dw_26_params.kernel_size,
+            conv_dw_26_params.batch_size, conv_dw_26_params.in_channels,
+            conv_dw_26_params.out_row_dim, conv_dw_26_params.out_col_dim,
+            conv_dw_26_params.kernel_size,
             conv_25_out, conv_dw_26_w, conv_dw_26_b, conv_dw_26_out, &conv_dw_26_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_26_params.batch_size, conv_dw_26_params.in_dim, conv_dw_26_params.in_channels,
-            conv_dw_26_params.out_dim,
+            conv_dw_26_params.batch_size, conv_dw_26_params.in_row_dim, conv_dw_26_params.in_col_dim,
+            conv_dw_26_params.in_channels,
+            conv_dw_26_params.out_row_dim, conv_dw_26_params.out_col_dim,
             conv_dw_26_params.stride, conv_dw_26_params.padding, 0, conv_dw_26_params.kernel_size,
 
             (elem_t*)conv_25_out, (elem_t*)conv_dw_26_w, (acc_t*)conv_dw_26_b, (elem_t*)conv_dw_26_out,
@@ -887,12 +917,15 @@ int main (int argc, char * argv[]) {
 
     if (!conv) {
         conv_dw_with_col2im(conv_28_params.I, conv_28_params.J, conv_dw_29_params.I, conv_dw_29_params.J,
-            conv_dw_29_params.batch_size, conv_dw_29_params.in_channels, conv_dw_29_params.out_dim, conv_dw_29_params.kernel_size,
+            conv_dw_29_params.batch_size, conv_dw_29_params.in_channels,
+            conv_dw_29_params.out_row_dim, conv_dw_29_params.out_col_dim,
+            conv_dw_29_params.kernel_size,
             conv_28_out, conv_dw_29_w, conv_dw_29_b, conv_dw_29_out, &conv_dw_29_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_29_params.batch_size, conv_dw_29_params.in_dim, conv_dw_29_params.in_channels,
-            conv_dw_29_params.out_dim,
+            conv_dw_29_params.batch_size, conv_dw_29_params.in_row_dim, conv_dw_29_params.in_col_dim,
+            conv_dw_29_params.in_channels,
+            conv_dw_29_params.out_row_dim, conv_dw_29_params.out_col_dim,
             conv_dw_29_params.stride, conv_dw_29_params.padding, 0, conv_dw_29_params.kernel_size,
 
             (elem_t*)conv_28_out, (elem_t*)conv_dw_29_w, (acc_t*)conv_dw_29_b, (elem_t*)conv_dw_29_out,
@@ -980,12 +1013,15 @@ int main (int argc, char * argv[]) {
 
     if (!conv) {
         conv_dw_with_col2im(conv_31_params.I, conv_31_params.J, conv_dw_32_params.I, conv_dw_32_params.J,
-            conv_dw_32_params.batch_size, conv_dw_32_params.in_channels, conv_dw_32_params.out_dim, conv_dw_32_params.kernel_size,
+            conv_dw_32_params.batch_size, conv_dw_32_params.in_channels,
+            conv_dw_32_params.out_row_dim, conv_dw_32_params.out_col_dim,
+            conv_dw_32_params.kernel_size,
             conv_31_out, conv_dw_32_w, conv_dw_32_b, conv_dw_32_out, &conv_dw_32_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_32_params.batch_size, conv_dw_32_params.in_dim, conv_dw_32_params.in_channels,
-            conv_dw_32_params.out_dim,
+            conv_dw_32_params.batch_size, conv_dw_32_params.in_row_dim, conv_dw_32_params.in_col_dim,
+            conv_dw_32_params.in_channels,
+            conv_dw_32_params.out_row_dim, conv_dw_32_params.out_col_dim,
             conv_dw_32_params.stride, conv_dw_32_params.padding, 0, conv_dw_32_params.kernel_size,
 
             (elem_t*)conv_31_out, (elem_t*)conv_dw_32_w, (acc_t*)conv_dw_32_b, (elem_t*)conv_dw_32_out,
@@ -1057,12 +1093,15 @@ int main (int argc, char * argv[]) {
 
     if (!conv) {
         conv_dw_with_col2im(conv_34_params.I, conv_34_params.J, conv_dw_35_params.I, conv_dw_35_params.J,
-            conv_dw_35_params.batch_size, conv_dw_35_params.in_channels, conv_dw_35_params.out_dim, conv_dw_35_params.kernel_size,
+            conv_dw_35_params.batch_size, conv_dw_35_params.in_channels,
+            conv_dw_35_params.out_row_dim, conv_dw_35_params.out_col_dim,
+            conv_dw_35_params.kernel_size,
             conv_34_out, conv_dw_35_w, conv_dw_35_b, conv_dw_35_out, &conv_dw_35_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_35_params.batch_size, conv_dw_35_params.in_dim, conv_dw_35_params.in_channels,
-            conv_dw_35_params.out_dim,
+            conv_dw_35_params.batch_size, conv_dw_35_params.in_row_dim, conv_dw_35_params.in_col_dim,
+            conv_dw_35_params.in_channels,
+            conv_dw_35_params.out_row_dim, conv_dw_35_params.out_col_dim,
             conv_dw_35_params.stride, conv_dw_35_params.padding, 0, conv_dw_35_params.kernel_size,
 
             (elem_t*)conv_34_out, (elem_t*)conv_dw_35_w, (acc_t*)conv_dw_35_b, (elem_t*)conv_dw_35_out,
@@ -1150,12 +1189,15 @@ int main (int argc, char * argv[]) {
 
     if (!conv) {
         conv_dw_with_col2im(conv_37_params.I, conv_37_params.J, conv_dw_38_params.I, conv_dw_38_params.J,
-        conv_dw_38_params.batch_size, conv_dw_38_params.in_channels, conv_dw_38_params.out_dim, conv_dw_38_params.kernel_size,
+        conv_dw_38_params.batch_size, conv_dw_38_params.in_channels,
+        conv_dw_38_params.out_row_dim, conv_dw_38_params.out_col_dim,
+        conv_dw_38_params.kernel_size,
         conv_37_out, conv_dw_38_w, conv_dw_38_b, conv_dw_38_out, &conv_dw_38_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_38_params.batch_size, conv_dw_38_params.in_dim, conv_dw_38_params.in_channels,
-            conv_dw_38_params.out_dim,
+            conv_dw_38_params.batch_size, conv_dw_38_params.in_row_dim, conv_dw_38_params.in_col_dim,
+            conv_dw_38_params.in_channels,
+            conv_dw_38_params.out_row_dim, conv_dw_38_params.out_col_dim,
             conv_dw_38_params.stride, conv_dw_38_params.padding, 0, conv_dw_38_params.kernel_size,
 
             (elem_t*)conv_37_out, (elem_t*)conv_dw_38_w, (acc_t*)conv_dw_38_b, (elem_t*)conv_dw_38_out,
@@ -1243,12 +1285,15 @@ int main (int argc, char * argv[]) {
 
     if (!conv) {
         conv_dw_with_col2im(conv_40_params.I, conv_40_params.J, conv_dw_41_params.I, conv_dw_41_params.J,
-            conv_dw_41_params.batch_size, conv_dw_41_params.in_channels, conv_dw_41_params.out_dim, conv_dw_41_params.kernel_size,
+            conv_dw_41_params.batch_size, conv_dw_41_params.in_channels,
+            conv_dw_41_params.out_row_dim, conv_dw_41_params.out_col_dim,
+            conv_dw_41_params.kernel_size,
             conv_40_out, conv_dw_41_w, conv_dw_41_b, conv_dw_41_out, &conv_dw_41_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_41_params.batch_size, conv_dw_41_params.in_dim, conv_dw_41_params.in_channels,
-            conv_dw_41_params.out_dim,
+            conv_dw_41_params.batch_size, conv_dw_41_params.in_row_dim, conv_dw_41_params.in_col_dim,
+            conv_dw_41_params.in_channels,
+            conv_dw_41_params.out_row_dim, conv_dw_41_params.out_col_dim,
             conv_dw_41_params.stride, conv_dw_41_params.padding, 0, conv_dw_41_params.kernel_size,
 
             (elem_t*)conv_40_out, (elem_t*)conv_dw_41_w, (acc_t*)conv_dw_41_b, (elem_t*)conv_dw_41_out,
@@ -1320,12 +1365,15 @@ int main (int argc, char * argv[]) {
 
     if (!conv) {
         conv_dw_with_col2im(conv_43_params.I, conv_43_params.J, conv_dw_44_params.I, conv_dw_44_params.J,
-            conv_dw_44_params.batch_size, conv_dw_44_params.in_channels, conv_dw_44_params.out_dim, conv_dw_44_params.kernel_size,
+            conv_dw_44_params.batch_size, conv_dw_44_params.in_channels,
+            conv_dw_44_params.out_row_dim, conv_dw_44_params.out_col_dim,
+            conv_dw_44_params.kernel_size,
             conv_43_out, conv_dw_44_w, conv_dw_44_b, conv_dw_44_out, &conv_dw_44_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_44_params.batch_size, conv_dw_44_params.in_dim, conv_dw_44_params.in_channels,
-            conv_dw_44_params.out_dim,
+            conv_dw_44_params.batch_size, conv_dw_44_params.in_row_dim, conv_dw_44_params.in_col_dim,
+            conv_dw_44_params.in_channels,
+            conv_dw_44_params.out_row_dim, conv_dw_44_params.out_col_dim,
             conv_dw_44_params.stride, conv_dw_44_params.padding, 0, conv_dw_44_params.kernel_size,
 
             (elem_t*)conv_43_out, (elem_t*)conv_dw_44_w, (acc_t*)conv_dw_44_b, (elem_t*)conv_dw_44_out,
@@ -1413,12 +1461,15 @@ int main (int argc, char * argv[]) {
 
     if (!conv) {
         conv_dw_with_col2im(conv_46_params.I, conv_46_params.J, conv_dw_47_params.I, conv_dw_47_params.J,
-            conv_dw_47_params.batch_size, conv_dw_47_params.in_channels, conv_dw_47_params.out_dim, conv_dw_47_params.kernel_size,
+            conv_dw_47_params.batch_size, conv_dw_47_params.in_channels,
+            conv_dw_47_params.out_row_dim, conv_dw_47_params.out_col_dim,
+            conv_dw_47_params.kernel_size,
             conv_46_out, conv_dw_47_w, conv_dw_47_b, conv_dw_47_out, &conv_dw_47_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_47_params.batch_size, conv_dw_47_params.in_dim, conv_dw_47_params.in_channels,
-            conv_dw_47_params.out_dim,
+            conv_dw_47_params.batch_size, conv_dw_47_params.in_row_dim, conv_dw_47_params.in_col_dim,
+            conv_dw_47_params.in_channels,
+            conv_dw_47_params.out_row_dim, conv_dw_47_params.out_col_dim,
             conv_dw_47_params.stride, conv_dw_47_params.padding, 0, conv_dw_47_params.kernel_size,
 
             (elem_t*)conv_46_out, (elem_t*)conv_dw_47_w, (acc_t*)conv_dw_47_b, (elem_t*)conv_dw_47_out,
@@ -1506,12 +1557,15 @@ int main (int argc, char * argv[]) {
 
     if (!conv) {
         conv_dw_with_col2im(conv_49_params.I, conv_49_params.J, conv_dw_50_params.I, conv_dw_50_params.J,
-            conv_dw_50_params.batch_size, conv_dw_50_params.in_channels, conv_dw_50_params.out_dim, conv_dw_50_params.kernel_size,
+            conv_dw_50_params.batch_size, conv_dw_50_params.in_channels,
+            conv_dw_50_params.out_row_dim, conv_dw_50_params.out_col_dim,
+            conv_dw_50_params.kernel_size,
             conv_49_out, conv_dw_50_w, conv_dw_50_b, conv_dw_50_out, &conv_dw_50_params);
     } else {
         tiled_conv_dw_auto(
-            conv_dw_50_params.batch_size, conv_dw_50_params.in_dim, conv_dw_50_params.in_channels,
-            conv_dw_50_params.out_dim,
+            conv_dw_50_params.batch_size, conv_dw_50_params.in_row_dim, conv_dw_50_params.in_col_dim,
+            conv_dw_50_params.in_channels,
+            conv_dw_50_params.out_row_dim, conv_dw_50_params.out_col_dim,
             conv_dw_50_params.stride, conv_dw_50_params.padding, 0, conv_dw_50_params.kernel_size,
 
             (elem_t*)conv_49_out, (elem_t*)conv_dw_50_w, (acc_t*)conv_dw_50_b, (elem_t*)conv_dw_50_out,
@@ -1586,14 +1640,14 @@ int main (int argc, char * argv[]) {
     for (int batch = 0; batch < conv_52_params.batch_size; batch++) {
         for (int channel = 0; channel < conv_52_params.out_channels; channel++) {
             int sum = 0;
-            for (int row = 0; row < conv_52_params.out_dim; row++) {
-                for (int col = 0; col < conv_52_params.out_dim; col++) {
-                    size_t r = batch * conv_52_params.out_dim * conv_52_params.out_dim + row * conv_52_params.out_dim + col;
+            for (int row = 0; row < conv_52_params.out_row_dim; row++) {
+                for (int col = 0; col < conv_52_params.out_col_dim; col++) {
+                    size_t r = batch * conv_52_params.out_row_dim * conv_52_params.out_col_dim + row * conv_52_params.out_col_dim + col;
 
                     sum += conv_52_out[r][channel];
                 }
             }
-            const int count = conv_52_params.out_dim * conv_52_params.out_dim;
+            const int count = conv_52_params.out_row_dim * conv_52_params.out_col_dim;
 
             average[channel][batch] = (sum + count/2) / count;
         }

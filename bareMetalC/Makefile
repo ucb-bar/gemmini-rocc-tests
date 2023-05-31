@@ -18,6 +18,7 @@ tests = \
 	padded \
 	mvin_scale \
 	conv \
+	conv_rect \
 	conv_with_pool \
 	conv_with_rot180 \
 	conv_with_kernel_dilation \
@@ -82,7 +83,8 @@ CFLAGS := $(CFLAGS) \
 	-ffast-math \
 	-fno-common \
 	-fno-builtin-printf \
-	-march=rv64gc -Wa,-march=rv64gcxhwacha \
+	-fno-tree-loop-distribute-patterns \
+	-march=rv64gc -Wa,-march=rv64gc \
 	-lm \
 	-lgcc \
 	-I$(abs_top_srcdir)/riscv-tests \
