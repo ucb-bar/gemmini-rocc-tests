@@ -1473,7 +1473,7 @@ static void sp_tiled_conv(
       ichs * (irows >> downsample) * (icols >> downsample) :
       batches * (irows >> downsample) * (icols >> downsample);
 
-    gemmini_extended5_config_ld(dram_stride << downsample, MVIN_SCALE_IDENTITY, false, spad_stride, max_pixels_per_row, 0);
+    gemmini_extended6_config_ld(dram_stride << downsample, MVIN_SCALE_IDENTITY, false, spad_stride, max_pixels_per_row, padding_value, 0);
 
     const int b_it = trans_input_3120 ? max_chs_per_mvin : 1;
     const int ich_it = trans_input_3120 ? 1 : max_chs_per_mvin;
