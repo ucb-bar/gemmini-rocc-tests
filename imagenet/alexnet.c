@@ -104,7 +104,7 @@ int main (int argc, char * argv[]) {
         tiled_conv_auto(
             conv_1_params.batch_size, conv_1_params.in_dim, conv_1_params.in_channels,
             conv_1_params.out_channels, conv_1_params.out_dim,
-            conv_1_params.stride, conv_1_params.padding, conv_1_params.kernel_size,
+            conv_1_params.stride, conv_1_params.padding, 0, conv_1_params.kernel_size,
 
             (elem_t*)images, (elem_t*)conv_1_w, (acc_t*)conv_1_b, (elem_t*)conv_1_out_pooled,
 
@@ -156,7 +156,7 @@ int main (int argc, char * argv[]) {
         tiled_conv_auto(
             conv_2_params.batch_size, conv_2_params.in_dim, conv_2_params.in_channels,
             conv_2_params.out_channels, conv_2_params.out_dim,
-            conv_2_params.stride, conv_2_params.padding, conv_2_params.kernel_size,
+            conv_2_params.stride, conv_2_params.padding, 0, conv_2_params.kernel_size,
 
             (elem_t*)conv_1_out_pooled, (elem_t*)conv_2_w, (acc_t*)conv_2_b, (elem_t*)conv_2_out_pooled,
 

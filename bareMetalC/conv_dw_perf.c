@@ -85,7 +85,7 @@ int main (int argc, char * argv[]) {
     uint64_t start_gemmini = read_cycles();
 
     tiled_conv_dw_auto(BATCH_SIZE, IN_DIM, IN_DIM, CHANNELS, OUT_DIM, OUT_DIM,
-        STRIDE, PADDING, KERNEL_DIM,
+        STRIDE, PADDING, 0, KERNEL_DIM,
 
         (elem_t*)input,
         (elem_t*)weights,
