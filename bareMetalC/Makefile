@@ -18,6 +18,7 @@ tests = \
 	padded \
 	mvin_scale \
 	conv \
+	conv_stride \
 	conv_rect \
 	conv_with_pool \
 	conv_with_rot180 \
@@ -49,6 +50,7 @@ tests = \
 	transpose \
 	matrix_add \
 	resadd \
+	resadd_stride \
 	global_average \
 	gemmini_counter \
 	template \
