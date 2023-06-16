@@ -19,6 +19,9 @@ struct ConvParams {
     int kernel_size;
     int in_channels;
     int out_channels;
+    int in_stride;
+    int weight_stride;
+    int out_stride;
     int stride;
     int padding;
     bool bias;
@@ -120,7 +123,8 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
 
 // This function runs a tiled matrix multiplication, with automatically
 // calculated tiling factors
-static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
+// With default auto-stride calc (A_stride = dim_K, B_stride/C_stride/D_stride = dim_J)
+static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K, 
         const elem_t A[dim_I][dim_K], const elem_t B[dim_K][dim_J],
         const void * D, elem_t C[dim_I][dim_J],
         int act, acc_scale_t scale, bool repeating_bias,
@@ -131,7 +135,7 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         printf("%s: gemmini\n", layer_name);
 
     tiled_matmul_auto(dim_I, dim_J, dim_K,
-        (elem_t*)A, (elem_t*)B, D, (elem_t*)C, 
+        (elem_t*)A, (elem_t*)B, D, (elem_t*)C,
         dim_K, dim_J, dim_J, dim_J,
         MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
         act, scale, 0, repeating_bias,
@@ -160,6 +164,25 @@ static void tiled_matmul_nn_auto(size_t dim_I, size_t dim_J, size_t dim_K,
     }
 }
 
+// need to specify stride
+// auto tiling calc
+static void tiled_matmul_nn_stride_auto(size_t dim_I, size_t dim_J, size_t dim_K,
+        const size_t A_stride, const size_t B_stride, const size_t C_stride,
+        const elem_t * A, const elem_t * B, const void * D, const elem_t * C,
+        int act, acc_scale_t scale, bool repeating_bias,
+        enum tiled_matmul_type_t tiled_matmul_type)
+{
+
+    tiled_matmul_auto(dim_I, dim_J, dim_K,
+        (elem_t*)A, (elem_t*)B, D, (elem_t*)C,
+        A_stride, B_stride, C_stride, C_stride,
+        MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+        act, scale, 0, repeating_bias,
+        false, false,
+        false, false,
+        0,
+        tiled_matmul_type);
+}
 static void conv_dw(size_t I, size_t J,
     const size_t batch_size, const size_t channels,
     const size_t in_row_dim, const size_t in_col_dim,
