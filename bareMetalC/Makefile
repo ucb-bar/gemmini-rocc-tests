@@ -18,6 +18,8 @@ tests = \
 	padded \
 	mvin_scale \
 	conv \
+	conv_stride \
+	conv_rect \
 	conv_with_pool \
 	conv_with_rot180 \
 	conv_with_kernel_dilation \
@@ -48,6 +50,7 @@ tests = \
 	transpose \
 	matrix_add \
 	resadd \
+	resadd_stride \
 	global_average \
 	gemmini_counter \
 	template \
@@ -82,6 +85,7 @@ CFLAGS := $(CFLAGS) \
 	-ffast-math \
 	-fno-common \
 	-fno-builtin-printf \
+	-fno-tree-loop-distribute-patterns \
 	-march=rv64gc -Wa,-march=rv64gc \
 	-lm \
 	-lgcc \

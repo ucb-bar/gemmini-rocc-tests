@@ -108,7 +108,7 @@ int main() {
   gemmini_counter_access(counter_val, custom_command);
 
   printf("RESERVATION_STATION # of load insts after executing %d mvin and mvout insts: %d\n", N-1, counter_val);
-  if (counter_val < 3) {
+  if (counter_val < 2) {
     printf("The load RESERVATION_STATION counter value is too small\n");
     exit(1);
   }
