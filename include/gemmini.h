@@ -3415,7 +3415,7 @@ static void sp_tiled_norm(const size_t I, const size_t J,
         const acc_t * in, elem_t * out,
         size_t A_row_stride, size_t C_row_stride,
         int act) {
-
+#ifdef HAS_NORMALIZATIONS
     size_t A_blocks = (J/DIM + (J % DIM != 0));
     if (A_blocks > MAX_BLOCK_LEN_ACC) A_blocks = MAX_BLOCK_LEN_ACC;
     size_t C_blocks = (J/DIM + (J % DIM != 0));
@@ -3497,6 +3497,10 @@ static void sp_tiled_norm(const size_t I, const size_t J,
         }
 
     }
+#else
+    printf("Normalizations not supported in this Gemmini config\n");
+    exit(1);
+#endif
 }
 
 static void tiled_norm(const size_t I, const size_t J,
