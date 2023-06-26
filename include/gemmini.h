@@ -1049,7 +1049,8 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
 
         for (size_t j = 0; j < DIM_J; j++) {
           c_buffer[j] -= mean;
-          c_buffer[j] /= stddev;
+          // c_buffer[j] /= stddev;
+          c_buffer[j] = ROUND_NEAR_EVEN((double)c_buffer[j] / stddev); // TODO I don't think I-BERT uses round-near-even, so we shouldn't either. We just use this rounding mode here in order to match the hardware.
 
           elem_t* c = C + (i * stride_C) + j;
           *c = scale_and_sat(c_buffer[j], act, scale, bert_scale);
