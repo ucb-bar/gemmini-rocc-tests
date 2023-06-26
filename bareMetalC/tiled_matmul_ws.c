@@ -90,6 +90,10 @@ int main() {
     }
 #endif
 
+    printf("MAT_DIM_I: %d\n", MAT_DIM_I);
+    printf("MAT_DIM_J: %d\n", MAT_DIM_J);
+    printf("MAT_DIM_K: %d\n", MAT_DIM_K);
+
     gemmini_flush(0);
 
     static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
@@ -126,6 +130,22 @@ int main() {
         full_D[i][j] = NO_BIAS ? 0 : RAND % 2;
       }
     }
+    printf("Starting gemmini matmul\n");
+    unsigned long start = read_cycles();
+
+    tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
+            MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
+            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
+            false, false,
+            false, !FULL_BIAS_WIDTH,
+            0,
+            WS);
+
+    unsigned long end = read_cycles();
+    printf("Cycles taken: %u\n", end-start);
+
 
     printf("Starting slow CPU matmul\n");
     unsigned long cpu_start = read_cycles();
@@ -143,22 +163,6 @@ int main() {
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
     full_matscale(gold_full, gold, ACC_SCALE_IDENTITY);
 #endif
-
-    printf("Starting gemmini matmul\n");
-    unsigned long start = read_cycles();
-
-    tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
-            MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
-            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
-            false, false,
-            false, !FULL_BIAS_WIDTH,
-            0,
-            WS);
-
-    unsigned long end = read_cycles();
-    printf("Cycles taken: %u\n", end-start);
 
 #if CHECK_RESULT == 1
     if (!full_is_equal(full_C, gold)) {

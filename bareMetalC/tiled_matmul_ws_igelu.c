@@ -24,9 +24,9 @@ typedef elem_t ACC_T;
 #define BERT_SCALE 0.8
 
 #ifndef BAREMETAL
-#define MAT_DIM_I 400
-#define MAT_DIM_K 400
-#define MAT_DIM_J 400
+#define MAT_DIM_I 128
+#define MAT_DIM_K 512
+#define MAT_DIM_J 512
 #else
 #define MAT_DIM_I 30
 #define MAT_DIM_K 30
@@ -50,7 +50,7 @@ int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]
 }
 
 int main() {
-#ifdef FAST
+#if defined(FAST) || !defined(HAS_NORMALIZATIONS)
     exit(0);
 #endif
 
@@ -60,6 +60,8 @@ int main() {
       exit(1);
     }
 #endif
+
+    printf("I: %d, J: %d, K: %d\n", MAT_DIM_I, MAT_DIM_J, MAT_DIM_K);
 
     gemmini_flush(0);
 
@@ -122,6 +124,8 @@ int main() {
             false, !FULL_BIAS_WIDTH,
             0,
             WS);
+
+    gemmini_fence();
 
     unsigned long end = read_cycles();
     printf("Cycles taken: %u\n", end-start);

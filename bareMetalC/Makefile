@@ -18,6 +18,8 @@ tests = \
 	padded \
 	mvin_scale \
 	conv \
+	conv_stride \
+	conv_rect \
 	conv_with_pool \
 	conv_with_rot180 \
 	conv_with_kernel_dilation \
@@ -48,9 +50,10 @@ tests = \
 	transpose \
 	matrix_add \
 	resadd \
+	resadd_stride \
 	global_average \
-	template \
 	gemmini_counter \
+	template \
 
 tests_baremetal = $(tests:=-baremetal)
 
@@ -82,7 +85,8 @@ CFLAGS := $(CFLAGS) \
 	-ffast-math \
 	-fno-common \
 	-fno-builtin-printf \
-	-march=rv64gc -Wa,-march=rv64gcxhwacha \
+	-fno-tree-loop-distribute-patterns \
+	-march=rv64gc -Wa,-march=rv64gc \
 	-lm \
 	-lgcc \
 	-I$(abs_top_srcdir)/riscv-tests \
@@ -90,6 +94,7 @@ CFLAGS := $(CFLAGS) \
 	-I$(abs_top_srcdir) \
 	-I$(BENCH_COMMON) \
 	-DID_STRING=$(ID_STRING) \
+	-DPRINT_TILE=0 \
 
 CFLAGS_PK := \
 	$(CFLAGS) \
