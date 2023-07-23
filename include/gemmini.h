@@ -1438,14 +1438,7 @@ static void sp_tiled_conv(
 
   gemmini_loop_conv_ws(batch_size, in_row_dim, in_col_dim, in_channels, out_channels, out_row_dim, out_col_dim, pool_out_row_dim, pool_out_col_dim, stride, padding, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, act, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120, max_pixels_per_row, in_stride, weight_stride, out_stride, dw, a_spad_id, b_spad_id);
 
-
-  if (!no_pool) {
-    printf("Pooling with rectangular convolutions is currently not supported.\n");
-    exit(1);
-  }
-
-  // Only rectangular convolutions will use the following C code
-
+/*
   // mvin bias
   if (bias != NULL) {
     // TODO we probably don't need quite this many nested loops for this part
@@ -1730,7 +1723,7 @@ static void sp_tiled_conv(
     } else {
       printf("Pooling with rectangular convolutions is currently not supported.\n");
       exit(1);
-
+*/
       /*
       gemmini_extended2_config_st(out_channels * sizeof(elem_t), act, scale, pool_stride, pool_size, pool_out_row_dim, porows, pocols, orows, ocols, pupad, plpad);
 
@@ -1749,9 +1742,10 @@ static void sp_tiled_conv(
       }
 
       gemmini_extended_config_st(out_channels * sizeof(elem_t), act, scale);
-      */
-    }
-  }
+     */ 
+  //  }
+  //}
+  
 }
 
 
