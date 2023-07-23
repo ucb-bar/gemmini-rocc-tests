@@ -21,8 +21,8 @@
 
 #else
 
-#define IN_ROW_DIM 14
-#define IN_COL_DIM 14
+#define IN_ROW_DIM 7
+#define IN_COL_DIM 7
 #define IN_CHANNELS 16
 #define OUT_CHANNELS 18
 #define BATCH_SIZE 2
@@ -40,7 +40,7 @@
 #define N_PATCHES (BATCH_SIZE * OUT_ROW_DIM * OUT_COL_DIM)
 
 #define IN_STRIDE (IN_CHANNELS + 6)
-#define WEIGHT_STRIDE (OUT_CHANNELS + 14)
+#define WEIGHT_STRIDE (OUT_CHANNELS + 4)
 #define OUT_STRIDE (OUT_CHANNELS + 2)
 
 void conv(int batch_size, int in_channels,
@@ -133,7 +133,7 @@ void init_random(elem_t * buf, int row, int col, int stride){
     elem_t i = 0;
     for(int r = 0; r < row; r++){
         for(int c = 0; c < col; c++){
-            elem_t * ptr = buf + row * stride + col;
+            elem_t * ptr = buf + r * stride + c;
             *ptr = (rand() % 5) - 2;
         }
     }
@@ -160,9 +160,7 @@ int main() {
       exit(1);
     }
 #endif
-
     gemmini_flush(0);
-
     // assert((in_dim + 2*padding - kernel_dim) % stride == 0);
 
     printf("Input dimensions (rows by columns): %u by %u\n", IN_ROW_DIM, IN_COL_DIM);
@@ -200,12 +198,12 @@ int main() {
     uint64_t end_cpu = read_cycles();
     printf("CPU conv took %llu cycles\n", end_cpu - start_cpu);
 
-    static elem_t weights_mat[PATCH_SIZE][OUT_STRIDE] = {0};
+    static elem_t weights_mat[PATCH_SIZE][WEIGHT_STRIDE] = {0};
     static elem_t output_mat[N_PATCHES][OUT_STRIDE] = {0};
 
     printf("Flatten weights...\n");
     flatten_weights(OUT_CHANNELS, KERNEL_DIM, IN_CHANNELS,
-            PATCH_SIZE, OUT_STRIDE,
+            PATCH_SIZE, WEIGHT_STRIDE,
             weights,
             weights_mat);
 
@@ -262,7 +260,7 @@ int main() {
         printf("weights_mat:\n");
         for (int wrow = 0; wrow < KERNEL_DIM * KERNEL_DIM * IN_CHANNELS; wrow++) {
             printf("[");
-            for (int wcol = 0; wcol < OUT_STRIDE; wcol++) {
+            for (int wcol = 0; wcol < WEIGHT_STRIDE; wcol++) {
                 printf("%d,", weights_mat[wrow][wcol]);
             }
             printf("\b],\n");
