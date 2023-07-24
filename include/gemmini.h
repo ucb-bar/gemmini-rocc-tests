@@ -1749,9 +1749,12 @@ static void sp_tiled_conv(
       }
 
       gemmini_extended_config_st(out_channels * sizeof(elem_t), act, scale);
+<<<<<<< HEAD
       */
 //    }
-//  }
+//  } 
+  //  }
+  //}
 }
 
 
