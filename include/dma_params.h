@@ -15,7 +15,7 @@
 
 // Scratchpad configuration
 #define SPAD_BANK_NUM 2
-#define SPAD_BANK_ROWS 4096
+#define SPAD_BANK_BYTES (8192*2)
 #define BASE_ADDR 0x4000000 
 
 #endif // DMA_PARAMS_H
