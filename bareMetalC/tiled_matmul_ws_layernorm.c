@@ -41,6 +41,14 @@ void full_printMatrix(elem_t m[MAT_DIM_I][MAT_DIM_J]) {
   }
 }
 
+void full_printMatrix_acc(acc_t m[MAT_DIM_I][MAT_DIM_J]) {
+  for (size_t i = 0; i < MAT_DIM_I; ++i) {
+    for (size_t j = 0; j < MAT_DIM_J; ++j)
+      printf("%d ", m[i][j]);
+    printf("\n");
+  }
+}
+
 int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]) {
   for (size_t i = 0; i < MAT_DIM_I; ++i)
     for (size_t j = 0; j < MAT_DIM_J; ++j)
@@ -70,6 +78,7 @@ int main() {
 
     static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
     static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
+    static acc_t unnormed_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
     static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
     static ACC_T full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
 
@@ -118,19 +127,36 @@ int main() {
     printf("Starting gemmini matmul\n");
     unsigned long start = read_cycles();
 
+    /*
     tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-    // tiled_matmul(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
             (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             LAYERNORM, ACC_SCALE_IDENTITY, 0, false,
 
-            // 1, 48, 32,
-
             false, false,
             false, !FULL_BIAS_WIDTH,
             0,
             WS);
+            */
+
+    tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (acc_t*)unnormed_C,
+            MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
+            MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
+
+            false, false,
+            true, !FULL_BIAS_WIDTH,
+            0,
+            WS);
+
+    gemmini_fence();
+
+    tiled_norm_auto(MAT_DIM_I, MAT_DIM_J,
+            (acc_t*)unnormed_C, (elem_t*)full_C,
+            ACC_SCALE_IDENTITY,
+            LAYERNORM, WS);
 
     gemmini_fence();
 
@@ -141,7 +167,9 @@ int main() {
     if (!full_is_equal(full_C, gold)) {
       printf("C:\n");
       full_printMatrix(full_C);
-      printf("Gold:\n");
+      printf("\nUnnormed:\n");
+      full_printMatrix_acc(unnormed_C);
+      printf("\nGold:\n");
       full_printMatrix(gold);
       printf("\n");
 

@@ -1,7 +1,6 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	spad_dma \
 	mvin_mvout \
 	mvin_mvout_zeros \
 	mvin_mvout_stride \
@@ -21,6 +20,7 @@ tests = \
 	conv \
 	conv_stride \
 	conv_rect \
+	conv_rect_pool \
 	conv_with_pool \
 	conv_with_rot180 \
 	conv_with_kernel_dilation \

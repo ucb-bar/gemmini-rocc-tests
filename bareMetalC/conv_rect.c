@@ -30,10 +30,10 @@
 
 #else
 
-#define IN_ROW_DIM 17
-#define IN_COL_DIM 28
-#define IN_CHANNELS 18
-#define OUT_CHANNELS 19
+#define IN_ROW_DIM 7
+#define IN_COL_DIM 11
+#define IN_CHANNELS 17
+#define OUT_CHANNELS 18
 
 #endif
 
