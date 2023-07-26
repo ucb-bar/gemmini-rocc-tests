@@ -760,36 +760,37 @@ static void double_tiled_conv(
                 for (int poch = 0; poch < this_tile_out_channel; poch += pochs) {
                   for(int kch_outer = 0; kch_outer < in_channels; kch_outer += in_channels_tile){
                     int this_tile_in_channel = kch_outer + in_channels_tile > in_channels ? in_channels - kch_outer : in_channels_tile;
-                    // prefetch input / weight
-                    for(int kch = 0; kch < this_tile_in_channel; kch += kchs){
-                       if(poch == 0){
+                    if(poch == 0){
+                      for(int poch_spad = 0; poch_spad < this_tile_out_channel; poch_spad += pochs){
+                        // prefetch input / weight
+                        for(int kch_spad = 0; kch_spad < this_tile_in_channel; kch_spad += kchs){
                           if(A_channel != -1){
                              // fetch input
-                             uint64_t in_dram_offset = (b * in_row_dim * in_col_dim + ((irow_out+upad_out)>>input_dilated) * in_col_dim + ((icol_out+lpad_out)>>input_dilated))*in_stride + kch_outer + kch;
+                             uint64_t in_dram_offset = (b * in_row_dim * in_col_dim + ((irow_out+upad_out)>>input_dilated) * in_col_dim + ((icol_out+lpad_out)>>input_dilated))*in_stride + kch_outer + kch_spad;
                              int in_tile_row_dram_offset = in_col_dim;
                              int in_num_tile = irows_outer;//irows_outer - upad_out - dpad_out;
                              int in_tile_rows = icols_outer;// icols_outer - lpad_out - rpad_out;
-                             int in_tile_bytes_per_row = (kch + kchs > this_tile_in_channel) ? this_tile_in_channel - kch : kchs;
-                             uint64_t in_spad_offset = irows_outer * icols_outer * kchs * (int)(kch/kchs) * sizeof(elem_t);
+                             int in_tile_bytes_per_row = (kch_spad + kchs > this_tile_in_channel) ? this_tile_in_channel - kch_spad : kchs;
+                             uint64_t in_spad_offset = irows_outer * icols_outer * kchs * (int)(kch_spad/kchs) * sizeof(elem_t);
 #if DEBUG_PRINT == 1
                              printf("irow_out: %d, upad_out: %d, dpad_out: %d\n", irow_out, upad_out, dpad_out);
                              printf("icol_out: %d, lpad_out: %d, rpad_out: %d\n", icol_out, lpad_out, rpad_out);
                              printf("irows outer: %d, icols outer: %d, dram offset: 0x%08lx, spad offset: 0x%08lx\n", irows_outer, icols_outer, in_dram_offset, in_spad_offset);
 #endif
-                             dma_memcpy_tile(A_channel, in_dram_offset, in_spad_offset, (int)(kch / kchs), in_tile_row_dram_offset, icols_outer, in_num_tile, in_tile_rows, in_tile_bytes_per_row); 
+                             bool granted = false;
+                             dma_memcpy_tile(A_channel, granted, in_dram_offset, in_spad_offset, (int)(kch_spad / kchs), in_tile_row_dram_offset, icols_outer, in_num_tile, in_tile_rows, in_tile_bytes_per_row); 
                           }
-                       }
-                       // later move this to outside and create poch/koch loop (under if poch == 0)
-                       uint64_t weight_dram_offset = (kch_outer + kch) * weight_stride + (poch_outer + poch);
-                       int weight_outer_index = (int)(poch/pochs) * ceil_divide_int(this_tile_in_channel, kchs) + (int)(kch/kchs);
-                       int weight_spad_offset = kernel_dim * kernel_dim * kchs * pochs * weight_outer_index * sizeof(elem_t); 
-                       int weight_tile_rows = (kch + kchs > this_tile_in_channel) ? this_tile_in_channel - kch : kchs;
-                       int weight_tile_bytes_per_row = poch + pochs > this_tile_out_channel ? this_tile_out_channel - poch : pochs;
-                       dma_memcpy_tile(B_channel, weight_dram_offset, weight_spad_offset, weight_outer_index, in_channels, kchs, kernel_dim * kernel_dim, weight_tile_rows, weight_tile_bytes_per_row);
-                       
+                          // later move this to outside and create poch/koch loop (under if poch == 0)
+                          uint64_t weight_dram_offset = (kch_outer + kch_spad) * weight_stride + (poch_outer + poch_spad);
+                          int weight_outer_index = (int)(poch_spad/pochs) * ceil_divide_int(this_tile_in_channel, kchs) + (int)(kch_spad/kchs);
+                          int weight_spad_offset = kernel_dim * kernel_dim * kchs * pochs * weight_outer_index * sizeof(elem_t); 
+                          int weight_tile_rows = (kch_spad + kchs > this_tile_in_channel) ? this_tile_in_channel - kch_spad : kchs;
+                          int weight_tile_bytes_per_row = poch_spad + pochs > this_tile_out_channel ? this_tile_out_channel - poch_spad : pochs;
+                          bool granted = false;
+                          dma_memcpy_tile(B_channel, granted, weight_dram_offset, weight_spad_offset, weight_outer_index, in_channels, kchs, kernel_dim * kernel_dim, weight_tile_rows, weight_tile_bytes_per_row);
+                        }
+                      }
                     }
-                    // for now, no krow/kcol outer tiling
-                    // do this after probing done
                     for (int krow = 0; krow < kernel_dim; krow += krows) {
                         int irow = orow_floored * stride + krow * kernel_dilation - padding;
 
@@ -883,6 +884,21 @@ static void double_tiled_conv(
 #if DEBUG_PRINT == 1
                                 printf("input address: 0x%08lx, weight address: 0x%08lx, output address: 0x%08lx\n", in, weights_slice, out);
 #endif
+                                // for now, no krow/kcol outer tiling
+                                // do this after probing done
+                                while(A_channel != -1 && in != NULL){
+                                  uint64_t curr_loaded_tile;
+                                  dma_probe_state(curr_loaded_tile, A_channel);
+                                  if(curr_loaded_tile > (int)(kch/kchs))
+                                    break;
+                                }
+                                int curr_weight_tile = (int)(poch/pochs) * ceil_divide_int(this_tile_in_channel, kchs) + (int)(kch/kchs);
+                                while(weights_slice != NULL){
+                                  uint64_t curr_loaded_tile;
+                                  dma_probe_state(curr_loaded_tile, B_channel);
+                                  if(curr_loaded_tile > curr_weight_tile)
+                                    break;
+                                }
                                 sp_tiled_conv(
                                     batch_size, A_channel == -1 ? in_row_dim : irows_outer, A_channel == -1 ? in_col_dim : icols_outer, kchs,// A_channel == -1 ? in_channels : kchs,
                                     out_channels, out_row_dim, out_col_dim,
