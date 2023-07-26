@@ -43,8 +43,8 @@
 #define dma_memcpy_matrix(channel, dram_offset, num_row_tile, num_col_tile, total_rows, total_bytes_per_row, tile_rows, tile_bytes_per_row) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_DMA, ((uint64_t) channel << 60) | ((uint64_t) total_bytes_per_row << 32) | ((uint64_t) total_rows << 16) | ((uint64_t) num_row_tile << 8) | ((uint64_t) num_col_tile), ((uint64_t) dram_offset << 32) | ((uint64_t) tile_rows << 20) | ((uint64_t) tile_bytes_per_row), k_MEMCPY)
 
-#define dma_memcpy_tile(channel, dram_offset, spad_offset, tile_index, tile_row_dram_offset, tile_row_spad_offset, num_tile, tile_rows, tile_bytes_per_row) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_DMA, ((uint64_t) channel << 60) | ((uint64_t) tile_index << 54) | ((uint64_t) tile_rows << 42) | ((uint64_t) tile_bytes_per_row << 26) | ((uint64_t) tile_row_spad_offset << 14) | ((uint64_t) tile_row_dram_offset), ((uint64_t) num_tile << 56) | ((uint64_t) spad_offset << 32) | ((uint64_t) dram_offset), k_MEMCPY_TILE)
+#define dma_memcpy_tile(channel, granted, dram_offset, spad_offset, tile_index, tile_row_dram_offset, tile_row_spad_offset, num_tile, tile_rows, tile_bytes_per_row) \
+  ROCC_INSTRUCTION_RD_RS1_RS2(XCUSTOM_DMA, granted, ((uint64_t) channel << 60) | ((uint64_t) tile_index << 54) | ((uint64_t) tile_rows << 42) | ((uint64_t) tile_bytes_per_row << 26) | ((uint64_t) tile_row_spad_offset << 14) | ((uint64_t) tile_row_dram_offset), ((uint64_t) num_tile << 56) | ((uint64_t) spad_offset << 32) | ((uint64_t) dram_offset), k_MEMCPY_TILE)
 
 /*
 #define dma_memcpy_tile(channel, dram_offset, spad_offset, tile_index, tile_rows, tile_bytes_per_row) \
