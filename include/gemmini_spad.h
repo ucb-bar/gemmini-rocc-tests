@@ -106,9 +106,9 @@ size_t* matmul_tile_factor(size_t dim_I, size_t dim_J, size_t dim_K, size_t oute
 }
 
 static void double_tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
-        const elem_t* A, const elem_t* B,
-        const void * D, void * C,
-        elem_t* A_sp_addr, elem_t* B_sp_addr,
+        elem_t* A, elem_t* B,
+        void * D, void * C,
+        uint64_t A_sp_addr, uint64_t B_sp_addr,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C, 
         int A_channel, int B_channel,
         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
@@ -167,9 +167,9 @@ static void double_tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
 
   for(size_t o_j0 = 0; o_j0 < dim_J_padded; o_j0+=(outer_tile_J*DIM)){
     size_t outer_J_dim = (o_j0 + (outer_tile_J*DIM)) >= dim_J_padded ? dim_J_padded - o_j0 : outer_tile_J*DIM;
-    printf("outer_tile_J: %d, dim_J_padded: %d\n", outer_tile_J, dim_J_padded);
-    uint64_t B_dram_offset = b_transpose ? (o_j0*stride_B) : (o_j0); 
     const size_t last_J = outer_J_dim % (inner_tile_J*DIM) == 0 ? inner_tile_J : (outer_J_dim/DIM) % inner_tile_J;
+    /*
+    uint64_t B_dram_offset = b_transpose ? (o_j0*stride_B) : (o_j0); 
     // weight has to stored scratchpad
     //int B_spad_stride = b_transpose ? dim_K : outer_J_dim;
     int B_row = b_transpose? outer_J_dim : dim_K;
@@ -181,15 +181,43 @@ static void double_tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
     int num_B_col_tile = b_transpose ? ceil_divide_int(B_col, inner_tile_K*DIM) : ceil_divide_int(B_col, inner_tile_J*DIM);
     printf("B_row: %d, B_col: %d, B_inner_row: %d, B_inner_col_bytes: %d\n", B_row, B_col, B_inner_row, B_inner_col_bytes);
     dma_memcpy_matrix(B_channel, B_dram_offset, num_B_row_tile, num_B_col_tile, B_row, B_col_bytes, B_inner_row, B_inner_col_bytes); 
-    
+    */
     size_t J0 = outer_J_dim / (inner_tile_J*DIM) + (outer_J_dim % (inner_tile_J*DIM) != 0);
-    
+
+#if DEBUG_PRINT == 1
+    printf("outer_tile_J: %d, dim_J_padded: %d, J0: %d\n", outer_tile_J, dim_J_padded, J0);
+#endif
+    // memcpy B
+    for(size_t spad_j0 = 0; spad_j0 < J0; spad_j0 ++){
+       for(size_t spad_k0 = 0; spad_k0 < K0; spad_k0 ++){ 
+          int B_tile_index = b_transpose ? spad_j0*K0 + spad_k0 : spad_k0*J0 + spad_j0;
+          int B_row = spad_k0 == K0-1 ? dim_K - spad_k0 * inner_tile_K * DIM : inner_tile_K * DIM;
+          int B_col = spad_j0 == J0-1 ? outer_J_dim - spad_j0 * inner_tile_J * DIM : inner_tile_J * DIM; 
+          if(b_transpose){
+             int B_col_save = B_col;
+             B_col = B_row;
+             B_row = B_col_save;
+          }
+          bool granted = false;
+          uint64_t B_spad_offset = b_transpose ? (spad_j0*inner_tile_J*DIM*B_spad_stride + spad_k0*inner_tile_K*DIM) : (spad_k0*inner_tile_K*DIM*B_spad_stride + spad_j0*inner_tile_J*DIM);
+          uint64_t B_dram_offset = b_transpose ? (o_j0*stride_B + spad_j0*inner_tile_J*DIM*stride_B + spad_k0*inner_tile_K*DIM) : (o_j0 + spad_j0*inner_tile_J*DIM + spad_k0*inner_tile_K*DIM*stride_B);
+          dma_memcpy_tile(B_channel, granted, B_dram_offset, B_spad_offset, B_tile_index, B_row, B_col * sizeof(elem_t));
+#if DEBUG_PRING == 1
+          printf("granted: %d, B_tile_index: %d, B_row: %d, B_col: %d, B_dram_offset: 0x%08lx, B_spad_offset: 0x%08lx\n", granted, B_tile_index, B_row, B_col, B_dram_offset, B_spad_offset);
+#endif
+       }
+    }
     for (size_t o_i0 = 0; o_i0 < dim_I_padded; o_i0+=(outer_tile_I*DIM)){
       size_t outer_I_dim = (o_i0 + (outer_tile_I*DIM)) >= dim_I_padded ? dim_I_padded - o_i0 : outer_tile_I*DIM; 
       const size_t last_I = outer_I_dim % (inner_tile_I*DIM) == 0 ? inner_tile_I : (outer_I_dim/DIM) % inner_tile_I;
+      size_t I0 = outer_I_dim / (inner_tile_I*DIM) + (outer_I_dim % (inner_tile_I*DIM) != 0);
+#if DEBUG_PRINT == 1
+      printf("outer_tile_I: %d, dim_I_padded: %d, I0: %d\n", outer_tile_I, dim_I_padded, I0);
+#endif
       //int A_spad_stride = stride_A;
       // -1: already at scratchpad
       if(A_channel != -1){
+       /* 
         // ToDo: stride for sw padding
         //A_spad_stride = a_transpose ? outer_I_dim : dim_K; // no K outer tile
         uint64_t A_dram_offset = a_transpose ? o_i0 : (o_i0*stride_A);
@@ -203,11 +231,30 @@ static void double_tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         int num_A_col_tile = a_transpose ? ceil_divide_int(A_col, inner_tile_I*DIM) : ceil_divide_int(A_col, inner_tile_K*DIM);
 
         dma_memcpy_matrix(A_channel, A_dram_offset, num_A_row_tile, num_A_col_tile, A_row, A_col_bytes, A_inner_row, A_inner_col_bytes); 
+        */
         gemmini_extended3_config_ld(A_spad_stride * sizeof(elem_t), A_scale_factor, false, 0);
-        printf("A_row: %d, A_col: %d, A_inner_row: %d, A_inner_col_bytes: %d\n", A_row, A_col, A_inner_row, A_inner_col_bytes);
  
+        // memcpy A
+        for(size_t spad_i0 = 0; spad_i0 < I0; spad_i0 ++){
+           for(size_t spad_k0 = 0; spad_k0 < K0; spad_k0 ++){ 
+              int A_tile_index = a_transpose ? spad_k0*I0 + spad_i0 : spad_i0*K0 + spad_k0;
+              int A_col = spad_k0 == K0-1 ? dim_K - spad_k0 * inner_tile_K * DIM : inner_tile_K * DIM;
+              int A_row = spad_i0 == I0-1 ? outer_I_dim - spad_i0 * inner_tile_I * DIM : inner_tile_I * DIM; 
+              if(a_transpose){
+                 int A_col_save = A_col;
+                 A_col = A_row;
+                 A_row = A_col_save;
+              }
+              bool granted = false;
+              uint64_t A_spad_offset = a_transpose ? (spad_k0*inner_tile_K*DIM*A_spad_stride + spad_i0*inner_tile_I*DIM) : (spad_i0*inner_tile_I*DIM*A_spad_stride + spad_k0*inner_tile_K*DIM);
+              uint64_t A_dram_offset = a_transpose ? (o_i0 + spad_k0*inner_tile_K*DIM*stride_A + spad_i0*inner_tile_I*DIM) : (o_i0*stride_A + spad_k0*inner_tile_K*DIM + spad_i0*inner_tile_I*DIM*stride_A);
+              dma_memcpy_tile(A_channel, granted, A_dram_offset, A_spad_offset, A_tile_index, A_row, A_col * sizeof(elem_t));
+#if DEBUG_PRING == 1
+              printf("granted: %d, A_tile_index: %d, A_row: %d, A_col: %d, A_dram_offset: 0x%08lx, A_spad_offset: 0x%08lx\n", granted, A_tile_index, A_row, A_col, A_dram_offset, A_spad_offset);
+#endif
+           }
+        }
       } 
-      size_t I0 = outer_I_dim / (inner_tile_I*DIM) + (outer_I_dim % (inner_tile_I*DIM) != 0);
 
       // start inner loop
       // reuse operand if it fits scratchpad
@@ -262,16 +309,17 @@ static void double_tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
             const size_t pad_K = k0 == K0-1 ? padding_K : 0;
 
             // ensure A is not outer-tiled when all pre-loaded
-            const elem_t * a = a_transpose ? (BASE_ADDR + A_sp_addr + k0*inner_tile_K*DIM*A_spad_stride + i0*inner_tile_I*DIM)
-              : (BASE_ADDR + A_sp_addr + i0*inner_tile_I*DIM*A_spad_stride + k0*inner_tile_K*DIM);
+            const elem_t * a = a_transpose ? (elem_t*) (BASE_ADDR + A_sp_addr + k0*inner_tile_K*DIM*A_spad_stride + i0*inner_tile_I*DIM)
+              : (elem_t*) (BASE_ADDR + A_sp_addr + i0*inner_tile_I*DIM*A_spad_stride + k0*inner_tile_K*DIM);
 
-            const elem_t * b = b_transpose ? (BASE_ADDR + B_sp_addr + j0*inner_tile_J*DIM*B_spad_stride + k0*inner_tile_K*DIM)
-              : (BASE_ADDR + B_sp_addr + k0*inner_tile_K*DIM*B_spad_stride + j0*inner_tile_J*DIM);
+            const elem_t * b = b_transpose ? (elem_t*) (BASE_ADDR + B_sp_addr + j0*inner_tile_J*DIM*B_spad_stride + k0*inner_tile_K*DIM)
+              : (elem_t*) (BASE_ADDR + B_sp_addr + k0*inner_tile_K*DIM*B_spad_stride + j0*inner_tile_J*DIM);
 
             if(a_reuse && j0 >= 1) a = NULL;
             if(b_reuse && i0 >= 1) b = NULL;
+#if DEBUG_PRINT == 1
             printf("a_reuse: %d, b_reuse: %d, A_spad_stride: %d, B_spad_stride: %d, a: 0x%08lx, b: 0x%08lx C: 0x%08lx, out: 0x%08lx\n", a_reuse, b_reuse, A_spad_stride, B_spad_stride, a, b, C, out);
-            
+#endif
             sp_tiled_matmul_ws(a, b, pre, out,
                 A_scale_factor, B_scale_factor, D_scale_factor,
                 I, J, K,
@@ -402,7 +450,7 @@ static void double_tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #endif
    double_tiled_matmul_outer(dim_I, dim_J, dim_K,
         A, B, D, output_to_dram ? C : (void*) (C_sp_addr+BASE_ADDR),
-        (elem_t*) A_sp_addr, (elem_t*) B_sp_addr, // todo: bias
+        A_sp_addr, B_sp_addr, // todo: bias
         stride_A, stride_B, stride_D, output_to_dram ? stride_C : dim_J,
         A_channel, B_channel,
         A_scale_factor, B_scale_factor, D_scale_factor,
@@ -778,7 +826,7 @@ static void double_tiled_conv(
                              printf("irows outer: %d, icols outer: %d, dram offset: 0x%08lx, spad offset: 0x%08lx\n", irows_outer, icols_outer, in_dram_offset, in_spad_offset);
 #endif
                              bool granted = false;
-                             dma_memcpy_tile(A_channel, granted, in_dram_offset, in_spad_offset, (int)(kch_spad / kchs), in_tile_row_dram_offset, icols_outer, in_num_tile, in_tile_rows, in_tile_bytes_per_row); 
+                             dma_memcpy_subtile(A_channel, granted, in_dram_offset, in_spad_offset, (int)(kch_spad / kchs), in_tile_row_dram_offset, icols_outer, in_num_tile, in_tile_rows, in_tile_bytes_per_row); 
                           }
                           // later move this to outside and create poch/koch loop (under if poch == 0)
                           uint64_t weight_dram_offset = (kch_outer + kch_spad) * weight_stride + (poch_outer + poch_spad);
@@ -787,7 +835,7 @@ static void double_tiled_conv(
                           int weight_tile_rows = (kch_spad + kchs > this_tile_in_channel) ? this_tile_in_channel - kch_spad : kchs;
                           int weight_tile_bytes_per_row = poch_spad + pochs > this_tile_out_channel ? this_tile_out_channel - poch_spad : pochs;
                           bool granted = false;
-                          dma_memcpy_tile(B_channel, granted, weight_dram_offset, weight_spad_offset, weight_outer_index, in_channels, kchs, kernel_dim * kernel_dim, weight_tile_rows, weight_tile_bytes_per_row);
+                          dma_memcpy_subtile(B_channel, granted, weight_dram_offset, weight_spad_offset, weight_outer_index, in_channels, kchs, kernel_dim * kernel_dim, weight_tile_rows, weight_tile_bytes_per_row);
                         }
                       }
                     }
