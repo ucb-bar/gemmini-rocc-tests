@@ -84,16 +84,16 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
     if (check)
         printf("%s: gemmini\n", layer_name);
 
-    tiled_matmul(dim_I, dim_J, dim_K,
-        (elem_t*)A, (elem_t*)B, D, (elem_t*)C, 
-        dim_K, dim_J, dim_J, dim_J,
-        MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-        act, scale, 0, repeating_bias,
-        tile_I, tile_J, tile_K,
-        false, false,
-        false, false,
-        0,
-        tiled_matmul_type);
+    // tiled_matmul(dim_I, dim_J, dim_K,
+    //     (elem_t*)A, (elem_t*)B, D, (elem_t*)C, 
+    //     dim_K, dim_J, dim_J, dim_J,
+    //     MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+    //     act, scale, 0, repeating_bias,
+    //     tile_I, tile_J, tile_K,
+    //     false, false,
+    //     false, false,
+    //     0,
+    //     tiled_matmul_type);
 
     if (check) {
         printf("%s: CPU\n", layer_name);

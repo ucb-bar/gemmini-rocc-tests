@@ -14,10 +14,15 @@ tests = []
 for layer in layers:
     layer_name = layer["prob_name"] 
     del layer["prob_name"]
-    vals = []
-    for val in layer.values():
-        vals.append(str(int(val)))
-    tests.append(GemminiTest(list(layer.keys()), vals, "conv_template_map", layer_name)) 
+    if "I" in layer: # matmul
+        matmul_layer_keys = ["I", "K", "J", "TILE_OCOLS", "TILE_KCHS", "TILE_OCHS", "SPATIAL_TILE_KCHS", "SPATIAL_TILE_OCHS", "PERM_STR"]
+        matmul_template_keys = ["DIM_I", "DIM_K", "DIM_J", "TILE_OCOLS", "TILE_KCHS", "TILE_OCHS", "SPATIAL_TILE_KCHS", "SPATIAL_TILE_OCHS", "PERM_STR"]
+        tests.append(GemminiTest(matmul_template_keys, [layer[k] for k in matmul_layer_keys], "matmul_template_map", layer_name))
+    else: # conv
+        vals = []
+        for val in layer.values():
+            vals.append(str(val))
+        tests.append(GemminiTest(list(layer.keys()), vals, "conv_template_map", layer_name)) 
 
 """
 tests = [
