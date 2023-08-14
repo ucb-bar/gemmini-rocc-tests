@@ -815,7 +815,7 @@ static void double_tiled_conv(
                           if(A_channel != -1){
                              // fetch input
                              uint64_t in_dram_offset = (b * in_row_dim * in_col_dim + ((irow_out+upad_out)>>input_dilated) * in_col_dim + ((icol_out+lpad_out)>>input_dilated))*in_stride + kch_outer + kch_spad;
-                             int in_tile_row_dram_offset = in_col_dim;
+                             int in_tile_dram_offset = in_col_dim * in_stride * sizeof(elem_t);
                              int in_num_tile = irows_outer;//irows_outer - upad_out - dpad_out;
                              int in_tile_rows = icols_outer;// icols_outer - lpad_out - rpad_out;
                              int in_tile_bytes_per_row = (kch_spad + kchs > this_tile_in_channel) ? this_tile_in_channel - kch_spad : kchs;
@@ -826,7 +826,7 @@ static void double_tiled_conv(
                              printf("irows outer: %d, icols outer: %d, dram offset: 0x%08lx, spad offset: 0x%08lx\n", irows_outer, icols_outer, in_dram_offset, in_spad_offset);
 #endif
                              bool granted = false;
-                             dma_memcpy_subtile(A_channel, granted, in_dram_offset, in_spad_offset, (int)(kch_spad / kchs), in_tile_row_dram_offset, icols_outer, in_num_tile, in_tile_rows, in_tile_bytes_per_row); 
+                             dma_memcpy_multitile(A_channel, granted, in_dram_offset, in_spad_offset, (int)(kch_spad / kchs), in_tile_dram_offset, icols_outer * A_spad_stride, in_num_tile, in_tile_rows, in_tile_bytes_per_row); 
                           }
                           // later move this to outside and create poch/koch loop (under if poch == 0)
                           uint64_t weight_dram_offset = (kch_outer + kch_spad) * weight_stride + (poch_outer + poch_spad);
@@ -835,7 +835,7 @@ static void double_tiled_conv(
                           int weight_tile_rows = (kch_spad + kchs > this_tile_in_channel) ? this_tile_in_channel - kch_spad : kchs;
                           int weight_tile_bytes_per_row = poch_spad + pochs > this_tile_out_channel ? this_tile_out_channel - poch_spad : pochs;
                           bool granted = false;
-                          dma_memcpy_subtile(B_channel, granted, weight_dram_offset, weight_spad_offset, weight_outer_index, in_channels, kchs, kernel_dim * kernel_dim, weight_tile_rows, weight_tile_bytes_per_row);
+                          dma_memcpy_multitile(B_channel, granted, weight_dram_offset, weight_spad_offset, weight_outer_index, in_channels * weight_stride * sizeof(elem_t), kchs * B_spad_stride, kernel_dim * kernel_dim, weight_tile_rows, weight_tile_bytes_per_row);
                         }
                       }
                     }
