@@ -25,6 +25,8 @@
 #define KROWS %TILE_KROWS%
 #define KCHS %TILE_KCHS%
 
+#define PERM_STR %PERM_STR%
+
 #define NO_BIAS false
 
 #define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
@@ -197,10 +199,12 @@ int main() {
     uint64_t end_cpu = read_cycles();
     printf("CPU conv took %llu cycles\n", end_cpu - start_cpu);
 
-    static elem_t weights_mat[PATCH_SIZE][OUT_CHANNELS];
-    static elem_t output_mat[N_PATCHES][OUT_CHANNELS];
+    // static elem_t weights_mat[PATCH_SIZE][OUT_CHANNELS];
+    // static elem_t output_mat[N_PATCHES][OUT_CHANNELS];
+    elem_t weights_mat[7 * 7 * 1024][1024];
+    elem_t output_mat[112 * 112][1024]
 
-    printf("Flatten weights...\n");
+    // printf("Flatten weights...\n");
     /*flatten_weights(OUT_CHANNELS, KERNEL_DIM, IN_CHANNELS,
             PATCH_SIZE,
             weights,
@@ -225,7 +229,8 @@ int main() {
 
         NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0,
 
-        WS);
+        WS,
+        PERM_STR);
 
     gemmini_fence();
     uint64_t end_gemmini = read_cycles();

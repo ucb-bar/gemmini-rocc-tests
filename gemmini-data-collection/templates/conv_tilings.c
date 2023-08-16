@@ -27,6 +27,7 @@
 // #define KCHS "%TILE_KCHS%"
 // #define PERM_STR "%PERM_STR%"
 
+#define PRINT_TILE %PRINT_TILE%
 #define NO_BIAS 1
 
 // #define OUT_DIM ((IN_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
@@ -132,12 +133,7 @@ int main() {
         printf("%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%s\n", KERNEL_DIM, OUT_DIM, IN_CHANNELS, OUT_CHANNELS, 
                BATCH_SIZE, STRIDE, KERNEL_DILATION, PADDING, KCOLS, KROWS, OCOLS, OROWS, KCHS, OCHS, BATCHES, SPATIAL_KCHS, SPATIAL_OCHS, PERM_STR);
 
-        gemmini_flush(0);
-        // printf("Gemmini conv...\n");
-        uint64_t start_gemmini = read_cycles();
-
-        // assert((in_dim + 2*padding - kernel_dim) % stride == 0);
-        tiled_conv_auto(
+        tiled_conv_auto_inner(
             BATCH_SIZE, IN_DIM, IN_CHANNELS,
             OUT_CHANNELS, OUT_DIM,
             STRIDE, 1, KERNEL_DILATION, PADDING, KERNEL_DIM,
@@ -148,7 +144,28 @@ int main() {
             NO_BIAS ? NULL : (acc_t*)bias,
             (elem_t*)output_mat,
 
-            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, WS
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, WS,
+            true,
+        );
+
+        gemmini_flush(0);
+        // printf("Gemmini conv...\n");
+        uint64_t start_gemmini = read_cycles();
+
+        // assert((in_dim + 2*padding - kernel_dim) % stride == 0);
+        tiled_conv_auto_inner(
+            BATCH_SIZE, IN_DIM, IN_CHANNELS,
+            OUT_CHANNELS, OUT_DIM,
+            STRIDE, 1, KERNEL_DILATION, PADDING, KERNEL_DIM,
+            false, false, false, false, false,
+
+            (elem_t*)input,
+            (elem_t*)weights_mat,
+            NO_BIAS ? NULL : (acc_t*)bias,
+            (elem_t*)output_mat,
+
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, WS,
+            false,
         );
         uint64_t end_gemmini = read_cycles();
         printf("Gemmini auto conv took %llu cycles\n\n", end_gemmini - start_gemmini);

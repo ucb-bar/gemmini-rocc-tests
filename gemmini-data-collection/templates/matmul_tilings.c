@@ -10,6 +10,7 @@
 #endif
 #include "include/gemmini_testutils.h"
 
+#define PRINT_TILE %PRINT_TILE%
 #define NO_BIAS 1
 #define REPEATING_BIAS 1
 
@@ -88,11 +89,7 @@ int main() {
         // printf("I: %d\n, K: %d\n, J: %d\n, TILE_I: %d\n, TILE_K: %d\n, TILE_J: %d\n", MAT_DIM_I, MAT_DIM_J, MAT_DIM_K, TILE_I, TILE_K, TILE_J);
         printf("%d_%d_%d_%d_%d_%d_%d_%d_%s\n", MAT_DIM_I, MAT_DIM_J, MAT_DIM_K, TILE_I, TILE_K, TILE_J, SPATIAL_TILE_K, SPATIAL_TILE_J, PERM_STR);
 
-        gemmini_flush(0);
-
-        unsigned long start = read_cycles();
-
-        tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+        tiled_matmul_auto_inner(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
                 (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
                 A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
                 MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
@@ -100,7 +97,23 @@ int main() {
                 A_TRANSPOSE, B_TRANSPOSE,
                 false, false,
                 0,
-                WS);
+                WS,
+                true);
+
+        gemmini_flush(0);
+
+        unsigned long start = read_cycles();
+
+        tiled_matmul_auto_inner(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+                (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
+                A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
+                MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+                NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
+                A_TRANSPOSE, B_TRANSPOSE,
+                false, false,
+                0,
+                WS,
+                false);
 
         gemmini_fence();
 

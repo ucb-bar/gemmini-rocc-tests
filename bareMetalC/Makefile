@@ -1,6 +1,6 @@
 include $(abs_top_srcdir)/Makefrag
 
-tests =  conv_tilings  matmul_tilings 
+tests =  matmul_tilings 
 
 tests_baremetal = $(tests:=-baremetal)
 

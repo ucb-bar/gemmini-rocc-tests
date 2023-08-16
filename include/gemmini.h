@@ -1288,9 +1288,7 @@ static size_t tiled_matmul_total_acc_rows(size_t I, size_t J) {
   return (I * J) * DIM;
 }
 
-// This function runs a tiled matrix multiplication, with automatically
-// calculated tiling factors
-static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
+static void tiled_matmul_auto_inner(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t* A, const elem_t* B,
         const void * D, void * C,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
@@ -1300,7 +1298,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         bool transpose_A, bool transpose_B,
         bool full_C, bool low_D,
         uint8_t weightA,
-        enum tiled_matmul_type_t tiled_matmul_type) {
+        enum tiled_matmul_type_t tiled_matmul_type, bool print_tile) {
 
 #define partition_rows (BANK_NUM * BANK_ROWS / 2)
 #define mats_in_partition (partition_rows / DIM)
@@ -1369,25 +1367,23 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         break;
     }
 
-#ifdef PRINT_TILE
-#if PRINT_TILE
-    const int spad_rows = tiled_matmul_total_spad_rows(tile_I, tile_J, tile_K);
-    const int acc_rows = tiled_matmul_total_acc_rows(tile_I, tile_J);
+    if (print_tile) {
+        const int spad_rows = tiled_matmul_total_spad_rows(tile_I, tile_J, tile_K);
+        const int acc_rows = tiled_matmul_total_acc_rows(tile_I, tile_J);
 
-    printf("tile_I: %d\n", tile_I);
-    printf("tile_J: %d\n", tile_J);
-    printf("tile_K: %d\n\n", tile_K);
+        printf("tile_I: %d\n", tile_I);
+        printf("tile_J: %d\n", tile_J);
+        printf("tile_K: %d\n\n", tile_K);
 
-    printf("spad_rows: %d\n", spad_rows);
-    printf("acc_rows: %d\n\n", acc_rows);
+        printf("spad_rows: %d\n", spad_rows);
+        printf("acc_rows: %d\n\n", acc_rows);
 
-    printf("spad_row utilization: %d%%\n", (spad_rows * 100) / max_spad_rows);
-    printf("acc_row utilization: %d%%\n\n", (acc_rows * 100) / max_acc_rows);
+        printf("spad_row utilization: %d%%\n", (spad_rows * 100) / max_spad_rows);
+        printf("acc_row utilization: %d%%\n\n", (acc_rows * 100) / max_acc_rows);
 
-    return;
+        return;
+    }
     // exit(EXIT_SUCCESS);
-#endif
-#endif
 
     tiled_matmul(dim_I, dim_J, dim_K,
         A, B, D, C,
@@ -1409,6 +1405,33 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #undef max_tile_k
 }
 
+// This function runs a tiled matrix multiplication, with automatically
+// calculated tiling factors
+static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
+        const elem_t* A, const elem_t* B,
+        const void * D, void * C,
+        size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
+        scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
+        int act, acc_scale_t scale, acc_scale_t bert_scale,
+        bool repeating_bias,
+        bool transpose_A, bool transpose_B,
+        bool full_C, bool low_D,
+        uint8_t weightA,
+        enum tiled_matmul_type_t tiled_matmul_type) {
+    
+    tiled_matmul_auto_inner(dim_I, dim_J, dim_K,
+        A, B,
+        D, C,
+        stride_A, stride_B, stride_D, stride_C,
+        A_scale_factor, B_scale_factor, D_scale_factor,
+        act, scale, bert_scale,
+        repeating_bias,
+        transpose_A, transpose_B,
+        full_C, low_D,
+        weightA,
+        tiled_matmul_type,
+        false);
+}
 
 static void sp_tiled_conv(
         int batch_size, int in_dim, int in_channels,
@@ -2681,7 +2704,7 @@ static void tiled_conv_dw(
 }
 
 
-static void tiled_conv_auto(
+static void tiled_conv_auto_inner(
         int batch_size, int in_dim, int in_channels,
         int out_channels, int out_dim,
         int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
@@ -2696,7 +2719,8 @@ static void tiled_conv_auto(
         int act, acc_scale_t scale,
         int pool_size, int pool_stride, int pool_padding,
 
-        enum tiled_matmul_type_t tiled_conv_type) {
+        enum tiled_matmul_type_t tiled_conv_type,
+        bool print_tile) {
 
     const bool no_pool = pool_stride == 0;
     if (no_pool) {
@@ -2832,24 +2856,24 @@ static void tiled_conv_auto(
         args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     */
 
-#if PRINT_TILE
-    printf("batches = %d\n", batches);
-    printf("orows   = %d\n", orows);
-    printf("ocols   = %d\n", ocols);
-    printf("ochs    = %d\n", ochs);
-    printf("krows   = %d\n", krows);
-    printf("kcols   = %d\n", kcols);
-    printf("kchs    = %d\n\n", kchs);
+    if (print_tile) {
+        printf("batches = %d\n", batches);
+        printf("orows   = %d\n", orows);
+        printf("ocols   = %d\n", ocols);
+        printf("ochs    = %d\n", ochs);
+        printf("krows   = %d\n", krows);
+        printf("kcols   = %d\n", kcols);
+        printf("kchs    = %d\n\n", kchs);
 
-    printf("total spad_rows reserved: %d\n", spad_rows);
-    printf("total acc_rows reserved: %d\n\n", acc_rows);
+        printf("total spad_rows reserved: %d\n", spad_rows);
+        printf("total acc_rows reserved: %d\n\n", acc_rows);
 
-    printf("scratchpad row utilization: %d%%\n", (spad_rows*100) / max_spad_rows);
-    printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
+        printf("scratchpad row utilization: %d%%\n", (spad_rows*100) / max_spad_rows);
+        printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
 
-    printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
-    return;
-#endif
+        printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
+        return;
+    }
 
     tiled_conv(
         batch_size, in_dim, in_channels,
@@ -2873,6 +2897,42 @@ static void tiled_conv_auto(
 
         tiled_conv_type,
         "CRSKPQN");
+}
+
+static void tiled_conv_auto(
+        int batch_size, int in_dim, int in_channels,
+        int out_channels, int out_dim,
+        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
+        bool wrot180, bool trans_output_1203, bool trans_input_3120,
+        bool trans_weight_1203, bool trans_weight_0132,
+
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
+        elem_t * output,
+
+        int act, acc_scale_t scale,
+        int pool_size, int pool_stride, int pool_padding,
+
+        enum tiled_matmul_type_t tiled_conv_type) {
+    
+    tiled_conv_auto_inner(
+        batch_size, in_dim, in_channels,
+        out_channels, out_dim,
+        stride, input_dilation, kernel_dilation, padding, kernel_dim,
+        wrot180, trans_output_1203, trans_input_3120,
+        trans_weight_1203, trans_weight_0132,
+
+        input,
+        weights,
+        bias,
+        output,
+
+        act, scale,
+        pool_size, pool_stride, pool_padding,
+
+        tiled_conv_type,
+        false);
 }
 
 // This function is for a convolution with kernel_dim=1, stride==2, padding=0, and no pooling

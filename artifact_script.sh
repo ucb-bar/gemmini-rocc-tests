@@ -1,11 +1,18 @@
 #!/bin/bash
-cd /home/centos/firesim-dosa/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/layers
-python extract_data_csv.py --csv_loc ../../artifact/$1/$2.csv
+if [ ! $# -eq 2 ]; then
+    echo "Please provide a predictor type and target workload"
+    exit 1
+fi
+FIRESIM_ROOT_DIR=/home/centos/firesim
+FIRESIM_SW_DIR=/home/centos/firesim-esp
+cd $FIRESIM_SW_DIR/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/layers
+python extract_data_csv.py --csv_loc ../artifact/$1/$2.csv
 cd ..
 rm -f ./build/bareMetalC/*_tilings-baremetal
 python gemmini_data_collection.py
 cd ..
 ./build.sh
-cp ./build/bareMetalC/*_tilings-baremetal ~/firesim/deploy/workloads/gemmini/
-cd /home/centos/firesim-dosa/deploy
+mkdir -p $FIRESIM_ROOT_DIR/deploy/workloads/gemmini/
+cp ./build/bareMetalC/*_tilings-baremetal $FIRESIM_ROOT_DIR/deploy/workloads/gemmini/
+cd $FIRESIM_ROOT_DIR/deploy
 python gemmini.py

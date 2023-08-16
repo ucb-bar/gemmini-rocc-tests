@@ -1,5 +1,7 @@
 import glob
 import pickle
+import argparse
+
 import pandas as pd
 import numpy as np
 
@@ -89,135 +91,33 @@ def add_to_csv(results, csv_path, col="", tile_only=False, new_csv_path=""):
         new_csv_path = csv_path
     df.to_csv(new_csv_path, index=False)
 
+def construct_argparser():
+    parser = argparse.ArgumentParser(description='Run Configuration')
+
+    parser.add_argument('--result',
+                        type=str,
+                        help='FireSim result dir(s)',
+                        action='append',
+                        )
+    parser.add_argument('-wl',
+                        '--workload',
+                        type=str,
+                        help='<Required> Name of workload directory.',
+                        required=True,
+                        )
+    parser.add_argument('--pred',
+                        type=str,
+                        help='Predictor type (analytical|both|dnn)',
+                        required=True,
+                        )
+    return parser
+
 if __name__ == "__main__":
-    # results = collect_results([
-    #     "2023-04-12--07-39",
-    #     "2023-04-12--06-21",
-    #     "2023-04-12--05-15",
-    #     "2023-04-12--04-08",
-    #     "2023-04-12--02-56",
-    #     "2023-04-12--01-25",
-    #     "2023-04-17--19-11",
-    #     "2023-04-17--19-35",
-    #     "2023-04-17--2",
-    # ])
-    # results = collect_results([
-    #     "2023-06-13--23",
-    #     "2023-06-14",
-    # ], "tiled ", collect_auto_tile=False)
-    # add_to_csv(results, "/home/centos/dla-dataset/data/dataset_1000map.csv", "tiled", new_csv_path="/home/centos/dla-dataset/data/dataset_1000map_firesim.csv")
+    args = construct_argparser().parse_args()
 
-    # results = collect_results([
-    #     "2023-04-25--21-32-38",
-    # ], "auto ", collect_auto_tile=True)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/gd_resnet50_4_22_0.csv")
-    # results = collect_results([
-    #     "2023-04-25--21-32-38",
-    # ], "auto ", collect_auto_tile=True)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/gd_resnet50_4_22_0.csv")
-    # results = collect_results([
-    #     "2023-04-25--22-25-2",
-    # ], "auto ", collect_auto_tile=False)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/gd_resnet50_4_22_0.csv", "auto")
-    # print(sum(results.values()))
-
-    # results = collect_results([
-    #     "2023-04-25--22-25-2",
-    # ], "tiled ", collect_auto_tile=False)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/gd_resnet50_4_22_0.csv", "tiled")
-
-    # bert
-    # results = collect_results([
-    #     "2023-04-26--22-19-23",
-    # ], "auto ", collect_auto_tile=True)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/tl_unet.csv", "auto", tile_only=True)
-
-    # results = collect_results([
-    #     "2023-04-26--23-04-41",
-    # ], "auto ", collect_auto_tile=False)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/gd_unet_0.csv", "auto")
-    # results = collect_results([
-    #     "2023-04-26--23-04-41",
-    # ], "tiled ", collect_auto_tile=False)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/gd_unet_0.csv", "tiled")
-    # print(len(results))
-
-    # 2023-04-26--04-26-29 - BERT TL
-    # for name, cycles in sorted(results.items()):
-    #     print(name, cycles)
-    # print(sum(results.values()))
-
-    # # model only
-    # # bert
-    # results = collect_results([
-    #     "2023-07-08--13-35-52",
-    # ], "auto ", collect_auto_tile=False)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/model_only/bert.csv", "auto")
-    # results = collect_results([
-    #     "2023-07-08--13-35-52",
-    # ], "tiled ", collect_auto_tile=False)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/model_only/bert.csv", "tiled")
-
-    # # unet
-    # results = collect_results([
-    #     "2023-07-08--11-43-09",
-    # ], "auto ", collect_auto_tile=False)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/model_only/unet.csv", "auto")
-    # results = collect_results([
-    #     "2023-07-08--11-43-09",
-    # ], "tiled ", collect_auto_tile=False)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/model_only/unet.csv", "tiled")
-
-    # # retinanet
-    # results = collect_results([
-    #     "2023-07-08--12-28-44",
-    # ], "auto ", collect_auto_tile=False)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/model_only/retinanet.csv", "auto")
-    # results = collect_results([
-    #     "2023-07-08--12-28-44",
-    # ], "tiled ", collect_auto_tile=False)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/model_only/retinanet.csv", "tiled")
-
-    # # resnet50
-    # results = collect_results([
-    #     "2023-07-08--12-40-03",
-    #     "2023-07-08--12-43-24",
-    # ], "auto ", collect_auto_tile=False)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/model_only/resnet50.csv", "auto")
-    # results = collect_results([
-    #     "2023-07-08--12-40-03",
-    #     "2023-07-08--12-43-24",
-    # ], "tiled ", collect_auto_tile=False)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/model_only/resnet50.csv", "tiled")
-
-    # analytical + model
-    # results = collect_results([
-    #     "2023-08-03--23-10-35",
-    #     "2023-08-03--23-08-47",
-    # ], "tiled ", collect_auto_tile=False)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/artifact/resnet50.csv", "tiled")
-    # results = collect_results([
-    #     "2023-08-03--23-10-35",
-    #     "2023-08-03--23-08-47",
-    # ], "auto ", collect_auto_tile=False)
-    # add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/artifact/resnet50.csv", "auto")
-
-    results = collect_results([
-        "2023-08-05--00",
-        "2023-08-05--01-00",
-    ], "tiled ", collect_auto_tile=False)
-    add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/artifact/resnet50_1.csv", "tiled")
-    results = collect_results([
-        "2023-08-05--00",
-        "2023-08-05--01-00",
-    ], "auto ", collect_auto_tile=False)
-    add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/artifact/resnet50_1.csv", "auto")
-
-    results = collect_results([
-        "2023-08-05--01-2",
-    ], "tiled ", collect_auto_tile=False)
-    add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/artifact/resnet50_2.csv", "tiled")
-    results = collect_results([
-        "2023-08-05--01-2",
-    ], "auto ", collect_auto_tile=False)
-    add_to_csv(results, "/home/centos/firesim-esp/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/artifact/resnet50_2.csv", "auto")
+    results = collect_results(args.result, "auto ", collect_auto_tile=True)
+    add_to_csv(results, f"gemmini-data-collection/artifact/{args.pred}/{args.workload}.csv", "auto", tile_only=True)
+    results = collect_results(args.result, "auto ", collect_auto_tile=False)
+    add_to_csv(results, f"gemmini-data-collection/artifact/{args.pred}/{args.workload}.csv", "auto")
+    results = collect_results(args.result, "tiled ", collect_auto_tile=False)
+    add_to_csv(results, f"gemmini-data-collection/artifact/{args.pred}/{args.workload}.csv", "tiled")

@@ -17,13 +17,12 @@
 #define B_TRANSPOSE 0
 
 //in Gemmini, K is shared dimension
-//user should consider J shared dimension
 #define MAT_DIM_I %DIM_I% 
-#define MAT_DIM_K %DIM_J%
-#define MAT_DIM_J %DIM_K%
+#define MAT_DIM_K %DIM_K%
+#define MAT_DIM_J %DIM_J%
 #define TILE_I %TILE_DIM_I% 
-#define TILE_K %TILE_DIM_J%
-#define TILE_J %TILE_DIM_K%
+#define TILE_K %TILE_DIM_K%
+#define TILE_J %TILE_DIM_J%
 
 #if A_TRANSPOSE==0
 #define A_STRIDE MAT_DIM_K
@@ -76,7 +75,7 @@ int main() {
             A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
-	    TILE_I, TILE_J, TILE_K,
+            TILE_I, TILE_J, TILE_K,
             A_TRANSPOSE, B_TRANSPOSE,
             false, false,
             0,
