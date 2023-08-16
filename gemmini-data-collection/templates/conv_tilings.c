@@ -145,7 +145,7 @@ int main() {
             (elem_t*)output_mat,
 
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, WS,
-            true,
+            true
         );
 
         gemmini_flush(0);
@@ -165,7 +165,7 @@ int main() {
             (elem_t*)output_mat,
 
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, WS,
-            false,
+            false
         );
         uint64_t end_gemmini = read_cycles();
         printf("Gemmini auto conv took %llu cycles\n\n", end_gemmini - start_gemmini);

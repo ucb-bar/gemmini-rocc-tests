@@ -1,6 +1,6 @@
 include $(abs_top_srcdir)/Makefrag
 
-tests =  matmul_tilings 
+tests =  conv_tilings  matmul_tilings 
 
 tests_baremetal = $(tests:=-baremetal)
 
@@ -32,7 +32,8 @@ CFLAGS := $(CFLAGS) \
 	-ffast-math \
 	-fno-common \
 	-fno-builtin-printf \
-	-march=rv64gc -Wa,-march=rv64gcxhwacha \
+	-fno-tree-loop-distribute-patterns \
+	-march=rv64gc -Wa,-march=rv64gc \
 	-lm \
 	-lgcc \
 	-I$(abs_top_srcdir)/riscv-tests \

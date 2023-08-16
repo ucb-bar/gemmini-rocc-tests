@@ -3,12 +3,12 @@ if [ ! $# -eq 2 ]; then
     echo "Please provide a predictor type and target workload"
     exit 1
 fi
-FIRESIM_ROOT_DIR=/home/centos/firesim
-FIRESIM_SW_DIR=/home/centos/firesim-esp
-cd $FIRESIM_SW_DIR/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/layers
+FIRESIM_ROOT_DIR=/home/centos/firesim-dosa
+cd $FIRESIM_ROOT_DIR/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/layers
 python extract_data_csv.py --csv_loc ../artifact/$1/$2.csv
 cd ..
-rm -f ./build/bareMetalC/*_tilings-baremetal
+rm -rf ./build
+rm -f $FIRESIM_ROOT_DIR/deploy/workloads/gemmini/*_tilings-baremetal
 python gemmini_data_collection.py
 cd ..
 ./build.sh
