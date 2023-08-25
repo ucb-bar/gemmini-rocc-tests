@@ -25,14 +25,6 @@ def collect_results(substrs, custom_str, collect_auto_tile=False):
             lines = f.readlines()
             for i, line in enumerate(lines):
                 if line.startswith(f"Gemmini {custom_str}conv took") or line.startswith(f"Gemmini {custom_str}matmul took"):
-                    # import pdb
-                    # pdb.set_trace()
-                    # if custom_str == "tiled ":
-                    #     row_str = lines[i-3][:-1]
-                    # elif collect_auto_tile:
-                    #     row_str = lines[i-17][:-1]
-                    # else:
-                    #     row_str = lines[i-1][:-1]
                     if "matmul" in line:
                         if custom_str == "tiled ":
                             row_str = lines[i-13]
@@ -40,9 +32,13 @@ def collect_results(substrs, custom_str, collect_auto_tile=False):
                             row_str = lines[i-11]
                     if "conv" in line:
                         if custom_str == "tiled ":
-                            row_str = lines[i-19]
+                            row_str = lines[i-11]
                         else:
-                            row_str = lines[i-17]
+                            row_str = lines[i-9]
+                    # if "matmul" in line:
+                    #     row_str = lines[i-3]
+                    # if "conv" in line:
+                    #     row_str = lines[i-1]
                     vals = row_str.split("_")
                     if line.startswith(f"Gemmini {custom_str}conv took"):
                         name_vals = vals[:7] + vals[8:]
@@ -61,7 +57,7 @@ def collect_results(substrs, custom_str, collect_auto_tile=False):
                     if collect_auto_tile:
                         if "conv" in line:
                             auto_tiling_factors = []
-                            for auto_tile_line in [lines[i-11], lines[i-12], lines[i-14], lines[i-15], lines[i-10], lines[i-13], lines[i-16]]:
+                            for auto_tile_line in [lines[i-3], lines[i-4], lines[i-6], lines[i-7], lines[i-2], lines[i-5], lines[i-8]]:
                                 auto_tiling_factors.append(auto_tile_line[:-1].split(" = ")[-1])
                             results[layer_name + "_auto_tiling"] = "_".join(auto_tiling_factors)
                         elif "matmul" in line:
@@ -105,9 +101,10 @@ def add_to_csv(results, csv_path, col="", tile_only=False, new_csv_path=""):
     print(f"Found {len(layer_names)} unique layers")
     print(f"Found {num_layers_found} layers")
     print(f"Found {num_tilings_found} tilings")
-    df[target_key].replace('', np.nan, inplace=True)
-    df.dropna(subset=[target_key], inplace=True)
-    # df["target.cycle"] = df[target_key]
+    if target_key in df.columns:
+        df[target_key].replace('', np.nan, inplace=True)
+        df.dropna(subset=[target_key], inplace=True)
+        # df["target.cycle"] = df[target_key]
     if not new_csv_path:
         new_csv_path = csv_path
     df.to_csv(new_csv_path, index=False)
@@ -136,14 +133,15 @@ def construct_argparser():
 if __name__ == "__main__":
     args = construct_argparser().parse_args()
 
+    csv_path = f"gemmini-data-collection/artifact_v2/{args.pred}/{args.workload}.csv"
     results = collect_results(args.result, "auto ", collect_auto_tile=True)
     print(results)
-    add_to_csv(results, f"gemmini-data-collection/artifact/{args.pred}/{args.workload}.csv", "auto", tile_only=True, new_csv_path="test.csv")
+    add_to_csv(results, csv_path, "auto", tile_only=True, new_csv_path=csv_path)
     results = collect_results(args.result, "auto ", collect_auto_tile=False)
     print(results)
-    add_to_csv(results, f"test.csv", "auto", new_csv_path="test.csv")
-    # add_to_csv(results, f"gemmini-data-collection/artifact/{args.pred}/{args.workload}.csv", "auto", new_csv_path="test.csv")
+    add_to_csv(results, csv_path, "auto", new_csv_path=csv_path)
+    # add_to_csv(results, f"gemmini-data-collection/artifact/{args.pred}/{args.workload}.csv", "auto", new_csv_path=csv_path)
     results = collect_results(args.result, "tiled ", collect_auto_tile=False)
     print(results)
-    add_to_csv(results, f"test.csv", "tiled", new_csv_path="test.csv")
-    # add_to_csv(results, f"gemmini-data-collection/artifact/{args.pred}/{args.workload}.csv", "tiled", new_csv_path="test.csv")
+    add_to_csv(results, csv_path, "tiled", new_csv_path=csv_path)
+    # add_to_csv(results, f"gemmini-data-collection/artifact/{args.pred}/{args.workload}.csv", "tiled", new_csv_path=csv_path)

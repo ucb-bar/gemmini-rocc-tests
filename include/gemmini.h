@@ -2360,7 +2360,7 @@ static uint64_t tiled_conv(
 
     int limits[7] = {batch_size, pool_out_dim, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
     // int steps[7] = {batches, porows, pocols, pochs, krows, kcols, kchs};
-    int steps[7] = {batches, porows, pocols, spatial_ochs, krows, kcols, spatial_kchs};
+    int steps[7] = {batches, porows, pocols, pochs, krows, kcols, kchs};
     for (int i = 0; i < 7; i++) {
         char * loc = ft_strchr(perm, idx_to_dim[i]);
         if (loc == NULL) {
@@ -2865,13 +2865,13 @@ static void tiled_conv_auto_inner(
         printf("kcols   = %d\n", kcols);
         printf("kchs    = %d\n\n", kchs);
 
-        printf("total spad_rows reserved: %d\n", spad_rows);
-        printf("total acc_rows reserved: %d\n\n", acc_rows);
+        // printf("total spad_rows reserved: %d\n", spad_rows);
+        // printf("total acc_rows reserved: %d\n\n", acc_rows);
 
-        printf("scratchpad row utilization: %d%%\n", (spad_rows*100) / max_spad_rows);
-        printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
+        // printf("scratchpad row utilization: %d%%\n", (spad_rows*100) / max_spad_rows);
+        // printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
 
-        printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
+        // printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
         return;
     }
 

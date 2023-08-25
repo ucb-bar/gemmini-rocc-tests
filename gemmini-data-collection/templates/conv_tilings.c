@@ -148,7 +148,7 @@ int main() {
             true
         );
 
-        gemmini_flush(0);
+        gemmini_fence();
         // printf("Gemmini conv...\n");
         uint64_t start_gemmini = read_cycles();
 
@@ -167,10 +167,9 @@ int main() {
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, WS,
             false
         );
+        gemmini_fence();
         uint64_t end_gemmini = read_cycles();
         printf("Gemmini auto conv took %llu cycles\n\n", end_gemmini - start_gemmini);
-
-        gemmini_fence();
 
         start_gemmini = read_cycles();
         int retval = tiled_conv(
@@ -192,6 +191,7 @@ int main() {
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0,
 
             WS,
+            // "CRSKPQN");
             PERM_STR);
 
         gemmini_fence();
