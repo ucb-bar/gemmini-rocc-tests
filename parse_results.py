@@ -133,7 +133,7 @@ def construct_argparser():
 if __name__ == "__main__":
     args = construct_argparser().parse_args()
 
-    csv_path = f"gemmini-data-collection/artifact_v2/{args.pred}/{args.workload}.csv"
+    csv_path = f"gemmini-data-collection/artifact/{args.pred}/{args.workload}.csv"
     results = collect_results(args.result, "auto ", collect_auto_tile=True)
     print(results)
     add_to_csv(results, csv_path, "auto", tile_only=True, new_csv_path=csv_path)
