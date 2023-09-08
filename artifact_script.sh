@@ -5,7 +5,7 @@ if [ ! $# -eq 2 ]; then
 fi
 FIRESIM_ROOT_DIR=/home/centos/firesim-dosa
 cd $FIRESIM_ROOT_DIR/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/layers
-python extract_data_csv.py --csv_loc ../artifact_v2/$1/$2.csv
+python extract_data_csv.py --csv_loc ../artifact/$1/$2.csv
 cd ..
 rm -f $FIRESIM_ROOT_DIR/deploy/workloads/gemmini/*_tilings-baremetal
 python gemmini_data_collection.py
