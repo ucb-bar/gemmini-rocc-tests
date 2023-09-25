@@ -11,11 +11,12 @@
 #define NUM_DMA 1
 #define NUM_CHANNEL 4
 #define TOTAL_CHANNEL (NUM_DMA * NUM_CHANNEL) // assume 1 for now
-#define DMA_MAX_BYTES 16 // 128 bits
+#define DMA_MAX_BYTES (16*4) // 128*4 bits
 
 // Scratchpad configuration
-#define SPAD_BANK_NUM 2
-#define SPAD_BANK_BYTES (8192*2)
-#define BASE_ADDR 0x4000000 
+#define SPAD_BANK_NUM 4
+#define SPAD_TOTAL_BYTES 2048
+#define SPAD_BANK_BYTES (SPAD_TOTAL_BYTES/SPAD_BANK_NUM)
+#define BASE_ADDR 0x70000000 
 
 #endif // DMA_PARAMS_H

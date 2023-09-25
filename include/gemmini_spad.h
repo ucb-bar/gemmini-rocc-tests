@@ -160,10 +160,13 @@ static void double_tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
     A_spad_stride = stride_A;
     gemmini_extended3_config_ld(stride_A * sizeof(elem_t), A_scale_factor, false, 0);
   }
-  else
-    dma_config(A_channel, LOAD, A, A_sp_addr, stride_A, A_spad_stride);
+  else{
+    dma_source_config(A_channel, A, stride_A);
+    dma_dest_config(A_channel, A_sp_addr, A_spad_stride);
+  }
   // configure DMA
-  dma_config(B_channel, LOAD, B, B_sp_addr, stride_B, B_spad_stride);
+  dma_source_config(B_channel, B, stride_B);
+  dma_dest_config(B_channel, B_sp_addr, B_spad_stride);
 
   for(size_t o_j0 = 0; o_j0 < dim_J_padded; o_j0+=(outer_tile_J*DIM)){
     size_t outer_J_dim = (o_j0 + (outer_tile_J*DIM)) >= dim_J_padded ? dim_J_padded - o_j0 : outer_tile_J*DIM;
@@ -760,10 +763,13 @@ static void double_tiled_conv(
     A_spad_stride = in_stride;
     //gemmini_extended3_config_ld(A_spad_stride * sizeof(elem_t), A_scale_factor, false, 0);
   }
-  else
-    dma_config(A_channel, LOAD, input, A_sp_addr, in_stride, A_spad_stride);
+  else{
+    dma_source_config(A_channel, input, in_stride);
+    dma_dest_config(A_channel, A_sp_addr, A_spad_stride);
+  }
   // configure DMA
-  dma_config(B_channel, LOAD, weights, B_sp_addr, weight_stride, B_spad_stride);
+  dma_source_config(B_channel, weights, weight_stride);
+  dma_dest_config(B_channel, B_sp_addr, B_spad_stride);
 
 //    printf("num_kch: %d, num_poch: %d, num_b: %d, num_porow: %d, num_pocol: %d, num_krow: %d, num_kcol: %d\n", num_kch, num_poch, num_b, num_porow, num_pocol, num_krow, num_kcol);
 /*

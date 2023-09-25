@@ -19,16 +19,14 @@
 // Accelerator interface
 #include "rocc-software/src/xcustom.h"
 
-#define k_CONFIG 0
-#define k_MEMCPY 1
-#define k_MEMCPY_SUB 2
-#define k_PROBE 3
-#define k_SET 4
+#define k_CONFIG_S 0 // source (source) configuration
+#define k_CONFIG_D 1 // destination (scratchpad) configuration
+#define k_MEMCPY 2
+#define k_MEMCPY_MULTI 3
+#define k_PROBE 4
+#define k_SET 5
 
 #define k_FLUSH 7
-
-#define LOAD 0
-#define STORE 1
 
 
 #define ROCC_INSTRUCTION_RD_RS1_RS2(X, rd, rs1, rs2, funct) \
@@ -37,24 +35,28 @@
 #define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct) \
   ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, funct)
 
-// base dram & spad address, stride
+// base source & dest address, stride
 // mode: memcpy in / out
-#define dma_config(channel, mode, dram_addr, spad_addr, dram_stride, spad_stride) \
-  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_DMA, ((uint64_t) dram_addr << 5) | ((uint64_t) mode << 4) | ((uint64_t) channel), ((uint64_t) spad_addr << 40) | ((uint64_t) spad_stride << 20) | dram_stride, k_CONFIG)
+#define dma_source_config(channel, source_addr, source_stride) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_DMA, ((uint64_t) source_stride << 5) | ((uint64_t) channel), source_addr, k_CONFIG_S)
+
+#define dma_dest_config(channel, dest_addr, dest_stride) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_DMA, ((uint64_t) dest_stride << 5) | ((uint64_t) channel), dest_addr, k_CONFIG_D)
 
 // copy 1 tile
 // granted: return value whether DMA granted the requested ISA
 // offset: offset address from the config base address
 // tile_rows: number of rows of this tile to memcpy in/out ; tile_bytes_per_row: number of bytes per row
 // index: index tag of this tile to track 
-#define dma_memcpy_tile(channel, granted, dram_offset, spad_offset, index, tile_rows, tile_bytes_per_row) \
-  ROCC_INSTRUCTION_RD_RS1_RS2(XCUSTOM_DMA, granted, ((uint64_t) channel << 60) | ((uint64_t) index << 52) | ((uint64_t) tile_rows << 32) | ((uint64_t) spad_offset), ((uint64_t) dram_offset << 32) | ((uint64_t) tile_bytes_per_row), k_MEMCPY)
+#define dma_memcpy_tile(channel, granted, source_offset, dest_offset, index, tile_rows, tile_bytes_per_row) \
+  ROCC_INSTRUCTION_RD_RS1_RS2(XCUSTOM_DMA, granted, ((uint64_t) channel << 60) | ((uint64_t) index << 52) | ((uint64_t) tile_rows << 32) | ((uint64_t) dest_offset), ((uint64_t) source_offset << 32) | ((uint64_t) tile_bytes_per_row), k_MEMCPY)
+
 
 // copy multiple tile
 // inter_tile_offset: starting address offset between the tiles (bytes)
 // num_tile: number of multi-tile to memcpy
-#define dma_memcpy_multitile(channel, granted, dram_offset, spad_offset, index, inter_tile_dram_offset, inter_tile_spad_offset, num_tile, tile_rows, tile_bytes_per_row) \
-  ROCC_INSTRUCTION_RD_RS1_RS2(XCUSTOM_DMA, granted, ((uint64_t) channel << 60) | ((uint64_t) index << 54) | ((uint64_t) tile_rows << 46) | ((uint64_t) tile_bytes_per_row << 34) | ((uint64_t) inter_tile_spad_offset << 17) | ((uint64_t) inter_tile_dram_offset), ((uint64_t) num_tile << 56) | ((uint64_t) spad_offset << 32) | ((uint64_t) dram_offset), k_MEMCPY_SUB)
+#define dma_memcpy_multitile(channel, granted, source_offset, dest_offset, index, inter_tile_source_offset, inter_tile_dest_offset, num_tile, tile_rows, tile_bytes_per_row) \
+  ROCC_INSTRUCTION_RD_RS1_RS2(XCUSTOM_DMA, granted, ((uint64_t) channel << 60) | ((uint64_t) index << 54) | ((uint64_t) tile_rows << 46) | ((uint64_t) tile_bytes_per_row << 34) | ((uint64_t) inter_tile_dest_offset << 17) | ((uint64_t) inter_tile_source_offset), ((uint64_t) num_tile << 56) | ((uint64_t) dest_offset << 32) | ((uint64_t) source_offset), k_MEMCPY_MULTI)
 
 // probe state register to know which tile is done
 // memcpy accelerator with set DMA state register to indicate up until which tile index has finished memcpy
@@ -70,7 +72,6 @@
 // maybe not needed once we have rerocc
 #define dma_flush(skip) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_DMA, skip, 0, k_FLUSH)
-
 
 #endif // SRC_MAIN_C_DMA_H
 
