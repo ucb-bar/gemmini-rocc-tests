@@ -1,10 +1,11 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
+	memcpy_cpu \
+	memcpy_dma_multi \
 	memcpy_dma \
 	memcpy_conv_dma \
 	memcpy_matmul_dma \
-	memcpy_cpu \
 
 tests_baremetal = $(tests:=-baremetal)
 runs_baremetal = $(addsuffix .run,$(tests_baremetal))
@@ -69,7 +70,7 @@ vpath %.c $(src_dir)
 run-baremetal: $(runs_baremetal)
 
 %-baremetal.run: %-baremetal
-	$(RUNNER)$^
+	$(RUNNER)$(abs_top_srcdir)/build/scratchpad/$^
 
 junk += $(tests_baremetal) $(tests_linux) $(tests_pk)
 
