@@ -1002,95 +1002,7 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
              scale_and_sat(result[3][3], act, scale, bert_scale);
       }
     }
-  } else {
-    size_t A_dim_strides[2] = {!transA ? stride_A : 1, !transA ? 1 : stride_A}; // i, j stride
-    size_t B_dim_strides[2] = {!transB ? 1 : stride_B, !transB ? stride_B : 1}; // j, k stride
-
-    // We also create a buffer that we can use for layernorms and softmaxes
-    static acc_t c_buffer[1024];
-    const size_t c_buffer_sz = sizeof(c_buffer)/sizeof(c_buffer[0]);
-    if ((act == LAYERNORM || act == SOFTMAX) && DIM_J > c_buffer_sz) {
-      printf("Matmul is too large to normalize\n");
-      exit(1);
-    }
-
-    for (size_t i = 0; i < DIM_I; i++) {
-      for (size_t j = 0; j < DIM_J; j++) {
-        elem_t* c = C + (i * stride_C) + j;
-
-        const size_t bias_row = repeating_bias ? 0 : i;
-        acc_t sum = no_bias ? 0 : GEMMINI_ACC_SCALE(*(D + bias_row * stride_D + j), D_scale_factor);
-
-        for (size_t k = 0; k < DIM_K; k++) {
-          const elem_t* a = A + i * A_dim_strides[0] + k * A_dim_strides[1];
-          const elem_t* b = B + j * B_dim_strides[0] + k * B_dim_strides[1];
-          sum += (GEMMINI_SCALE(*a, A_scale_factor) * GEMMINI_SCALE(*b, B_scale_factor));
-        }
-
-        if (act == LAYERNORM || act == SOFTMAX)
-          c_buffer[j] = sum;
-        else
-          *c = scale_and_sat(sum, act, scale, bert_scale);
-      }
-
-      if (act == LAYERNORM) {
-        acc_t sum = 0;
-        for (size_t j = 0; j < DIM_J; j++)
-          sum += c_buffer[j];
-        acc_t mean = sum / (acc_t)DIM_J;
-
-        acc_t total_err_sq = 0;
-        for (size_t j = 0; j < DIM_J; j++)
-          total_err_sq += (c_buffer[j] - mean)*(c_buffer[j] - mean);
-        acc_t variance = total_err_sq / (acc_t)DIM_J;
-
-        acc_t stddev = int_sqrt(variance);
-        if (variance == 0) stddev = 1;
-
-        for (size_t j = 0; j < DIM_J; j++) {
-          c_buffer[j] -= mean;
-          // c_buffer[j] /= stddev;
-          c_buffer[j] = ROUND_NEAR_EVEN((double)c_buffer[j] / stddev); // TODO I don't think I-BERT uses round-near-even, so we shouldn't either. We just use this rounding mode here in order to match the hardware.
-
-          elem_t* c = C + (i * stride_C) + j;
-          *c = scale_and_sat(c_buffer[j], act, scale, bert_scale);
-        }
-      } else if (act == SOFTMAX) {
-        const scale_t a = 0.3585;
-        const scale_t b = 1.353;
-        const scale_t c = 0.344;
-
-        // is SCALE supposed to be input scale?
-        const acc_t qln2 = (acc_t) (0.693147 / bert_scale);
-        const acc_t qln2_inv = 65536 / qln2;
-        const acc_t qb = b / bert_scale;
-        const acc_t qc = c / (a*bert_scale*bert_scale);
-
-        // pass 1: get max_q
-        acc_t max_q = -2147483648;
-        for (size_t j = 0; j < DIM_J; j++) {
-          if (c_buffer[j] > max_q) max_q = c_buffer[j];
-        }
-
-        // pass 2: calculate iexp(q_tilde) and sum(q_tilde)
-        acc_t sum_exp = 0;
-        for (size_t j = 0; j < DIM_J; j++) {
-          acc_t q = c_buffer[j] - max_q;
-          acc_t z = (acc_t) (-q * qln2_inv) >> 16;
-          acc_t qp = q + z * qln2;
-          acc_t q_exp = (qp + qb)*(qp + qb) + qc;
-          c_buffer[j] = q_exp >> z;
-          sum_exp += c_buffer[j];
-        }
-
-        // pass 3: divide by sum
-        scale_t factor = (127.f) / (float) sum_exp; // what corresponds to 1 in output?
-        for (size_t j = 0; j < DIM_J; j++) {
-          elem_t* c = C + (i * stride_C) + j;
-          *c = scale_and_sat(c_buffer[j], act, factor, bert_scale);
-        }
-      }
-    }
+   
   }
 }
 
@@ -1342,6 +1254,11 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #undef mats_in_acc
 #undef max_tile_i_j
 #undef max_tile_k
+#undef db_partition_rows
+#undef db_mats_in_partition
+#undef db_mats_in_acc
+#undef db_max_tile_i_j
+#undef db_max_tile_k
 }
 
 

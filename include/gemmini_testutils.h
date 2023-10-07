@@ -12,8 +12,9 @@
 #include <limits.h>
 #include <stdbool.h>
 
-#include "include/gemmini_params.h"
+#include "include/gemmini_params_fp32.h"
 #include "include/gemmini.h"
+#include "include/vega.h"
 
 #ifdef BAREMETAL
 #undef assert

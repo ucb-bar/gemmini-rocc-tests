@@ -26,10 +26,16 @@ typedef elem_t ACC_T;
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM_I 32
-#define MAT_DIM_K 32
+#define MAT_DIM_I 16
+#define MAT_DIM_K 64
 #define MAT_DIM_J 32
 #endif
+
+#define VEC_DIM_I 173//98
+#define VEC_DIM_K 79//69
+#define VEC_DIM_J 1
+
+#define SCALE 1
 
 void print_tile(elem_t* in, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++) {
@@ -82,6 +88,30 @@ void full_matscale(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_
     }
 } 
 
+void full_printVec(elem_t m[VEC_DIM_I]) {
+  for (size_t i = 0; i < VEC_DIM_I; ++i) {
+    //for (size_t j = 0; j < VEC_DIM_J; ++j)
+      printf("%d ", (int)(m[i]*1000));
+    //printf("\n");
+  }
+  printf("\n");
+}
+
+int vec_is_equal(elem_t x[VEC_DIM_I], elem_t y[VEC_DIM_I]) {
+  for (size_t i = 0; i < VEC_DIM_I; ++i)
+    //for (size_t j = 0; j < VEC_DIM_J; ++j)
+      if (x[i] != y[i])
+        return 0;
+  return 1;
+}
+void full_gemv(elem_t A[VEC_DIM_I][VEC_DIM_K], elem_t B[VEC_DIM_K][VEC_DIM_J], ACC_T D[VEC_DIM_I][VEC_DIM_J], elem_t C_full[VEC_DIM_I]) {
+  for (size_t r = 0; r < VEC_DIM_I; r++)
+    for (size_t c = 0; c < VEC_DIM_J; c++) {
+      C_full[r] = D[r][c];
+      for (size_t k = 0; k < VEC_DIM_K; k++)
+        C_full[r] += (SCALE * A[r][k]*B[k][c]);
+    }
+}
 int main() {
 #ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
@@ -93,6 +123,9 @@ int main() {
     printf("MAT_DIM_I: %d\n", MAT_DIM_I);
     printf("MAT_DIM_J: %d\n", MAT_DIM_J);
     printf("MAT_DIM_K: %d\n", MAT_DIM_K);
+    printf("VEC_DIM_I: %d\n", VEC_DIM_I);
+    printf("VEC_DIM_J: %d\n", VEC_DIM_J);
+    printf("VEC_DIM_K: %d\n", VEC_DIM_K);
 /*
     int cfgid = 1;
     for(int i = 0; i < 2; i++){
@@ -113,6 +146,14 @@ int main() {
 
     static full_t gold_full[MAT_DIM_I][MAT_DIM_J];
     static elem_t gold[MAT_DIM_I][MAT_DIM_J];
+
+    static elem_t gemv_A[VEC_DIM_I][VEC_DIM_K] row_align(1);
+    static elem_t gemv_B[VEC_DIM_K][VEC_DIM_J] row_align(1);
+    static elem_t gemv_C[VEC_DIM_I] row_align(1) = {0};
+    static ACC_T gemv_D[VEC_DIM_I][VEC_DIM_J] row_align_acc(1);
+
+    static elem_t gold_gemv[VEC_DIM_I]= {0};
+
 
 #if CHECK_RESULT == 1
 #ifdef FAST
@@ -140,6 +181,28 @@ int main() {
         full_D[i][j] = NO_BIAS ? 0 : RAND % 2;
       }
     }
+
+    for (size_t i = 0; i < VEC_DIM_I; ++i) {
+      for (size_t j = 0; j < VEC_DIM_K; ++j) {
+        gemv_A[i][j] = RAND % 2;
+      }
+    }
+
+    // printf("Init B\n");
+    for (size_t i = 0; i < VEC_DIM_K; ++i) {
+      for (size_t j = 0; j < VEC_DIM_J; ++j) {
+        gemv_B[i][j] = (RAND % 3) - 1;
+        //gemv_B[i][j] = i < VEC_DIM_K /2 ? 1 : -1;//(RAND % 3)-1;
+      }
+    }
+
+    // printf("Init D\n");
+    for (size_t i = 0; i < VEC_DIM_I; ++i) {
+      for (size_t j = 0; j < VEC_DIM_J; ++j) {
+        gemv_D[i][j] = NO_BIAS ? 0 : RAND % 2;
+      }
+    }
+
     printf("Starting gemmini matmul\n");
     unsigned long start = read_cycles();
 
@@ -157,9 +220,8 @@ int main() {
     unsigned long end = read_cycles();
     printf("Cycles taken: %u\n", end-start);
 
-
     printf("Starting slow CPU matmul\n");
-    unsigned long cpu_start = read_cycles();
+    uint64_t cpu_start = read_cycles();
 #ifdef FAST
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_J; ++j) {
@@ -170,12 +232,49 @@ int main() {
 #else
     full_matmul(full_A, full_B, full_D, gold_full);
 #endif
-    unsigned long cpu_end = read_cycles();
+    uint64_t cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
     full_matscale(gold_full, gold, ACC_SCALE_IDENTITY);
 #endif
 
+    printf("Starting vega gemv\n");
+    unsigned long gemv_start = read_cycles();
+
+    tiled_gemv_auto(VEC_DIM_I, VEC_DIM_J, VEC_DIM_K,
+            (elem_t*)gemv_A, (elem_t*)gemv_B, NO_BIAS ? NULL : &gemv_D[0][0], (elem_t*)gemv_C,
+            VEC_DIM_K, VEC_DIM_K, VEC_DIM_I, VEC_DIM_I,
+            SCALE, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
+            false, false,
+            false, !FULL_BIAS_WIDTH,
+            0,
+            WS);
+
+    unsigned long gemv_end = read_cycles();
+    printf("Cycles taken: %u\n", gemv_end-gemv_start);
+    vega_fence();
+
 #if CHECK_RESULT == 1
+    printf("Starting slow CPU gemv\n");
+    cpu_start = read_cycles();
+    full_gemv(gemv_A, gemv_B, gemv_D, gold_gemv);
+    cpu_end = read_cycles();
+    printf("Cycles taken: %u\n", cpu_end-cpu_start);
+#endif
+
+
+#if CHECK_RESULT == 1
+    printf("check gemv\n");
+    if (!vec_is_equal(gemv_C, gold_gemv)) {
+      printf("C:\n");
+      full_printVec(gemv_C);
+      printf("Gold:\n");
+      full_printVec(gold_gemv);
+      printf("\n");
+
+      exit(1);
+   }
+    printf("check matmul\n");
     if (!full_is_equal(full_C, gold)) {
       printf("C:\n");
       full_printMatrix(full_C);
