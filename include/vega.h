@@ -13,6 +13,11 @@
 #define k_LOOP_VEGA_CONFIG_ADDRS_AB 27
 #define k_LOOP_VEGA_CONFIG_ADDRS_DC 28
 
+
+#define VEGA_BANK_NUM 2
+// assume gemmini has 2 acc banks (todo: parameterize)
+#define VEGA_ACC_ROWS (ACC_ROWS / 2)
+
 // mvin and mvout
 #define vega_extended_mvin(dram_addr, spad_addr, cols, rows) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)(rows) << (ADDR_LEN + 16)) | ((uint64_t)(cols) << ADDR_LEN) | (spad_addr), k_MVIN)
@@ -129,7 +134,7 @@ static void sp_tiled_gemv(const elem_t * A, const elem_t * B,
 
 #if FINE_ISA == 1
   const uint32_t A_sp_addr_start = 0;
-  const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K;// - K * J * DIM;
+  const uint32_t B_sp_addr_start = VEGA_BANK_NUM * BANK_ROWS - K;// - K * J * DIM;
   const uint32_t D_sp_addr_start = 1 << (ADDR_LEN-1);
   const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2) | (full_C << (ADDR_LEN-3));
   const int A_blocks = a_transpose ? (I <= MAX_BLOCK_LEN ? I : MAX_BLOCK_LEN) :
@@ -443,9 +448,9 @@ static void tiled_gemv(size_t dim_I, size_t dim_K,
 
   //const bool double_buffered = true;
   const bool double_buffered = FINE_ISA == 1 ? false : true;
-  const size_t total_spad_size = double_buffered ? BANK_NUM * BANK_ROWS / 2 :
-      BANK_NUM * BANK_ROWS;
-  const size_t total_acc_size = double_buffered ? ACC_ROWS / 2 : ACC_ROWS;
+  const size_t total_spad_size = double_buffered ? VEGA_BANK_NUM * BANK_ROWS / 2 :
+      VEGA_BANK_NUM * BANK_ROWS;
+  const size_t total_acc_size = double_buffered ? VEGA_ACC_ROWS / 2 : VEGA_ACC_ROWS;
 
   const size_t total_spad_rows =
       (tile_I * tile_K * DIM) +   // Rows to store A
@@ -534,16 +539,16 @@ static void tiled_gemv_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         uint8_t weightA,
         enum tiled_matmul_type_t tiled_matmul_type) {
 
-#define partition_rows (BANK_NUM * BANK_ROWS / 2)
+#define partition_rows (VEGA_BANK_NUM * BANK_ROWS / 2)
 #define mats_in_partition (partition_rows / DIM)
-#define mats_in_acc (ACC_ROWS / DIM)
+#define mats_in_acc (VEGA_ACC_ROWS / DIM)
 #define max_tile_i_j ((size_t)sqrt(mats_in_acc))
 #define max_tile_k (mats_in_partition / max_tile_i_j)
 
     // "db_" means "double-buffered"
-#define db_partition_rows ((BANK_NUM * BANK_ROWS / 2) / 2)
+#define db_partition_rows ((VEGA_BANK_NUM * BANK_ROWS / 2) / 2)
 #define db_mats_in_partition (db_partition_rows / DIM)
-#define db_mats_in_acc ((ACC_ROWS / 2) / DIM)
+#define db_mats_in_acc ((VEGA_ACC_ROWS / 2) / DIM)
 #define db_max_tile_i_j db_mats_in_acc //((size_t)sqrt(db_mats_in_acc))
 #define db_max_tile_k (db_mats_in_partition / db_max_tile_i_j)
 
@@ -555,9 +560,9 @@ static void tiled_gemv_auto(size_t dim_I, size_t dim_J, size_t dim_K,
     //const bool double_buffered = true;
     const bool double_buffered = FINE_ISA == 1 ? false : true;//tiled_matmul_type == WS;
 
-    const size_t max_spad_rows = double_buffered ? BANK_NUM * BANK_ROWS / 2 :
-      BANK_NUM * BANK_ROWS;
-    const size_t max_acc_rows = double_buffered ? ACC_ROWS / 2 : ACC_ROWS;
+    const size_t max_spad_rows = double_buffered ? VEGA_BANK_NUM * BANK_ROWS / 2 :
+      VEGA_BANK_NUM * BANK_ROWS;
+    const size_t max_acc_rows = double_buffered ? VEGA_ACC_ROWS / 2 : VEGA_ACC_ROWS;
 
     size_t tile_I, tile_K;
 
