@@ -1,8 +1,8 @@
 import random
 
 NO_BIAS = False
-MAT_DIM_I = 128
-MAT_DIM_J = 128
+MAT_DIM_I = 96
+MAT_DIM_J = 192
 MAT_DIM_K = 128
 
 A = [[int(random.random()*5)-2 for x in range(MAT_DIM_K)] for y in range(MAT_DIM_I)]
