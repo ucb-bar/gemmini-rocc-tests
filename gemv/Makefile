@@ -1,6 +1,8 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
+	tiled_scale_matmul \
+	tiled_scale \
 	tiled_gemv \
 	tiled_gemv_matmul \
 

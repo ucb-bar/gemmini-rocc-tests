@@ -50,6 +50,8 @@
 #define k_LOOP_CONV_WS_CONFIG_5 20
 #define k_LOOP_CONV_WS_CONFIG_6 21
 
+#define k_CLK_GATE 22
+
 #define CONFIG_EX 0
 #define CONFIG_LD 1
 #define CONFIG_ST 2
@@ -680,6 +682,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   }
 */
 
+    //printf("A: %llu, B: %llu, D: %llu, C: %llu\n", A, B, D, C);
   // Combined loop
   gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
     A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
@@ -819,7 +822,7 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         if(a_reuse && j0 >= 1) a = NULL;
         if(b_reuse && i0 >= 1) b = NULL;
         //printf("a_reuse: %d, b_reuse: %d, a_spad_id: %d, b_spad_id: %d, a: %llu, b: %llu \n", a_reuse, b_reuse, a_spad_id, b_spad_id, a, b);
-        (*inner)(a, b, pre, out,
+        (*inner)(A == NULL ? NULL : a, B == NULL ? NULL : b, D == NULL ? NULL : pre, C == NULL ? NULL : out,
             A_scale_factor, B_scale_factor, D_scale_factor,
             I, J, K,
             pad_I, pad_J, pad_K,
@@ -1351,9 +1354,10 @@ static void sp_tiled_conv(
 
   if (output != 0) {
     C_sp_addr_row = (C_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
-  }
+  } 
+  //printf("input: %llu, weights: %llu, bias: %llu, output: %llu, accumulate: %d\n", input, weights, bias, output, !no_bias || bias == NULL);
 
-  gemmini_loop_conv_ws(batch_size, in_row_dim, in_col_dim, in_channels, out_channels, out_row_dim, out_col_dim, pool_out_row_dim, pool_out_col_dim, stride, padding, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, act, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120, max_pixels_per_row, in_stride, weight_stride, out_stride, dw, a_spad_id, b_spad_id);
+  gemmini_loop_conv_ws(batch_size, in_row_dim, in_col_dim, in_channels, out_channels, out_row_dim, out_col_dim, pool_out_row_dim, pool_out_col_dim, stride, padding, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, no_bias ? NULL : bias, input, !no_bias || bias == NULL, no_pool, downsample, wrot180, input_dilated, act, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120, max_pixels_per_row, in_stride, weight_stride, out_stride, dw, a_spad_id, b_spad_id);
 
 /*
   if (!no_pool) {
@@ -2346,9 +2350,9 @@ static void tiled_conv(
                                     lpad, rpad, upad, dpad,
                                     plpad, prpad, pupad, pdpad,
 
-                                    in,
-                                    weights_slice,
-                                    out,
+                                    input == NULL ? NULL : in,
+                                    weights == NULL ? NULL : weights_slice,
+                                    output == NULL ? NULL : out,
                                     bias_,
 
                                     act, scale,
@@ -2636,6 +2640,16 @@ static void tiled_conv_stride_auto(
             stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
             args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     }
+    args[1]=args[1]/2;
+    /*
+    printf("batches = %d\n", args[0]);
+    printf("orows   = %d\n", args[1]);
+    printf("ocols   = %d\n", args[2]);
+    printf("ochs    = %d\n", args[3]);
+    printf("krows   = %d\n", args[4]);
+    printf("kcols   = %d\n", args[5]);
+    printf("kchs    = %d\n\n", args[6]);
+    */
 
     // Check if we can increase ocols
     bool not_increased = false;
@@ -2668,7 +2682,10 @@ static void tiled_conv_stride_auto(
 
         for (size_t i = 0; i < sizeof(args)/sizeof(args[0]); i++) {
             int args_candidate[] = {args[0], args[1], args[2], args[3], args[4], args[5], args[6]};
-            args_candidate[i]++;
+            if(i == out_channels_idx || i == in_channels_idx)
+               args_candidate[i] += DIM;
+            else
+               args_candidate[i]++;
 
             if (args_candidate[i] > max_args[i])
                 continue;
@@ -2682,6 +2699,7 @@ static void tiled_conv_stride_auto(
 
             if (spad_rows <= max_spad_rows && acc_rows <= max_acc_rows) {
                 args[i] = args_candidate[i];
+                //printf("i: %d, spad_rows: %d, args: %d\n", i, spad_rows, args[i]);
                 nothing_increased = false;
             }
         }
@@ -2695,17 +2713,17 @@ static void tiled_conv_stride_auto(
     const int kcols = args[5];
     const int kchs = args[6];
 
-    /*
+ 
+#ifdef PRINT_TILE
+#if PRINT_TILE   
     spad_rows = tiled_conv_total_spad_rows(false,
         stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
         args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
     acc_rows = tiled_conv_total_spad_rows(true,
         stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
         args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
-    */
+    
 
-#ifdef PRINT_TILE
-#if PRINT_TILE
     printf("batches = %d\n", batches);
     printf("orows   = %d\n", orows);
     printf("ocols   = %d\n", ocols);

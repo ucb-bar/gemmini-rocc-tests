@@ -113,13 +113,66 @@
 #define vega_fence() asm volatile("fence")
 
 // weight-stationary gemv loop
-#define vega_loop_ws(I, K, pad_I, pad_K, A, B, D, C, A_stride, full_C, low_D, ex_accumulate, act, a_spad_id, b_spad_id) \
+#define vega_loop_ws(I, K, pad_I, pad_K, A, B, D, C, A_stride, full_C, low_D, ex_accumulate, act, a_spad_id, b_spad_id, is_add) \
   { \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(pad_K) << 32) | (uint64_t)(pad_I), ((uint64_t)(K) << 32) | (uint64_t)(I), k_LOOP_VEGA_CONFIG_BOUNDS) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_LOOP_VEGA_CONFIG_ADDRS_AB) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D, C, k_LOOP_VEGA_CONFIG_ADDRS_DC) \
-    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(a_spad_id) << 18) | ((uint64_t)(b_spad_id) << 16) | ((uint64_t)(act) << 8) | ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), A_stride, k_LOOP_VEGA) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(is_add) << 32) | ((uint64_t)(a_spad_id) << 18) | ((uint64_t)(b_spad_id) << 16) | ((uint64_t)(act) << 8) | ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), A_stride, k_LOOP_VEGA) \
   }
+
+#define vega_clock_gate(entire_en, gemmini_en, vega_en) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(vega_en) << 2) | ((uint64_t)(gemmini_en) << 1) | ((uint64_t) entire_en), 0, k_CLK_GATE)
+
+
+static void sp_tiled_vector_scale(const size_t I, 
+        const scale_t A_scale,
+        const elem_t * A, elem_t * C,
+        //size_t A_row_stride,
+        bool relu) {
+
+    int pad_I = ((I%DIM) == 0) ? 0 : DIM - (I % DIM);
+    int tile_I = (I%DIM == 0) ? (int)(I/DIM) : (int)(I/DIM) + 1;
+//    printf("I: %d, pad I: %d, tile_I: %d\n", I, pad_I, tile_I);
+    vega_loop_ws(1, tile_I, pad_I, pad_I, NULL, A, NULL, C, 0, false, false, false, relu, 0, 0, true);
+/*
+    vega_fence();
+    const uint32_t C_sp_addr_start = 3 << (ADDR_LEN-2);// | (full_C << (ADDR_LEN-3));
+    for(int i = 0; i < I; i += DIM){
+        size_t rows = 1;
+        size_t cols = i + DIM > I ? DIM : DIM - pad_I;
+        void * const C_dram_addr = (int8_t*)C + i*sizeof(elem_t);
+        uint32_t C_sp_addr = C_sp_addr_start + (i / DIM);
+        printf("i: %d, cols: %d, c_dram_addr: 0x%08lx, C_sp_addr: %d\n", i, cols, C_dram_addr, C_sp_addr);
+        vega_extended_mvout(C_dram_addr, C_sp_addr, cols, rows);
+        vega_fence();
+    }
+*/    
+}
+
+static void tiled_vector_scale(const size_t dim_I, const scale_t A_scale, 
+    elem_t * A, elem_t* C, bool relu){
+
+  vega_extended_config_ex(WEIGHT_STATIONARY, 0 , 0, 1, false, false);// a_transpose, b_transpose);
+
+  vega_extended_config_st(DIM * sizeof(elem_t), 0, 1);
+  vega_extended4_config_ld(0 * sizeof(elem_t), A_scale, true, 1, 1);
+  //vega_extended3_config_ld(0 * sizeof(elem_t), A_scale, false, 1);
+  const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
+  size_t max_acc_rows = VEGA_ACC_ROWS / 2;
+  size_t tile_I = dim_I;
+  if (max_acc_rows > dim_I_padded / DIM){
+      tile_I = max_acc_rows * DIM;
+  }
+  for(int i = 0; i < dim_I; i += tile_I){
+      elem_t * a = A + i;
+      elem_t * c = C + i;
+      size_t I_tile = i + tile_I <= dim_I ? tile_I : dim_I - i;
+      sp_tiled_vector_scale(I_tile, A_scale, a, c, relu);
+  }
+  vega_fence();
+}
+
 
 static void sp_tiled_gemv(const elem_t * A, const elem_t * B,
         const void * D, void * C,
@@ -281,7 +334,7 @@ static void sp_tiled_gemv(const elem_t * A, const elem_t * B,
 #else
   // Combined loop
   vega_loop_ws(I, K, pad_I, pad_K, A, B, no_bias ? NULL : D, C,
-    A_row_stride, full_C, low_D, !no_bias || D == NULL, act, a_spad_id, b_spad_id);
+    A_row_stride, full_C, low_D, !no_bias || D == NULL, act, a_spad_id, b_spad_id, false);
   //vega_fence();
   //printf("done\n");
 #endif
@@ -334,7 +387,7 @@ static void tiled_gemv_outer(size_t dim_I, size_t dim_K,
   vega_extended_config_st(DIM * sizeof_C, act & 3, scale);
   vega_extended3_config_ld(stride_A * sizeof(elem_t), A_scale_factor, false, 0);
   //vega_extended3_config_ld(0 * sizeof(elem_t), B_scale_factor, false, 1);
-  vega_extended4_config_ld(0 * sizeof(elem_t), B_scale_factor, false, 1, 1)
+  vega_extended4_config_ld(0 * sizeof(elem_t), B_scale_factor, false, 1, 1);
   vega_extended3_config_ld(repeating_bias ? 0 : (stride_D * sizeof_D), D_scale_factor, low_D, 2);
 
   // reuse operand if it fits scratchpad

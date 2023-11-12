@@ -26,8 +26,8 @@ typedef elem_t ACC_T;
 #define MAT_DIM_K 512
 #define MAT_DIM_J 512
 #else
-#define MAT_DIM_I 98//155
-#define MAT_DIM_K 69//125
+#define MAT_DIM_I 75//113//75
+#define MAT_DIM_K 185//179//185
 #define MAT_DIM_J 1
 #endif
 
@@ -143,6 +143,9 @@ int main() {
       }
     }
 #endif
+    printf("clock gating gemmini\n");
+    vega_clock_gate(1, 0, 1);
+
     printf("Starting vega gemv\n");
     unsigned long start = read_cycles();
 

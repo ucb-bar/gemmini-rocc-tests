@@ -31,21 +31,14 @@ typedef elem_t ACC_T;
 #define MAT_DIM_J 32
 #endif
 
-#define VEC_DIM_I 113//98
-#define VEC_DIM_K 179//69
+#define VEC_DIM 30
+
+#define VEC_DIM_I 10//113//98
+#define VEC_DIM_K 17//179//69
 #define VEC_DIM_J 1
 
-#define SCALE 1
+#define SCALE 2
 
-void print_tile(elem_t* in, int tile_dim) {
-  for (size_t r = 0; r < tile_dim; r++) {
-    printf("row starts at: %p\n", in +r*MAT_DIM_J);
-    for (size_t c = 0; c < tile_dim; c++) {
-      printf("%d ", *(in +r*MAT_DIM_J + c));
-    }
-    printf("\n");
-  }
-}
 
 void full_matmul(elem_t A[MAT_DIM_I][MAT_DIM_K], elem_t B[MAT_DIM_K][MAT_DIM_J], ACC_T D[MAT_DIM_I][MAT_DIM_J], full_t C_full[MAT_DIM_I][MAT_DIM_J]) {
   for (size_t r = 0; r < MAT_DIM_I; r++)
@@ -88,6 +81,11 @@ void full_matscale(full_t full[MAT_DIM_I][MAT_DIM_J], elem_t out[MAT_DIM_I][MAT_
     }
 } 
 
+void full_vecscale(elem_t in[VEC_DIM], elem_t out[VEC_DIM], scale_t  scale){
+    for(size_t r = 0; r < VEC_DIM; r++)
+      out[r]  = MVIN_SCALE(in[r], scale);
+}
+
 void full_printVec(elem_t m[VEC_DIM_I]) {
   for (size_t i = 0; i < VEC_DIM_I; ++i) {
     //for (size_t j = 0; j < VEC_DIM_J; ++j)
@@ -97,8 +95,25 @@ void full_printVec(elem_t m[VEC_DIM_I]) {
   printf("\n");
 }
 
+
+void full_printScale(elem_t m[VEC_DIM]) {
+  for (size_t i = 0; i < VEC_DIM; ++i) {
+    //for (size_t j = 0; j < VEC_DIM_J; ++j)
+      printf("%d ", (int)(m[i]*1000));
+    //printf("\n");
+  }
+  printf("\n");
+}
+
 int vec_is_equal(elem_t x[VEC_DIM_I], elem_t y[VEC_DIM_I]) {
   for (size_t i = 0; i < VEC_DIM_I; ++i)
+    //for (size_t j = 0; j < VEC_DIM_J; ++j)
+      if (x[i] != y[i])
+        return 0;
+  return 1;
+}
+int scale_is_equal(elem_t x[VEC_DIM], elem_t y[VEC_DIM]) {
+  for (size_t i = 0; i < VEC_DIM; ++i)
     //for (size_t j = 0; j < VEC_DIM_J; ++j)
       if (x[i] != y[i])
         return 0;
@@ -144,8 +159,8 @@ int main() {
     static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
     static ACC_T full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
 
-    static full_t gold_full[MAT_DIM_I][MAT_DIM_J];
-    static elem_t gold[MAT_DIM_I][MAT_DIM_J];
+    static full_t gold_full[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN);
+    static elem_t gold[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN);
 
     static elem_t gemv_A[VEC_DIM_I][VEC_DIM_K] row_align(1);
     static elem_t gemv_B[VEC_DIM_K][VEC_DIM_J] row_align(1);
@@ -154,13 +169,21 @@ int main() {
 
     static elem_t gold_gemv[VEC_DIM_I]= {0};
 
+    static elem_t vec_in[VEC_DIM] = {0};
+    static elem_t vec_out[VEC_DIM] = {0};
 
-#if CHECK_RESULT == 1
+    static elem_t vec_gold[VEC_DIM] = {0};
+//#if CHECK_RESULT == 1
 #ifdef FAST
 #define RAND 1
 #else
 #define RAND rand()
 #endif
+    for (size_t i = 0 ; i < VEC_DIM; i++){
+        vec_in[i] = i;//RAND % 3;
+        vec_gold[i] = vec_in[i] * SCALE;
+    }
+    /*
     // printf("Init A\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
@@ -265,12 +288,21 @@ int main() {
     cpu_start = read_cycles();
     full_gemv(gemv_A, gemv_B, gemv_D, gold_gemv);
     cpu_end = read_cycles();
-    printf("Cycles taken: %u\n", cpu_end-cpu_start);
+    printf("cycles taken: %u\n", cpu_end-cpu_start);
 #endif
+    */
+
+   printf("starting gemv scaling \n");
+   uint64_t scale_start = read_cycles();
+   tiled_vector_scale(VEC_DIM, SCALE, (elem_t*) vec_in, (elem_t*) vec_out, false);
+   uint64_t scale_end = read_cycles();
+   printf("cycles taken: %u\n", scale_end-scale_start);
+   
 
 
 #if CHECK_RESULT == 1
     printf("check gemv\n");
+    /*
     if (!vec_is_equal(gemv_C, gold_gemv)) {
       printf("C:\n");
       full_printVec(gemv_C);
@@ -290,6 +322,16 @@ int main() {
 
       exit(1);
     }
+    */
+    if(!scale_is_equal(vec_gold, vec_out)) {
+      printf("C:\n");
+      full_printScale(vec_out);
+      printf("Gold:\n");
+      full_printScale(vec_gold);
+      printf("\n");
+
+      exit(1);
+   }
 #endif
 
   exit(0);
