@@ -1241,6 +1241,10 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #endif
 #endif
 
+    //printf("DIM: %d\n", DIM);
+    //printf("tile_I: %d\n", tile_I);
+    //printf("tile_J: %d\n", tile_J);
+    //printf("tile_K: %d\n\n", tile_K);
     tiled_matmul(dim_I, dim_J, dim_K,
         A, B, D, C,
         stride_A, stride_B, stride_D, stride_C,
@@ -3203,14 +3207,21 @@ static void tiled_resadd_stride_auto(const size_t I, const size_t J,
         //else 
         if (tile_I >= tile_J || tile_J <= DIM)
             tile_I /= 2;
-        else
-            tile_J -= DIM;
+        else{
+            if(tile_J % DIM != 0)
+                tile_J = (int)(tile_J / DIM) * DIM;
+            else
+                tile_J -= DIM;
+        }
 
         total_acc_rows = (tile_I / DIM + (tile_I % DIM != 0))*DIM * (tile_J / DIM + (tile_J % DIM != 0));
+        //printf("tile_I: %llu\n", tile_I);
+        //printf("tile_J: %llu\n", tile_J);
+        //printf("total acc rows: %llu\n", total_acc_rows);
     }
 
-    // printf("tile_I: %llu\n", tile_I);
-    // printf("tile_J: %llu\n", tile_J);
+    //printf("tile_I: %llu\n", tile_I);
+    //printf("tile_J: %llu\n", tile_J);
 
     if (matadd_type == WS) {
       tiled_resadd(I, J, stride, tile_I, tile_J,

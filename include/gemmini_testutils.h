@@ -12,7 +12,15 @@
 #include <limits.h>
 #include <stdbool.h>
 
+#ifndef FLOAT
+#define FLOAT false
+#endif
+
+#if FLOAT
+#include "include/gemmini_params_fp32.h"
+#else
 #include "include/gemmini_params.h"
+#endif
 #include "include/rerocc.h"
 #include "include/gemmini.h"
 #include "include/vega.h"
