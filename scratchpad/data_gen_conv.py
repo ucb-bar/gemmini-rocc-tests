@@ -1,8 +1,8 @@
 import random
 
 NO_BIAS = False
-IN_DIM = 14
-STRIDE = 2
+IN_DIM = 7
+STRIDE = 1
 IN_CHANNELS = 128
 OUT_CHANNELS = 128
 KERNEL_DIM = 3

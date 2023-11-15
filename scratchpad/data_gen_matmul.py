@@ -1,13 +1,17 @@
 import random
 
 NO_BIAS = False
-MAT_DIM_I = 96
-MAT_DIM_J = 192
+MAT_DIM_I = 128
+MAT_DIM_J = 128
 MAT_DIM_K = 128
 
 A = [[int(random.random()*5)-2 for x in range(MAT_DIM_K)] for y in range(MAT_DIM_I)]
 B = [[int(random.random()*5)-2 for x in range(MAT_DIM_J)] for y in range(MAT_DIM_K)]
-D = [[int(random.random()*5) for x in range(MAT_DIM_J)] for y in range(MAT_DIM_I)]
+D = [[int(random.random()*3) for x in range(MAT_DIM_J)] for y in range(MAT_DIM_I)]
+
+#A = [[x%2 for x in range(MAT_DIM_K)] for y in range(MAT_DIM_I)]
+#B = [[1 for x in range(MAT_DIM_J)] for y in range(MAT_DIM_K)]
+
 if NO_BIAS:
     D = [[0 for x in range(MAT_DIM_J)] for y in range(MAT_DIM_I)]
 
