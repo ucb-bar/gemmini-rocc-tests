@@ -11,25 +11,10 @@
 #define FLOAT false
 #include "include/gemmini_testutils.h"
 
-#define CHECK_RESULT 1
-
-#ifndef BAREMETAL
-
-#define MAT_DIM_I 128
-#define MAT_DIM_J 512
-
-#else
-#define MAT_DIM_I 128
-#define MAT_DIM_J 196//(128+64)
-#endif
-
-#define A_SCALE 2
-#define B_SCALE MVIN_SCALE_IDENTITY
-#define C_SCALE ACC_SCALE_IDENTITY
-#define USE_RELU true
-
+#include "data_resadd.h"
 #define NUM_INT 4
 #define NUM_FP 2
+#define USE_RELU true
 
 void full_printMatrix(elem_t m[MAT_DIM_I][MAT_DIM_J]) {
   for (size_t i = 0; i < MAT_DIM_I; ++i) {
@@ -69,22 +54,7 @@ int main() {
     rr_set_opc(XCUSTOM_ACC, cfgid);
     gemmini_flush(0);
 
-    static elem_t A[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN);
-    static elem_t B[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN);
     static elem_t C[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN);
-    static elem_t gold[MAT_DIM_I][MAT_DIM_J];
-
-#if CHECK_RESULT == 1
-    // printf("Init A and B\n");
-    for (size_t i = 0; i < MAT_DIM_I; ++i) {
-      for (size_t j = 0; j < MAT_DIM_J; ++j) {
-        A[i][j] = (rand() % 64) - 32;
-        B[i][j] = (rand() % 8) - 4;
-      }
-    }
-
-#endif
-
     printf("Starting gemmini resadd\n");
     unsigned long start = read_cycles();
     tiled_resadd_auto(MAT_DIM_I, MAT_DIM_J, A_SCALE, B_SCALE, C_SCALE, (elem_t*)A, (elem_t*)B,
@@ -94,13 +64,6 @@ int main() {
     printf("Cycles taken: %u\n", end-start);
     rr_release(cfgid);
 
-#if CHECK_RESULT == 1
-    printf("Starting slow CPU resadd\n");
-    unsigned long cpu_start = read_cycles();
-    resadd_cpu(MAT_DIM_I, MAT_DIM_J, MAT_DIM_J, A_SCALE, B_SCALE, C_SCALE, (elem_t*)A, (elem_t*)B,
-            (elem_t*)gold, USE_RELU);
-    unsigned long cpu_end = read_cycles();
-    printf("Cycles taken: %u\n", cpu_end-cpu_start);
     if (!full_is_equal(C, gold)) {
       printf("C:\n");
       full_printMatrix(C);
@@ -114,8 +77,6 @@ int main() {
 
       exit(1);
     }
-#endif
-
   exit(0);
 }
 

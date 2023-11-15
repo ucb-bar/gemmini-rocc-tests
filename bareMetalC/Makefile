@@ -1,11 +1,15 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
+	tiled_matmul_ws_perf \
+	tiled_matmul_ws \
+	fp_tiled_matmul_data \
 	tiled_matmul_data \
+	conv_pool_data \
 	conv_data \
 	conv_mac \
 	tiled_matmul_mac \
-	tiled_matmul_ws \
+	resadd_data \
 
 tests_baremetal = $(tests:=-baremetal)
 

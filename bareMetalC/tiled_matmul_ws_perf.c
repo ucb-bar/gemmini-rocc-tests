@@ -13,7 +13,7 @@
 #define ACTIVATION NO_ACTIVATION
 
 #define NO_BIAS 0
-#define REPEATING_BIAS 1
+#define REPEATING_BIAS 0
 
 #define A_TRANSPOSE 0
 #define B_TRANSPOSE 0
@@ -27,8 +27,8 @@
 #else
 
 #define MAT_DIM_I 128
-#define MAT_DIM_K 256
-#define MAT_DIM_J 256
+#define MAT_DIM_K 128
+#define MAT_DIM_J 128
 
 #endif
 
@@ -52,6 +52,16 @@ int main() {
     }
 #endif
 
+    int cfgid = 0;
+    int i = 0;
+    //for(int i = 0; i < 2; i++){
+        bool acquired = rr_acquire_single(cfgid, i);
+        if(acquired){
+            printf("gemmini %d acquired to cfgid %d\n", i, cfgid);
+            //break;
+        }
+    //}
+    rr_set_opc(XCUSTOM_ACC, cfgid);
     gemmini_flush(0);
 
 #if A_TRANSPOSE==0
@@ -72,10 +82,8 @@ int main() {
     static full_t gold_full[MAT_DIM_I][MAT_DIM_J];
     static elem_t gold[MAT_DIM_I][MAT_DIM_J];
 
-    counter_configure(0, RDMA_BYTES_REC);
-    counter_configure(1, WDMA_BYTES_SENT);
-    counter_reset();
 
+    for(int i = 0 ; i < 2; i++){
     printf("Starting gemmini matmul\n");
     printf("I: %d, J: %d, K: %d\n", MAT_DIM_I, MAT_DIM_J, MAT_DIM_K);
     printf("NO_BIAS: %d, REPEATING_BIAS: %d\n", NO_BIAS, REPEATING_BIAS);
@@ -93,6 +101,7 @@ int main() {
             WS);
 
     gemmini_fence();
+    rr_fence(cfgid);
 
     uint64_t end = read_cycles();
     printf("Cycles taken: %llu\n", end-start);
@@ -103,9 +112,8 @@ int main() {
     printf("Total macs: %llu\n", total_macs);
     printf("Ideal cycles: %llu\n", ideal_cycles);
     printf("Utilization: %llu%%\n", utilization);
-
-    printf("RDMA_BYTES_REC: %u\n", counter_read(0));
-    printf("WDMA_BYTES_SENT: %u\n", counter_read(1));
+    }
+    rr_release(cfgid);
 
   exit(0);
 }

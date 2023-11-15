@@ -47,16 +47,17 @@ int main() {
       exit(1);
     }
 #endif
-    int cfgid = 1;
-    for(int i = 0; i < 2; i++){
+
+    int cfgid = 0;
+    int i = 0;
+    //for(int i = 0; i < 2; i++){
         bool acquired = rr_acquire_single(cfgid, i);
         if(acquired){
             printf("gemmini %d acquired to cfgid %d\n", i, cfgid);
-            break;
+            //break;
         }
-    }
+    //}
     rr_set_opc(XCUSTOM_ACC, cfgid);
- 
     gemmini_flush(0);
 
     // assert((in_dim + 2*padding - kernel_dim) % stride == 0);
