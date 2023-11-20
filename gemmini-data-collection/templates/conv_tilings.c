@@ -34,6 +34,10 @@
 // #define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
 // #define N_PATCHES (BATCH_SIZE * OUT_DIM * OUT_DIM)
 
+#define PE_DIM %PE_DIM%
+#define SPAD_SIZE %SPAD_SIZE%
+#define ACC_SIZE %ACC_SIZE%
+
 int main() {
 #ifndef BAREMETAL
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
@@ -133,45 +137,47 @@ int main() {
         printf("%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%u_%s\n", KERNEL_DIM, OUT_DIM, IN_CHANNELS, OUT_CHANNELS, 
                BATCH_SIZE, STRIDE, KERNEL_DILATION, PADDING, KCOLS, KROWS, OCOLS, OROWS, KCHS, OCHS, BATCHES, SPATIAL_KCHS, SPATIAL_OCHS, PERM_STR);
 
-        tiled_conv_auto_inner(
-            BATCH_SIZE, IN_DIM, IN_CHANNELS,
-            OUT_CHANNELS, OUT_DIM,
-            STRIDE, 1, KERNEL_DILATION, PADDING, KERNEL_DIM,
-            false, false, false, false, false,
+        // tiled_conv_auto_inner(
+        //     BATCH_SIZE, IN_DIM, IN_CHANNELS,
+        //     OUT_CHANNELS, OUT_DIM,
+        //     STRIDE, 1, KERNEL_DILATION, PADDING, KERNEL_DIM,
+        //     false, false, false, false, false,
 
-            (elem_t*)input,
-            (elem_t*)weights_mat,
-            NO_BIAS ? NULL : (acc_t*)bias,
-            (elem_t*)output_mat,
+        //     (elem_t*)input,
+        //     (elem_t*)weights_mat,
+        //     NO_BIAS ? NULL : (acc_t*)bias,
+        //     (elem_t*)output_mat,
 
-            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, WS,
-            true
-        );
+        //     NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, WS,
+        //     true
+        // );
 
+        // gemmini_fence();
+        // // printf("Gemmini conv...\n");
+        // uint64_t start_gemmini = read_cycles();
+
+        // // assert((in_dim + 2*padding - kernel_dim) % stride == 0);
+        // tiled_conv_auto_inner(
+        //     BATCH_SIZE, IN_DIM, IN_CHANNELS,
+        //     OUT_CHANNELS, OUT_DIM,
+        //     STRIDE, 1, KERNEL_DILATION, PADDING, KERNEL_DIM,
+        //     false, false, false, false, false,
+
+        //     (elem_t*)input,
+        //     (elem_t*)weights_mat,
+        //     NO_BIAS ? NULL : (acc_t*)bias,
+        //     (elem_t*)output_mat,
+
+        //     NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, WS,
+        //     false
+        // );
+        // gemmini_fence();
+        // uint64_t end_gemmini = read_cycles();
+        // printf("Gemmini auto conv took %llu cycles\n\n", end_gemmini - start_gemmini);
+        
         gemmini_fence();
-        // printf("Gemmini conv...\n");
-        uint64_t start_gemmini = read_cycles();
 
-        // assert((in_dim + 2*padding - kernel_dim) % stride == 0);
-        tiled_conv_auto_inner(
-            BATCH_SIZE, IN_DIM, IN_CHANNELS,
-            OUT_CHANNELS, OUT_DIM,
-            STRIDE, 1, KERNEL_DILATION, PADDING, KERNEL_DIM,
-            false, false, false, false, false,
-
-            (elem_t*)input,
-            (elem_t*)weights_mat,
-            NO_BIAS ? NULL : (acc_t*)bias,
-            (elem_t*)output_mat,
-
-            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0, WS,
-            false
-        );
-        gemmini_fence();
-        uint64_t end_gemmini = read_cycles();
-        printf("Gemmini auto conv took %llu cycles\n\n", end_gemmini - start_gemmini);
-
-        start_gemmini = read_cycles();
+        unsigned long tiled_start = read_cycles();
         int retval = tiled_conv(
             BATCH_SIZE, IN_DIM, IN_CHANNELS,
             OUT_CHANNELS, OUT_DIM,
@@ -192,14 +198,15 @@ int main() {
 
             WS,
             // "CRSKPQN");
-            PERM_STR);
+            PERM_STR,
+            PE_DIM, SPAD_SIZE, ACC_SIZE);
 
         gemmini_fence();
-        end_gemmini = read_cycles();
+        unsigned long tiled_end = read_cycles();
         if (retval != 0) {
             printf("Exit after %llu cycles\n\n", retval);
         } else {
-            printf("Gemmini tiled conv took %llu cycles\n\n", end_gemmini - start_gemmini);
+            printf("Gemmini tiled conv took %llu cycles\n\n", tiled_end - tiled_start);
         }
 
     }

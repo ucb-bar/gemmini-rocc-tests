@@ -1,5 +1,6 @@
 import sys
 import random
+import argparse
 
 import tests
 
@@ -76,7 +77,7 @@ def main(keywords, replacement, template_file, new_file):
 
     print("Updated clean.sh script")
 
-def one_file(tests):
+def one_file(tests, pe_dim, spad_size, acc_size):
     """
     Search TEMPLATE_FILE for KEYWORDS and replace respective keywords with REPLACEMENT. Write changes to NEW_FILE.
     Update Makefile with new filename for target.
@@ -100,6 +101,9 @@ def one_file(tests):
         for i in range(len(conv_keywords)):
             filedata = filedata.replace('%'+conv_keywords[i]+'%,', "")
     filedata = filedata.replace("%NUM_LAYERS%", str(num_convs))
+    filedata = filedata.replace("%PE_DIM%", str(pe_dim))
+    filedata = filedata.replace("%SPAD_SIZE%", str(spad_size))
+    filedata = filedata.replace("%ACC_SIZE%", str(acc_size))
     new_conv_file = "conv_tilings"
     with open('../bareMetalC/'+new_conv_file+'.c', 'w') as file:
         file.write(filedata)
@@ -125,7 +129,9 @@ def one_file(tests):
             filedata = filedata.replace('%'+matmul_keywords[i]+'%,', "")
 
     filedata = filedata.replace("%NUM_LAYERS%", str(num_matmuls))
-    filedata = filedata.replace("%PE_DIM%", str(16))
+    filedata = filedata.replace("%PE_DIM%", str(pe_dim))
+    filedata = filedata.replace("%SPAD_SIZE%", str(spad_size))
+    filedata = filedata.replace("%ACC_SIZE%", str(acc_size))
     new_matmul_file = "matmul_tilings"
     with open('../bareMetalC/'+new_matmul_file+'.c', 'w') as file:
         file.write(filedata)
@@ -223,6 +229,26 @@ def per_pe_dim(tests):
 
     # print("Updated Makefile")
 
+def construct_argparser():
+    parser = argparse.ArgumentParser(description='Run Configuration')
+
+    parser.add_argument('--pe_dim',
+                        type=int,
+                        help='Gemmini systolic array size',
+                        required=True,
+                        )
+    parser.add_argument('--spad_size',
+                        type=int,
+                        help='Gemmini scratchpad size',
+                        required=True,
+                        )
+    parser.add_argument('--acc_size',
+                        type=int,
+                        help='Gemmini accumulator size',
+                        required=True,
+                        )
+    return parser
+
 if __name__ == "__main__":
     # for fname in 'vcs', 'verilator', 'midas', 'spike':
     #     with open('../../../data-collection-' + fname + '.sh', 'w') as file:
@@ -233,7 +259,9 @@ if __name__ == "__main__":
 
     # for test in tests.tests:
     #     main(*test)
-    one_file(tests.tests)
+    parser = construct_argparser()
+    args = parser.parse_args()
+    one_file(tests.tests, args.pe_dim, args.spad_size, args.acc_size)
     # per_pe_dim(tests.tests)
 
     # for fname in 'vcs', 'verilator', 'midas', 'spike':

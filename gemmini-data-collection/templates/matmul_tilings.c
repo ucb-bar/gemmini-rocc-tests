@@ -89,44 +89,43 @@ int main() {
         // printf("I: %d\n, K: %d\n, J: %d\n, TILE_I: %d\n, TILE_K: %d\n, TILE_J: %d\n", MAT_DIM_I, MAT_DIM_J, MAT_DIM_K, TILE_I, TILE_K, TILE_J);
         printf("%d_%d_%d_%d_%d_%d_%d_%d_%s\n", MAT_DIM_I, MAT_DIM_J, MAT_DIM_K, TILE_I, TILE_K, TILE_J, SPATIAL_TILE_K, SPATIAL_TILE_J, PERM_STR);
 
-        tiled_matmul_auto_inner(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-                (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
-                A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
-                MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-                NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
-                A_TRANSPOSE, B_TRANSPOSE,
-                false, false,
-                0,
-                WS,
-                true);
+        // tiled_matmul_auto_inner(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+        //         (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
+        //         A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
+        //         MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+        //         NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
+        //         A_TRANSPOSE, B_TRANSPOSE,
+        //         false, false,
+        //         0,
+        //         WS,
+        //         true);
 
-        gemmini_flush(0);
+        // gemmini_flush(0);
 
-        unsigned long start = read_cycles();
+        // unsigned long start = read_cycles();
 
-        tiled_matmul_auto_inner(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-                (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
-                A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
-                MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-                NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
-                A_TRANSPOSE, B_TRANSPOSE,
-                false, false,
-                0,
-                WS,
-                false);
+        // tiled_matmul_auto_inner(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+        //         (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
+        //         A_STRIDE, B_STRIDE, MAT_DIM_J, MAT_DIM_J,
+        //         MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+        //         NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
+        //         A_TRANSPOSE, B_TRANSPOSE,
+        //         false, false,
+        //         0,
+        //         WS,
+        //         false);
 
-        gemmini_fence();
+        // gemmini_fence();
 
-        unsigned long end = read_cycles();
-        printf("Gemmini auto matmul took %llu cycles\n\n", end - start);
-
-        gemmini_flush(0);
+        // unsigned long end = read_cycles();
+        // printf("Gemmini auto matmul took %llu cycles\n\n", end - start);
 
         TILE_I = (TILE_I < 16) ? 1 : TILE_I >> 4;
         TILE_J = (TILE_J < 16) ? 1 : TILE_J >> 4;
         TILE_K = (TILE_K < 16) ? 1 : TILE_K >> 4;
 
-        start = read_cycles();
+        gemmini_fence();
+        unsigned long tiled_start = read_cycles();
 
         uint64_t retval = tiled_matmul(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
                 (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
@@ -143,11 +142,11 @@ int main() {
 
         gemmini_fence();
 
-        end = read_cycles();
+        unsigned long tiled_end = read_cycles();
         if (retval != 0) {
             printf("Exit after %llu cycles\n\n", retval);
         } else {
-            printf("Gemmini tiled matmul took %llu cycles\n\n", end - start);
+            printf("Gemmini tiled matmul took %llu cycles\n\n", tiled_end - tiled_start);
         }
 
         // const int total_macs = MAT_DIM_I * MAT_DIM_J * MAT_DIM_K;

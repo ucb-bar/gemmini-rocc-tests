@@ -39,14 +39,17 @@ if __name__ == "__main__":
             layer_dict["IN_DIM"] = row["prob.P"] * layer_dict["STRIDE"]
             layer_dict["OUT_DIM"] = int((layer_dict["IN_DIM"] - layer_dict["KERNEL_DIM"] + layer_dict["KERNEL_DIM"] // 2 * 2) / layer_dict["STRIDE"] + 1)
         mapping_str = row["mapping.mapping"]
-        words = mapping_str.split("L1[O] ")[1].split(" - ")[0].split(" ")
         factors = {}
-        for word in words:
-            if "X" in word or "Y" in word:
-                word = word[:-1]
-                factors[word[0]+"X"] = int(word[1:])
-            else:
-                factors[word[0]] = int(word[1:])
+        for lvl_str in ["L0[W] ", "L1[O] ", "L2[WI] "]:
+            words = mapping_str.split(lvl_str)[1].split(" - ")[0].split(" ")
+            for word in words:
+                if "X" in word or "Y" in word:
+                    word = word[:-1]
+                    factors[word[0]+"X"] = int(word[1:])
+                elif word[0] not in factors:
+                    factors[word[0]] = int(word[1:])
+                else:
+                    factors[word[0]] *= int(word[1:])
         layer_dict["TILE_BATCHES"] = factors.get("N", 1)
         layer_dict["TILE_OCOLS"] = factors.get("P", 1)
         layer_dict["TILE_OROWS"] = factors.get("Q", 1)
@@ -57,15 +60,17 @@ if __name__ == "__main__":
         
         layer_dict["TILE_KCHS"] *= factors.get("CX", 1)
         layer_dict["SPATIAL_TILE_KCHS"] = factors.get("CX", 1)
+        layer_dict["TILE_OCHS"] *= factors.get("KX", 1)
+        layer_dict["SPATIAL_TILE_OCHS"] = factors.get("KX", 1)
 
-        # scratchpad level K spatial
-        layer_dict["SPATIAL_TILE_OCHS"] = 1
-        words = mapping_str.split("L2[WI] ")[1].split(" - ")[0].split(" ")
-        for word in words:
-            if ("K" in word) and ("X" in word):
-                spatial_k = int(word[1:-1])
-                layer_dict["TILE_OCHS"] *= spatial_k
-                layer_dict["SPATIAL_TILE_OCHS"] = spatial_k
+        # # scratchpad level K spatial
+        # layer_dict["SPATIAL_TILE_OCHS"] = 1
+        # words = mapping_str.split("L2[WI] ")[1].split(" - ")[0].split(" ")
+        # for word in words:
+        #     if ("K" in word) and ("X" in word):
+        #         spatial_k = int(word[1:-1])
+        #         layer_dict["TILE_OCHS"] *= spatial_k
+        #         layer_dict["SPATIAL_TILE_OCHS"] = spatial_k
 
         # get reg level tiling factor
         words = mapping_str.split("L0[W] ")[1].split(" - ")[0].split(" ")

@@ -1459,7 +1459,8 @@ static void sp_tiled_conv(
         bool trans_weight_1203, bool trans_weight_0132,
 
         bool no_bias, bool no_pool, bool downsample, bool input_dilated,
-        bool dw) {
+        bool dw,
+        int pe_dim, int spad_size, int acc_size) {
 
   // When dw convs are true, we assume that kchs and ochs are 1
   if (dw) { kchs = 1; pochs = 1; }
@@ -1500,8 +1501,8 @@ static void sp_tiled_conv(
 #endif
 
   // Calculate spad address offsets
-  const int out_channels_per_bank = ochs / DIM + (ochs % DIM != 0);
-  const int in_channels_per_bank = kchs / DIM + (kchs % DIM != 0);
+  const int out_channels_per_bank = ochs / pe_dim + (ochs % pe_dim != 0);
+  const int in_channels_per_bank = kchs / pe_dim + (kchs % pe_dim != 0);
   const int B_rows = trans_weight_0132 ?
     in_channels_per_bank * kcols * krows * ochs :
     out_channels_per_bank * kcols * krows * kchs;
@@ -1510,10 +1511,12 @@ static void sp_tiled_conv(
   static uint32_t C_sp_addr_row = 0;
 
   const uint32_t A_sp_addr_start = 0;
-  const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - B_rows;
+  const uint32_t bank_rows = (spad_size * 1024 / pe_dim) >> 1; // row size = pe_dim, 4 banks, double buffered
+  const uint32_t B_sp_addr_start = BANK_NUM * bank_rows - B_rows;
   const uint32_t D_sp_addr_start = (1 << (ADDR_LEN - 1)) + D_sp_addr_row;
   const uint32_t C_sp_addr_start = (3 << (ADDR_LEN - 2)) + C_sp_addr_row;
 
+  // const uint32_t acc_rows = acc_size * 4 * 1024 / pe_dim
   if (bias != 0) {
     D_sp_addr_row = (D_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
   }
@@ -2249,7 +2252,7 @@ static uint64_t tiled_conv(
         int pool_size, int pool_stride, int pool_padding,
 
         enum tiled_matmul_type_t tiled_conv_type,
-        char * perm) {
+        char * perm, int pe_dim, int spad_size, int acc_size) {
 
 #ifdef GEMMINI_ASSERTIONS
   if (trans_weight_1203 && trans_weight_0132) {
@@ -2510,7 +2513,7 @@ static uint64_t tiled_conv(
                                     trans_weight_1203, trans_weight_0132,
 
                                     no_bias, no_pool, downsample, input_dilated,
-                                    false);
+                                    false, pe_dim, spad_size, acc_size);
 
                                 // uint64_t cycles_so_far = read_cycle_gemminih() - tiled_conv_start_cycle;
                                 // if (cycles_so_far >= 400000000) {
@@ -2693,7 +2696,7 @@ static void tiled_conv_dw(
                                 false, false,
 
                                 no_bias, no_pool, false, false,
-                                true);
+                                true, 16, 128, 32);
 
                         }
                     }
@@ -2896,7 +2899,7 @@ static void tiled_conv_auto_inner(
         pool_size, no_pool ? 0 : pool_stride, pool_padding,
 
         tiled_conv_type,
-        "CRSKPQN");
+        "CRSKPQN", 16, 2048, 2048);
 }
 
 static void tiled_conv_auto(

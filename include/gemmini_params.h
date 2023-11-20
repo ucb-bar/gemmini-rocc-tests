@@ -5,14 +5,14 @@
 #include <limits.h>
 
 #define XCUSTOM_ACC 3
-#define DIM 16
+#define DIM 32
 #define ADDR_LEN 32
 #define BANK_NUM 4
-#define BANK_ROWS 4096
-#define ACC_ROWS 1024
+#define BANK_ROWS 32768
+#define ACC_ROWS 32768
 #define MAX_BYTES 64
 #define MAX_BLOCK_LEN (MAX_BYTES/(DIM*1))
-#define MAX_BLOCK_LEN_ACC (MAX_BYTES/(DIM*4))
+#define MAX_BLOCK_LEN_ACC 1
 
 typedef int8_t elem_t;
 static const elem_t elem_t_max = 127;
@@ -78,8 +78,6 @@ typedef uint32_t acc_scale_t_bits;
 #define ACC_SCALE_SIG_BITS 24
 
 #define ACC_READ_SMALL_WIDTH
-
-// #define HAS_FIRST_LAYER_OPTIMIZATIONS
-#undef HAS_FIRST_LAYER_OPTIMIZATIONS
+#define ACC_READ_FULL_WIDTH
 
 #endif // GEMMINI_PARAMS_H

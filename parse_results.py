@@ -5,7 +5,7 @@ import argparse
 import pandas as pd
 import numpy as np
 
-def collect_results(substrs, custom_str, collect_auto_tile=False):
+def collect_results(substrs, custom_str, collect_auto_tile=False, run_auto=True):
     # logs = glob.glob(f"/home/centos/firesim/deploy/results-workload/*/*/uartlog", recursive=True)
     relevant_logs = set()
     # for substr in substrs:
@@ -14,6 +14,8 @@ def collect_results(substrs, custom_str, collect_auto_tile=False):
     #         relevant_logs.add(log)
     for substr in substrs:
         substr_logs = glob.glob(f"{substr}/*/uartlog", recursive=True)
+        # import pdb
+        # pdb.set_trace()
         for log in substr_logs:
             relevant_logs.add(log)
     print(relevant_logs)
@@ -25,20 +27,22 @@ def collect_results(substrs, custom_str, collect_auto_tile=False):
             lines = f.readlines()
             for i, line in enumerate(lines):
                 if line.startswith(f"Gemmini {custom_str}conv took") or line.startswith(f"Gemmini {custom_str}matmul took"):
-                    if "matmul" in line:
-                        if custom_str == "tiled ":
-                            row_str = lines[i-13]
-                        else:
-                            row_str = lines[i-11]
-                    if "conv" in line:
-                        if custom_str == "tiled ":
-                            row_str = lines[i-11]
-                        else:
-                            row_str = lines[i-9]
-                    # if "matmul" in line:
-                    #     row_str = lines[i-3]
-                    # if "conv" in line:
-                    #     row_str = lines[i-1]
+                    if run_auto:
+                        if "matmul" in line:
+                            if custom_str == "tiled ":
+                                row_str = lines[i-13]
+                            else:
+                                row_str = lines[i-11]
+                        if "conv" in line:
+                            if custom_str == "tiled ":
+                                row_str = lines[i-11]
+                            else:
+                                row_str = lines[i-9]
+                    else:
+                        if "matmul" in line:
+                            row_str = lines[i-1]
+                        if "conv" in line:
+                            row_str = lines[i-1]
                     vals = row_str.split("_")
                     if line.startswith(f"Gemmini {custom_str}conv took"):
                         name_vals = vals[:7] + vals[8:]
@@ -72,7 +76,7 @@ def collect_results(substrs, custom_str, collect_auto_tile=False):
 
 def add_to_csv(results, csv_path, col="", tile_only=False, new_csv_path=""):
     df = pd.read_csv(csv_path)
-    with open("gemmini-data-collection/layers/layers.pickle", "rb") as f:
+    with open("/home/centos/firesim-dosa/target-design/chipyard/generators/gemmini/software/gemmini-rocc-tests/gemmini-data-collection/layers/layers.pickle", "rb") as f:
         layer_lst = pickle.load(f)
     target_key = "dse.auto_tiling"
     if col == "auto": target_key = "target.gemmini_auto_cycle"
@@ -83,13 +87,13 @@ def add_to_csv(results, csv_path, col="", tile_only=False, new_csv_path=""):
     layer_names = dict()
     for layer in layer_lst:
         if not tile_only and layer["prob_name"] in results:
-            if layer["prob_name"] in layer_names:
-                existing_cycle = df["target.cycle"][layer_names[layer["prob_name"]]["df_idx"]]
-                new_cycle = df["target.cycle"][layer["df_idx"]]
-                if new_cycle != existing_cycle:
-                    import pdb
-                    pdb.set_trace()
-                continue
+            # if layer["prob_name"] in layer_names:
+            #     existing_cycle = df["target.cycle"][layer_names[layer["prob_name"]]["df_idx"]]
+            #     new_cycle = df["target.cycle"][layer["df_idx"]]
+            #     if new_cycle != existing_cycle:
+            #         import pdb
+            #         pdb.set_trace()
+            #     continue
             layer_names[layer["prob_name"]] = layer
             num_layers_found += 1
             df_idx = layer["df_idx"]
