@@ -96,7 +96,8 @@ static void tiled_matmul_nn(size_t dim_I, size_t dim_J, size_t dim_K,
         false, false,
         false, false,
         0,
-        tiled_matmul_type);
+        tiled_matmul_type,
+        "CKPQRSN", DIM);
 
     if (check) {
         printf("%s: CPU\n", layer_name);

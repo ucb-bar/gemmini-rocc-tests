@@ -14,7 +14,9 @@
 
 #include "include/gemmini_params.h"
 
-#define GEMMINI_ASSERTIONS
+#undef GEMMINI_ASSERTIONS
+// #define GEMMINI_ASSERTIONS 1
+// #define PRINT_TILE 0
 
 // Accelerator interface
 #include "rocc-software/src/xcustom.h"
@@ -297,6 +299,38 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
     uint32_t _placeholder; \
     ROCC_INSTRUCTION(XCUSTOM_ACC, rd, config_reg, _placeholder, k_COUNTER) \
   }
+
+// Read cycles
+static uint64_t read_cycle_gemminih() {
+    uint64_t cycles;
+    asm volatile ("rdcycle %0" : "=r" (cycles));
+    return cycles;
+}
+
+static char *ft_strchr(const char *str, int c){
+    size_t i;
+    char *temp;
+
+    i = 0;
+    while (str[i])
+    {
+        if (str[i] == c)
+        {
+            temp = &str[i];
+            return temp;
+        }
+        i++;
+    }
+
+    if(str[i]==c)
+    {
+        return &str[i];
+    }
+
+    return NULL;
+    // You need to return NULL after scanning whole line..
+    // Or it will send NULL checking after 1st character 
+}
 
 // Read counter
 static uint32_t counter_read(size_t index) {
@@ -681,7 +715,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
 }
 
 
-static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
+static uint64_t tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t* A, const elem_t* B,
         const void * D, void * C,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
@@ -692,21 +726,26 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         bool a_transpose, bool b_transpose,
         bool full_C, bool low_D,
         uint8_t weightA,
-        int dataflow) {
+        int dataflow,
+        char * perm,
+        int pe_dim) {
 
-  const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
-  const size_t dim_J_padded = (dim_J / DIM + (dim_J % DIM != 0)) * DIM;
-  const size_t dim_K_padded = (dim_K / DIM + (dim_K % DIM != 0)) * DIM;
+  const size_t dim_I_padded = (dim_I / pe_dim + (dim_I % pe_dim != 0)) * pe_dim;
+  const size_t dim_J_padded = (dim_J / pe_dim + (dim_J % pe_dim != 0)) * pe_dim;
+  const size_t dim_K_padded = (dim_K / pe_dim + (dim_K % pe_dim != 0)) * pe_dim;
 
-  const size_t I0 = dim_I_padded / (tile_I*DIM) + (dim_I_padded % (tile_I*DIM) != 0);
-  const size_t J0 = dim_J_padded / (tile_J*DIM) + (dim_J_padded % (tile_J*DIM) != 0);
-  const size_t K0 = dim_K_padded / (tile_K*DIM) + (dim_K_padded % (tile_K*DIM) != 0);
+//   const size_t I0 = dim_I_padded / (tile_I) + (dim_I_padded % (tile_I) != 0);
+  const size_t I0 = dim_I_padded / (tile_I * pe_dim) + (dim_I_padded % (tile_I * pe_dim) != 0);
+  const size_t J0 = dim_J_padded / (tile_J * pe_dim) + (dim_J_padded % (tile_J * pe_dim) != 0);
+  const size_t K0 = dim_K_padded / (tile_K * pe_dim) + (dim_K_padded % (tile_K * pe_dim) != 0);
+
+//   printf("I0: %d, J0: %d, K0: %d\n", I0, J0, K0);
 
   // These lines here are supposed to help us deal with when the dimensions of
   // the systolic array aren't divisible by the tiling factors
-  const size_t last_I = dim_I_padded % (tile_I*DIM) == 0 ? tile_I : (dim_I_padded/DIM) % tile_I;
-  const size_t last_J = dim_J_padded % (tile_J*DIM) == 0 ? tile_J : (dim_J_padded/DIM) % tile_J;
-  const size_t last_K = dim_K_padded % (tile_K*DIM) == 0 ? tile_K : (dim_K_padded/DIM) % tile_K;
+  const size_t last_I = dim_I_padded % (tile_I*pe_dim) == 0 ? tile_I : (dim_I_padded/pe_dim) % tile_I;
+  const size_t last_J = dim_J_padded % (tile_J*pe_dim) == 0 ? tile_J : (dim_J_padded/pe_dim) % tile_J;
+  const size_t last_K = dim_K_padded % (tile_K*pe_dim) == 0 ? tile_K : (dim_K_padded/pe_dim) % tile_K;
 
   // These lines are supposed to figure out how much padding the hardware is
   // supposed to add for the final tile
@@ -769,20 +808,52 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
     inner = &sp_tiled_matmul_ws;
   }
 
-  for (size_t i0 = 0; i0 < I0; i0++)
-    for (size_t j0 = 0; j0 < J0; j0++)
-      for (size_t k0 = 0; k0 < K0; k0++) {
+    char idx_to_dim[7] = {'N', 'Q', 'P', 'K', 'S', 'R', 'C'};
+    int dim_to_perm[7];
+    int loop_limit[7];
+
+    int limits[7] = {1, 1, I0, J0, 1, 1, K0};
+    // int steps[7] = {batches, porows, pocols, pochs, krows, kcols, kchs};
+    for (int i = 0; i < 7; i++) {
+        char * loc = ft_strchr(perm, idx_to_dim[i]);
+        if (loc == NULL) {
+            printf("Could not locate dim %s in perm str %s", idx_to_dim[i], perm);
+        }
+        int loop_number = 6 - (loc - perm); // earlier in string = inner loop
+        dim_to_perm[i] = loop_number;
+        loop_limit[loop_number] = limits[i];
+    }
+
+    //   KJI = CKPQRSN
+    //   for (size_t i0 = 0; i0 < I0; i0++)
+    //     for (size_t j0 = 0; j0 < J0; j0++)
+    //       for (size_t k0 = 0; k0 < K0; k0++) {
+
+    uint64_t tiled_conv_start_cycle = read_cycle_gemminih();
+    
+    for (int v0 = 0; v0 < loop_limit[0]; v0 += 1)
+        for (int v1 = 0; v1 < loop_limit[1]; v1 += 1)
+            for (int v2 = 0; v2 < loop_limit[2]; v2 += 1)
+                for (int v3 = 0; v3 < loop_limit[3]; v3 += 1)
+                    for (int v4 = 0; v4 < loop_limit[4]; v4 += 1)
+                        for (int v5 = 0; v5 < loop_limit[5]; v5 += 1)
+                            for (int v6 = 0; v6 < loop_limit[6]; v6 += 1) {
+
+        int loop_vals[7] = {v0, v1, v2, v3, v4, v5, v6};
+        size_t i0 = loop_vals[dim_to_perm[2]];
+        size_t j0 = loop_vals[dim_to_perm[3]];
+        size_t k0 = loop_vals[dim_to_perm[6]];
 
         const void * pre;
         if (k0 != 0) {
           pre = NULL;
         } else {
-          size_t bias_row = repeating_bias ? 0 : i0*tile_I*DIM;
-          // pre = &(((acc_t*)D)[bias_row * stride_D + j0 * tile_J * DIM]);
-          pre = (int8_t*)D + (bias_row * stride_D + j0 * tile_J * DIM)*sizeof_D;
+          size_t bias_row = repeating_bias ? 0 : i0*tile_I*pe_dim;
+          // pre = &(((acc_t*)D)[bias_row * stride_D + j0 * tile_J * pe_dim]);
+          pre = (int8_t*)D + (bias_row * stride_D + j0 * tile_J * pe_dim)*sizeof_D;
         }
 
-        void * out = k0 == K0-1 ? (int8_t*)C + (i0*tile_I*DIM*stride_C + j0*tile_J*DIM)*sizeof_C : NULL;
+        void * out = k0 == K0-1 ? (int8_t*)C + (i0*tile_I*pe_dim*stride_C + j0*tile_J*pe_dim)*sizeof_C : NULL;
 
         const size_t I = i0 < I0-1 ? tile_I : last_I;
         const size_t J = j0 < J0-1 ? tile_J : last_J;
@@ -792,11 +863,11 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         const size_t pad_J = j0 == J0-1 ? padding_J : 0;
         const size_t pad_K = k0 == K0-1 ? padding_K : 0;
 
-        const elem_t * a = a_transpose ? (A + k0*tile_K*DIM*stride_A + i0*tile_I*DIM)
-          : (A + i0*tile_I*DIM*stride_A + k0*tile_K*DIM);
+        const elem_t * a = a_transpose ? (A + k0*tile_K*pe_dim*stride_A + i0*tile_I*pe_dim)
+          : (A + i0*tile_I*pe_dim*stride_A + k0*tile_K*pe_dim);
 
-        const elem_t * b = b_transpose ? (B + j0*tile_J*DIM*stride_B + k0*tile_K*DIM)
-          : (B + k0*tile_K*DIM*stride_B + j0*tile_J*DIM);
+        const elem_t * b = b_transpose ? (B + j0*tile_J*pe_dim*stride_B + k0*tile_K*pe_dim)
+          : (B + k0*tile_K*pe_dim*stride_B + j0*tile_J*pe_dim);
 
         (*inner)(a, b, pre, out,
             A_scale_factor, B_scale_factor, D_scale_factor,
@@ -807,9 +878,16 @@ static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
             full_C, low_D,
             no_bias, repeating_bias,
             act);
+
+        // printf("i0: %d, j0: %d, k0: %d, I: %d, J: %d, K: %d, %llu\n", i0, j0, k0, I, J, K, read_cycle_gemminih()-tiled_conv_start_cycle);
+        // uint64_t cycles_so_far = read_cycle_gemminih() - tiled_conv_start_cycle;
+        // if (cycles_so_far >= 400000000) {
+        //     return cycles_so_far;
+        // }
       }
 
-  gemmini_fence();
+    return 0;
+  // gemmini_fence();
 }
 
 
@@ -1079,7 +1157,7 @@ enum tiled_matmul_type_t {OS, WS, CPU}; // TODO rename this so it's name also ap
 
 // This function runs a tiled matrix mulctiplication, with hardcoded tiling
 // factors
-static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
+static uint64_t tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t* A, const elem_t* B,
         const void * D, void* C,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
@@ -1090,7 +1168,9 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         bool transpose_A, bool transpose_B,
         bool full_C, bool low_D,
         uint8_t weightA,
-        enum tiled_matmul_type_t tiled_matmul_type) {
+        enum tiled_matmul_type_t tiled_matmul_type,
+        char *perm,
+        int pe_dim) {
 
 #ifdef GEMMINI_ASSERTIONS
   // Make sure that the tiling factors make sense
@@ -1173,9 +1253,10 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
   }
 #endif
 
+  uint64_t retval;
   // Run a tiled matrix multiplication on either Gemmini or the CPU
   if (tiled_matmul_type == OS || tiled_matmul_type == WS) {
-    tiled_matmul_outer(dim_I, dim_J, dim_K,
+    retval = tiled_matmul_outer(dim_I, dim_J, dim_K,
         A, B, D, C,
         stride_A, stride_B, stride_D, stride_C,
         A_scale_factor, B_scale_factor, D_scale_factor,
@@ -1184,7 +1265,9 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         transpose_A, transpose_B,
         full_C, low_D,
         weightA,
-        (int)tiled_matmul_type);
+        (int)tiled_matmul_type,
+        perm,
+        pe_dim);
   } else /*if (tiled_matmul_type == CPU)*/ {
     matmul_cpu(transpose_A, transpose_B, dim_I, dim_J, dim_K,
             A, B, (const acc_t*) D, (elem_t*)C,
@@ -1192,6 +1275,7 @@ static void tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
             A_scale_factor, B_scale_factor, D_scale_factor,
             act, scale, bert_scale, repeating_bias);
   }
+  return retval;
 }
 
 
@@ -1204,9 +1288,7 @@ static size_t tiled_matmul_total_acc_rows(size_t I, size_t J) {
   return (I * J) * DIM;
 }
 
-// This function runs a tiled matrix multiplication, with automatically
-// calculated tiling factors
-static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
+static void tiled_matmul_auto_inner(size_t dim_I, size_t dim_J, size_t dim_K,
         const elem_t* A, const elem_t* B,
         const void * D, void * C,
         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
@@ -1216,7 +1298,7 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         bool transpose_A, bool transpose_B,
         bool full_C, bool low_D,
         uint8_t weightA,
-        enum tiled_matmul_type_t tiled_matmul_type) {
+        enum tiled_matmul_type_t tiled_matmul_type, bool print_tile) {
 
 #define partition_rows (BANK_NUM * BANK_ROWS / 2)
 #define mats_in_partition (partition_rows / DIM)
@@ -1285,24 +1367,23 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         break;
     }
 
-#ifdef PRINT_TILE
-#if PRINT_TILE
-    const int spad_rows = tiled_matmul_total_spad_rows(tile_I, tile_J, tile_K);
-    const int acc_rows = tiled_matmul_total_acc_rows(tile_I, tile_J);
+    if (print_tile) {
+        const int spad_rows = tiled_matmul_total_spad_rows(tile_I, tile_J, tile_K);
+        const int acc_rows = tiled_matmul_total_acc_rows(tile_I, tile_J);
 
-    printf("tile_I: %d\n", tile_I);
-    printf("tile_J: %d\n", tile_J);
-    printf("tile_K: %d\n\n", tile_K);
+        printf("tile_I: %d\n", tile_I);
+        printf("tile_J: %d\n", tile_J);
+        printf("tile_K: %d\n\n", tile_K);
 
-    printf("spad_rows: %d\n", spad_rows);
-    printf("acc_rows: %d\n\n", acc_rows);
+        printf("spad_rows: %d\n", spad_rows);
+        printf("acc_rows: %d\n\n", acc_rows);
 
-    printf("spad_row utilization: %d%%\n", (spad_rows * 100) / max_spad_rows);
-    printf("acc_row utilization: %d%%\n\n", (acc_rows * 100) / max_acc_rows);
+        printf("spad_row utilization: %d%%\n", (spad_rows * 100) / max_spad_rows);
+        printf("acc_row utilization: %d%%\n\n", (acc_rows * 100) / max_acc_rows);
 
-    exit(EXIT_SUCCESS);
-#endif
-#endif
+        return;
+    }
+    // exit(EXIT_SUCCESS);
 
     tiled_matmul(dim_I, dim_J, dim_K,
         A, B, D, C,
@@ -1313,7 +1394,9 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
         transpose_A, transpose_B,
         full_C, low_D,
         weightA,
-        tiled_matmul_type);
+        tiled_matmul_type,
+        "CKPQRSN",
+        DIM);
 
 #undef partition_rows
 #undef mats_in_partition
@@ -1322,6 +1405,33 @@ static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
 #undef max_tile_k
 }
 
+// This function runs a tiled matrix multiplication, with automatically
+// calculated tiling factors
+static void tiled_matmul_auto(size_t dim_I, size_t dim_J, size_t dim_K,
+        const elem_t* A, const elem_t* B,
+        const void * D, void * C,
+        size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
+        scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
+        int act, acc_scale_t scale, acc_scale_t bert_scale,
+        bool repeating_bias,
+        bool transpose_A, bool transpose_B,
+        bool full_C, bool low_D,
+        uint8_t weightA,
+        enum tiled_matmul_type_t tiled_matmul_type) {
+    
+    tiled_matmul_auto_inner(dim_I, dim_J, dim_K,
+        A, B,
+        D, C,
+        stride_A, stride_B, stride_D, stride_C,
+        A_scale_factor, B_scale_factor, D_scale_factor,
+        act, scale, bert_scale,
+        repeating_bias,
+        transpose_A, transpose_B,
+        full_C, low_D,
+        weightA,
+        tiled_matmul_type,
+        false);
+}
 
 static void sp_tiled_conv(
         int batch_size, int in_row_dim, int in_col_dim, int in_channels,
@@ -1733,6 +1843,405 @@ static void sp_tiled_conv(
   }
 }
 
+static void sp_tiled_conv_dosa(
+        int batch_size, int in_dim, int in_channels,
+        int out_channels, int out_dim, int pool_out_dim,
+
+        int stride, int padding, int kernel_dim, int kernel_dilation,
+
+        int pool_size, int pool_stride, int pool_padding,
+
+        int batches,
+        int porows, int pocols, int pochs,
+        int krows, int kcols, int kchs,
+
+        int lpad, int rpad, int upad, int dpad,
+        int plpad, int prpad, int pupad, int pdpad,
+
+        const elem_t * input,
+        const elem_t * weights,
+        elem_t * output,
+        const acc_t * bias,
+
+        int act, acc_scale_t scale,
+
+        bool wrot180, bool trans_output_1203, bool trans_input_3120,
+        bool trans_weight_1203, bool trans_weight_0132,
+
+        bool no_bias, bool no_pool, bool downsample, bool input_dilated,
+        bool dw,
+        int pe_dim, int spad_size, int acc_size) {
+
+  // When dw convs are true, we assume that kchs and ochs are 1
+  if (dw) { kchs = 1; pochs = 1; }
+
+  const int orows = porows * pool_stride + pool_size - 1 - pupad - pdpad;
+  const int ocols = pocols * pool_stride + pool_size - 1 - plpad - prpad;
+  const int ochs = pochs;
+
+  // Calculate image dimensions
+  // Note: "irows" and "icols" includes padding
+  const int dilated_krows = krows + (kernel_dilation - 1)*(krows - 1);
+  const int dilated_kcols = kcols + (kernel_dilation - 1)*(kcols - 1);
+  int irows = orows * stride + dilated_krows - 1;
+  int icols = ocols * stride + dilated_kcols - 1;
+  int irows_unpadded = irows - upad - dpad;
+  int icols_unpadded = icols - lpad - rpad;
+  const int ichs = kchs;
+
+#define UNDILATED(x) ((input_dilated) ? (((x)+1)/2) : (x))
+
+  if (input_dilated) {
+    irows_unpadded = (irows_unpadded+1)/2;
+    icols_unpadded = (icols_unpadded+1)/2;
+
+    irows = irows_unpadded + UNDILATED(upad) + UNDILATED(dpad);
+    icols = icols_unpadded + UNDILATED(lpad) + UNDILATED(rpad);
+  }
+
+#ifdef HAS_FIRST_LAYER_OPTIMIZATIONS
+  const bool transposed = trans_output_1203 || trans_input_3120 ||
+      trans_weight_1203 || trans_weight_0132;
+  int max_pixels_per_row = transposed || wrot180 || downsample ||
+      input_dilated || kernel_dilation > 1 ||
+      ichs > DIM ? 1 : DIM/ichs;
+  if (max_pixels_per_row > kcols) max_pixels_per_row = kcols;
+#else
+  const int max_pixels_per_row = 1;
+#endif
+
+  // Calculate spad address offsets
+  const int out_channels_per_bank = ochs / pe_dim + (ochs % pe_dim != 0);
+  const int in_channels_per_bank = kchs / pe_dim + (kchs % pe_dim != 0);
+  const int B_rows = trans_weight_0132 ?
+    in_channels_per_bank * kcols * krows * ochs :
+    out_channels_per_bank * kcols * krows * kchs;
+
+  static uint32_t D_sp_addr_row = 0;
+  static uint32_t C_sp_addr_row = 0;
+
+  const uint32_t A_sp_addr_start = 0;
+  const uint32_t bank_rows = (spad_size * 1024 / pe_dim) >> 1; // row size = pe_dim, 4 banks, double buffered
+  const uint32_t B_sp_addr_start = BANK_NUM * bank_rows - B_rows;
+  const uint32_t D_sp_addr_start = (1 << (ADDR_LEN - 1)) + D_sp_addr_row;
+  const uint32_t C_sp_addr_start = (3 << (ADDR_LEN - 2)) + C_sp_addr_row;
+
+  // const uint32_t acc_rows = acc_size * 4 * 1024 / pe_dim
+  if (bias != 0) {
+    D_sp_addr_row = (D_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
+  }
+
+  if (output != 0) {
+    C_sp_addr_row = (C_sp_addr_row + ACC_ROWS / 2) % ACC_ROWS;
+  }
+
+  gemmini_loop_conv_ws(batch_size, in_dim, in_channels, out_channels, out_dim, pool_out_dim, stride, padding, kernel_dim, kernel_dilation, pool_size, pool_stride, pool_padding, batches, porows, pocols, pochs, krows, kcols, kchs, lpad, rpad, upad, dpad, plpad, prpad, pupad, pdpad, orows, ocols, weights, output, bias, input, no_bias, no_pool, downsample, wrot180, input_dilated, act, trans_output_1203, trans_weight_1203, trans_weight_0132, trans_input_3120, max_pixels_per_row, dw);
+
+  /*
+  // mvin bias
+  if (bias != NULL) {
+    // TODO we probably don't need quite this many nested loops for this part
+
+    const int max_ochs_per_mvin = ochs < MAX_BLOCK_LEN_ACC * DIM ? ochs :
+        MAX_BLOCK_LEN_ACC * DIM;
+
+    gemmini_extended4_config_ld(0, MVIN_SCALE_IDENTITY, false, batches * orows * ocols, 2);
+
+    for (int b = 0; b < batches; b++)
+      for (int orow = 0; orow < orows; orow++)
+        for (int ocol = 0; ocol < ocols; ocol += DIM) {
+          const int I = ocols - ocol > DIM ? DIM : ocols - ocol;
+
+          for (int och = 0; och < ochs; och += max_ochs_per_mvin) {
+            const int J = ochs - och > max_ochs_per_mvin ? max_ochs_per_mvin : ochs - och;
+
+            const uint32_t D_sp_addr = D_sp_addr_start + (och / DIM) * batches * orows * ocols + b * orows * ocols + orow * ocols + ocol;
+
+            const acc_t * bias_dram_addr = no_bias ? NULL : bias + och;
+
+            gemmini_extended_mvin3(bias_dram_addr,
+                    D_sp_addr,
+                    J, I);
+          }
+        }
+  }
+
+  // mvin input
+  {
+    int max_chs_per_mvin = ichs < MAX_BLOCK_LEN * DIM ? ichs :
+      MAX_BLOCK_LEN * DIM;
+    if (trans_input_3120) {
+      max_chs_per_mvin = batches < MAX_BLOCK_LEN * DIM ? batches :
+        MAX_BLOCK_LEN * DIM;
+    }
+
+    const int dram_stride = trans_input_3120 ?
+      batch_size * sizeof(elem_t) :
+      in_channels * sizeof(elem_t);
+
+    const int spad_stride = trans_input_3120 ?
+      ichs * (irows >> downsample) * (icols >> downsample) :
+      batches * (irows >> downsample) * (icols >> downsample);
+
+    gemmini_extended5_config_ld(dram_stride << downsample, MVIN_SCALE_IDENTITY, false, spad_stride, max_pixels_per_row, 0);
+
+    const int b_it = trans_input_3120 ? max_chs_per_mvin : 1;
+    const int ich_it = trans_input_3120 ? 1 : max_chs_per_mvin;
+
+    for (int b = 0; b < batches; b += b_it)
+      for (int irow = -UNDILATED(upad); irow < irows_unpadded + UNDILATED(dpad); irow += 1 + downsample) {
+        const int irow_padded = irow + UNDILATED(upad);
+
+        for (int icol = -UNDILATED(lpad); icol < icols_unpadded + UNDILATED(rpad);) {
+          // TODO There might be some unnecessary mvins here at the edge of the image
+
+          int I = icols_unpadded - icol > (DIM << downsample) ?
+            (DIM << downsample) : icols_unpadded - icol;
+
+          if (icol < 0) {
+            I = -icol > DIM ? DIM : -icol;
+          } else if (icol >= icols_unpadded) {
+            I = icols_unpadded + UNDILATED(rpad) - icol > DIM ? DIM : icols_unpadded + UNDILATED(rpad) - icol;
+          }
+
+          const int icol_padded = icol + UNDILATED(lpad);
+
+          for (int ich = 0; ich < ichs; ich += ich_it) {
+            int K = ichs - ich > max_chs_per_mvin ?
+              max_chs_per_mvin : ichs - ich;
+            if (trans_input_3120) {
+              K = batches - b > max_chs_per_mvin ?
+                max_chs_per_mvin : batches - b;
+            }
+
+#define DS(x) ((x) >> (downsample))
+
+            uint32_t A_sp_addr = A_sp_addr_start + (ich / DIM) * batches * DS(irows) * DS(icols) + b * DS(irows) * DS(icols) + DS(irow_padded) * DS(icols) + DS(icol_padded);
+            if (trans_input_3120) {
+              A_sp_addr = A_sp_addr_start + (b / DIM) * ichs * DS(irows) * DS(icols) + ich * DS(irows) * DS(icols) + DS(irow_padded) * DS(icols) + DS(icol_padded);
+            }
+
+            const bool is_zeros = irow < 0 || irow >= irows_unpadded || icol < 0 || icol >= icols_unpadded;
+
+            const elem_t * in = input + (b*in_dim*in_dim + irow*in_dim + icol) * in_channels + ich;
+            if (is_zeros) {
+              in = NULL;
+            } else if (trans_input_3120) {
+              in = input + (ich*in_dim*in_dim + irow*in_dim + icol) * batch_size + b;
+            }
+
+            gemmini_extended_mvin(in,
+                A_sp_addr,
+                K, I >> downsample);
+          }
+
+          icol += I;
+        }
+      }
+  }
+
+  // mvin weights
+  {
+    int max_chs_per_mvin = ochs < MAX_BLOCK_LEN * DIM ? ochs :
+        MAX_BLOCK_LEN * DIM;
+    if (trans_weight_0132) {
+      max_chs_per_mvin = kchs < MAX_BLOCK_LEN * DIM ? kchs :
+          MAX_BLOCK_LEN * DIM;
+    }
+
+    size_t dram_stride = out_channels * sizeof(elem_t);
+    if (dw) {
+      dram_stride = sizeof(elem_t);
+    } else if (trans_weight_1203) {
+      dram_stride = kernel_dim * kernel_dim * out_channels * sizeof(elem_t);
+    } else if (trans_weight_0132) {
+      dram_stride = in_channels * sizeof(elem_t);
+    }
+
+    const size_t spad_block_stride = trans_weight_0132 ?
+      krows * kcols * ochs : krows * kcols * kchs;
+
+    gemmini_extended4_config_ld(dram_stride, MVIN_SCALE_IDENTITY, false, spad_block_stride, 1);
+
+    const size_t och_it = trans_weight_0132 ? DIM : max_chs_per_mvin;
+    const size_t kch_it = trans_weight_0132 ? max_chs_per_mvin : DIM;
+
+    for (int och = 0; och < ochs; och += och_it) {
+      for (int krow = 0; krow < krows; krow++)
+        for (int kcol = 0; kcol < kcols; kcol++)
+          for (int kch = 0; kch < kchs; kch += kch_it) {
+            int K = kchs - kch > DIM ? DIM : kchs - kch;
+            int J = ochs - och > max_chs_per_mvin ? max_chs_per_mvin : ochs - och;
+            if (trans_weight_0132) {
+              K = ochs - och > DIM ? DIM : ochs - och;
+              J = kchs - kch > max_chs_per_mvin ? max_chs_per_mvin : kchs - kch;
+            }
+
+            uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * krows * kcols * kchs + krow * kcols * kchs + kcol * kchs + kch;
+            if (trans_weight_0132) {
+              B_sp_addr = B_sp_addr_start + (kch / DIM) * krows * kcols * ochs + krow * kcols * ochs + kcol * ochs + och;
+            }
+
+            const elem_t * w = weights + (krow*kernel_dim*in_channels + kcol*in_channels + kch) * out_channels + och;
+            if (dw) {
+              w = weights + krow * kernel_dim + kcol;
+            } else if (trans_weight_1203) {
+              w = weights + (kch * kernel_dim * kernel_dim + krow * kernel_dim + kcol) * out_channels + och;
+            } else if (trans_weight_0132) {
+              w = weights + (krow * kernel_dim * out_channels + kcol * out_channels + och) * in_channels + kch;
+            }
+
+            gemmini_extended_mvin2(w, B_sp_addr, J, K);
+          }
+    }
+  }
+
+  // Compute
+  {
+    const int b_it = trans_input_3120 ? DIM : 1;
+    const int ocol_it = trans_input_3120 ? 1 : (DIM << input_dilated);
+
+    if (trans_input_3120) {
+      gemmini_extended3_config_ex(0, 0, 0, 0, orows * ocols, irows * icols, 0, 0, true);
+    }
+
+    for (int och = 0; och < ochs; och += DIM) {
+      for (int krow = 0; krow < krows; krow++) {
+        for (int kcol = 0; kcol < kcols; kcol += max_pixels_per_row) {
+          for (int kch = 0; kch < kchs; kch += DIM) {
+            bool new_weights = true;
+
+            for (int b = 0; b < batches; b += b_it) {
+              for (int orow = 0; orow < orows; orow++) {
+                // Skip some kernel rows due to input-dilation
+                if (input_dilated && ((krow * kernel_dilation + orow * stride - upad) % 2 != 0)) {
+                  continue;
+                }
+
+                for (int ocol = 0; ocol < ocols;) {
+                  // Skip some cols dimensions due to input-dilation
+                  if (input_dilated && ((kcol + ocol * stride - lpad) % 2 != 0)) {
+                    ocol++;
+                    continue;
+                  }
+
+                  int irow = orow * stride + krow * kernel_dilation;
+                  int icol = ocol * stride + kcol * kernel_dilation;
+
+                  if (input_dilated) {
+                    irow = (irow + 1) / 2;
+                    icol = (icol + 1) / 2;
+                  }
+
+                  const int pixels = kcols - kcol > max_pixels_per_row ?
+                    max_pixels_per_row : kcols - kcol;
+
+                  const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * orows * ocols + b * orows * ocols + orow * ocols + ocol;
+
+                  // Over here, construct a new matrix
+                  //
+                  // Let us assume that we only ever operate on
+                  // one pixel in one row.
+                  // Thus, krows == kcols == 1
+                  //
+                  // Then, for every set of I, J, and K values
+                  //     - I = ocols
+                  //     - J = ochs
+                  //     - K = kchs
+
+                  int I = UNDILATED(ocols - ocol > (DIM << input_dilated) ? (DIM << input_dilated) : ocols - ocol);
+                  const int J = ochs - och > DIM ? DIM : ochs - och;
+                  const int K = pixels * (kchs - kch > DIM ? DIM : kchs - kch);
+
+                  if (trans_input_3120) {
+                    I = batches - b > DIM ? DIM : batches - b;
+                  }
+
+                  uint32_t A_sp_addr = A_sp_addr_start + (kch / DIM) * batches * DS(irows) * DS(icols) + b * DS(irows) * DS(icols) + DS(irow) * DS(icols) + DS(icol);
+                  if (trans_input_3120) {
+                    A_sp_addr = A_sp_addr_start + (b / DIM) * kchs * DS(irows) * DS(icols) + kch * DS(irows) * DS(icols) + DS(irow) * DS(icols) + DS(icol);
+                  }
+
+                  const int krow_ = wrot180 ? krows - krow - 1 : krow;
+                  const int kcol_ = wrot180 ? kcols - kcol - 1 : kcol;
+
+                  uint32_t B_sp_addr = B_sp_addr_start + (och / DIM) * krows * kcols * kchs + krow_ * kcols * kchs + kcol_ * kchs + kch;
+                  if (trans_weight_0132) {
+                    B_sp_addr = B_sp_addr_start + (kch / DIM) * krows * kcols * ochs + krow_ * kcols * ochs + kcol_ * ochs + och;
+                  }
+
+                  const uint32_t pre_sp_addr = new_weights ?
+                    B_sp_addr : GARBAGE_ADDR;
+
+                  // perform matmul
+                  gemmini_extended_preload(pre_sp_addr, C_sp_addr, J, K, J, I);
+
+                  if (new_weights) {
+                    gemmini_extended_compute_preloaded(A_sp_addr, GARBAGE_ADDR, K, I, J, I);
+                  } else {
+                    gemmini_extended_compute_accumulated(A_sp_addr, GARBAGE_ADDR, K, I, J, I);
+                  }
+
+                  ocol += ocol_it;
+                  new_weights = false;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+#undef DS
+#undef UNDILATED
+
+  // mvout output
+  if (output != NULL) {
+    if (no_pool) {
+      for (int b = 0; b < batches; b++)
+        for (int orow = 0; orow < orows; orow++)
+          for (int ocol = 0; ocol < ocols; ocol += DIM) {
+            const int I = ocols - ocol > DIM ? DIM : ocols - ocol;
+
+            for (int och = 0; och < ochs; och += DIM) {
+              const int J = ochs - och > DIM ? DIM : ochs - och;
+
+              const uint32_t C_sp_addr = C_sp_addr_start + (och / DIM) * batches * orows * ocols + b * orows * ocols + orow * ocols + ocol;
+
+              elem_t * out = output + (b*out_dim*out_dim + orow*out_dim + ocol) * out_channels + och;
+              if (trans_output_1203) {
+                out = output + (orow*out_dim*batch_size + ocol*batch_size + b) * out_channels + och;
+              }
+
+              gemmini_extended_mvout(out,
+                  C_sp_addr,
+                  J, I);
+            }
+          }
+    } else {
+      gemmini_extended2_config_st(out_channels * sizeof(elem_t), act, scale, pool_stride, pool_size, pool_out_dim, porows, pocols, orows, ocols, pupad, plpad);
+
+      for (int b = 0; b < batches; b++) {
+        for (int poch = 0; poch < pochs; poch += DIM) {
+          const int channels = poch + DIM >= pochs ? pochs - poch : DIM;
+
+          elem_t * pout = output + (b * pool_out_dim * pool_out_dim)*out_channels + poch;
+
+          const uint32_t C_sp_addr = C_sp_addr_start + (poch / DIM) * batches * orows * ocols + b * orows * ocols;
+
+          gemmini_extended_mvout(pout,
+              C_sp_addr,
+              channels, 0);
+        }
+      }
+
+      gemmini_extended_config_st(out_channels * sizeof(elem_t), act, scale);
+    }
+  }
+  */
+}
+
 
 static int tiled_conv_total_spad_rows_dw(bool acc, bool weight,
         int stride,
@@ -2137,6 +2646,303 @@ static void conv_dw_cpu(
   }
 }
 
+static uint64_t tiled_conv_dosa(
+        int batch_size, int in_dim, int in_channels,
+        int out_channels, int out_dim,
+        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
+        bool wrot180, bool trans_output_1203, bool trans_input_3120,
+        bool trans_weight_1203, bool trans_weight_0132,
+
+        int batches,
+        int porows, int pocols, int pochs,
+        int krows, int kcols, int kchs,
+        int spatial_ochs, int spatial_kchs,
+
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
+        elem_t * output,
+
+        int act, acc_scale_t scale,
+        int pool_size, int pool_stride, int pool_padding,
+
+        enum tiled_matmul_type_t tiled_conv_type,
+        char * perm) {
+
+#ifdef GEMMINI_ASSERTIONS
+  if (trans_weight_1203 && trans_weight_0132) {
+    printf("Only one weight transformation can be applied at a time\n");
+    exit(1);
+  }
+#endif
+
+    // if (tiled_conv_type == CPU) {
+    //   if (pool_size == 1 && pool_stride == 1 && pool_padding == 0) {
+    //     pool_stride = 0;
+    //   }
+
+    //   conv_cpu(
+    //     batch_size, in_dim, in_channels,
+    //     out_channels, out_dim,
+    //     stride, input_dilation, kernel_dilation, padding, kernel_dim,
+    //     wrot180, trans_output_1203, trans_input_3120,
+    //     trans_weight_1203, trans_weight_0132,
+    //     input, weights, bias, output,
+    //     act, scale,
+    //     pool_size, pool_stride, pool_padding);
+    //   return 1;
+    // } else if (tiled_conv_type == OS) {
+    //   printf("Gemmini convs do not currently support OS\n");
+    //   exit(1);
+    // }
+
+    // TODO move everything below this into a tiled_conv_outer function to match the tiled_matmul function
+
+    bool no_bias = false;
+    if (bias == NULL) {
+        bias = (acc_t*)1;
+        no_bias = true;
+    }
+
+    bool no_pool = pool_stride == 0;
+    if (no_pool) {
+        pool_size = 1;
+        pool_stride = 1;
+        pool_padding = 0;
+    }
+
+    // const bool downsample = stride == 2 && kernel_dim == 1 && in_dim % 2 == 0
+    //   && padding == 0 && no_pool && input_dilation == 1 && !trans_input_3120;
+    const bool downsample = false;
+
+    const int input_dilated = input_dilation == 2;
+
+#ifdef GEMMINI_ASSERTIONS
+    {
+        // const int orows = porows * pool_stride + pool_size - 1;
+        // const int ocols = pocols * pool_stride + pool_size - 1;
+
+        // Check that data will fit in scratchpad
+        const int spad_rows = tiled_conv_total_spad_rows(false,
+            stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
+            batches, porows, pocols, pochs, krows, kcols, kchs, pool_size, pool_stride);
+        const int acc_rows = tiled_conv_total_spad_rows(true,
+            stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
+            batches, porows, pocols, pochs, krows, kcols, kchs, pool_size, pool_stride);
+
+        if (spad_rows > BANK_NUM * BANK_ROWS / 2) {
+            printf("not enough scratchpad space to store inputs and weights, %d\n", spad_rows);
+            exit(1);
+        }
+        if (acc_rows > ACC_ROWS / 2) {
+            printf("not enough accumulator space to store outputs\n");
+            exit(1);
+        }
+        if (kernel_dim <= padding) {
+            printf("kernel_dim must be larger than padding\n");
+            exit(1);
+        }
+        if (input_dilation > 2) {
+            printf("input_dilation > 2 is only supported on CPU\n");
+            exit(1);
+        }
+        if (input_dilation > 1 && stride > 1) {
+            printf("input input_dilation is only supported when stride == 1\n");
+            exit(1);
+        }
+        if (trans_output_1203 && !no_pool) {
+            printf("Output can only be transposed when pooling is disabled\n");
+            exit(1);
+        }
+        if (trans_input_3120 && trans_weight_0132) {
+            printf("Cannot transpose innermost dimensions of both inputs and weights on WS.\n");
+            exit(1);
+        }
+    }
+#endif
+
+    const size_t st_dram_stride = trans_output_1203 ?
+        batch_size * out_channels * sizeof(elem_t) :
+        out_channels * sizeof(elem_t);
+    gemmini_extended_config_st(st_dram_stride, act, scale);
+
+    gemmini_extended3_config_ex(WEIGHT_STATIONARY, 0, 0, 0, input_dilation, stride >> downsample, trans_input_3120, trans_weight_0132, false);
+
+    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+    const int dilated_in_dim = in_dim + (input_dilation-1)*(in_dim-1);
+
+    char idx_to_dim[7] = {'N', 'Q', 'P', 'K', 'S', 'R', 'C'};
+    int dim_to_perm[7];
+    int loop_limit[7];
+    int loop_step[7];
+
+    int limits[7] = {batch_size, pool_out_dim, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
+    // int steps[7] = {batches, porows, pocols, pochs, krows, kcols, kchs};
+    int steps[7] = {batches, porows, pocols, pochs, krows, kcols, kchs};
+    for (int i = 0; i < 7; i++) {
+        char * loc = ft_strchr(perm, idx_to_dim[i]);
+        if (loc == NULL) {
+            printf("Could not locate dim %s in perm str %s", idx_to_dim[i], perm);
+        }
+        int loop_number = 6 - (loc - perm); // earlier in string = inner loop
+        dim_to_perm[i] = loop_number;
+        loop_limit[loop_number] = limits[i];
+        loop_step[loop_number] = steps[i];
+    }
+
+    // CRSKPQN
+    // for (int b = 0; b < batch_size; b += batches) {
+    //     for (int porow = 0; porow < pool_out_dim; porow += porows) {
+    //         for (int pocol = 0; pocol < pool_out_dim; pocol += pocols) {
+    //             for (int poch = 0; poch < out_channels; poch += pochs) {
+    //                 for (int krow = 0; krow < kernel_dim; krow += krows) {
+    //                     for (int kcol = 0; kcol < kernel_dim; kcol += kcols) {
+    //                         for (int kch = 0; kch < in_channels; kch += kchs) {
+
+    uint64_t tiled_conv_start_cycle = read_cycle_gemminih();
+    
+    for (int v0 = 0; v0 < loop_limit[0]; v0 += loop_step[0]) {
+        for (int v1 = 0; v1 < loop_limit[1]; v1 += loop_step[1]) {
+            for (int v2 = 0; v2 < loop_limit[2]; v2 += loop_step[2]) {
+                for (int v3 = 0; v3 < loop_limit[3]; v3 += loop_step[3]) {
+                    for (int v4 = 0; v4 < loop_limit[4]; v4 += loop_step[4]) {
+                        for (int v5 = 0; v5 < loop_limit[5]; v5 += loop_step[5]) {
+                            for (int v6 = 0; v6 < loop_limit[6]; v6 += loop_step[6]) {
+                                int loop_vals[7] = {v0, v1, v2, v3, v4, v5, v6};
+                                int b = loop_vals[dim_to_perm[0]];
+                                int porow = loop_vals[dim_to_perm[1]];
+                                int pocol = loop_vals[dim_to_perm[2]];
+                                int poch = loop_vals[dim_to_perm[3]];
+                                int krow = loop_vals[dim_to_perm[4]];
+                                int kcol = loop_vals[dim_to_perm[5]];
+                                int kch = loop_vals[dim_to_perm[6]];
+
+                                const int orow = porow * pool_stride - pool_padding;
+                                const int ocol = pocol * pool_stride - pool_padding;
+                                const int orow_floored = orow < 0 ? 0 : orow;
+                                int irow = orow_floored * stride + krow * kernel_dilation - padding;
+                                const int ocol_floored = ocol < 0 ? 0 : ocol;
+                                int icol = ocol_floored * stride + kcol * kernel_dilation - padding;
+
+                                elem_t * out = output + (b*pool_out_dim*pool_out_dim + porow*pool_out_dim + pocol) * out_channels + poch;
+                                if (trans_output_1203) {
+                                    out = output + (porow*pool_out_dim*batch_size + pocol*batch_size + b) * out_channels + poch;
+                                }
+
+                                if (krow + krows < kernel_dim ||
+                                        kcol + kcols < kernel_dim ||
+                                        kch + kchs < in_channels) {
+                                    out = NULL;
+                                }
+
+                                const acc_t * bias_ = bias + poch;
+                                if (krow > 0 ||
+                                        kcol > 0 ||
+                                        kch > 0) {
+                                    bias_ = NULL;
+                                }
+
+                                const int batches_ = batch_size - b > batches ? batches : batch_size - b;
+                                const int porows_ = pool_out_dim - porow > porows ? porows : pool_out_dim - porow;
+                                const int pocols_ = pool_out_dim - pocol > pocols ? pocols : pool_out_dim - pocol;
+                                const int pochs_ = out_channels - poch > pochs ? pochs : out_channels - poch;
+                                // poch = 6, out_channels = 30, spatial_ochs = 3 
+                                // is 1 row, should be 2
+                                // const int pochs_ = 128 * (pochs / spatial_ochs); // pochs_ = 128 * 2 rows
+                                const int krows_ = kernel_dim - krow > krows ? krows : kernel_dim - krow;
+                                const int kcols_ = kernel_dim - kcol > kcols ? kcols : kernel_dim - kcol;
+                                const int kchs_ = in_channels - kch > kchs ? kchs : in_channels - kch;
+                                // const int kchs_ = 128 * (kchs / spatial_kchs);
+                                // const int out_channels_fake = pochs_ > out_channels ? pochs_ : out_channels;
+                                // const int in_channels_fake = kchs_ > in_channels ? kchs_ : in_channels;
+
+                                const int ocols_ = pocols_ * pool_stride + pool_size - 1;
+                                const int orows_ = porows_ * pool_stride + pool_size - 1;
+
+                                const int plpad = ocol < 0 ? -ocol : 0;
+                                const int prpad = ocol + ocols_ > out_dim ? ocol + ocols_ - out_dim : 0;
+                                const int pupad = orow < 0 ? -orow : 0;
+                                const int pdpad = orow + orows_ > out_dim ? orow + orows_ - out_dim : 0;
+
+                                const int dilated_krows_ = krows_ + (kernel_dilation - 1)*(krows_ - 1);
+                                const int dilated_kcols_ = kcols_ + (kernel_dilation - 1)*(kcols_ - 1);
+
+                                const int icols_ = (ocols_ - plpad - prpad) * stride + dilated_kcols_ - 1;
+                                const int irows_ = (orows_ - pupad - pdpad) * stride + dilated_krows_ - 1;
+
+                                int lpad = icol < 0 ? -icol : 0;
+                                int rpad = icol + icols_ > dilated_in_dim ? icol + icols_ - dilated_in_dim : 0;
+                                int upad = irow < 0 ? -irow : 0;
+                                int dpad = irow + irows_ > dilated_in_dim ? irow + irows_ - dilated_in_dim : 0;
+
+                                if (input_dilated) {
+                                  lpad += lpad == 0 && icol % 2 != 0;
+                                  rpad += rpad == 0 && (icol + icols_) % 2 != 1;
+                                  upad += upad == 0 && irow % 2 != 0;
+                                  dpad += dpad == 0 && (irow + irows_) % 2 != 1;
+                                }
+
+                                int krow_ = krow;
+                                int kcol_ = kcol;
+                                if (wrot180) {
+                                  krow_ = kernel_dim - krow - krows_;
+                                  kcol_ = kernel_dim - kcol - kcols_;
+                                }
+
+                                const elem_t * weights_slice = weights + (krow_*kernel_dim*in_channels + kcol_*in_channels + kch) * out_channels + poch;
+                                if (trans_weight_1203) {
+                                  weights_slice = weights + (kch*kernel_dim*kernel_dim + krow_*kernel_dim+kcol_) * out_channels + poch;
+                                } else if (trans_weight_0132) {
+                                  weights_slice = weights + (krow_*kernel_dim*out_channels + kcol_*out_channels + poch) * in_channels + kch;
+                                }
+
+                                const elem_t * in = input + (b*in_dim*in_dim + ((irow+upad)>>input_dilated)*in_dim + ((icol+lpad)>>input_dilated)) * in_channels + kch;
+                                if (trans_input_3120) {
+                                  in = input + (kch*in_dim*in_dim + ((irow+upad)>>input_dilated)*in_dim + ((icol+lpad)>>input_dilated)) * batch_size + b;
+                                }
+
+                                sp_tiled_conv_dosa(
+                                    batch_size, in_dim, in_channels,
+                                    out_channels, out_dim, pool_out_dim,
+
+                                    stride, padding, kernel_dim, kernel_dilation,
+
+                                    pool_size, pool_stride, pool_padding,
+
+                                    batches_,
+                                    porows_, pocols_, pochs_,
+                                    krows_, kcols_, kchs_,
+
+                                    lpad, rpad, upad, dpad,
+                                    plpad, prpad, pupad, pdpad,
+
+                                    in,
+                                    weights_slice,
+                                    // weights,
+                                    out,
+                                    bias_,
+
+                                    act, scale,
+
+                                    wrot180, trans_output_1203, trans_input_3120,
+                                    trans_weight_1203, trans_weight_0132,
+
+                                    no_bias, no_pool, downsample, input_dilated,
+                                    false, 16, 128, 32);
+
+                                // uint64_t cycles_so_far = read_cycle_gemminih() - tiled_conv_start_cycle;
+                                // if (cycles_so_far >= 400000000) {
+                                //     return cycles_so_far;
+                                // }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return 0;
+}
 
 static void tiled_conv(
         int batch_size,
@@ -2572,6 +3378,201 @@ static void tiled_conv_dw(
     }
 }
 
+
+static void tiled_conv_auto_dosa(
+        int batch_size, int in_dim, int in_channels,
+        int out_channels, int out_dim,
+        int stride, int input_dilation, int kernel_dilation, int padding, int kernel_dim,
+        bool wrot180, bool trans_output_1203, bool trans_input_3120,
+        bool trans_weight_1203, bool trans_weight_0132,
+
+        const elem_t * input,
+        const elem_t * weights,
+        const acc_t * bias,
+        elem_t * output,
+
+        int act, acc_scale_t scale,
+        int pool_size, int pool_stride, int pool_padding,
+
+        enum tiled_matmul_type_t tiled_conv_type,
+        bool print_tile) {
+
+    const bool no_pool = pool_stride == 0;
+    if (no_pool) {
+        pool_size = 1;
+        pool_stride = 1;
+        pool_padding = 0;
+    }
+
+    const int pool_out_dim = (out_dim + 2*pool_padding - pool_size) / pool_stride + 1;
+
+    // const bool downsample = stride == 2 && kernel_dim == 1 && padding == 0 && no_pool && in_dim % 2 == 0;
+    const bool downsample = false;
+
+    // Tile convolution params
+
+    // int args[] = {batch_size, porows, pocols, pochs, krows, kcols, kchs};
+    int args[] = {batch_size, pool_out_dim, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
+    const int max_args[] = {batch_size, pool_out_dim, pool_out_dim, out_channels, kernel_dim, kernel_dim, in_channels};
+
+    const int orows_idx = 1;
+    const int ocols_idx = 2;
+    const int out_channels_idx = 3;
+    const int in_channels_idx = 6;
+
+    // We divide by 2 for the sake of double-buffering
+    const int max_spad_rows = (BANK_NUM*BANK_ROWS / 2);
+    const int max_acc_rows = (ACC_ROWS / 2);
+
+    int spad_rows = tiled_conv_total_spad_rows(false,
+        stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
+        args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+    int acc_rows = tiled_conv_total_spad_rows(true,
+        stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
+        args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+
+    while (spad_rows > max_spad_rows || acc_rows > max_acc_rows) {
+        int max_val = -1;
+        int max_idx = -1;
+
+        for (size_t i = 0; i < sizeof(args)/sizeof(args[0]); i++) {
+            // We avoid reducing ocols when possible to keep the spatial array fully utilized
+            if (!(i == ocols_idx && args[i] <= DIM && args[orows_idx] > 1)
+                    && args[i] > max_val) {
+                max_val = args[i];
+                max_idx = i;
+            }
+        }
+
+        if (max_idx == out_channels_idx || max_idx == in_channels_idx) {
+            // For input and output channels, there's no point in subtracting by just one
+            if (args[max_idx] % DIM != 0) {
+                args[max_idx] = (args[max_idx] / DIM) * DIM;
+            } else {
+                args[max_idx] -= DIM;
+            }
+            args[max_idx] = args[max_idx] == 0 ? 1 : args[max_idx];
+        } else {
+            args[max_idx]--;
+        }
+
+        spad_rows = tiled_conv_total_spad_rows(false,
+            stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
+            args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+        acc_rows = tiled_conv_total_spad_rows(true,
+            stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
+            args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+    }
+
+    // Check if we can increase ocols
+    bool not_increased = false;
+    while (!not_increased) {
+        not_increased = true;
+
+        int args_candidate[] = {args[0], args[1], args[2], args[3], args[4], args[5], args[6]};
+        args_candidate[ocols_idx]++;
+
+        if (args_candidate[ocols_idx] > max_args[ocols_idx])
+            continue;
+
+        spad_rows = tiled_conv_total_spad_rows(false,
+            stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
+            args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
+        acc_rows = tiled_conv_total_spad_rows(true,
+            stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
+            args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
+
+        if (spad_rows <= max_spad_rows && acc_rows <= max_acc_rows) {
+            args[ocols_idx] = args_candidate[ocols_idx];
+            not_increased = false;
+        }
+    }
+
+    // Check if there are any parameters that we can currently still increase
+    bool nothing_increased = false;
+    while (!nothing_increased) {
+        nothing_increased = true;
+
+        for (size_t i = 0; i < sizeof(args)/sizeof(args[0]); i++) {
+            int args_candidate[] = {args[0], args[1], args[2], args[3], args[4], args[5], args[6]};
+            args_candidate[i]++;
+
+            if (args_candidate[i] > max_args[i])
+                continue;
+
+            spad_rows = tiled_conv_total_spad_rows(false,
+                stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
+                args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
+            acc_rows = tiled_conv_total_spad_rows(true,
+                stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
+                args_candidate[0], args_candidate[1], args_candidate[2], args_candidate[3], args_candidate[4], args_candidate[5], args_candidate[6], pool_size, pool_stride);
+
+            if (spad_rows <= max_spad_rows && acc_rows <= max_acc_rows) {
+                args[i] = args_candidate[i];
+                nothing_increased = false;
+            }
+        }
+    }
+
+    const int batches = args[0];
+    const int orows = args[1];
+    const int ocols = args[2];
+    const int ochs = args[3];
+    const int krows = args[4];
+    const int kcols = args[5];
+    const int kchs = args[6];
+
+    /*
+    spad_rows = tiled_conv_total_spad_rows(false,
+        stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
+        args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+    acc_rows = tiled_conv_total_spad_rows(true,
+        stride, input_dilation, kernel_dilation, downsample, trans_weight_0132, trans_input_3120,
+        args[0], args[1], args[2], args[3], args[4], args[5], args[6], pool_size, pool_stride);
+    */
+
+    if (print_tile) {
+        printf("batches = %d\n", batches);
+        printf("orows   = %d\n", orows);
+        printf("ocols   = %d\n", ocols);
+        printf("ochs    = %d\n", ochs);
+        printf("krows   = %d\n", krows);
+        printf("kcols   = %d\n", kcols);
+        printf("kchs    = %d\n\n", kchs);
+
+        // printf("total spad_rows reserved: %d\n", spad_rows);
+        // printf("total acc_rows reserved: %d\n\n", acc_rows);
+
+        // printf("scratchpad row utilization: %d%%\n", (spad_rows*100) / max_spad_rows);
+        // printf("accumulator row utilization: %d%%\n\n", (acc_rows*100) / max_acc_rows);
+
+        // printf("inner matmul size: i=%d, j=%d, k=%d\n\n", ocols, ochs, kchs);
+        return;
+    }
+
+    tiled_conv_dosa(
+        batch_size, in_dim, in_channels,
+        out_channels, out_dim,
+        stride, input_dilation, kernel_dilation, padding, kernel_dim,
+        wrot180, trans_output_1203, trans_input_3120,
+        trans_weight_1203, trans_weight_0132,
+
+        batches,
+        orows, ocols, ochs,
+        krows, kcols, kchs,
+        out_channels >= DIM ? DIM : out_channels, in_channels >= DIM ? DIM : in_channels,
+
+        input,
+        weights,
+        bias,
+        output,
+
+        act, scale,
+        pool_size, no_pool ? 0 : pool_stride, pool_padding,
+
+        tiled_conv_type,
+        "CRSKPQN");
+}
 
 static void tiled_conv_auto(
         int batch_size, int in_row_dim, int in_col_dim, int in_channels,

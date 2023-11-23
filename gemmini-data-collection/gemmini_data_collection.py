@@ -1,92 +1,73 @@
 import sys
 import tests
+import argparse
 
-def main(keywords, replacement, template_file, new_file):
+def one_file(tests, pe_dim):
     """
     Search TEMPLATE_FILE for KEYWORDS and replace respective keywords with REPLACEMENT. Write changes to NEW_FILE.
     Update Makefile with new filename for target.
     """
-    assert (len(keywords) == len(replacement)), "Number of keywords needs to be the same as number of replacement words"
-
-    with open('templates/'+template_file+'.c', 'r') as file:
+    # Make conv file
+    with open('templates/conv_tilings.c', 'r') as file:
         filedata = file.read()
 
-    for i in range(len(keywords)):
-        filedata = filedata.replace('%'+keywords[i]+'%', replacement[i])
+    binaries = []
+    for test_i, test in enumerate(tests):
+        keywords, replacement, template_file, _ = test
+        assert (len(keywords) == len(replacement)), "Number of keywords needs to be the same as number of replacement words"
 
-    with open('../bareMetalC/'+new_file+'.c', 'w') as file:
-        file.write(filedata)
+        if template_file == "conv_template_map":
+            new_file = "conv_tilings_" + str(test_i)
+            with open('../bareMetalC/'+new_file+'.c', 'w') as file:
+                file.write(filedata)
+        elif template_file == "matmul_template_map":
+            # Make matmul file
+            with open('templates/matmul_tilings.c', 'r') as file:
+                filedata = file.read()
+            new_file = "matmul_tilings_" + str(test_i)
 
-    print("Created " + new_file + " from " + template_file)
+        print("Created " + new_file)
+        binaries.append(new_file)
+        filedata = filedata.replace("%NUM_LAYERS%", "1")
+        filedata = filedata.replace("%PE_DIM%", str(pe_dim))
+        for i in range(len(keywords)):
+            filedata = filedata.replace('%'+keywords[i]+'%', str(replacement[i]))
+        with open('../bareMetalC/'+new_file+'.c', 'w') as file:
+            file.write(filedata)
 
+    # Update Makefile
     with open('../bareMetalC/Makefile', 'r') as file:
-        filedata = file.read()
+        filelines = file.readlines()
 
-    filedata = filedata.replace("tests = \\", "tests = \\\n\t"+new_file+"\\")
+    # filedata = filedata.replace("tests = \\", "tests = \\\n\t"+new_conv_file+" \\")
+    # filedata = filedata.replace("tests = \\", "tests = \\\n\t"+new_matmul_file+" \\")
+    for l in range(len(filelines)):
+        if "tests = " in filelines[l]:
+            tests_str = "tests = "
+            for binary in binaries:
+                tests_str += " " + binary + " "
+            filelines[l] = tests_str + "\n"
+            break
 
     with open('../bareMetalC/Makefile', 'w') as file:
-        filedata = file.write(filedata)
+        filedata = file.writelines(filelines)
 
     print("Updated Makefile")
 
-    with open('../../../data-collection-vcs.sh', 'r') as file:
-        filedata = file.read()
+def construct_argparser():
+    parser = argparse.ArgumentParser(description='Run Configuration')
 
-    filedata = filedata + "./scripts/run-vcs.sh " + new_file + " > data-collection-output/" + new_file + "-vcs.txt &\n"
-
-    with open('../../../data-collection-vcs.sh', 'w') as file:
-        filedata = file.write(filedata)
-
-    print("Updated data-collection-vcs.sh script")
-
-    with open('../../../data-collection-verilator.sh', 'r') as file:
-        filedata = file.read()
-
-    filedata = filedata + "./scripts/run-verilator.sh " + new_file + " > data-collection-output/" + new_file + "-verilator.txt &\n"
-
-    with open('../../../data-collection-verilator.sh', 'w') as file:
-        filedata = file.write(filedata)
-
-    print("Updated data-collection-verilator.sh script")
-
-    with open('../../../data-collection-midas.sh', 'r') as file:
-        filedata = file.read()
-
-    filedata = filedata + "./scripts/run-midas.sh $1 " + new_file + " > data-collection-output/" + new_file + "-midas.txt &\n"
-
-    with open('../../../data-collection-midas.sh', 'w') as file:
-        filedata = file.write(filedata)
-
-    print("Updated data-collection-midas.sh script")
-
-    with open('../../../data-collection-spike.sh', 'r') as file:
-        filedata = file.read()
-
-    filedata = filedata + "./scripts/run-spike.sh " + new_file + " > data-collection-output/" + new_file + "-spike.txt &\n"
-
-    with open('../../../data-collection-spike.sh', 'w') as file:
-        filedata = file.write(filedata)
-
-    print("Updated data-collection-spike.sh script")
-
-    with open('clean.sh', 'a') as file:
-        file.write('rm ../bareMetalC/' + new_file + '.c\n')
-
-    print("Updated clean.sh script")
-
+    parser.add_argument('--pe_dim',
+                        type=int,
+                        help='Gemmini systolic array size',
+                        required=True,
+                        )
+    return parser
 
 if __name__ == "__main__":
-    for fname in 'vcs', 'verilator', 'midas', 'spike':
-        with open('../../../data-collection-' + fname + '.sh', 'w') as file:
-            file.write("#!/bin/bash\n\nmkdir -p data-collection-output\n")
-
     with open('clean.sh', 'w') as file:
         file.write('#!/bin/bash\n\nrm -rf ../../../data-collection-output\nrm ../../../data-collection-vcs.sh\nrm ../../../data-collection-verilator.sh\nrm ../../../data-collection-midas.sh\nrm ../../../data-collection-spike.sh\ncp og_baremetal_Makefile ../bareMetalC/Makefile\ncd ..\n./build.sh clean\ncd gemmini-data-collection\n')
 
-    for test in tests.tests:
-        main(*test)
-
-    for fname in 'vcs', 'verilator', 'midas', 'spike':
-        with open('../../../data-collection-' + fname + '.sh', 'a') as file:
-            file.write("wait\n")
-
+    parser = construct_argparser()
+    args = parser.parse_args()
+    one_file(tests.tests, args.pe_dim)

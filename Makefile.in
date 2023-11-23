@@ -6,7 +6,7 @@ ROCC = examples
 RUNNER         := "spike --extension=gemmini "
 
 .PHONY: all bareMetalC clean imagenet transformers mlps
-all: bareMetalC imagenet transformers mlps
+all: bareMetalC
 
 vars = \
 	abs_top_srcdir=$(abs_top_srcdir) \
