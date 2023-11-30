@@ -1,9 +1,9 @@
 import random
 
-NO_BIAS = False
-MAT_DIM_I = 97
-MAT_DIM_J = 92
-MAT_DIM_K = 118
+NO_BIAS = True
+MAT_DIM_I = 63
+MAT_DIM_J = 120
+MAT_DIM_K = 96#128
 
 A = [[int(random.random()*5)-2 for x in range(MAT_DIM_K)] for y in range(MAT_DIM_I)]
 B = [[int(random.random()*5)-2 for x in range(MAT_DIM_J)] for y in range(MAT_DIM_K)]

@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
@@ -12,6 +13,8 @@
 #include "include/gemmini_testutils.h"
 
 #define CHECK_RESULT 1
+#define BASE_ADDR 0x70000000L
+#define PageSize 4096
 
 #define NO_BIAS 0
 #define FULL_BIAS_WIDTH 1
@@ -129,6 +132,11 @@ int main() {
     static full_t gold_full[MAT_DIM_I];
     static elem_t gold[MAT_DIM_I]= {0};
 
+    uint64_t A_copy_addr = (BASE_ADDR & ~(PageSize-1));
+    printf("A copy addr: 0x%08lx\n", A_copy_addr);
+    uint64_t B_copy_addr = A_copy_addr + (MAT_DIM_I * MAT_DIM_K) * sizeof(elem_t);// + 64*3;
+    uint64_t C_copy_addr = B_copy_addr + (MAT_DIM_K * MAT_DIM_J) * sizeof(elem_t);// + 64*3;
+    uint64_t D_copy_addr = C_copy_addr + (MAT_DIM_I) * sizeof(elem_t);
 #if CHECK_RESULT == 1
 #ifdef FAST
 #define RAND 1
@@ -157,6 +165,16 @@ int main() {
       }
     }
 #endif
+    printf("perform memcpy\n");
+    bool granted = false;
+    int index = 0;
+    printf("copy A\n");
+    memcpy((elem_t*) A_copy_addr, (elem_t*) full_A, sizeof(elem_t)*MAT_DIM_I*MAT_DIM_K);
+    printf("copy B\n");
+    memcpy((elem_t*) B_copy_addr, (elem_t*) full_B, sizeof(elem_t)*MAT_DIM_K*MAT_DIM_J);
+    printf("copy D\n");
+    memcpy((acc_t*) D_copy_addr, (acc_t*) full_D, sizeof(acc_t)*MAT_DIM_I*MAT_DIM_J);
+    
     printf("clock gating gemmini\n");
     vega_clock_gate(1, 0, 1);
 
@@ -164,7 +182,7 @@ int main() {
     unsigned long start = read_cycles();
 
     tiled_gemv_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
+            (elem_t*)A_copy_addr, (elem_t*)B_copy_addr, NO_BIAS ? NULL : (acc_t*) D_copy_addr, (elem_t*)C_copy_addr,
             MAT_DIM_K, MAT_DIM_K, MAT_DIM_I, MAT_DIM_I,
             SCALE, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
             NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
@@ -184,6 +202,8 @@ int main() {
     unsigned long cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
     //full_matscale(gold_full, gold, ACC_SCALE_IDENTITY);
+    printf("copy C\n");
+    memcpy((elem_t*) full_C, (elem_t*) C_copy_addr, sizeof(elem_t)*MAT_DIM_I);
 #endif
 
 #if CHECK_RESULT == 1

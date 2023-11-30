@@ -1,9 +1,9 @@
 import random
 
-NO_BIAS = False
-IN_DIM = 7
-STRIDE = 1
-IN_CHANNELS = 128
+NO_BIAS = True
+IN_DIM = 14
+STRIDE = 2
+IN_CHANNELS = 64
 OUT_CHANNELS = 128
 KERNEL_DIM = 3
 PADDING = 1
@@ -16,7 +16,7 @@ IA = [[[int(random.random()*5)-2 for ich in range(IN_CHANNELS)] for icol in rang
 W = [[[[int(random.random()*5)-2 for ich in range(IN_CHANNELS)] for krow in range(KERNEL_DIM)] for kcol in range(KERNEL_DIM)] for och in range(OUT_CHANNELS)]
 D = [int(random.random()*5)-2 for och in range(OUT_CHANNELS)]
 
-OA = [[[int(random.random()*5)-2 for ich in range(IN_CHANNELS)] for icol in range(IN_DIM)] for irow in range(IN_DIM)]
+OA = [[[int(random.random()*5)-2 for ich in range(OUT_CHANNELS)] for icol in range(OUT_DIM)] for irow in range(OUT_DIM)]
 
 
 for orow in range(OUT_DIM):

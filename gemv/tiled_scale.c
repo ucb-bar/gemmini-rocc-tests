@@ -8,6 +8,7 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
+#define FLOAT true
 #include "include/gemmini_testutils.h"
 
 #define CHECK_RESULT 1
@@ -39,6 +40,8 @@ typedef elem_t ACC_T;
 
 #define SCALE 2
 
+#define NUM_INT 4
+#define NUM_FP 2
 
 void full_matmul(elem_t A[MAT_DIM_I][MAT_DIM_K], elem_t B[MAT_DIM_K][MAT_DIM_J], ACC_T D[MAT_DIM_I][MAT_DIM_J], full_t C_full[MAT_DIM_I][MAT_DIM_J]) {
   for (size_t r = 0; r < MAT_DIM_I; r++)
@@ -141,17 +144,17 @@ int main() {
     printf("VEC_DIM_I: %d\n", VEC_DIM_I);
     printf("VEC_DIM_J: %d\n", VEC_DIM_J);
     printf("VEC_DIM_K: %d\n", VEC_DIM_K);
-/*
-    int cfgid = 1;
-    for(int i = 0; i < 2; i++){
+
+    int cfgid = 0;
+    int i = NUM_FP+NUM_INT-1;
+    //for(int i = 0; i < 2; i++){
         bool acquired = rr_acquire_single(cfgid, i);
         if(acquired){
             printf("gemmini %d acquired to cfgid %d\n", i, cfgid);
-            break;
+            //break;
         }
-    }
-    rr_set_opc(cfgid, accel);
-  */
+    //}
+    rr_set_opc(XCUSTOM_ACC, cfgid);
     gemmini_flush(0);
 
     static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
@@ -293,11 +296,13 @@ int main() {
     */
 
    printf("starting gemv scaling \n");
+   vega_clock_gate(1, 0, 1);
    uint64_t scale_start = read_cycles();
    tiled_vector_scale(VEC_DIM, SCALE, (elem_t*) vec_in, (elem_t*) vec_out, false);
+   rr_fence(cfgid);
    uint64_t scale_end = read_cycles();
    printf("cycles taken: %u\n", scale_end-scale_start);
-   
+   rr_release(cfgid);
 
 
 #if CHECK_RESULT == 1

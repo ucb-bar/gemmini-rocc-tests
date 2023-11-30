@@ -4,10 +4,14 @@ NO_BIAS = False
 MAT_DIM_I = 128
 MAT_DIM_J = 128
 MAT_DIM_K = 128
+repeating_bias = 1 #True
 
 A = [[int(random.random()*5)-2 for x in range(MAT_DIM_K)] for y in range(MAT_DIM_I)]
 B = [[int(random.random()*5)-2 for x in range(MAT_DIM_J)] for y in range(MAT_DIM_K)]
 D = [[int(random.random()*3) for x in range(MAT_DIM_J)] for y in range(MAT_DIM_I)]
+if repeating_bias == 1:
+    for y in range(MAT_DIM_I):
+        D[y] = D[0]
 
 #A = [[x%2 for x in range(MAT_DIM_K)] for y in range(MAT_DIM_I)]
 #B = [[1 for x in range(MAT_DIM_J)] for y in range(MAT_DIM_K)]
@@ -78,6 +82,7 @@ result_array += "};"
 print("#define MAT_DIM_I ", MAT_DIM_I)
 print("#define MAT_DIM_J ", MAT_DIM_J)
 print("#define MAT_DIM_K ", MAT_DIM_K)
+print("#define REPEATING_BIAS ", repeating_bias)
 
 print("static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(MAX_BLOCK_LEN) = ", A_array)
 

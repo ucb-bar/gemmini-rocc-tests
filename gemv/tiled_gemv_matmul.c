@@ -8,11 +8,12 @@
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
+#define FLOAT true
 #include "include/gemmini_testutils.h"
 
 #define CHECK_RESULT 1
 
-#define NO_BIAS 1
+#define NO_BIAS 0
 #define FULL_BIAS_WIDTH 1
 
 #if FULL_BIAS_WIDTH
@@ -21,15 +22,9 @@ typedef acc_t ACC_T;
 typedef elem_t ACC_T;
 #endif
 
-#ifndef BAREMETAL
-#define MAT_DIM_I 512
-#define MAT_DIM_K 512
-#define MAT_DIM_J 512
-#else
-#define MAT_DIM_I 32
-#define MAT_DIM_K 32
-#define MAT_DIM_J 32
-#endif
+#include "../bareMetalC/data_fp_matmul.h"
+#define NUM_INT 4
+#define NUM_FP 2
 
 #define VEC_DIM_I 113//98
 #define VEC_DIM_K 179//69
@@ -126,26 +121,26 @@ int main() {
     printf("VEC_DIM_I: %d\n", VEC_DIM_I);
     printf("VEC_DIM_J: %d\n", VEC_DIM_J);
     printf("VEC_DIM_K: %d\n", VEC_DIM_K);
-/*
-    int cfgid = 1;
-    for(int i = 0; i < 2; i++){
+
+    int cfgid = 0;
+    int i = NUM_FP+NUM_INT-1;
+    //for(int i = 0; i < 2; i++){
         bool acquired = rr_acquire_single(cfgid, i);
         if(acquired){
             printf("gemmini %d acquired to cfgid %d\n", i, cfgid);
-            break;
+            //break;
         }
-    }
-    rr_set_opc(cfgid, accel);
-  */
+    //}
+    rr_set_opc(XCUSTOM_ACC, cfgid);
     gemmini_flush(0);
 
-    static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
-    static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
+    //static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
+    //static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
     static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(1);
-    static ACC_T full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
+    //static ACC_T full_D[MAT_DIM_I][MAT_DIM_J] row_align_acc(1);
 
-    static full_t gold_full[MAT_DIM_I][MAT_DIM_J];
-    static elem_t gold[MAT_DIM_I][MAT_DIM_J];
+    //static full_t gold_full[MAT_DIM_I][MAT_DIM_J];
+    //static elem_t gold[MAT_DIM_I][MAT_DIM_J];
 
     static elem_t gemv_A[VEC_DIM_I][VEC_DIM_K] row_align(1);
     static elem_t gemv_B[VEC_DIM_K][VEC_DIM_J] row_align(1);
@@ -161,6 +156,7 @@ int main() {
 #else
 #define RAND rand()
 #endif
+  /*
     // printf("Init A\n");
     for (size_t i = 0; i < MAT_DIM_I; ++i) {
       for (size_t j = 0; j < MAT_DIM_K; ++j) {
@@ -181,7 +177,7 @@ int main() {
         full_D[i][j] = NO_BIAS ? 0 : RAND % 2;
       }
     }
-
+    */
     for (size_t i = 0; i < VEC_DIM_I; ++i) {
       for (size_t j = 0; j < VEC_DIM_K; ++j) {
         gemv_A[i][j] = RAND % 2;
@@ -202,7 +198,7 @@ int main() {
         gemv_D[i][j] = NO_BIAS ? 0 : RAND % 2;
       }
     }
-
+#endif
     for(int i = 0; i < 2; i++){
     printf("Starting gemmini matmul\n");
     // clock gating vega
@@ -219,7 +215,7 @@ int main() {
             0,
             WS);
 
-    //rr_release(cfgid);
+    rr_fence(cfgid);
     unsigned long end = read_cycles();
     printf("Cycles taken: %u\n", end-start);
 
@@ -238,11 +234,14 @@ int main() {
             0,
             WS);
 
+    rr_fence(cfgid);
     unsigned long gemv_end = read_cycles();
     printf("Cycles taken: %u\n", gemv_end-gemv_start);
-    vega_fence();
     }
 
+    rr_release(cfgid);
+
+    /*
     printf("Starting slow CPU matmul\n");
     uint64_t cpu_start = read_cycles();
 #ifdef FAST
@@ -259,12 +258,12 @@ int main() {
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
     full_matscale(gold_full, gold, ACC_SCALE_IDENTITY);
 #endif
-
+*/
 #if CHECK_RESULT == 1
     printf("Starting slow CPU gemv\n");
-    cpu_start = read_cycles();
+    uint64_t cpu_start = read_cycles();
     full_gemv(gemv_A, gemv_B, gemv_D, gold_gemv);
-    cpu_end = read_cycles();
+    uint64_t cpu_end = read_cycles();
     printf("Cycles taken: %u\n", cpu_end-cpu_start);
 #endif
 

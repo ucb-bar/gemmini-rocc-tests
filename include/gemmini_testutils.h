@@ -23,6 +23,7 @@
 #endif
 #include "include/rerocc.h"
 #include "include/gemmini.h"
+#include "include/gemmini_multi.h"
 #include "include/vega.h"
 
 #ifdef BAREMETAL

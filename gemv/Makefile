@@ -1,10 +1,11 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	tiled_scale_matmul \
-	tiled_scale \
+	multi_gemv_matmul \
 	tiled_gemv \
 	tiled_gemv_matmul \
+	tiled_scale_matmul \
+	tiled_scale \
 
 tests_baremetal = $(tests:=-baremetal)
 runs_baremetal = $(addsuffix .run,$(tests_baremetal))

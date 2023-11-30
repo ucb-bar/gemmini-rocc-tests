@@ -689,6 +689,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
     a_transpose, b_transpose,
     full_C, low_D, !no_bias || D == NULL,
     act, a_spad_id, b_spad_id, false);
+  //printf("done\n");
 }
 
 

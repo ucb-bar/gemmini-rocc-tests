@@ -1,28 +1,18 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	multi_matmul_data \
-	multi_conv_data \
-	tiled_matmul_ws_perf \
-	tiled_matmul_ws \
-	fp_tiled_matmul_data \
-	tiled_matmul_data \
-	conv_pool_data \
-	conv_data \
-	conv_mac \
-	tiled_matmul_mac \
-	resadd_data \
+	mt_gemm \
+	#gemm \
+	#conv \
+	#tiled_gemv \
+	#memcpy_cpu \
+	#memcpy_dma_multi \
+	#memcpy_dma \
+	#memcpy_conv_dma \
+	#memcpy_matmul_dma \
 
 tests_baremetal = $(tests:=-baremetal)
-
-ifeq ($(findstring spike,$(RUNNER)),spike)
-# Currently don't support conv or conv-with-pool on spike
-runs_baremetal = $(addsuffix .run,$(filter-out conv-baremetal conv_with_pool-baremetal,$(tests_baremetal)))
-else
-# Don't run very long benchmarks for RTL sim
-runs_baremetal = $(addsuffix .run,$(filter-out tiled_matmul_cpu-baremetal tiled_matmul_option-baremetal,$(tests_baremetal)))
-endif
-
+runs_baremetal = $(addsuffix .run,$(tests_baremetal))
 ifdef BAREMETAL_ONLY
 	tests_linux =
 	tests_pk =
@@ -32,7 +22,7 @@ else
 endif
 
 BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
-GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_testutils.h
+GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_nn.h $(abs_top_srcdir)/include/gemmini_testutils.h
 
 CFLAGS := $(CFLAGS) \
 	-DPREALLOCATE=1 \
@@ -52,7 +42,6 @@ CFLAGS := $(CFLAGS) \
 	-I$(abs_top_srcdir) \
 	-I$(BENCH_COMMON) \
 	-DID_STRING=$(ID_STRING) \
-	-DPRINT_TILE=0 \
 
 CFLAGS_PK := \
 	$(CFLAGS) \
@@ -71,7 +60,7 @@ all: $(tests_baremetal) $(tests_linux) $(tests_pk)
 
 vpath %.c $(src_dir)
 
-%-baremetal: %.c $(GEMMINI_HEADERS)
+%-baremetal: %.c $(GEMMINI_HEADERS) 
 	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \
 		$(wildcard $(BENCH_COMMON)/*.c) $(wildcard $(BENCH_COMMON)/*.S) $(LIBS)
 
@@ -84,7 +73,7 @@ vpath %.c $(src_dir)
 run-baremetal: $(runs_baremetal)
 
 %-baremetal.run: %-baremetal
-	$(RUNNER)$(abs_top_srcdir)/build/bareMetalC/$^
+	$(RUNNER)$(abs_top_srcdir)/build/scratchpad/$^
 
 junk += $(tests_baremetal) $(tests_linux) $(tests_pk)
 
