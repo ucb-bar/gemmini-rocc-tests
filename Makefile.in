@@ -5,8 +5,8 @@ RISCVTOOLS      := @RISCVTOOLS@
 ROCC = examples
 RUNNER         := "spike --extension=gemmini "
 
-.PHONY: all bareMetalC clean imagenet transformers mlps gemv
-all: bareMetalC imagenet transformers mlps gemv
+.PHONY: all bareMetalC clean imagenet transformers mlps gemv scratchpad
+all: bareMetalC imagenet transformers mlps gemv scratchpad
 
 vars = \
 	abs_top_srcdir=$(abs_top_srcdir) \
@@ -35,11 +35,16 @@ gemv:
 	mkdir -p $@
 	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
 
+scratchpad:
+	mkdir -p $@
+	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
+
 clean:
 	$(MAKE) -C bareMetalC -f $(abs_top_srcdir)/bareMetalC/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-bareMetalC clean
 	$(MAKE) -C imagenet -f $(abs_top_srcdir)/imagenet/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-imagenet clean
 	$(MAKE) -C mlps -f $(abs_top_srcdir)/mlps/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-mlps clean
 	$(MAKE) -C gemv -f $(abs_top_srcdir)/gemv/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-gemv clean
+	$(MAKE) -C scratchpad -f $(abs_top_srcdir)/scratchpad/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-scratchpad clean
 
 test-baremetal-bareMetalC:
 	make -C bareMetalC	\
@@ -61,6 +66,16 @@ test-baremetal: test-baremetal-bareMetalC
 	 	src_dir=$(abs_top_srcdir)/mlps \
 	 	XLEN=$(XLEN) \
 	 	PREFIX=$(ROCC)-mlps \
+		RISCVTOOLS=$(RISCVTOOLS) \
+		RUNNER=$(RUNNER) \
+	        run-baremetal
+	make -C scratchpad	\
+	        -f $(abs_top_srcdir)/scratchpad/Makefile \
+                TARGET_MAKEFILE=$(abs_top_srcdir)/scratchpad/Makefile \
+		abs_top_srcdir=$(abs_top_srcdir) \
+	 	src_dir=$(abs_top_srcdir)/scratchpad \
+	 	XLEN=$(XLEN) \
+	 	PREFIX=$(ROCC)-scratchpad \
 		RISCVTOOLS=$(RISCVTOOLS) \
 		RUNNER=$(RUNNER) \
 	        run-baremetal
