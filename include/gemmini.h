@@ -307,7 +307,7 @@ static uint64_t read_cycle_gemminih() {
     return cycles;
 }
 
-static char *ft_strchr(const char *str, int c){
+static char *ft_strchr(char *str, int c){
     size_t i;
     char *temp;
 

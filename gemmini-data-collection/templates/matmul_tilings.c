@@ -10,7 +10,7 @@
 #endif
 #include "include/gemmini_testutils.h"
 
-#define PRINT_TILE %PRINT_TILE%
+// #define PRINT_TILE %PRINT_TILE%
 #define NO_BIAS 1
 #define REPEATING_BIAS 1
 
@@ -50,13 +50,15 @@ int main() {
 
     gemmini_flush(0);
 
-    static elem_t full_A[10000][10000] row_align(1);
+    // static elem_t full_A[10000][10000] row_align(1);
+    // static elem_t full_B[10000][10000] row_align(1);
+    // static elem_t full_C[10000][10000] row_align(1);
+    // static acc_t full_D[10000][10000] row_align_acc(1);
 
-    static elem_t full_B[10000][10000] row_align(1);
-
-    static elem_t full_C[10000][10000] row_align(1);
-    static acc_t full_D[10000][10000] row_align_acc(1);
-
+    static elem_t full_A[128][128][2] row_align(1);
+    static elem_t full_B[128][128][2] row_align(1);
+    static elem_t full_C[128][128][2] row_align(1);
+    static acc_t full_D[1][1] row_align_acc(1);
     // static full_t gold_full[1024][1024];
     // static elem_t gold[1024][1024];
 
@@ -69,7 +71,7 @@ int main() {
     const int TILE_J_LIST[%NUM_LAYERS%] = {%TILE_OCHS%};
     const int SPATIAL_TILE_K_LIST[%NUM_LAYERS%] = {%SPATIAL_TILE_KCHS%};
     const int SPATIAL_TILE_J_LIST[%NUM_LAYERS%] = {%SPATIAL_TILE_OCHS%};
-    const char *PERM_STR_LIST[%NUM_LAYERS%] = {%PERM_STR%};
+    char *PERM_STR_LIST[%NUM_LAYERS%] = {%PERM_STR%};
 
     printf("Starting gemmini matmul\n");
     printf("NO_BIAS: %d, REPEATING_BIAS: %d\n", NO_BIAS, REPEATING_BIAS);
@@ -84,7 +86,7 @@ int main() {
         int TILE_J = TILE_J_LIST[l];
         const int SPATIAL_TILE_K = SPATIAL_TILE_K_LIST[l];
         const int SPATIAL_TILE_J = SPATIAL_TILE_J_LIST[l];
-        const char *PERM_STR = PERM_STR_LIST[l];
+        char *PERM_STR = PERM_STR_LIST[l];
 
         // printf("I: %d\n, K: %d\n, J: %d\n, TILE_I: %d\n, TILE_K: %d\n, TILE_J: %d\n", MAT_DIM_I, MAT_DIM_J, MAT_DIM_K, TILE_I, TILE_K, TILE_J);
         // printf("%d_%d_%d_%d_%d_%d_%d_%d_%s\n", MAT_DIM_I, MAT_DIM_J, MAT_DIM_K, TILE_I, TILE_K, TILE_J, SPATIAL_TILE_K, SPATIAL_TILE_J, PERM_STR);
@@ -143,11 +145,11 @@ int main() {
         gemmini_fence();
 
         unsigned long tiled_end = read_cycles();
-        //  if (retval != 0) {
-        //      printf("Exit after %llu cycles\n\n", retval);
-        //  } else {
-        //      printf("Gemmini tiled matmul took %llu cycles\n\n", tiled_end - tiled_start);
-        //  }
+        if (retval != 0) {
+            printf("Exit after %llu cycles\n\n", retval);
+        } else {
+            printf("Gemmini tiled matmul took %llu cycles\n\n", tiled_end - tiled_start);
+        }
 
         // const int total_macs = MAT_DIM_I * MAT_DIM_J * MAT_DIM_K;
         // const int ideal_cycles = total_macs / (DIM * DIM);
