@@ -682,7 +682,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
   }
 */
 
-    //printf("A: %llu, B: %llu, D: %llu, C: %llu\n", A, B, D, C);
+  //printf("A: %llu, B: %llu, D: %llu, C: %llu\n", A, B, D, C);
   // Combined loop
   gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
     A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,

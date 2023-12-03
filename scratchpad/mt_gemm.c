@@ -13,20 +13,20 @@
 #include "include/rerocc.h"
 #include "util.h"
 
-#define NO_BIAS 0
+#define NO_BIAS 1
 #define ACTIVATION NO_ACTIVATION
 #define BASE_ADDR 0x70000000L
 
-#define NO_BIAS 0
 #define FULL_BIAS_WIDTH 1
 #define PageSize 4096
 
 #define ACC_T acc_t
 #include "data_matmul.h"
 #include "data_matmul2.h"
-#define NUM_INT 4
-#define NUM_FP 2
+#define NUM_INT 8
+#define NUM_FP 4
 
+#define NUM_ARRAY 4
 
 static elem_t full_C[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN);
 static elem_t full_C2[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN);
@@ -40,10 +40,19 @@ void full_printMatrix(elem_t m[MAT_DIM_I][MAT_DIM_J]) {
 }
 
 int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]) {
-  for (size_t i = 0; i < MAT_DIM_I; ++i)
-    for (size_t j = 0; j < MAT_DIM_J; ++j)
+  for (size_t i = 0; i < MAT_DIM_I; ++i){
+    //printf("row %d\n", i);
+    for (size_t j = 0; j < MAT_DIM_J; ++j){
       if (x[i][j] != y[i][j])
         return 0;
+      else if(j % 8 == 0 && i % 4 == 0){
+          printf("j %d ", j);
+      }
+    }
+    printf("\n");
+    //if(i % 4 == 0) 
+    //printf("row %d pass\n", i);
+  }
   return 1;
 }
 void thread_entry(int cid, int nc){
@@ -61,22 +70,33 @@ void thread_entry(int cid, int nc){
     uint64_t D_copy_addr2 = C_copy_addr2 + (MAT_DIM_I * MAT_DIM_J) * sizeof(elem_t);
 
 
-    int accel_pid = -1;
-    int cfgid = 1;
-    int i = 0;
-    for(int i = 2; i < 2+NUM_INT-1; i++){
-        bool acquired = rr_acquire_single(cfgid, i);
+    int array[NUM_ARRAY];
+    int num_acquired = 0;
+    //barrier(nc);
+    for(int i = 0; i < NUM_INT; i++){
+        bool acquired = rr_acquire_single(num_acquired, i);
         if(acquired){
-            accel_pid = i;
-            break;
+            array[num_acquired] = i;
+            num_acquired ++;
+            if(num_acquired == NUM_ARRAY) break;
+            for(int j=0; j<10000; j++){
+                int k = 1;
+                k=k*2;
+            }
         }
     }
     for(int i = 0; i < nc; i ++){
-        if (i == cid) printf("Thread %d/%d accel %d acquired to cfgid %d\n", i, nc, accel_pid, cfgid);
+        if (i == cid) {
+            for(int n = 0; n < NUM_ARRAY; n++)
+                printf("Thread %d/%d accel %d acquired to cfgid %d\n", i, nc, array[n], n);
+            
+        }
         barrier(nc);
     }
-    rr_set_opc(XCUSTOM_ACC, cfgid);
-    gemmini_flush(0);
+    for(int n = 0; n < NUM_ARRAY; n++){
+      rr_set_opc(XCUSTOM_ACC, n);
+      gemmini_flush(0);
+    }
     for(int i = 0; i < nc; i++){
         if(i == 0 && i == cid){
           memcpy((elem_t*) A_copy_addr, (elem_t*) full_A, sizeof(elem_t)*MAT_DIM_I*MAT_DIM_K);
@@ -99,7 +119,7 @@ void thread_entry(int cid, int nc){
     for(int j = 0; j < nc; j++){
        if(j == cid && j == 0){ 
        
-           tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+           multi_tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
                (elem_t*)A_copy_addr, (elem_t*)B_copy_addr, NO_BIAS ? NULL : (acc_t*) D_copy_addr, (elem_t*)C_copy_addr,
                MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
                MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
@@ -107,13 +127,13 @@ void thread_entry(int cid, int nc){
                false, false,
                false, false,
                0,
-               WS);
+               NUM_ARRAY);
 
-           rr_fence(cfgid);
+           //rr_fence(cfgid);
        }
        else if(j == cid && j == 1){
          
-          tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+          multi_tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
               (elem_t*)A_copy_addr2, (elem_t*)B_copy_addr2, NO_BIAS ? NULL : (acc_t*) D_copy_addr2, (elem_t*)C_copy_addr2,
               MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
               MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
@@ -121,20 +141,21 @@ void thread_entry(int cid, int nc){
               false, false,
               false, false,
               0,
-              WS);
+              NUM_ARRAY);
 
-          rr_fence(cfgid);
+          //rr_fence(cfgid);
        }
     }
     uint64_t end = read_cycles();
 
     for(int i = 0; i < nc; i ++){
        if(i == cid){
-          rr_release(cfgid);
+          for(int cfgid=0;cfgid < NUM_ARRAY; cfgid++)
+           rr_release(cfgid);
           printf("core %d\n", i);
           printf("Cycles taken: %llu\n", end-start);
 
-          const uint64_t total_macs = MAT_DIM_I * MAT_DIM_J * MAT_DIM_K;
+          const uint64_t total_macs = (MAT_DIM_I * MAT_DIM_J * MAT_DIM_K) / NUM_ARRAY;
           const uint64_t ideal_cycles = total_macs / (DIM * DIM);
           const uint64_t utilization = 100 * ideal_cycles / (end-start);
           printf("Total macs: %llu\n", total_macs);
@@ -145,7 +166,7 @@ void thread_entry(int cid, int nc){
        barrier(nc);
     }
     
-    rr_release(0);
+    //rr_release(0);
     for(int i = 0; i < nc; i++){
         if(i == 0 && i == cid){
           memcpy((elem_t*) full_C, (elem_t*) C_copy_addr, sizeof(elem_t)*MAT_DIM_I*MAT_DIM_J);
@@ -154,6 +175,7 @@ void thread_entry(int cid, int nc){
           memcpy((elem_t*) full_C2, (elem_t*) C_copy_addr2, sizeof(elem_t)*MAT_DIM_I*MAT_DIM_J);
         }
     }
+    barrier(nc);
     for(int i = 0; i < nc; i++){
         if(i == cid) printf("memcpy done\n");
         barrier(nc);
@@ -170,7 +192,8 @@ void thread_entry(int cid, int nc){
               exit(1);
             }
         }
-        else if(i == cid && i == 0){
+        barrier(nc);
+        if(i == cid && i == 1){
             if (!full_is_equal(full_C2, gold2)) {
               printf("full_C2:\n");
               full_printMatrix(full_C2);

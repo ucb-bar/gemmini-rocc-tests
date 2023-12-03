@@ -1,9 +1,9 @@
 import random
 
-NO_BIAS = False
-MAT_DIM_I = 128
-MAT_DIM_J = 128
-MAT_DIM_K = 128
+NO_BIAS = True
+MAT_DIM_I = 56
+MAT_DIM_J = (64*8)
+MAT_DIM_K = 156
 repeating_bias = 1 #True
 
 A = [[int(random.random()*5)-2 for x in range(MAT_DIM_K)] for y in range(MAT_DIM_I)]

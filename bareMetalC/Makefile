@@ -1,6 +1,8 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
+	multi_matmul_mac \
+	multi_conv_mac \
 	multi_matmul_data \
 	multi_conv_data \
 	tiled_matmul_ws_perf \

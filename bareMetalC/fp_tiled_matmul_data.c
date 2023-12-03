@@ -23,8 +23,8 @@ typedef elem_t ACC_T;
 #endif
 
 #include "data_fp_matmul.h"
-#define NUM_INT 4
-#define NUM_FP 2
+#define NUM_INT 8
+#define NUM_FP 5
 
 void print_tile(elem_t* in, int tile_dim) {
   for (size_t r = 0; r < tile_dim; r++) {
@@ -103,6 +103,7 @@ int main() {
   
     gemmini_flush(0);
 
+    vega_clock_gate(1, 0, 0);
     printf("Starting gemmini matmul\n");
     unsigned long start = read_cycles();
 
@@ -110,7 +111,7 @@ int main() {
             (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
             false, false,
             false, !FULL_BIAS_WIDTH,
             0,

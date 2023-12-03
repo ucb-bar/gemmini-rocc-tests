@@ -23,8 +23,8 @@ typedef elem_t ACC_T;
 #endif
 
 #include "data_matmul.h"
-#define NUM_INT 4
-#define NUM_FP 2
+#define NUM_INT 8
+#define NUM_FP 5
 
 #define NUM_ARRAY 4
 
@@ -60,7 +60,7 @@ int full_is_equal(elem_t x[MAT_DIM_I][MAT_DIM_J], elem_t y[MAT_DIM_I][MAT_DIM_J]
     for (size_t j = 0; j < MAT_DIM_J; ++j)
       if (x[i][j] != y[i][j])
         return 0;
-    if(i % 2 == 0) printf("row %d pass\n", i);
+    if(i % 4 == 0) printf("row %d pass\n", i);
   }
   return 1;
 }
@@ -98,10 +98,10 @@ int main() {
     int cfgid = 0;
     for(int i = 0; i < NUM_INT + NUM_FP; i++){   
 #if FLOAT
-        if(i <= NUM_INT && i != 1)
+        if(i < NUM_INT)
             continue;
 #else
-        if(i > NUM_INT || i == 1)
+        if(i >= NUM_INT)
             continue;
 #endif
         bool acquired = rr_acquire_single(cfgid, i);
@@ -124,7 +124,7 @@ int main() {
             (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
             MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
             MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, false,
+            NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, REPEATING_BIAS,
             false, false,
             false, !FULL_BIAS_WIDTH,
             0,

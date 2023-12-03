@@ -16,7 +16,7 @@
 #define ACTIVATION NO_ACTIVATION
 #define BASE_ADDR 0x70000000L
 
-#define NO_BIAS 0
+#define NO_BIAS 1
 #define FULL_BIAS_WIDTH 1
 #define PageSize 4096
 
@@ -28,6 +28,7 @@
 #define NUM_INT 8
 #define NUM_FP 5
 
+#define NUM_ARRAY 8
 //#define REPEATING_BIAS false
 
 void full_printMatrix(elem_t m[MAT_DIM_I][MAT_DIM_J]) {
@@ -53,18 +54,27 @@ int main() {
     }
 #endif
 
-    int cfgid = 1;
-    int i = FLOAT ? NUM_INT : 0;
-    //for(int i = 0; i < 2; i++){
+    int cfgid = 0;
+    for(int i = 0; i < NUM_INT + NUM_FP; i++){   
+#if FLOAT
+        if(i < NUM_INT)
+            continue;
+#else
+        if(i >= NUM_INT)
+            continue;
+#endif
         bool acquired = rr_acquire_single(cfgid, i);
         if(acquired){
             printf("gemmini %d acquired to cfgid %d\n", i, cfgid);
-            //break;
+            cfgid ++;
+            if(cfgid == NUM_ARRAY)
+                break;
         }
-    //}
-    rr_set_opc(XCUSTOM_ACC, cfgid);
-    gemmini_flush(0);
-
+    }
+    for(int i = 0; i < NUM_ARRAY; i++){
+      rr_set_opc(XCUSTOM_ACC, i);
+      gemmini_flush(0);
+    }
     static elem_t C[MAT_DIM_I][MAT_DIM_J] row_align(MAX_BLOCK_LEN);
 
     uint64_t A_copy_addr = (BASE_ADDR & ~(PageSize-1));
@@ -90,17 +100,16 @@ int main() {
     printf("copy B\n");
     memcpy((elem_t*) B_copy_addr, (elem_t*) full_B, sizeof(elem_t)*MAT_DIM_K*MAT_DIM_J);
     printf("copy D\n");
-    memcpy((acc_t*) D_copy_addr, (acc_t*) full_D, REPEATING_BIAS ? sizeof(acc_t) * MAT_DIM_J : sizeof(acc_t)*MAT_DIM_I*MAT_DIM_J);
+    if(!NO_BIAS) memcpy((acc_t*) D_copy_addr, (acc_t*) full_D, REPEATING_BIAS ? sizeof(acc_t) * MAT_DIM_J : sizeof(acc_t)*MAT_DIM_I*MAT_DIM_J);
 
     printf("gemmini spad rows: %d, acc rows: %d \n", BANK_ROWS, ACC_ROWS);
     printf("I: %d, J: %d, K: %d\n", MAT_DIM_I, MAT_DIM_J, MAT_DIM_K);
     printf("NO_BIAS: %d, REPEATING_BIAS: %d\n", NO_BIAS, REPEATING_BIAS);
 
-    rr_set_opc(XCUSTOM_ACC, cfgid);
     printf("Starting gemmini matmul\n");
     uint64_t start = read_cycles();
 
-    tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+    multi_tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
         (elem_t*) A_copy_addr, (elem_t*) B_copy_addr, NO_BIAS ? NULL : (acc_t*) D_copy_addr, (elem_t*) C_copy_addr,
         MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
         MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
@@ -108,9 +117,7 @@ int main() {
         false, false,
         false, false,
         0,
-        WS);
-
-    rr_fence(cfgid);
+        NUM_ARRAY);
 
     uint64_t end = read_cycles();
     printf("Cycles taken: %llu\n", end-start);
@@ -121,11 +128,8 @@ int main() {
     printf("Total macs: %llu\n", total_macs);
     printf("Ideal cycles: %llu\n", ideal_cycles);
     printf("Utilization: %llu%%\n", utilization);
-
-    //ToDo: check matmul result
-    // release gemmini
-    rr_release(cfgid);
-
+    for(int i = 0; i < NUM_ARRAY; i++)
+      rr_release(i);
     printf("copy C\n");
     memcpy((elem_t*) C, (elem_t*) C_copy_addr, sizeof(elem_t)*MAT_DIM_I*MAT_DIM_J);
 #if CHECK_RESULT == 1

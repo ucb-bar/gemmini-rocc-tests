@@ -1,9 +1,11 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
-	mt_gemm \
-	#gemm \
-	#conv \
+	gemm \
+	multi_gemm \
+	multi_conv \
+	conv \
+	#mt_gemm \
 	#tiled_gemv \
 	#memcpy_cpu \
 	#memcpy_dma_multi \

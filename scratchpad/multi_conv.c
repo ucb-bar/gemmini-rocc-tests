@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
@@ -13,14 +14,24 @@
 #include "data_conv.h"
 #define IN_ROW_DIM IN_DIM
 #define IN_COL_DIM IN_DIM
-#define NO_BIAS true //false
+#define BASE_ADDR 0x70000000L
+
+#define NO_BIAS 1
+#define FULL_BIAS_WIDTH 1
+#define PageSize 4096
+
+#define CHECK_RESULT 1
+//#define ACC_ID 3
+#define ACC_T acc_t
 
 #define OUT_ROW_DIM ((IN_ROW_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 #define OUT_COL_DIM ((IN_COL_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 //#define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
 #define N_PATCHES (BATCH_SIZE * OUT_ROW_DIM * OUT_COL_DIM)
-#define NUM_INT 4
-#define NUM_FP 2
+#define NUM_INT 8
+#define NUM_FP 4
+
+#define NUM_ARRAY 4
 
 bool vec_is_equal(elem_t * a, elem_t * b, int len) {
     for (int i = 0; i < len; i++)
@@ -67,18 +78,50 @@ int main() {
     }
 #endif
 
+    uint64_t A_copy_addr = (BASE_ADDR & ~(PageSize-1));
+    printf("A copy addr: 0x%08lx\n", A_copy_addr);
+    uint64_t B_copy_addr = A_copy_addr + (BATCH_SIZE * IN_ROW_DIM * IN_COL_DIM * IN_CHANNELS) * sizeof(elem_t);// + 64*3;
+    uint64_t C_copy_addr = B_copy_addr + (OUT_CHANNELS * KERNEL_DIM * KERNEL_DIM * IN_CHANNELS) * sizeof(elem_t);// + 64*3;
+    uint64_t D_copy_addr = C_copy_addr + (BATCH_SIZE * OUT_ROW_DIM * OUT_COL_DIM * OUT_CHANNELS) * sizeof(elem_t);
+
+    printf("B copy addr: 0x%08lx\n", B_copy_addr);
+    printf("C copy addr: 0x%08lx\n", C_copy_addr);
+
+    printf("perform memcpy\n");
+    bool granted = false;
+    int index = 0;
+    printf("copy A\n");
+    memcpy((elem_t*) A_copy_addr, (elem_t*) input, sizeof(elem_t)*BATCH_SIZE*IN_ROW_DIM*IN_COL_DIM*IN_CHANNELS);
+    //for(int i = 0; i < KERNEL_DIM*KERNEL_DIM; i++){
+    //printf("copy B\n");
+    //memcpy((elem_t*) (B_copy_addr+i*OUT_CHANNELS*IN_CHANNELS), (elem_t*) (weights_mat+i*OUT_CHANNELS*IN_CHANNELS), sizeof(elem_t)*OUT_CHANNELS*IN_CHANNELS);
+    //}
+    printf("copy B\n");
+    memcpy((elem_t*) B_copy_addr, (elem_t*) weights_mat, sizeof(elem_t)*OUT_CHANNELS*KERNEL_DIM*KERNEL_DIM*IN_CHANNELS);
+ 
+    printf("copy D\n");
+    if(!NO_BIAS) memcpy((acc_t*) D_copy_addr, (acc_t*) bias, sizeof(acc_t)*OUT_CHANNELS);
     int cfgid = 0;
-    int i = 0;
-    //for(int i = 0; i < 2; i++){
+    for(int i = 0; i < NUM_INT + NUM_FP; i++){   
+#if FLOAT
+        if(i < NUM_INT)
+            continue;
+#else
+        if(i >= NUM_INT)
+            continue;
+#endif
         bool acquired = rr_acquire_single(cfgid, i);
         if(acquired){
             printf("gemmini %d acquired to cfgid %d\n", i, cfgid);
-            //break;
+            cfgid ++;
+            if(cfgid == NUM_ARRAY)
+                break;
         }
-    //}
-    rr_set_opc(XCUSTOM_ACC, cfgid);
-    gemmini_flush(0);
-
+    }
+    for(int i = 0; i < NUM_ARRAY; i++){
+      rr_set_opc(XCUSTOM_ACC, i);
+      gemmini_flush(0);
+    }
     // assert((in_dim + 2*padding - kernel_dim) % stride == 0);
 
     printf("Input dimensions (rows by columns): %u by %u\n", IN_ROW_DIM, IN_COL_DIM);
@@ -87,27 +130,30 @@ int main() {
     static elem_t output_mat[N_PATCHES][OUT_CHANNELS];
     printf("Gemmini conv...\n");
     uint64_t start_gemmini = read_cycles();
-    tiled_conv_auto(
+    multi_tiled_conv_auto(
         BATCH_SIZE, IN_ROW_DIM, IN_COL_DIM, IN_CHANNELS,
         OUT_CHANNELS, OUT_ROW_DIM, OUT_COL_DIM,
         STRIDE, 1, 1, PADDING, KERNEL_DIM,
+        IN_CHANNELS, OUT_CHANNELS, OUT_CHANNELS,
         false, false, false, false, false,
 
-        (elem_t*)input,
-        (elem_t*)weights_mat,
-        NO_BIAS ? NULL : (acc_t*)bias,
-        (elem_t*)output_mat,
+        (elem_t*)A_copy_addr,
+        (elem_t*)B_copy_addr,
+        NO_BIAS ? NULL : (acc_t*)D_copy_addr,
+        (elem_t*)C_copy_addr,
 
         NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0,
 
-        WS);
-    rr_fence(cfgid);
+        NUM_ARRAY);
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 
-    rr_release(cfgid);
+    for(int i = 0; i < NUM_ARRAY; i++)
+      rr_release(i);
     assert(sizeof(output_mat) == sizeof(output));
 
+    printf("copy C\n");
+    memcpy((elem_t*) output_mat, (elem_t*) C_copy_addr, sizeof(elem_t)*N_PATCHES*OUT_CHANNELS);
     bool success = vec_is_equal(&output[0][0][0][0], &output_mat[0][0], sizeof(output) / sizeof(elem_t));
     if (!success) {
         // return 1;

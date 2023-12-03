@@ -19,17 +19,19 @@
 #define OUT_COL_DIM ((IN_COL_DIM + 2*PADDING - KERNEL_DIM) / STRIDE + 1)
 //#define PATCH_SIZE (KERNEL_DIM * KERNEL_DIM * IN_CHANNELS)
 #define N_PATCHES (BATCH_SIZE * OUT_ROW_DIM * OUT_COL_DIM)
-#define NUM_INT 4
-#define NUM_FP 2
+#define NUM_INT 8
+#define NUM_FP 5
 
 #define NUM_ARRAY 4
 
 bool vec_is_equal(elem_t * a, elem_t * b, int len) {
     for (int i = 0; i < len; i++){
-        if (a[i] != b[i])
+        if (a[i] != b[i]){
+            printf("%d failed\n", i);
             return false;
-        if (i % OUT_CHANNELS == 0)
-            printf("elem i %d pass\n", len);
+        }
+        if (i % 20 == 0)
+            printf("elem i %d pass\n", i/20);
     }
     return true;
 }
@@ -75,10 +77,10 @@ int main() {
     int cfgid = 0;
     for(int i = 0; i < NUM_INT + NUM_FP; i++){   
 #if FLOAT
-        if(i <= NUM_INT && i != 1)
+        if(i < NUM_INT)
             continue;
 #else
-        if(i > NUM_INT || i == 1)
+        if(i >= NUM_INT)
             continue;
 #endif
         bool acquired = rr_acquire_single(cfgid, i);
@@ -115,7 +117,7 @@ int main() {
 
         NO_ACTIVATION, ACC_SCALE_IDENTITY, 0, 0, 0,
 
-        WS);
+        NUM_ARRAY);
     uint64_t end_gemmini = read_cycles();
     printf("Gemmini conv took %llu cycles\n", end_gemmini - start_gemmini);
 

@@ -1,9 +1,10 @@
 import random
 
-NO_BIAS = True
-MAT_DIM_I = 63
-MAT_DIM_J = 120
-MAT_DIM_K = 96#128
+NO_BIAS = False
+MAT_DIM_I = 135
+MAT_DIM_J = (64*8)
+MAT_DIM_K = 111#128
+repeating_bias = 1 #True
 
 A = [[int(random.random()*5)-2 for x in range(MAT_DIM_K)] for y in range(MAT_DIM_I)]
 B = [[int(random.random()*5)-2 for x in range(MAT_DIM_J)] for y in range(MAT_DIM_K)]
@@ -14,6 +15,9 @@ D = [[int(random.random()*3) for x in range(MAT_DIM_J)] for y in range(MAT_DIM_I
 
 if NO_BIAS:
     D = [[0 for x in range(MAT_DIM_J)] for y in range(MAT_DIM_I)]
+elif repeating_bias == 1:
+    for y in range(MAT_DIM_I):
+        D[y] = D[0]
 
 result = [[0 for x in range(MAT_DIM_J)] for y in range(MAT_DIM_I)]
 
@@ -78,6 +82,7 @@ result_array += "};"
 print("#define MAT_DIM_I ", MAT_DIM_I)
 print("#define MAT_DIM_J ", MAT_DIM_J)
 print("#define MAT_DIM_K ", MAT_DIM_K)
+print("#define REPEATING_BIAS ", repeating_bias)
 
 print("static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(MAX_BLOCK_LEN) = ", A_array)
 
