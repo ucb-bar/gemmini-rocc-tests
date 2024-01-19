@@ -194,8 +194,16 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
     return un.b;
 }
 
-#define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct) \
-  ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, funct)
+#define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct) { \
+    printf("function %d\n", funct); \
+    uint32_t instruction = (0x7B) | (0 << 7) | (3 << 12) | (1 << 15) | (2 << 20) | ((uint32_t) funct << 25); \
+    *((uint64_t*) 0x60000010) = (uint64_t) (rs1); \
+    *((uint64_t*) 0x60000018) = (uint64_t) (rs2); \
+    gemmini_fence(); \
+    *((uint32_t*) 0x60000000) = instruction; \
+}
+//#define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct) \
+//  ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, funct)
 
 // mvin and mvout
 #define gemmini_extended_mvin(dram_addr, spad_addr, cols, rows) \

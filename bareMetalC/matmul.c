@@ -14,6 +14,8 @@
 
 static elem_t ZERO[DIM][DIM];
 
+#define FAST
+
 #ifdef FAST
 #define AINIT RELU
 #define SINIT 4
@@ -177,10 +179,12 @@ void test_os (bool A_transpose, bool B_transpose) {
       // printf("Moving out\n");
       for (size_t c = 0; c < N*N*N; ++c)
         if (!no_output[c]) {
-          gemmini_mvout(C[c], C_addr + c*DIM);
+          gemmini_mvout_spad(C_addr + c*DIM + N*N*N * DIM, C_addr + c*DIM, DIM, DIM);
+          gemmini_mvout(C[c], C_addr + c*DIM + N*N*N * DIM);
         }
 
       gemmini_fence();
+      printf("moved out\n");
 
       /*
       printf("Moved out\n");
@@ -384,7 +388,9 @@ void test_ws(bool A_transpose, bool B_transpose) {
       // printf("Moving out\n");
       for (size_t c = 0; c < N*N*N; ++c)
         if (!no_output[c]) {
-          gemmini_mvout(C[c], C_addrs[c] & ~(1 << (ADDR_LEN-2)));
+          uint32_t addr = C_addrs[c] & ~(1 << (ADDR_LEN-2));
+          gemmini_mvout_spad(c * DIM, addr, DIM, DIM);
+          gemmini_mvout(C[c], c * DIM);
         }
 
       gemmini_fence();
