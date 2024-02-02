@@ -74,8 +74,8 @@ int main() {
     char *PERM_STR_LIST[%NUM_LAYERS%] = {%PERM_STR%};
 
     printf("Starting gemmini matmul\n");
-    printf("NO_BIAS: %d, REPEATING_BIAS: %d\n", NO_BIAS, REPEATING_BIAS);
-    printf("A_TRANSPOSE: %d, B_TRANSPOSE: %d\n", A_TRANSPOSE, B_TRANSPOSE);
+    // printf("NO_BIAS: %d, REPEATING_BIAS: %d\n", NO_BIAS, REPEATING_BIAS);
+    // printf("A_TRANSPOSE: %d, B_TRANSPOSE: %d\n", A_TRANSPOSE, B_TRANSPOSE);
 
     for (int l = 0; l < NUM_LAYERS; l++) {
         const int MAT_DIM_I = MAT_DIM_I_LIST[l];
@@ -122,9 +122,9 @@ int main() {
         // unsigned long end = read_cycles();
         // printf("Gemmini auto matmul took %llu cycles\n\n", end - start);
 
-        TILE_I = (TILE_I < 16) ? 1 : TILE_I >> 4;
-        TILE_J = (TILE_J < 16) ? 1 : TILE_J >> 4;
-        TILE_K = (TILE_K < 16) ? 1 : TILE_K >> 4;
+        // TILE_I = (TILE_I < 16) ? 1 : TILE_I >> 4;
+        // TILE_J = (TILE_J < 16) ? 1 : TILE_J >> 4;
+        // TILE_K = (TILE_K < 16) ? 1 : TILE_K >> 4;
 
         gemmini_fence();
         unsigned long tiled_start = read_cycles();
@@ -139,8 +139,7 @@ int main() {
                 false, false,
                 0,
                 WS,
-                PERM_STR,
-                PE_DIM);
+                PERM_STR);
 
         gemmini_fence();
 

@@ -727,25 +727,30 @@ static uint64_t tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         bool full_C, bool low_D,
         uint8_t weightA,
         int dataflow,
-        char * perm,
-        int pe_dim) {
+        char * perm) {
 
-  const size_t dim_I_padded = (dim_I / pe_dim + (dim_I % pe_dim != 0)) * pe_dim;
-  const size_t dim_J_padded = (dim_J / pe_dim + (dim_J % pe_dim != 0)) * pe_dim;
-  const size_t dim_K_padded = (dim_K / pe_dim + (dim_K % pe_dim != 0)) * pe_dim;
+  const size_t dim_I_padded = (dim_I / DIM + (dim_I % DIM != 0)) * DIM;
+  const size_t dim_J_padded = (dim_J / DIM + (dim_J % DIM != 0)) * DIM;
+  const size_t dim_K_padded = (dim_K / DIM + (dim_K % DIM != 0)) * DIM;
 
 //   const size_t I0 = dim_I_padded / (tile_I) + (dim_I_padded % (tile_I) != 0);
-  const size_t I0 = dim_I_padded / (tile_I * pe_dim) + (dim_I_padded % (tile_I * pe_dim) != 0);
-  const size_t J0 = dim_J_padded / (tile_J * pe_dim) + (dim_J_padded % (tile_J * pe_dim) != 0);
-  const size_t K0 = dim_K_padded / (tile_K * pe_dim) + (dim_K_padded % (tile_K * pe_dim) != 0);
+  const size_t I0 = dim_I_padded / (tile_I * DIM) + (dim_I_padded % (tile_I * DIM) != 0);
+  const size_t J0 = dim_J_padded / (tile_J * DIM) + (dim_J_padded % (tile_J * DIM) != 0);
+  const size_t K0 = dim_K_padded / (tile_K * DIM) + (dim_K_padded % (tile_K * DIM) != 0);
+  // const size_t I0 = dim_I_padded / (tile_I) + (dim_I_padded % (tile_I) != 0);
+  // const size_t J0 = dim_J_padded / (tile_J) + (dim_J_padded % (tile_J) != 0);
+  // const size_t K0 = dim_K_padded / (tile_K) + (dim_K_padded % (tile_K) != 0);
 
-//   printf("I0: %d, J0: %d, K0: %d\n", I0, J0, K0);
+  // printf("I0: %d, J0: %d, K0: %d\n", I0, J0, K0);
 
   // These lines here are supposed to help us deal with when the dimensions of
   // the systolic array aren't divisible by the tiling factors
-  const size_t last_I = dim_I_padded % (tile_I*pe_dim) == 0 ? tile_I : (dim_I_padded/pe_dim) % tile_I;
-  const size_t last_J = dim_J_padded % (tile_J*pe_dim) == 0 ? tile_J : (dim_J_padded/pe_dim) % tile_J;
-  const size_t last_K = dim_K_padded % (tile_K*pe_dim) == 0 ? tile_K : (dim_K_padded/pe_dim) % tile_K;
+  const size_t last_I = dim_I_padded % (tile_I*DIM) == 0 ? tile_I : (dim_I_padded/DIM) % tile_I;
+  const size_t last_J = dim_J_padded % (tile_J*DIM) == 0 ? tile_J : (dim_J_padded/DIM) % tile_J;
+  const size_t last_K = dim_K_padded % (tile_K*DIM) == 0 ? tile_K : (dim_K_padded/DIM) % tile_K;
+  // const size_t last_I = tile_I;
+  // const size_t last_J = tile_J;
+  // const size_t last_K = tile_K;
 
   // These lines are supposed to figure out how much padding the hardware is
   // supposed to add for the final tile
@@ -848,12 +853,12 @@ static uint64_t tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         if (k0 != 0) {
           pre = NULL;
         } else {
-          size_t bias_row = repeating_bias ? 0 : i0*tile_I*pe_dim;
-          // pre = &(((acc_t*)D)[bias_row * stride_D + j0 * tile_J * pe_dim]);
-          pre = (int8_t*)D + (bias_row * stride_D + j0 * tile_J * pe_dim)*sizeof_D;
+          size_t bias_row = repeating_bias ? 0 : i0*tile_I*DIM;
+          // pre = &(((acc_t*)D)[bias_row * stride_D + j0 * tile_J * DIM]);
+          pre = (int8_t*)D + (bias_row * stride_D + j0 * tile_J * DIM)*sizeof_D;
         }
 
-        void * out = k0 == K0-1 ? (int8_t*)C + (i0*tile_I*pe_dim*stride_C + j0*tile_J*pe_dim)*sizeof_C : NULL;
+        void * out = k0 == K0-1 ? (int8_t*)C + (i0*tile_I*DIM*stride_C + j0*tile_J*DIM)*sizeof_C : NULL;
 
         const size_t I = i0 < I0-1 ? tile_I : last_I;
         const size_t J = j0 < J0-1 ? tile_J : last_J;
@@ -863,11 +868,11 @@ static uint64_t tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
         const size_t pad_J = j0 == J0-1 ? padding_J : 0;
         const size_t pad_K = k0 == K0-1 ? padding_K : 0;
 
-        const elem_t * a = a_transpose ? (A + k0*tile_K*pe_dim*stride_A + i0*tile_I*pe_dim)
-          : (A + i0*tile_I*pe_dim*stride_A + k0*tile_K*pe_dim);
+        const elem_t * a = a_transpose ? (A + k0*tile_K*DIM*stride_A + i0*tile_I*DIM)
+          : (A + i0*tile_I*DIM*stride_A + k0*tile_K*DIM);
 
-        const elem_t * b = b_transpose ? (B + j0*tile_J*pe_dim*stride_B + k0*tile_K*pe_dim)
-          : (B + k0*tile_K*pe_dim*stride_B + j0*tile_J*pe_dim);
+        const elem_t * b = b_transpose ? (B + j0*tile_J*DIM*stride_B + k0*tile_K*DIM)
+          : (B + k0*tile_K*DIM*stride_B + j0*tile_J*DIM);
 
         (*inner)(a, b, pre, out,
             A_scale_factor, B_scale_factor, D_scale_factor,
@@ -1169,8 +1174,7 @@ static uint64_t tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         bool full_C, bool low_D,
         uint8_t weightA,
         enum tiled_matmul_type_t tiled_matmul_type,
-        char *perm,
-        int pe_dim) {
+        char *perm) {
 
 #ifdef GEMMINI_ASSERTIONS
   // Make sure that the tiling factors make sense
@@ -1266,8 +1270,7 @@ static uint64_t tiled_matmul(size_t dim_I, size_t dim_J, size_t dim_K,
         full_C, low_D,
         weightA,
         (int)tiled_matmul_type,
-        perm,
-        pe_dim);
+        perm);
   } else /*if (tiled_matmul_type == CPU)*/ {
     matmul_cpu(transpose_A, transpose_B, dim_I, dim_J, dim_K,
             A, B, (const acc_t*) D, (elem_t*)C,
@@ -1395,8 +1398,7 @@ static void tiled_matmul_auto_inner(size_t dim_I, size_t dim_J, size_t dim_K,
         full_C, low_D,
         weightA,
         tiled_matmul_type,
-        "CKPQRSN",
-        DIM);
+        "CKPQRSN");
 
 #undef partition_rows
 #undef mats_in_partition
@@ -1869,8 +1871,7 @@ static void sp_tiled_conv_dosa(
         bool trans_weight_1203, bool trans_weight_0132,
 
         bool no_bias, bool no_pool, bool downsample, bool input_dilated,
-        bool dw,
-        int pe_dim, int spad_size, int acc_size) {
+        bool dw) {
 
   // When dw convs are true, we assume that kchs and ochs are 1
   if (dw) { kchs = 1; pochs = 1; }
@@ -1911,8 +1912,8 @@ static void sp_tiled_conv_dosa(
 #endif
 
   // Calculate spad address offsets
-  const int out_channels_per_bank = ochs / pe_dim + (ochs % pe_dim != 0);
-  const int in_channels_per_bank = kchs / pe_dim + (kchs % pe_dim != 0);
+  const int out_channels_per_bank = ochs / DIM + (ochs % DIM != 0);
+  const int in_channels_per_bank = kchs / DIM + (kchs % DIM != 0);
   const int B_rows = trans_weight_0132 ?
     in_channels_per_bank * kcols * krows * ochs :
     out_channels_per_bank * kcols * krows * kchs;
@@ -1921,8 +1922,8 @@ static void sp_tiled_conv_dosa(
   static uint32_t C_sp_addr_row = 0;
 
   const uint32_t A_sp_addr_start = 0;
-  const uint32_t bank_rows = (spad_size * 1024 / pe_dim) >> 1; // row size = pe_dim, 4 banks, double buffered
-  const uint32_t B_sp_addr_start = BANK_NUM * bank_rows - B_rows;
+  // const uint32_t bank_rows = (spad_size * 1024 / pe_dim) >> 1; // row size = pe_dim, 4 banks, double buffered
+  const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - B_rows;
   const uint32_t D_sp_addr_start = (1 << (ADDR_LEN - 1)) + D_sp_addr_row;
   const uint32_t C_sp_addr_start = (3 << (ADDR_LEN - 2)) + C_sp_addr_row;
 
@@ -2928,7 +2929,7 @@ static uint64_t tiled_conv_dosa(
                                     trans_weight_1203, trans_weight_0132,
 
                                     no_bias, no_pool, downsample, input_dilated,
-                                    false, 16, 128, 32);
+                                    false);
 
                                 // uint64_t cycles_so_far = read_cycle_gemminih() - tiled_conv_start_cycle;
                                 // if (cycles_so_far >= 400000000) {

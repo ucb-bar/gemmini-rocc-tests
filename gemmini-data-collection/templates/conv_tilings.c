@@ -194,7 +194,7 @@ int main() {
 
             WS,
             // "CRSKPQN");
-            PERM_STR, 16, 128, 32);
+            PERM_STR);
 
         gemmini_fence();
         unsigned long tiled_end = read_cycles();
