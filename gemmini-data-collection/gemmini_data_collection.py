@@ -7,26 +7,21 @@ def one_file(tests, pe_dim):
     Search TEMPLATE_FILE for KEYWORDS and replace respective keywords with REPLACEMENT. Write changes to NEW_FILE.
     Update Makefile with new filename for target.
     """
-    # Make conv file
-    with open('templates/conv_tilings.c', 'r') as file:
-        filedata = file.read()
-
     binaries = []
     for test_i, test in enumerate(tests):
         keywords, replacement, template_file, _ = test
         assert (len(keywords) == len(replacement)), "Number of keywords needs to be the same as number of replacement words"
 
         if template_file == "conv_template_map":
+            with open('templates/conv_tilings.c', 'r') as file:
+                filedata = file.read()
             new_file = "conv_tilings_" + str(test_i)
-            with open('../bareMetalC/'+new_file+'.c', 'w') as file:
-                file.write(filedata)
         elif template_file == "matmul_template_map":
             # Make matmul file
             with open('templates/matmul_tilings.c', 'r') as file:
                 filedata = file.read()
             new_file = "matmul_tilings_" + str(test_i)
 
-        print("Created " + new_file)
         binaries.append(new_file)
         filedata = filedata.replace("%NUM_LAYERS%", "1")
         filedata = filedata.replace("%PE_DIM%", str(pe_dim))
@@ -34,6 +29,7 @@ def one_file(tests, pe_dim):
             filedata = filedata.replace('%'+keywords[i]+'%', str(replacement[i]))
         with open('../bareMetalC/'+new_file+'.c', 'w') as file:
             file.write(filedata)
+        print("Created " + new_file)
 
     # Update Makefile
     with open('../bareMetalC/Makefile', 'r') as file:
