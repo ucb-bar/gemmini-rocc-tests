@@ -2,6 +2,10 @@ include $(abs_top_srcdir)/Makefrag
 
 tests = \
 	test \
+	lab2_mlp_baseline \
+	lab2_mlp_sp_weights \
+	lab2_mlp_sp_full \
+	lab2_mlp_unrolled \
 	mlp1 \
 	mlp2 \
 	mlp3 \
@@ -22,7 +26,7 @@ else
 endif
 
 BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
-GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_nn.h $(abs_top_srcdir)/include/gemmini_testutils.h
+GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_290_lab2.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_nn.h $(abs_top_srcdir)/include/gemmini_testutils.h
 
 CFLAGS := $(CFLAGS) \
 	-DPREALLOCATE=1 \
