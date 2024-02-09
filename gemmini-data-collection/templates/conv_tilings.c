@@ -198,12 +198,11 @@ int main() {
 
         gemmini_fence();
         unsigned long tiled_end = read_cycles();
-        // if (retval != 0) {
-        //     printf("Exit after %llu cycles\n\n", retval);
-        // } else {
-        //     printf("Gemmini tiled conv took %llu cycles\n\n", tiled_end - tiled_start);
-        // }
-
+        if (retval != 0) {
+            printf("Exit after %llu cycles\n\n", retval);
+        } else {
+            printf("Gemmini tiled conv took %llu cycles\n\n", tiled_end - tiled_start);
+        }
     }
     return 0;
 }
