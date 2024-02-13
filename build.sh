@@ -19,4 +19,3 @@ if [[ $(which riscv64-unknown-linux-gnu-gcc) ]] ; then
 else
     make -j BAREMETAL_ONLY=1 $@
 fi
-
