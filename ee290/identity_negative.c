@@ -59,7 +59,7 @@ int main() {
   // printf("Fence till Gemmini completes all memory operations\n");
   gemmini_fence();
 
-  // printf("Check whether \"In\" and \"Out\" matrices are identical\n");
+  printf("Check whether \"In\" and \"Out\" matrices are identical\n");
   if (!is_equal(Correct, Out)) {
     printf("Output matrix is not negative one multiplied by the input matrix!\n");
     printf("\"In\" matrix:\n");

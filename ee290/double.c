@@ -72,14 +72,14 @@ int main() {
   // Multiply A matrices with B matrices in Gemmini;
   gemmini_config_ex(WEIGHT_STATIONARY, NO_ACTIVATION, 0);
 
-  for (size_t n; n < N; n++) {
+  for (size_t n=0; n < N; n++) {
     gemmini_preload(B_sp_addr + n*DIM, C_sp_addr + n*DIM);
     gemmini_compute_preloaded(A_sp_addr + n*DIM, GARBAGE_ADDR);
   }
 
   // Move C matrices from Gemmini's scratchpad into main memory
   elem_t Out[N][DIM][DIM];
-  for (size_t n; n < N; n++) {
+  for (size_t n=0; n < N; n++) {
     gemmini_mvout(Out[n], C_sp_addr + n*DIM);
   }
 
