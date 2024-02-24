@@ -227,8 +227,8 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define gemmini_extended_mvout_spad(dst_addr, dst_stride, src_addr, cols, rows) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(dst_stride) << 32) | (uint64_t)(dst_addr), ((uint64_t)(rows) << (ADDR_LEN + 16)) | ((uint64_t)(cols) << ADDR_LEN) | (uint64_t)(src_addr), k_MVOUT_SPAD)
 
-#define gemmini_mvout_spad(dst_addr, src_addr, cols, rows) \
-  gemmini_extended_mvout_spad(dst_addr, 1, src_addr, cols, rows)
+#define gemmini_mvout_spad(dst_addr, src_addr) \
+  gemmini_extended_mvout_spad(dst_addr, 1, src_addr, DIM, DIM)
 
 #define gemmini_mvout(dram_addr, spad_addr) \
   gemmini_extended_mvout(dram_addr, spad_addr, DIM, DIM)
@@ -1050,6 +1050,7 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
           *c = scale_and_sat(sum, act, scale, bert_scale);
       }
 
+#ifdef HAS_NORMALIZATIONS
       if (act == LAYERNORM) {
         acc_t sum = 0;
         for (size_t j = 0; j < DIM_J; j++)
@@ -1107,6 +1108,7 @@ static void matmul_cpu(bool transA, bool transB, size_t DIM_I, size_t DIM_J, siz
           *c = scale_and_sat(c_buffer[j], act, factor, bert_scale);
         }
       }
+#endif
     }
   }
 }
