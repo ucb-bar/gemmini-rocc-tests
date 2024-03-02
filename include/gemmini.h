@@ -50,6 +50,9 @@
 #define k_LOOP_CONV_WS_CONFIG_5 20
 #define k_LOOP_CONV_WS_CONFIG_6 21
 
+#define k_PRELOAD_LUT1 23
+#define k_PRELOAD_LUT2 24
+
 #define CONFIG_EX 0
 #define CONFIG_LD 1
 #define CONFIG_ST 2
@@ -64,6 +67,8 @@
 #define LAYERNORM 2
 #define IGELU 3
 #define SOFTMAX 4
+
+#define USE_LUT 0
 
 #ifdef ELEM_T_IS_FLOAT
 elem_t elem_t_bits_to_elem_t(elem_t_bits x) {
@@ -239,9 +244,19 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
 #define gemmini_preload_zeros(C) \
   gemmini_preload(GARBAGE_ADDR, C)
 
+// preload lut
+#define gemmini_preload_lut1(A, B) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t) (A), (uint64_t) (B), k_PRELOAD_LUT1)
+
+#define gemmini_preload_lut2(A, B) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t) (A), (uint64_t) (B), k_PRELOAD_LUT2)
+
 // config
+#define gemmini_extended4_config_ex(dataflow, sys_act, sys_shift, use_lut, sys_acc_scale, C_stride, A_stride, A_transpose, B_transpose, set_only_strides) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)acc_scale_t_to_acc_scale_t_bits((acc_scale_t)sys_acc_scale) << 32) | ((uint64_t)(A_stride) << 16) | (B_transpose << 9) | (A_transpose << 8) | ((set_only_strides) << 7) | ((use_lut) << 5) | ((sys_act) << 3) | ((dataflow) << 2) | CONFIG_EX, ((uint64_t)(C_stride) << 48) | (sys_shift), k_CONFIG); \
+
 #define gemmini_extended3_config_ex(dataflow, sys_act, sys_shift, sys_acc_scale, C_stride, A_stride, A_transpose, B_transpose, set_only_strides) \
-    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)acc_scale_t_to_acc_scale_t_bits((acc_scale_t)sys_acc_scale) << 32) | ((uint64_t)(A_stride) << 16) | (B_transpose << 9) | (A_transpose << 8) | ((set_only_strides) << 7) | ((sys_act) << 3) | ((dataflow) << 2) | CONFIG_EX, ((uint64_t)(C_stride) << 48) | (sys_shift), k_CONFIG); \
+  gemmini_extended4_config_ex(dataflow, sys_act, sys_shift, USE_LUT, ACC_SCALE_IDENTITY, 1, A_stride, A_transpose, B_transpose, false)
 
 #define gemmini_extended2_config_ex(dataflow, sys_act, sys_shift, A_stride, A_transpose, B_transpose) \
   gemmini_extended3_config_ex(dataflow, sys_act, sys_shift, ACC_SCALE_IDENTITY, 1, A_stride, A_transpose, B_transpose, false)
@@ -250,7 +265,7 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
   gemmini_extended2_config_ex(dataflow, sys_act, sys_shift, A_stride, A_transpose, B_transpose)
 
 #define gemmini_config_ex(dataflow, sys_act, sys_shift) \
-    gemmini_extended_config_ex(dataflow, sys_act, sys_shift, 1, 0, 0)
+  gemmini_extended_config_ex(dataflow, sys_act, sys_shift, 1, 0, 0)
 
 // Note: The "pixel_repeats" parameter below is still experimental, andthere is
 // a high chance that it will be removed in future releases.
