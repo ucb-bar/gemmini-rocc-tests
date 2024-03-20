@@ -14,6 +14,7 @@ tests = \
 	matmul_os \
 	matmul_ws \
 	matmul \
+	matmul_spad \
 	raw_hazard \
 	aligned \
 	padded \

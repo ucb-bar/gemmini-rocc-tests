@@ -105,7 +105,7 @@ int main() {
       for (size_t n = 0; n < N; ++n) {
         // printf("Mvin n: %u\n", n);
         gemmini_mvin(In[n], acc_addr + n*DIM);
-        gemmini_mvout_spad(spad_addr + n*DIM, acc_addr + n*DIM, DIM, DIM);
+        gemmini_mvout_spad(spad_addr + n*DIM, acc_addr + n*DIM);
 //        gemmini_fence();
 //        printf("Mvout n: %u\n", n);
         gemmini_mvout(Out[n], spad_addr + n*DIM);
