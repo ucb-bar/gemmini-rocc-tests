@@ -1,6 +1,20 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
+	identity \
+	identity_negative \
+	double \
+	double_keep_weights \
+	double_keep_weights_then_change \
+	double_identity_swaps \
+	random_matmuls \
+	random_matmuls_copy\
+	large_matmul \
+	large_matmul_without_cpu \
+	large_padded_matmul \
+	very_large_matmul \
+	cifar_quant\
+	fix_matmuls\
 	mvin_mvout \
 	mvin_mvout_zeros \
 	mvin_mvout_stride \
