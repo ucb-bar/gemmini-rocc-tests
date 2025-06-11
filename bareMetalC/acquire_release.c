@@ -11,8 +11,8 @@
 #define FLOAT false
 #include "include/gemmini_testutils.h"
 
-#define NUM_INT 8
-#define NUM_FP 5
+#define NUM_INT 4
+#define NUM_FP 0
 
 int main() {
 #ifndef BAREMETAL

@@ -8,6 +8,7 @@ tests = \
 	multi_conv_data \
 	tiled_matmul_ws_perf \
 	tiled_matmul_ws \
+    tiled_matmul_ws_orig \
     tiled_matmul_ws_rr \
 	tiled_matmul_data \
 	conv_pool_data \
