@@ -94,16 +94,13 @@ int main() {
     printf("MAT_DIM_J: %d\n", MAT_DIM_J);
     printf("MAT_DIM_K: %d\n", MAT_DIM_K);
 
-    int i=0;
-    int cfgid=0;
-    bool acquired = rr_acquire_single(cfgid, i);
-    if(acquired){
-        printf("int gemmini %d acquired to cfgid %d\n", i, cfgid);
+    //int i=0;
+    //int cfgid=0;
+    //bool acquired = rr_acquire_single(cfgid, i);
+    //if(acquired){
+    //    printf("int gemmini %d acquired to cfgid %d\n", i, cfgid);
         //break;
-    }
-    rr_set_opc(XCUSTOM_ACC, i);
-
-    gemmini_flush(0);
+    //}
 
     static elem_t full_A[MAT_DIM_I][MAT_DIM_K] row_align(1);
     static elem_t full_B[MAT_DIM_K][MAT_DIM_J] row_align(1);
@@ -141,24 +138,44 @@ int main() {
       }
     }
 
+   for(int i = 0; i < 4; i++){
+        int cfgid = i;
+        bool acquired = rr_acquire_single(cfgid, i);
+        if(acquired){
+            printf("dense gemmini %d acquired to cfgid %d\n", i, cfgid);
+            //break;
+        }
+    }
+    
     printf("Starting gemmini matmul\n");
     unsigned long start = read_cycles();
 
-    tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
-            (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
-            MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
-            NN_floatToHalf(1), NN_floatToHalf(1), NN_floatToHalf(1),
-            NO_ACTIVATION, NN_floatToHalf(1), 0, false,
-            false, false,
-            false, !FULL_BIAS_WIDTH,
-            0,
-            WS);
+    for(int i = 0; i < 4; i++){
+      rr_set_opc(XCUSTOM_ACC, i);                                                                                                                                                                                                                              
+      gemmini_flush(0);
+
+      tiled_matmul_auto(MAT_DIM_I, MAT_DIM_J, MAT_DIM_K,
+              (elem_t*)full_A, (elem_t*)full_B, NO_BIAS ? NULL : &full_D[0][0], (elem_t*)full_C,
+              MAT_DIM_K, MAT_DIM_J, MAT_DIM_J, MAT_DIM_J,
+              NN_floatToHalf(1), NN_floatToHalf(1), NN_floatToHalf(1),
+              NO_ACTIVATION, NN_floatToHalf(1), 0, false,
+              false, false,
+              false, !FULL_BIAS_WIDTH,
+              0,
+              WS);
+    }
+
+    for(int i = 0; i < 4; i++){
+      rr_fence(i);
+    }
 
     unsigned long end = read_cycles();
     printf("Cycles taken: %u\n", end-start);
 
-    rr_release(i);
-
+    for(int i = 0; i < 4; i++){
+      rr_release(0);
+    }
+    
     printf("Starting slow CPU matmul\n");
     unsigned long cpu_start = read_cycles();
 
