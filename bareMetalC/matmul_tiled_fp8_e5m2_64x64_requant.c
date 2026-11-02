@@ -1,4 +1,4 @@
-// FP8 E5M2 (via LUT) 64x64 matmul, REQUANT output — standalone MxE5M2GemminiRocketConfig.
+// FP8 E5M2 (via LUT) 64x64 matmul, REQUANT output — standalone MxAllGemminiRocketConfig.
 // Same as the operand test, but the BF16 result is requantized to E5M2 4-bit LUT indices in the
 // scratchpad (this fires Amanda's FP8NearestFinder on the act-out projection). Reads the 4-bit
 // indices back and compares against the golden C_proj_hw (HW-tiled indices) + C_scales_row.

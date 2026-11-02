@@ -1,4 +1,4 @@
-// FP8 E4M3 at 4 elements/cycle (via LUT) 64x64 matmul, BF16 output — MxE4M3LutGemminiRocketConfig.
+// FP8 E4M3 at 4 elements/cycle (via LUT) 64x64 matmul, BF16 output — MxAllGemminiRocketConfig.
 // E4M3 stays format code 0 (FP8); the quad/LUT path is gated by lut_en, set by the mx_load_lut
 // instructions (G1). Operands are 4-bit LUT indices up-projected to the 8-bit E4M3 codebook, 2 per
 // operand lane, processed 4 elements/cycle by the 16-MACU mode9 PE. NO altfmt (E4M3, not E5M2).

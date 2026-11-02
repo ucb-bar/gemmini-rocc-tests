@@ -1,4 +1,4 @@
-// FP8 E5M2 (via LUT) 64x64 matmul, BF16 output — standalone MxE5M2GemminiRocketConfig.
+// FP8 E5M2 (via LUT) 64x64 matmul, BF16 output — standalone MxAllGemminiRocketConfig.
 // Mirrors the FP6 LUT test: operands are 4-bit LUT indices up-projected to the codebook, but the
 // codebook is 8-bit E5M2 (config_ex rs1[6] = mx_fp8_altfmt selects it in Spike; the RTL E5M2 build
 // specializes format code 1 to E5M2 at elaboration). Output is BF16 (out_mx_fmt=3), read back from

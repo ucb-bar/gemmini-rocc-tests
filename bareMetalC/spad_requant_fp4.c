@@ -1,4 +1,4 @@
-// SPAD_REQUANT FP4 test (MxE4M3Fp4VpuGemminiRocketConfig / Spike): a row-major BF16 tile mvin'd into the scratchpad is
+// SPAD_REQUANT FP4 test (MxFp4E3M2E4M3VpuGemminiRocketConfig / Spike): a row-major BF16 tile mvin'd into the scratchpad is
 // requantized into FP4 (E2M1) codes, two rows per byte (row 2r low nibble), flat [M/2][N] bytes and then FP4
 // operand-A tiled, + E8M0 scales in DRAM [M][N/32]. Checked bit-exact against the E8M0 block scale of mx_e4m3_ref.h
 // and the requantizer's BF16 -> E3M1 -> E2M1 element. No fences between mvin, requant and mvout.

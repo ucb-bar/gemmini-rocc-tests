@@ -1,4 +1,4 @@
-// Asymmetric FP6_E2M3-activation (quad LUT) x FP4-weight 64x64 matmul, BF16 output — MxAsymE2M3Fp4GemminiRocketConfig.
+// Asymmetric FP6_E2M3-activation (quad LUT) x FP4-weight 64x64 matmul, BF16 output — MxDim32AllAsymGemminiRocketConfig.
 // A (activation) = E2M3 via LUT (6-bit codebook; fp6/code1 + rs1[6]=mx_fp8_altfmt=1 -> E2M3 sub-format,
 // uselut=1 quad path). B (weight) = FP4 E2M1 DIRECT 4-bit codes (no LUT). Output BF16 (out_mx_fmt=3).
 #include <stdint.h>

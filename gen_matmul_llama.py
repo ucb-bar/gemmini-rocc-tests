@@ -155,6 +155,13 @@ SHAPES = [
     Shape("matmul_fp8_64x64_dim32.h", 64, 64, 64, "fp8", dim=32,
           guard="INCLUDE_MATMUL_FP8_64X64_DIM32_H",
           tests=("matmul_tiled_fp8_64x64_requant_dim32",)),
+    # E4M3 single (mode8) on the 4x4 (DIM=4) mesh: 4 col-tiles per widened acc row.
+    Shape("matmul_fp8_64x64_dim4.h", 64, 64, 64, "fp8", dim=4,
+          guard="INCLUDE_MATMUL_FP8_64X64_DIM4_H",
+          tests=("matmul_tiled_fp8_64x64_requant_dim4", "matmul_tiled_fp8_64x64_single_dim4")),
+    Shape("matmul_fp8_128x128_dim4.h", 128, 128, 128, "fp8", proj="mlp.down_proj", dim=4,
+          guard="INCLUDE_MATMUL_FP8_128X128_DIM4_H",
+          tests=("matmul_tiled_fp8_128x128_requant_dim4", "matmul_tiled_fp8_128x128_single_dim4")),
     Shape("matmul_fp8_96x32x32.h", 96, 32, 32, "fp8", proj="mlp.up_proj",
           guard="INCLUDE_MATMUL_FP8_96X32X32_H",
           tests=("matmul_tiled_fp8_96x32x32", "matmul_tiled_fp8_96x32x32_requant")),

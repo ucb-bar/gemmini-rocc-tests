@@ -1,4 +1,4 @@
-// VPU op test (MxE4M3VpuGemminiRocketConfig / Spike): random BF16 tiles -> mvin -> VPU_EXEC -> mvout, compared
+// VPU op test (MxFp4E3M2E4M3VpuGemminiRocketConfig / Spike): random BF16 tiles -> mvin -> VPU_EXEC -> mvout, compared
 // bit-exact against include/vpu_ref.h. No fences between mvin, VPU and mvout (ordering is the hardware's job);
 // VPU_FENCE=1 adds them, to separate an ordering failure from a datapath one.
 #include <stdint.h>

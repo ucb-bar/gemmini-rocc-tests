@@ -105,7 +105,7 @@
     ((uint64_t)(M) & 0xFFFF) | (((uint64_t)(N) & 0xFFFF) << 16) | (1ULL << 33) | ((uint64_t)((fp6) ? 1 : 0) << 34) | \
       ((uint64_t)((alt) ? 1 : 0) << 35) | (((uint64_t)(G) & 0x1F) << 36), k_SPAD_REQUANT)
 
-// VPU (MxE4M3VpuGemminiRocketConfig): BF16 ops on scratchpad rows (1 row = DIM/2 BF16, lane l = bytes 2l..2l+1).
+// VPU (MxFp4E3M2E4M3VpuGemminiRocketConfig): BF16 ops on scratchpad rows (1 row = DIM/2 BF16, lane l = bytes 2l..2l+1).
 // Ops/ref: include/vpu_ref.h. Addresses are scratchpad row addresses (as mvin); rows = src1 rows processed;
 // rlen = rows per logical row (reductions write one row per rlen rows at dst + g; bcast reads src2 once per rlen
 // rows); imm = BF16 scalar (ADDS/MULS). src/dst may alias only exactly (in place). Ordered against other Gemmini

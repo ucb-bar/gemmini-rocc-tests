@@ -168,6 +168,10 @@ mx_tests = \
 	matmul_tiled_fp8_64x64_single_dim8 \
 	matmul_tiled_fp8_128x128_single_dim8 \
 	matmul_tiled_fp8_64x64_requant_dim8 \
+	matmul_tiled_fp8_64x64_requant_dim4 \
+	matmul_tiled_fp8_64x64_single_dim4 \
+	matmul_tiled_fp8_128x128_requant_dim4 \
+	matmul_tiled_fp8_128x128_single_dim4 \
 	matmul_tiled_fp8_128x128_requant_dim8 \
 	matmul_tiled_fp8_e5m2_64x64_requant_dim8 \
 	matmul_tiled_fp6_e2m3_lut_64x64_requant_dim8 \

@@ -1,4 +1,4 @@
-// Asymmetric FP8_E5M2-activation x FP4-weight 64x64 matmul, BF16 output — MxAsymE5M2Fp4GemminiRocketConfig.
+// Asymmetric FP8_E5M2-activation x FP4-weight 64x64 matmul, BF16 output — MxDim8AllAsymGemminiRocketConfig.
 // A (activation) = E5M2 via LUT (8-bit codebook, config_ex rs1[6]=mx_fp8_altfmt selects E5M2 within
 // fp8/code0). B (weight) = FP4 E2M1 DIRECT 4-bit codes (no LUT). Output is BF16 (out_mx_fmt=3), read
 // back from the internal scratchpad and compared against the golden C_out_bf16.

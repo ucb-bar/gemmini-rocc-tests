@@ -1,4 +1,4 @@
-// Asymmetric FP8_E4M3-activation (quad LUT) x FP4-weight 64x64 matmul, BF16 output — MxAsymE4M3Fp4GemminiRocketConfig.
+// Asymmetric FP8_E4M3-activation (quad LUT) x FP4-weight 64x64 matmul, BF16 output — MxDim8AllAsymGemminiRocketConfig.
 // A (activation) = E4M3 via LUT (8-bit codebook; config_ex rs1[6]=mx_fp8_altfmt=0 selects E4M3 within
 // fp8/code0, uselut=1 enables the quad path). B (weight) = FP4 E2M1 DIRECT 4-bit codes (no LUT).
 // Output is BF16 (out_mx_fmt=3), read back from the internal scratchpad, compared to golden C_out_bf16.
