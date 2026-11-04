@@ -348,6 +348,9 @@ def mx_product_quantize_trunc(x: Tensor, exp_bits: int, frac_bits: int) -> Tenso
 
     # Reconstruct the value
     val_nz = (1.0 + frac_q) * torch.ldexp(torch.ones_like(frac_q), E)
+    # MxFPMul PROD_FLOOR: products below the product path's wrap point flush to zero (2^-16 for E4M3)
+    bias = (1 << (exp_bits - 1)) - 1
+    val_nz = torch.where(E < 2 - (frac_bits + 1) - 2 * bias, torch.zeros_like(val_nz), val_nz)
 
     out[nz] = torch.sign(x[nz]) * val_nz
     out[finite & (ax == 0)] = x[finite & (ax == 0)]

@@ -77,8 +77,8 @@ def precision_for_dim(dim: int):
     (Python frac = Scala sigWidth - 1): prod = MxFloat(4,4,4) uniform -> (4,3); acc = the DIM=16 ramp
     for rows 0-15, extra rows (DIM>16) bf16 MxFloat(8,8,4) -> (8,7). dim=16 reproduces the originals."""
     prod = [(4, 3)] * dim
-    if dim < 8:
-        return prod, [(8, 7)] * dim   # DIM=4: all acc rows bf16 (dim4MxFPConfig)
+    if dim <= 8:
+        return prod, [(8, 7)] * dim   # DIM=4/8: all acc rows bf16 (dim4MxFPConfig, dim8MxFPConfig)
     acc = ACC_PRECISION[:dim] if dim <= 16 else ACC_PRECISION + [(8, 7)] * (dim - 16)
     return prod, acc
 
@@ -168,6 +168,16 @@ SHAPES = [
     Shape("matmul_fp8_64x96x64.h", 64, 64, 96, "fp8", proj="attn.q_proj",
           guard="INCLUDE_MATMUL_FP8_64X96X64_H",
           tests=("matmul_tiled_fp8_64x96x64", "matmul_tiled_fp8_64x96x64_requant")),
+    # DIM=32 partial j-group (N=96 = 3 col-tiles: 2 acc chunks); operands re-used via --operands matmul_fp8_64x96x64.h
+    Shape("matmul_fp8_64x96x64_dim32.h", 64, 64, 96, "fp8", proj="attn.q_proj", dim=32,
+          guard="INCLUDE_MATMUL_FP8_64X96X64_DIM32_H",
+          tests=("matmul_tiled_fp8_64x96x64_dramloop_dim32",)),
+    Shape("matmul_fp8_64x96x64_dim8.h", 64, 64, 96, "fp8", proj="attn.q_proj", dim=8,
+          guard="INCLUDE_MATMUL_FP8_64X96X64_DIM8_H",
+          tests=("matmul_tiled_fp8_64x96x64_dramloop_dim8", "matmul_tiled_fp8_64x96x64_dim8")),
+    Shape("matmul_fp8_64x96x64_dim4.h", 64, 64, 96, "fp8", proj="attn.q_proj", dim=4,
+          guard="INCLUDE_MATMUL_FP8_64X96X64_DIM4_H",
+          tests=("matmul_tiled_fp8_64x96x64_dramloop_dim4", "matmul_tiled_fp8_64x96x64_dim4")),
     Shape("matmul_fp8_96x96x64.h", 96, 64, 96, "fp8", proj="attn.o_proj",
           guard="INCLUDE_MATMUL_FP8_96X96X64_H",
           tests=("matmul_tiled_fp8_96x96x64", "matmul_tiled_fp8_96x96x64_requant")),
@@ -219,6 +229,8 @@ SHAPES = [
 ]
 
 BY_NAME = {s.header.removeprefix("matmul_").removesuffix(".h"): s for s in SHAPES}
+# chain-only shapes (operands only; their single-matmul header name is taken by another generator)
+CHAIN_SHAPES = {"fp8_64x64_dim8": Shape("matmul_fp8_64x64_dim8.h", 64, 64, 64, "fp8", dim=8)}
 
 
 # --- operand sourcing --------------------------------------------------------------------------
@@ -327,10 +339,15 @@ def _rows(a: np.ndarray, width: int) -> str:
     return ",\n".join("    { " + ", ".join(fmt % int(v) for v in row) + " }" for row in a)
 
 
-def build(shape: Shape, verbose: bool = True) -> dict[str, np.ndarray]:
-    """Quantize, run the mesh model, requantize. Returns everything the header needs."""
+def build(shape: Shape, verbose: bool = True, operands: dict | None = None) -> dict[str, np.ndarray]:
+    """Quantize, run the mesh model, requantize. Returns everything the header needs.
+    operands: codes + scales from chain_operands_from_header (re-golden at another DIM; skips the capture)."""
     f = FORMATS[shape.fmt]
-    A, B = load_pair(shape)
+    if operands is None:
+        A, B = load_pair(shape)
+    else:
+        A = operand_values(f, operands["A_codes"], operands["A_scales"], "row")
+        B = operand_values(f, operands["B_codes"], operands["B_scales"], "col")
     # DEBUG (env-gated): synthetic operands so the mesh output is a known function of position, making any
     # waveform mis-read visible + traceable. Unit block scales fall out (block max is a power-of-2-friendly int).
     if os.environ.get("GEMMINI_ONES"):
@@ -361,6 +378,10 @@ def build(shape: Shape, verbose: bool = True) -> dict[str, np.ndarray]:
     # A is blocked along K (its columns); B along K (its rows).
     A_codes, A_scales, A_P = quantize(A, axis="row", f=f)     # scales [M][GK]
     B_codes, B_scales, B_P = quantize(B, axis="col", f=f)     # scales [GK][N]
+    if operands is not None:   # the header's own codes/scales; the mesh multiplies the decoded code values
+        e_bits, m_bits = __import__(f.model).parse_fp_spec(f.name)
+        A_codes, A_scales, B_codes, B_scales = (operands[k] for k in ("A_codes", "A_scales", "B_codes", "B_scales"))
+        A_P, B_P = _decode_codes(A_codes, e_bits, m_bits), _decode_codes(B_codes, e_bits, m_bits)
 
     # DEBUG (env-gated): keep the REAL (varied) operand codes but force all block scales to unit (E8M0 127),
     # so the acc = raw code products (no scale applied). Isolates whether the scale path is involved.
@@ -612,14 +633,18 @@ EMITTERS = {"fp8": emit, "fp4": emit_fp4}
 
 
 def _run_mesh(A_P: np.ndarray, A_scales: np.ndarray,
-              B_P: np.ndarray, B_scales: np.ndarray, f: Format) -> np.ndarray:
-    """A_P @ B_P through the bit-exact mesh model, block scales applied after the raw products."""
+              B_P: np.ndarray, B_scales: np.ndarray, f: Format, dim: int = 16) -> np.ndarray:
+    """A_P @ B_P through the bit-exact mesh model at mesh DIM, block scales applied after the raw products."""
     mm = __import__(f.model)
+    mm.TILE = dim
+    if hasattr(mm, "TILE_K"):
+        mm.TILE_K, mm.TILE_M, mm.TILE_N = dim, 2 * dim, 2 * dim
+    prod_prec, acc_prec = precision_for_dim(dim)
     C = mm.tiled_matmul_hwlike(
         torch.from_numpy(A_P), torch.from_numpy(B_P),
         torch.from_numpy(e8m0_decode(A_scales).astype(np.float32)),
         torch.from_numpy(e8m0_decode(B_scales).astype(np.float32)),
-        verbose=False, prod_precision_list=PROD_PRECISION, acc_precision_list=ACC_PRECISION,
+        verbose=False, prod_precision_list=prod_prec, acc_precision_list=acc_prec,
     ).numpy().astype(np.float32)
     if not np.isfinite(C).all():
         raise SystemExit("chain: mesh model produced non-finite output -- operands exceed the "
@@ -663,26 +688,58 @@ def load_B2(shape: Shape) -> np.ndarray:
     return np.ascontiguousarray(W_full[off:off + shape.N, :shape.K].T)   # [K][N]
 
 
-def build_chain(shape: Shape, verbose: bool = True) -> dict[str, np.ndarray]:
-    """MM1 = A1@B1 -> C1 (resident); MM2 = C1@B2 -> C2. Returns all header arrays. Any MX format."""
+def chain_operands_from_header(path: Path) -> dict[str, np.ndarray]:
+    """fp8 chain operands (codes + scales) parsed from an existing chain header, to re-golden at another DIM."""
+    import re
+    txt = Path(path).read_text()
+    def arr(name):
+        m = re.search(rf"\b{name}\[[^\]]*\]\[[^\]]*\](?: __attribute__\(\(aligned\(\d+\)\)\))? = \{{(.*?)\n\}};", txt, re.S)
+        if not m: raise SystemExit(f"{path}: no array {name}")
+        return np.array([[int(v, 16) for v in re.findall(r"0x[0-9a-fA-F]+", row)]
+                         for row in re.findall(r"\{([^{}]*)\}", m.group(1))], dtype=np.uint8)
+    d = dict(A_codes=arr("A_in"), A_scales=arr("A_scales_row").T.copy(), B_codes=arr("B_in"),
+             B_scales=arr("B_scales_col"))
+    if "B2_in[" in txt:
+        d.update(B2_codes=arr("B2_in"), B2_scales=arr("B2_scales_col"))
+    return d
+
+
+def operand_values(f: Format, codes: np.ndarray, scales: np.ndarray, axis: str) -> np.ndarray:
+    """Real values of header operands: decoded code * 2^(E8M0 - 127), scales per 32-block along K."""
+    e_bits, m_bits = __import__(f.model).parse_fp_spec(f.name)
+    s = (2.0 ** (scales.astype(np.float64) - 127)).astype(np.float32)
+    s = np.repeat(s, BLOCK, axis=1 if axis == "row" else 0)
+    return _decode_codes(codes, e_bits, m_bits) * s
+
+
+def build_chain(shape: Shape, verbose: bool = True, operands: dict | None = None) -> dict[str, np.ndarray]:
+    """MM1 = A1@B1 -> C1 (resident); MM2 = C1@B2 -> C2. Returns all header arrays. Any MX format.
+    operands: fp8 codes + scales from chain_operands_from_header (skips the TinyLlama capture)."""
     f = FORMATS[shape.fmt]
 
-    A1, B1 = load_pair(shape)
-    B2 = load_B2(shape)
-    if verbose:
-        print(f"  MM1 operands {shape.layer}/{shape.proj}  A1{A1.shape} B1{B1.shape}   "
-              f"MM2 B2{B2.shape} (W out-features {shape.N}..{2*shape.N})")
+    if operands is not None:
+        e_bits, m_bits = __import__(f.model).parse_fp_spec(f.name)
+        A1_codes, A1_scales, B1_codes, B1_scales = (operands[k] for k in ("A_codes", "A_scales", "B_codes", "B_scales"))
+        B2_codes, B2_scales = operands["B2_codes"], operands["B2_scales"]
+        A1_P, B1_P, B2_P = (_decode_codes(c, e_bits, m_bits) for c in (A1_codes, B1_codes, B2_codes))
+        if verbose: print(f"  operands from header: A1{A1_codes.shape} B1{B1_codes.shape} B2{B2_codes.shape}")
+    else:
+        A1, B1 = load_pair(shape)
+        B2 = load_B2(shape)
+        if verbose:
+            print(f"  MM1 operands {shape.layer}/{shape.proj}  A1{A1.shape} B1{B1.shape}   "
+                  f"MM2 B2{B2.shape} (W out-features {shape.N}..{2*shape.N})")
+        A1_codes, A1_scales, A1_P = quantize(A1, axis="row", f=f)   # [M][GK]
+        B1_codes, B1_scales, B1_P = quantize(B1, axis="col", f=f)   # [GK][N]
+        B2_codes, B2_scales, B2_P = quantize(B2, axis="col", f=f)   # [GK][N]
 
     # MM1 -------------------------------------------------------------------------------------
-    A1_codes, A1_scales, A1_P = quantize(A1, axis="row", f=f)   # [M][GK]
-    B1_codes, B1_scales, B1_P = quantize(B1, axis="col", f=f)   # [GK][N]
-    C1_bf16 = _run_mesh(A1_P, A1_scales, B1_P, B1_scales, f)
+    C1_bf16 = _run_mesh(A1_P, A1_scales, B1_P, B1_scales, f, shape.dim)
     C1_codes, C1_scales, C1_P = _requant(C1_bf16, f)           # C1_scales [M][N/32]
 
     # MM2: C1 (resident) @ B2. A2 fed exactly as the mesh reads C1 ---------------------------
-    B2_codes, B2_scales, B2_P = quantize(B2, axis="col", f=f)   # [GK][N]
     # A2_P = C1's code values; A2_scales = C1's output block scales ([M][N1/32] == [M][K2/32]).
-    C2_bf16 = _run_mesh(C1_P, C1_scales, B2_P, B2_scales, f)
+    C2_bf16 = _run_mesh(C1_P, C1_scales, B2_P, B2_scales, f, shape.dim)
     C2_codes, C2_scales, C2_P = _requant(C2_bf16, f)
 
     if verbose:
@@ -706,11 +763,11 @@ def emit_chain(shape: Shape, d: dict[str, np.ndarray]) -> Path:
 def _emit_chain_fp8(shape: Shape, d: dict[str, np.ndarray]) -> Path:
     """Emit include/matmul_fp8_<M>x<N>_chain.h -- MM1 operands, B2, and both C1 and C2 goldens."""
     f = FORMATS[shape.fmt]
-    stem = f"matmul_fp8_{shape.M}x{shape.N}_chain"
+    stem = f"matmul_fp8_{shape.M}x{shape.N}_chain" + ("" if shape.dim == 16 else f"_dim{shape.dim}")
     guard = f"INCLUDE_{stem.upper()}_H"
     path = HERE / "include" / f"{stem}.h"
     with open(path, "w") as fh:
-        fh.write(f"""// GENERATED by gen_matmul_llama.py chain_fp8_64x64 -- do not edit by hand.
+        fh.write(f"""// GENERATED by gen_matmul_llama.py chain_fp8_{shape.M}x{shape.N}{"" if shape.dim == 16 else f"_dim{shape.dim}"} -- do not edit by hand.
 //
 // CHAINED back-to-back fp8 matmul: C2 = (A1 @ B1) @ B2, all {f.name}. MM1's requantized fp8 output
 // C1 stays RESIDENT in the scratchpad and is reused as MM2's operand A; MM1's output block-scales
@@ -905,15 +962,19 @@ static const uint16_t C2_out_bf16[{M}][{N}] = {{
 
 def main() -> int:
     want = sys.argv[1:]
+    operands = None
+    if len(want) == 3 and want[1] == "--operands":   # <shape|chain_shape> --operands <header>
+        operands = chain_operands_from_header(Path(want[2]))
+        want = want[:1]
     if len(want) == 1 and want[0].startswith("chain_"):
         key = want[0].removeprefix("chain_")           # e.g. chain_fp8_64x64 -> fp8_64x64
-        if key not in BY_NAME:
-            raise SystemExit(f"unknown chain shape {key}; known: {sorted(k for k in BY_NAME)}")
-        shape = BY_NAME[key]
+        shape = BY_NAME.get(key) or CHAIN_SHAPES.get(key)
+        if shape is None:
+            raise SystemExit(f"unknown chain shape {key}; known: {sorted(BY_NAME) + sorted(CHAIN_SHAPES)}")
         t0 = time.time()
-        print(f"matmul_fp8_{shape.M}x{shape.N}_chain.h  CHAIN C2=(A1@B1)@B2  "
+        print(f"chain {key} (DIM {shape.dim})  CHAIN C2=(A1@B1)@B2  "
               f"M={shape.M} K={shape.K} N={shape.N} {FORMATS[shape.fmt].name}")
-        d = build_chain(shape)
+        d = build_chain(shape, operands=operands)
         p = emit_chain(shape, d)
         print(f"  wrote {p.relative_to(HERE)}  ({time.time() - t0:.1f}s)\n")
         return 0
@@ -928,7 +989,7 @@ def main() -> int:
     for shape in todo:
         t0 = time.time()
         print(f"{shape.header}  M={shape.M} K={shape.K} N={shape.N} {FORMATS[shape.fmt].name}")
-        d = build(shape)
+        d = build(shape, operands=operands)
         p = EMITTERS[shape.fmt](shape, d)
         print(f"  wrote {p.relative_to(HERE)}  ({time.time() - t0:.1f}s)\n")
     return 0

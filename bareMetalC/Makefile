@@ -91,6 +91,18 @@ mx_tests = \
 	matmul_tiled_fp8_128x128_chunked \
 	matmul_tiled_fp8_128x128_chunked4 \
 	matmul_tiled_fp8_128x128_dramloop \
+	matmul_tiled_fp8_64x64_dramloop_dim4 \
+	matmul_tiled_fp8_64x64_dramloop_dim8 \
+	matmul_tiled_fp8_64x64_dramloop_dim16 \
+	matmul_tiled_fp8_64x64_dramloop_dim32 \
+	matmul_tiled_fp8_64x96x64_dramloop_dim16 \
+	matmul_tiled_fp8_64x96x64_dramloop_dim32 \
+	matmul_tiled_fp8_64x96x64_dim32 \
+	matmul_tiled_fp8_64x96x64_dim8 \
+	matmul_tiled_fp8_64x96x64_dim4 \
+	matmul_tiled_fp8_64x96x64_dramloop_dim8 \
+	matmul_tiled_fp8_64x96x64_dramloop_dim4 \
+	matmul_tiled_fp8_64x96x64_requant_dim32 \
 	matmul_tiled_fp8_128x128_dramloop_nc \
 	matmul_tiled_fp8_128x128_dramloop_nc4 \
 	matmul_tiled_fp8_128x128_chunked_2d \
@@ -201,6 +213,8 @@ mx_tests = \
 	matmul_tiled_asym_e4m3s_e5m2_64x64_dim8 \
 	matmul_tiled_asym_e5m2_e4m3s_64x64_dim8 \
 	matmul_tiled_fp8_64x64_chain \
+	matmul_tiled_fp8_64x64_chain_dim32 \
+	matmul_tiled_fp8_64x64_chain_dim8 \
 	matmul_tiled_fp8_128x128_chain \
 	matmul_tiled_fp8_128x128_requant \
 	matmul_tiled_fp8_64x96x64 \
