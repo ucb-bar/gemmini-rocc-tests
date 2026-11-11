@@ -2416,6 +2416,12 @@ static void tiled_conv(
                                   dpad += dpad == 0 && (irow + irows_) % 2 != 1;
                                 }
 
+                                // with a split kernel, a window can lie entirely in the padding
+                                if (upad > irows_) upad = irows_;
+                                if (dpad > irows_ - upad) dpad = irows_ - upad;
+                                if (lpad > icols_) lpad = icols_;
+                                if (rpad > icols_ - lpad) rpad = icols_ - lpad;
+
                                 int krow_ = krow;
                                 int kcol_ = kcol;
                                 if (wrot180) {
@@ -2616,6 +2622,12 @@ static void tiled_conv_dw(
                             int rpad = icol + icols_ > in_col_dim ? icol + icols_ - in_col_dim : 0;
                             int upad = irow < 0 ? -irow : 0;
                             int dpad = irow + irows_ > in_row_dim ? irow + irows_ - in_row_dim : 0;
+
+                            // with a split kernel, a window can lie entirely in the padding
+                            if (upad > irows_) upad = irows_;
+                            if (dpad > irows_ - upad) dpad = irows_ - upad;
+                            if (lpad > icols_) lpad = icols_;
+                            if (rpad > icols_ - lpad) rpad = icols_ - lpad;
 
                             const elem_t * weights_slice = weights + (ch*kernel_dim + krow) * kernel_dim + kcol;
 
