@@ -62,6 +62,8 @@ def main():
     ap.add_argument("--K", type=int, default=64)
     ap.add_argument("--N", type=int, default=64)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--bf16-arith", action="store_true",
+                    help="Full BF16 PE products and adds (MxE4M3LutBf16Dim* configs); header suffix _bf16.")
     ap.add_argument("--header-path", type=str, default=None,
                     help="Output header path (default include/matmul_data_mx_lut_<fmt>_64x64[_dim32].h).")
     args = ap.parse_args()
@@ -78,6 +80,8 @@ def main():
     # Shape tag: <M>x<N> for square (M==N==K, e.g. 64x64), else <M>x<N>x<K> (e.g. 128x128x256).
     dim_suffix = "" if dim == 16 else f"_dim{dim}"
     shape_tag = f"{args.M}x{args.N}" if (args.M == args.N == args.K) else f"{args.M}x{args.N}x{args.K}"
+    if args.bf16_arith:
+        dim_suffix += "_bf16"
     default_name = f"include/matmul_data_mx_lut_{fmt}_{shape_tag}{dim_suffix}.h"
     # Guard-path prefix: reproduce the committed dim16 guard exactly; new dim!=16 headers use "include/".
     guard_prefix = DIM16_GUARD_PREFIX[fmt] if dim == 16 else ""
@@ -128,6 +132,8 @@ def main():
         if hasattr(fp8_matmul_model, attr):
             setattr(fp8_matmul_model, attr, {"TILE_K": dim, "TILE_M": 2 * dim, "TILE_N": 2 * dim}[attr])
     prod_prec, acc_prec = precision_for_dim(dim)
+    if args.bf16_arith:
+        prod_prec, acc_prec = [(8, 7)] * dim, [(8, 7)] * dim
 
     in_q = make_fp_quantizer(INPUT_SPEC, rounding="zero")
     A_in = in_q(lmd.A_fp)

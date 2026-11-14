@@ -313,6 +313,7 @@ def mx_product_saturate(x: Tensor, exp_bits: int, man_bits: int) -> Tensor:
     # Hardware saturation value: satFrac = 2^man - 2, at exponent bias+1
     sat_man = 2 ** man_bits - 2
     sat_val = (1.0 + sat_man / scale) * (2.0 ** (bias + 1))
+    sat_val = min(sat_val, torch.finfo(torch.float32).max)  # BF16 products (exp 8): 2^128 overflows fp32
     sign = torch.sign(x)
     ax = x.abs()
     return sign * torch.where(ax > max_normal, torch.full_like(ax, sat_val), ax)
@@ -460,6 +461,7 @@ def _mx_product_quantize_trunc_scalar(x: float, exp_bits: int, man_bits: int) ->
     max_normal = (2.0 ** emax) * (1.0 + max_mant / scale)
     sat_man = scale - 2
     sat_val = (1.0 + sat_man / scale) * (2.0 ** (bias + 1))
+    sat_val = min(sat_val, torch.finfo(torch.float32).max)  # BF16 products (exp 8): 2^128 overflows fp32
 
     if math.isinf(x):
         return -sat_val if math.copysign(1.0, x) < 0 else sat_val

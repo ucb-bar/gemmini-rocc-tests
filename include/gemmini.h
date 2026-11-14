@@ -67,6 +67,8 @@
 #define k_MX_LUT_DISABLE 30
 #define k_LOOP_WS_CONFIG_SCALES 31
 #define k_LOOP_WS_CONFIG_SCALE_STRIDES 32
+#define k_LOOP_WS_CONFIG_KMIX 36    // mixed-K loop: rs1 / rs2 = MXFP8 B DRAM base / row stride (the loop's B: low precision)
+#define k_LOOP_WS_CONFIG_KMASK 37   // mixed-K loop: per-K-block mask (1 = low precision), rs1 = bits 63:0, rs2 = 127:64
 #define k_LOOP_WS_CONFIG_LUTS 35   // rs1 / rs2 = act-in / weight codebooks DRAM addr (loop-managed, LUT half = loop slot)
 #define k_VPU_EXEC 33
 #define k_SPAD_REQUANT 34
@@ -538,6 +540,22 @@ static int ceil_divide_int(int a, int b){
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t)(A_sc_pitch), (uint64_t)(B_sc_pitch), k_LOOP_WS_CONFIG_SCALE_STRIDES) \
     gemmini_loop_ws(I, J, K, 0, 0, 0, A, B, NULL, C, A_stride, B_stride, 0, C_stride, \
                     false, false, false, false, ex_accumulate, NO_ACTIVATION, a_spad_id, b_spad_id, false) \
+  }
+
+// gemmini_loop_ws_mx for single x single (MXFP8) on the shared (act-quad) acc layout, DIM>=16 (LOOP_WS rs2[11]):
+// the same acc rows as single x quad (LUT/FP4) for the same C block. BF16 DRAM C only.
+#define LOOP_WS_SHARED_ACC (1ULL << 11)
+#define gemmini_loop_ws_mx_shared(I, J, K, A, B, C, A_stride, B_stride, C_stride, A_sc, B_sc, A_sc_pitch, B_sc_pitch, ex_accumulate, a_spad_id, b_spad_id) \
+  { \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t)(A_sc), (uint64_t)(B_sc), k_LOOP_WS_CONFIG_SCALES) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t)(A_sc_pitch), (uint64_t)(B_sc_pitch), k_LOOP_WS_CONFIG_SCALE_STRIDES) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, 0, ((uint64_t)(K) << 32) | ((uint64_t)(J) << 16) | (uint64_t)(I), k_LOOP_WS_CONFIG_BOUNDS) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_LOOP_WS_CONFIG_ADDRS_AB) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, NULL, C, k_LOOP_WS_CONFIG_ADDRS_DC) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A_stride, B_stride, k_LOOP_WS_CONFIG_STRIDES_AB) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, 0, C_stride, k_LOOP_WS_CONFIG_STRIDES_DC) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(a_spad_id) << 18) | ((uint64_t)(b_spad_id) << 16) | \
+                             ((uint64_t)(NO_ACTIVATION) << 8) | (ex_accumulate), LOOP_WS_SHARED_ACC, k_LOOP_WS) \
   }
 
 // Scratchpad loop with loop-managed metadata: the loop loads its own A/B scale slices (A_sc/B_sc, row pitch in bytes per

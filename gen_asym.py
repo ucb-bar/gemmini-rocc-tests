@@ -47,6 +47,7 @@ COMBOS = {
     ("fp6:e2m3", "fp6:e3m2"): ("e2m3_e3m2", "X", {}),
     ("fp6:e2m3", "fp8:e4m3"): ("e2m3_e4m3", "X", {}),
     ("fp6:e2m3", "fp8:e5m2"): ("e2m3_e5m2", "X", {}),
+    ("fp6:e2m3", "fp8:e4m3s"):("e2m3_e4m3s", None, {}),
     ("fp6:e2m3", "fp4"):      ("e2m3_fp4",  None, {}),
     ("fp6:e3m2", "fp6:e2m3"): ("e3m2_e2m3", "X", {}),
     ("fp6:e3m2", "fp8:e4m3"): ("e3m2_e4m3", "X", {}),
@@ -55,7 +56,10 @@ COMBOS = {
     ("fp8:e4m3", "fp6:e2m3"): ("e4m3_e2m3", "X", {}),
     ("fp8:e4m3", "fp6:e3m2"): ("e4m3_e3m2", "X", {}),
     ("fp8:e4m3", "fp8:e5m2"): ("e4m3_e5m2", "X", {}),
+    ("fp8:e4m3", "fp8:e4m3s"):("e4m3_e4m3s", None, {}),
     ("fp8:e4m3", "fp4"):      ("e4m3_fp4",  None, {}),
+    ("fp8:e4m3s", "fp6:e2m3"):("e4m3s_e2m3", None, {}),
+    ("fp8:e4m3s", "fp8:e4m3"):("e4m3s_e4m3", None, {}),
     ("fp8:e4m3s", "fp6:e3m2"):("e4m3s_e3m2", None, {}),
     ("fp8:e4m3s", "fp8:e5m2"):("e4m3s_e5m2", None, {}),
     ("fp8:e4m3s", "fp4"):     ("e4m3s_fp4", None, {}),
@@ -105,6 +109,12 @@ def main():
     ap.add_argument("--K", type=int, default=64)
     ap.add_argument("--N", type=int, default=64)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--requant", choices=("fp4",), default=None,
+                    help="Also emit the requantized output (C_out HW-tiled codes + C_scales_out) in this format.")
+    ap.add_argument("--lut-g", type=int, default=1,
+                    help="Codebook granularity: one LUT per 2^G rows (act) / cols (wei). 1 reproduces committed headers.")
+    ap.add_argument("--bf16-arith", action="store_true",
+                    help="Full BF16 PE products and adds (MxE4M3LutBf16Dim* configs); header suffix _bf16.")
     ap.add_argument("--header-path", type=str, default=None,
                     help="Output path (default ./include/matmul_data_asym_<combo>[_dim32].h).")
     args = ap.parse_args()
@@ -136,7 +146,7 @@ def main():
     SCALE_SPEC = "fpe8m0"
     LUT_INDEX_BITS = 4
     GROUP = 32
-    G = 1
+    G = args.lut_g
     A_TILE_M = 32
     K_TILE = 16
     DEV = torch.device("cpu")
@@ -144,9 +154,14 @@ def main():
 
     dim = args.dim
     dim_suffix = "" if dim == 16 else f"_dim{dim}"
+    if args.lut_g != 1:
+        dim_suffix += f"_g{args.lut_g}"
+    if args.bf16_arith:
+        dim_suffix += "_bf16"
     # Shape tag: empty for the default 64x64 (preserves committed names/guards), else _<M>x<N>x<K>.
     shape_tag = "" if (M == 64 and N == 64 and K == 64) else f"_{M}x{N}x{K}"
-    default_path = f"./include/matmul_data_asym_{basename}{shape_tag}{dim_suffix}.h"
+    rq_tag = f"_rq{args.requant}" if args.requant else ""
+    default_path = f"./include/matmul_data_asym_{basename}{shape_tag}{rq_tag}{dim_suffix}.h"
     HEADER = args.header_path if args.header_path is not None else default_path
 
     # ---- Inputs (identical for every combo at a given seed/shape) --------------------------
@@ -241,6 +256,8 @@ def main():
             setattr(fp8_matmul_model, attr,
                     {"TILE_K": dim, "TILE_M": 2 * dim, "TILE_N": 2 * dim}[attr])
     prod_prec, acc_prec = precision_for_dim(dim)
+    if args.bf16_arith:
+        prod_prec, acc_prec = [(8, 7)] * dim, [(8, 7)] * dim
     C_out_bf16 = tiled_matmul_hwlike(
         A_fp, B_fp, A_scales_row_q, B_scales_col_q,
         verbose=False, prod_precision_list=prod_prec, acc_precision_list=acc_prec,
@@ -278,6 +295,8 @@ def main():
     out = []
     out.append(f"#ifndef {guard}\n#define {guard}\n\n#include <stdint.h>\n\n")
     out.append(f"#define MATMUL_M   {M}\n#define MATMUL_K   {K}\n#define MATMUL_N   {N}\n")
+    if G != 1:
+        out.append(f"#define MATMUL_LUT_G {G}\n")
     if a_hw_tiled:
         out.append(f"#define MATMUL_GK  {Gk}\n#define MATMUL_GN  {N // GROUP}\n")
         out.append(f"#define A_TILE_M   {A_TILE_M}\n#define K_TILE     {K_TILE}\n\n")
@@ -400,6 +419,17 @@ def main():
     out.append(f"static const uint8_t B_scales_col[MATMUL_GK][MATMUL_N] = {{\n{fmt2d_hex(Bs_hex)}\n}};\n\n")
     out.append("// Golden output (scaled + bf16-accumulated), bf16\n")
     out.append(f"static const uint16_t C_out_bf16[MATMUL_M][MATMUL_N] = {{\n{fmt2d_hex(C_hex)}\n}};\n\n")
+    if args.requant:
+        # the FP4 requantizer model the fp4 requant goldens use (gen_matmul_llama._requant), on the BF16 golden
+        import numpy as np
+        from gen_matmul_llama import _requant, FORMATS
+        rf = FORMATS[args.requant]
+        rq_codes, rq_scales, _ = _requant(C_out_bf16.numpy().astype(np.float32), rf)
+        rq_hw = _a_indices_to_hw_layout(rq_codes.tolist(), rf.tile_m, rf.tile_k)
+        out.append(f"// Requant output: {rf.name} codes, HW-tiled [M/2][N] (bits[3:0] = row 2r, bits[7:4] = row 2r+1)\n")
+        out.append(f"static const uint8_t C_out[MATMUL_M / 2][MATMUL_N] = {{\n{fmt2d_u8(rq_hw)}\n}};\n\n")
+        out.append("// Requant output E8M0 block scales [M][N/32]\n")
+        out.append(f"static const uint8_t C_scales_out[MATMUL_M][MATMUL_N / 32] = {{\n{fmt2d_u8(rq_scales.tolist())}\n}};\n\n")
     out.append(f"#endif // {guard}\n")
 
     with open(HEADER, "w") as f:

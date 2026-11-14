@@ -83,6 +83,15 @@ mx_tests = \
 	matmul_tiled_fp8_e5m2_64x64_requant \
 	matmul_tiled_fp8_e4m3_lut_64x64 \
 	matmul_tiled_fp8_e4m3_lut_64x64_requant \
+	matmul_tiled_fp8_e4m3_lut_64x64_bf16 \
+	matmul_tiled_asym_e4m3s_e4m3_64x64_bf16 \
+	matmul_tiled_asym_e4m3s_e4m3_64x64_dim32_bf16 \
+	matmul_tiled_asym_e4m3s_fp4_64x64_bf16 \
+	matmul_tiled_asym_e4m3s_fp4_64x64_dim32_bf16 \
+	matmul_tiled_asym_e4m3s_e4m3_dramloop \
+	matmul_tiled_fp8_e4m3_lut_64x64_requant_bf16 \
+	matmul_tiled_fp8_e4m3_lut_64x64_dim32_bf16 \
+	matmul_tiled_fp8_e4m3_lut_64x64_requant_dim32_bf16 \
 	matmul_tiled_fp6_e2m3_lut_64x64 \
 	matmul_tiled_fp6_e2m3_lut_64x64_requant \
 	matmul_tiled_fp8_64x64_DRAMMvout \
@@ -165,6 +174,25 @@ mx_tests = \
 	matmul_tiled_asym_fp4_e2m3_64x64_dim32 \
 	matmul_tiled_asym_fp4_e5m2_64x64_dim32 \
 	matmul_tiled_asym_e5m2_e4m3s_64x64_dim32 \
+	matmul_tiled_asym_e5m2_e4m3s_64x96x64_dim32 \
+	matmul_tiled_asym_e5m2_e4m3s_64x64_rqfp4 \
+	matmul_tiled_asym_e5m2_e4m3s_64x64_rqfp4_dim32 \
+	matmul_tiled_asym_e5m2_e4m3s_64x64_rqfp4_dim8 \
+	matmul_tiled_asym_fp4_e4m3s_64x64_rqfp4 \
+	matmul_tiled_asym_fp4_e4m3s_64x64_rqfp4_dim32 \
+	matmul_tiled_asym_fp4_e4m3s_64x64_rqfp4_dim8 \
+	matmul_tiled_asym_e2m3_e4m3s_64x64_rqfp4 \
+	matmul_tiled_asym_e2m3_e4m3s_64x64_rqfp4_dim32 \
+	matmul_tiled_asym_e2m3_e4m3s_64x64_rqfp4_dim8 \
+	matmul_tiled_asym_fp4_e4m3s_64x64_dim32 \
+	matmul_tiled_asym_e3m2_e4m3s_64x64_dim32 \
+	matmul_tiled_asym_e2m3_e4m3s_64x64_dim32 \
+	matmul_tiled_asym_e4m3_e4m3s_64x64_dim32 \
+	matmul_tiled_asym_e4m3s_e4m3_64x64_dim32 \
+	matmul_tiled_asym_fp4_e4m3_64x64_dim32 \
+	matmul_tiled_asym_e3m2_e4m3_64x64_dim32 \
+	matmul_tiled_asym_e2m3_e4m3_64x64_dim32 \
+	matmul_tiled_asym_e4m3s_e2m3_64x64_dim32 \
 	matmul_tiled_asym_e4m3s_e3m2_64x64_dim32 \
 	matmul_tiled_asym_e4m3s_e5m2_64x64_dim32 \
 	matmul_tiled_asym_e4m3s_fp4_64x64_dim32 \
@@ -212,6 +240,15 @@ mx_tests = \
 	matmul_tiled_asym_e4m3s_e3m2_64x64_dim8 \
 	matmul_tiled_asym_e4m3s_e5m2_64x64_dim8 \
 	matmul_tiled_asym_e5m2_e4m3s_64x64_dim8 \
+	matmul_tiled_asym_fp4_e4m3s_64x64_dim8 \
+	matmul_tiled_asym_e3m2_e4m3s_64x64_dim8 \
+	matmul_tiled_asym_e2m3_e4m3s_64x64_dim8 \
+	matmul_tiled_asym_e4m3_e4m3s_64x64_dim8 \
+	matmul_tiled_asym_e4m3s_e4m3_64x64_dim8 \
+	matmul_tiled_asym_fp4_e4m3_64x64_dim8 \
+	matmul_tiled_asym_e3m2_e4m3_64x64_dim8 \
+	matmul_tiled_asym_e2m3_e4m3_64x64_dim8 \
+	matmul_tiled_asym_e4m3s_e2m3_64x64_dim8 \
 	matmul_tiled_fp8_64x64_chain \
 	matmul_tiled_fp8_64x64_chain_dim32 \
 	matmul_tiled_fp8_64x64_chain_dim8 \
@@ -258,6 +295,10 @@ mx_tests = \
 	matmul_tiled_asym_e3m2_e2m3_64x64 \
 	matmul_tiled_asym_e2m3_e5m2_64x64 \
 	matmul_tiled_asym_e2m3_e3m2_64x64 \
+	matmul_tiled_asym_e2m3_e4m3s_64x64 \
+	matmul_tiled_asym_e4m3_e4m3s_64x64 \
+	matmul_tiled_asym_e4m3s_e4m3_64x64 \
+	matmul_tiled_asym_e4m3s_e2m3_64x64 \
 
 # Pull the gate out of the generated header. Empty (tests stay int8-only) unless
 # the config built with use_mx_scaling=true.

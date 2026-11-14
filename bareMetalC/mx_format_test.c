@@ -56,12 +56,12 @@ int main(void) {
 
   // Test 4: Set mixed formats: act=FP8(0), wt=FP6(1), out=FP4(2)
   printf("Test 4: act=FP8(0), wt=FP6(1), out=FP4(2)\n");
-  gemmini_extended3_config_ex(0, 0, 0, ACC_SCALE_IDENTITY, 1, 1, 0, 0, false, 0, 1, 3, 0);
+  gemmini_extended3_config_ex(0, 0, 0, ACC_SCALE_IDENTITY, 1, 1, 0, 0, false, 0, 1, 3, 1);
   gemmini_fence();
 
   // Test 5: Set mixed formats: act=FP4(2), wt=FP8(0), out=FP6(1)
   printf("Test 5: act=FP4(2), wt=FP8(0), out=FP6(1)\n");
-  gemmini_extended3_config_ex(0, 0, 0, ACC_SCALE_IDENTITY, 1, 1, 0, 0, false, 2, 0, 1, 0);
+  gemmini_extended3_config_ex(0, 0, 0, ACC_SCALE_IDENTITY, 1, 1, 0, 0, false, 2, 0, 1, 1);
   gemmini_fence();
 
   // Test 6: Verify uselut bit works too
