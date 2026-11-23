@@ -223,6 +223,6 @@ int main() {
     }
   }
 
+  printf("PASS\n");
   exit(0);
 }
-

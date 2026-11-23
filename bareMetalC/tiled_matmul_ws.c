@@ -165,17 +165,19 @@ int main() {
 #endif
 
 #if CHECK_RESULT == 1
-    if (!full_is_equal(full_C, gold)) {
-      printf("C:\n");
-      full_printMatrix(full_C);
-      printf("Gold:\n");
-      full_printMatrix(gold);
-      printf("\n");
-
-      exit(1);
+    {
+      int errors = 0;
+      for (size_t i = 0; i < MAT_DIM_I; ++i)
+        for (size_t j = 0; j < MAT_DIM_J; ++j)
+          if (full_C[i][j] != gold[i][j]) {
+            printf("MISMATCH [%d][%d]: got %d, expected %d\n", i, j, full_C[i][j], gold[i][j]);
+            errors++;
+          }
+      if (errors) exit(1);
     }
 #endif
 
+  printf("PASS\n");
   exit(0);
 }
 

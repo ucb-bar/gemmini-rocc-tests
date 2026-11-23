@@ -60,6 +60,135 @@
 #define k_MVOUT_SPAD 23
 #define k_LOOP_WS_CONFIG_SPAD_AB 24
 #define k_LOOP_WS_CONFIG_SPAD_C 25
+#define CONFIG_SCALE_MEM 26
+#define k_MX_LOAD_SCALES 27
+#define k_MX_READ_SMEM 28
+#define k_MX_LOAD_LUT  29
+#define k_MX_LUT_DISABLE 30
+#define k_LOOP_WS_CONFIG_SCALES 31
+#define k_LOOP_WS_CONFIG_SCALE_STRIDES 32
+#define k_LOOP_WS_CONFIG_KMIX 36    // mixed-K loop: rs1 / rs2 = MXFP8 B DRAM base / row stride (the loop's B: low precision)
+#define k_LOOP_WS_CONFIG_KMASK 37   // mixed-K loop: per-K-block mask (1 = low precision), rs1 = bits 63:0, rs2 = 127:64
+#define k_LOOP_WS_CONFIG_KMIX_A 39  // mixed-K loop, act side: rs1 = A base of the plain (kmask 0) K-blocks (E4M3-single, the loop's A stride); rs2[63:62] = their direct FP6 {direct, alt}
+#define k_MX_SCALE_FMT 38           // MX_FLEX_SCALES builds: block-scale formats, see gemmini_mx_scale_fmt
+#define k_LOOP_WS_CONFIG_LUTS 35   // rs1 / rs2 = act-in / weight codebooks DRAM addr (loop-managed, LUT half = loop slot)
+#define k_VPU_EXEC 33
+#define k_SPAD_REQUANT 34
+
+// SPAD_REQUANT: row-major BF16 tile (M x N) at spad row `src` (row m starts at src + m*N/8) -> E4M3 codes at `dst`
+// (tiled = 0: flat row-major, N/16 spad rows per tile row; 1: operand-A tile layout dst + (i*N/16 + kt)*16 + r) and
+// one E8M0 per 32 values along a row, written row-major [M][N/32] to `scale_dram` (always written; < 2^33) and, if
+// `resident`, into the act-scale window as [N/32][M] for the next matmul. No CONFIG_SCALE_MEM needed.
+// N % 32 == 0, M % 8 == 0, M*N/32 a multiple of 32 and <= 2048. Ordered by the RS (4th queue).
+// Row-address field width F of SPAD_REQUANT / VPU_EXEC (the params header's SPAD_ROW_ADDR_BITS: 14, 15 at DIM=8).
+#ifndef SPAD_ROW_ADDR_BITS
+#define SPAD_ROW_ADDR_BITS 14
+#endif
+#define GEMMINI_RA_MASK ((1ULL << SPAD_ROW_ADDR_BITS) - 1)
+// rs1 = src[F-1:0] | dst[2F-1:F] | tiled[2F] | resident[2F+1] | scale DRAM addr from bit 2F+2 (33 bits at F 14, 32 at 15)
+#define GEMMINI_SR_RS1(dst, src, tiled, scale_dram, resident) \
+  (((uint64_t)(src) & GEMMINI_RA_MASK) | (((uint64_t)(dst) & GEMMINI_RA_MASK) << SPAD_ROW_ADDR_BITS) | \
+   ((uint64_t)((tiled) ? 1 : 0) << (2 * SPAD_ROW_ADDR_BITS)) | ((uint64_t)((resident) ? 1 : 0) << (2 * SPAD_ROW_ADDR_BITS + 1)) | \
+   (((uint64_t)(scale_dram) & (SPAD_ROW_ADDR_BITS == 14 ? 0x1FFFFFFFFULL : 0xFFFFFFFFULL)) << (2 * SPAD_ROW_ADDR_BITS + 2)))
+#define gemmini_spad_requant(dst, src, M, N, tiled, scale_dram, resident) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, \
+    GEMMINI_SR_RS1(dst, src, tiled, scale_dram, resident), \
+    ((uint64_t)(M) & 0xFFFF) | (((uint64_t)(N) & 0xFFFF) << 16), k_SPAD_REQUANT)
+// FP4 (E2M1) output: 2 rows per byte (row 2r low nibble) -- flat [M/2][N] bytes or tiled as the FP4 operand A
+#define gemmini_spad_requant_fp4(dst, src, M, N, tiled, scale_dram, resident) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, \
+    GEMMINI_SR_RS1(dst, src, tiled, scale_dram, resident), \
+    ((uint64_t)(M) & 0xFFFF) | (((uint64_t)(N) & 0xFFFF) << 16) | (1ULL << 32), k_SPAD_REQUANT)
+
+// LUT output: row m's 4-bit index into output codebook (act-out LUT) m >> G of the LUT format fp6 (1: FP6 class, 0: FP8
+// class) / alt (FP6: E2M3 else E3M2; FP8: E5M2 else E4M3-quad); packed 2 rows per byte as FP4. Codebooks loaded with
+// MX_LOAD_LUT sel 2 beforehand.
+#define gemmini_spad_requant_lut(dst, src, M, N, tiled, scale_dram, resident, fp6, alt, G) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, \
+    GEMMINI_SR_RS1(dst, src, tiled, scale_dram, resident), \
+    ((uint64_t)(M) & 0xFFFF) | (((uint64_t)(N) & 0xFFFF) << 16) | (1ULL << 33) | ((uint64_t)((fp6) ? 1 : 0) << 34) | \
+      ((uint64_t)((alt) ? 1 : 0) << 35) | (((uint64_t)(G) & 0x1F) << 36), k_SPAD_REQUANT)
+
+// VPU (MxFp4E3M2E4M3VpuGemminiRocketConfig): BF16 ops on scratchpad rows (1 row = DIM/2 BF16, lane l = bytes 2l..2l+1).
+// Ops/ref: include/vpu_ref.h. Addresses are scratchpad row addresses (as mvin); rows = src1 rows processed;
+// rlen = rows per logical row (reductions write one row per rlen rows at dst + g; bcast reads src2 once per rlen
+// rows); imm = BF16 scalar (ADDS/MULS). src/dst may alias only exactly (in place). Ordered against other Gemmini
+// commands by the reservation station (4th queue, row-range dependencies); gemmini_fence() waits for it.
+#define gemmini_vpu(op, dst, src1, src2, rows, rlen, bcast, imm) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, \
+    ((uint64_t)(src1) & GEMMINI_RA_MASK) | (((uint64_t)(src2) & GEMMINI_RA_MASK) << SPAD_ROW_ADDR_BITS) | \
+      (((uint64_t)(dst) & GEMMINI_RA_MASK) << (2 * SPAD_ROW_ADDR_BITS)) | (((uint64_t)(rows) & 0xFFFF) << (3 * SPAD_ROW_ADDR_BITS)), \
+    ((uint64_t)(op) & 0xF) | ((uint64_t)((bcast) ? 1 : 0) << 4) | (((uint64_t)(rlen) & 0x3FF) << 5) | \
+      (((uint64_t)(imm) & 0xFFFF) << 16), \
+    k_VPU_EXEC)
+#define gemmini_vpu_binary(op, dst, src1, src2, rows) gemmini_vpu(op, dst, src1, src2, rows, 1, 0, 0)
+#define gemmini_vpu_scalar(op, dst, src1, imm, rows)  gemmini_vpu(op, dst, src1, 0, rows, 1, 0, imm)
+#define gemmini_vpu_unary(op, dst, src1, rows)        gemmini_vpu(op, dst, src1, 0, rows, 1, 0, 0)
+#define gemmini_vpu_reduce(op, dst, src1, rows, rlen) gemmini_vpu(op, dst, src1, 0, rows, rlen, 0, 0)
+#define gemmini_vpu_bcast(op, dst, src1, src2, rows, rlen) gemmini_vpu(op, dst, src1, src2, rows, rlen, 1, 0)
+// EXPSUM (op 13, optional VpuParams.expSum): dst = exp(src1 - src2[row-broadcast]); sums[g] = row sum of logical row g
+#define gemmini_vpu_expsum(dst, src1, src2, sums, rows, rlen) gemmini_vpu(13, dst, src1, src2, rows, rlen, 1, sums)
+
+// Load num_luts LUT codebooks from DRAM. Each entry is `entry_bits` wide (the DATATYPE being loaded:
+// FP6/E2M3 = 6, FP8 E5M2 = 8); 16 entries per codebook, LE-packed. The HW unpacks this native codebook
+// into the accelerator's physical LUT slots, so the codebook packing is config-independent.
+//   rs2 = [39:34] entry_bits | [33:32] sel | [31:0] num_luts.  sel: 0=B(weight),1=A(act),2=C(output)
+#define gemmini_mx_load_lut_dt(dram_addr, num_luts, sel, entry_bits) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t)(dram_addr), \
+    ((uint64_t)(entry_bits) << 34) | ((uint64_t)(sel) << 32) | ((uint64_t)(num_luts) & 0xFFFFFFFFu), \
+    k_MX_LOAD_LUT)
+
+// Back-compat: the datatype defaults to FP6 (6-bit codes), so existing FP6 tests are unchanged.
+#define gemmini_mx_load_lut(dram_addr, num_luts, sel) \
+  gemmini_mx_load_lut_dt(dram_addr, num_luts, sel, 6)
+
+// Turn OFF runtime LUT usage for subsequent matmuls (MX_LOAD_LUT turns it back ON; default off).
+#define gemmini_mx_lut_disable() \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, 0, 0, k_MX_LUT_DISABLE)
+
+// Block-scale formats (MX_FLEX_SCALES builds; a no-op otherwise). fmt: MX_SFMT_E8M0, MX_SFMT_E8RNE, or X = 2..7 for
+// eXmY (X exponent bits above the signed base, 8-X mantissa bits). a/w: the A/B scales the matmul reads; out: the
+// scales the requantizer writes. Takes effect immediately: gemmini_fence() before it.
+#define MX_SFMT_E8M0 0
+#define MX_SFMT_E8RNE 1
+#define gemmini_mx_scale_fmt(a_fmt, a_base, w_fmt, w_base, out_fmt, out_base) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, \
+    ((uint64_t)((a_fmt) & 7) | ((uint64_t)((w_fmt) & 7) << 3) | ((uint64_t)((out_fmt) & 7) << 6)), \
+    ((uint64_t)((uint8_t)(a_base)) | ((uint64_t)((uint8_t)(w_base)) << 8) | ((uint64_t)((uint8_t)(out_base)) << 16)), \
+    k_MX_SCALE_FMT)
+
+#define gemmini_mx_load_scales(dram_addr, len, sel) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t)(dram_addr), \
+    ((uint64_t)(sel) << 32) | ((uint64_t)(len) & 0xFFFFFFFFu), \
+    k_MX_LOAD_SCALES)
+
+// 2-D form: `rows` rows of `row_bytes`, DRAM rows `pitch` bytes apart (0 = contiguous), landing contiguously
+// from scale-mem byte offset `dest` (e.g. 4096 = the second half). All 8B-aligned.
+#define gemmini_mx_load_scales_2d(dram_addr, row_bytes, rows, pitch, dest, sel) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(dram_addr) & 0xFFFFFFFFFFULL) | ((uint64_t)(pitch) << 40), \
+    ((uint64_t)(rows) << 46) | ((uint64_t)(dest) << 33) | ((uint64_t)(sel) << 32) | ((uint64_t)(row_bytes) & 0xFFFFFFFFu), \
+    k_MX_LOAD_SCALES)
+
+// Managed scale halves from software (what the loop unit does for native loops). A GATED load (rs2[54]) starts only
+// once its half (dest bit 12) is FREE and marks it LOADED; a MANAGED config (CONFIG_SCALE_MEM rs2[17]) applies only
+// with the execute unit drained and its weight half LOADED + landed, marks that half INUSE and frees the other one.
+// act_in_place (rs2[18]) skips the act-half check (scales already resident). Alternate halves per matmul.
+#define gemmini_mx_load_scales_2d_gated(dram_addr, row_bytes, rows, pitch, dest, sel) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(dram_addr) & 0xFFFFFFFFFFULL) | ((uint64_t)(pitch) << 40), \
+    (1ULL << 54) | ((uint64_t)(rows) << 46) | ((uint64_t)(dest) << 33) | ((uint64_t)(sel) << 32) | \
+    ((uint64_t)(row_bytes) & 0xFFFFFFFFu), k_MX_LOAD_SCALES)
+#define gemmini_mxquant_config_mvout_managed(dram_addr, i_bound, j_bound, k_bound, scale_act_sel, scale_w_sel, \
+                                             lut_update_granularity, act_in_place) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, \
+   ((uint64_t)(scale_w_sel) << 61) | ((uint64_t)(scale_act_sel) << 60) | ((uint64_t)(k_bound) << 51) | \
+   ((uint64_t)(j_bound) << 42) | ((uint64_t)(i_bound) << 33) | (uint64_t)(dram_addr), \
+    ((uint64_t)((act_in_place) ? 1 : 0) << 18) | (1ULL << 17) | ((uint64_t)(lut_update_granularity) & 0xFFFF), \
+    CONFIG_SCALE_MEM)
+
+#define gemmini_mx_read_smem(dram_addr, smem_off_bf16, num_bf16) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t)(dram_addr), \
+    ((uint64_t)(num_bf16) << 32) | ((uint64_t)(smem_off_bf16) & 0xFFFFFFFFu), \
+    k_MX_READ_SMEM)
 
 #define CONFIG_EX 0
 #define CONFIG_LD 1
@@ -206,6 +335,31 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
   ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, funct)
 
 // mvin and mvout
+
+#define gemmini_mxquant_config_mvout(dram_addr, i_bound, j_bound, k_bound, scale_act_sel, scale_w_sel, lut_update_granularity) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, \
+   ((uint64_t)(scale_w_sel) << 61) | ((uint64_t)(scale_act_sel) << 60) |  ((uint64_t)(k_bound) << 51) | ((uint64_t)(j_bound) << 42) | ((uint64_t)(i_bound) << 33) | (uint64_t)(dram_addr), \
+    (uint64_t)(lut_update_granularity) & 0xFFFF, CONFIG_SCALE_MEM)
+
+// Same config, but rs2[16] = 1: the execute unit applies it only once every MX_LOAD_SCALES already issued into
+// the selected act/wgt halves has landed -- replaces the gemmini_fence() after the scale loads.
+#define gemmini_mxquant_config_mvout_wait(dram_addr, i_bound, j_bound, k_bound, scale_act_sel, scale_w_sel, lut_update_granularity) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, \
+   ((uint64_t)(scale_w_sel) << 61) | ((uint64_t)(scale_act_sel) << 60) |  ((uint64_t)(k_bound) << 51) | ((uint64_t)(j_bound) << 42) | ((uint64_t)(i_bound) << 33) | (uint64_t)(dram_addr), \
+    (1ULL << 16) | ((uint64_t)(lut_update_granularity) & 0xFFFF), CONFIG_SCALE_MEM)
+
+// C8.3 scale residency: identical to gemmini_mxquant_config_mvout but sets rs1 bit 62
+// (MX_SCALE_RESIDENT). Both Spike (mxquant_config_mvout handler) and RTL (ExecuteController
+// CONFIG_SCALE_MEM decode -> io.mx.scale_resident) read this bit and route the requantizer's
+// output activation block-scales into the on-chip act-scale window (transposed [GN][M]) so the
+// next matmul reads its A-scales in place -- no DRAM round-trip / SW reload. bit 62 is unused by
+// the plain macro (rs1 fields: dram 0-32, tiles_I 33-41, tiles_J 42-50, tiles_K 51-59,
+// scale_act_sel 60, scale_wgt_sel 61), so the default macro is bit-for-bit unchanged.
+#define gemmini_mxquant_config_mvout_resident(dram_addr, i_bound, j_bound, k_bound, scale_act_sel, scale_w_sel, lut_update_granularity) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, \
+   (1ULL << 63) | ((uint64_t)(scale_w_sel) << 61) | ((uint64_t)(scale_act_sel) << 60) |  ((uint64_t)(k_bound) << 51) | ((uint64_t)(j_bound) << 42) | ((uint64_t)(i_bound) << 33) | (uint64_t)(dram_addr), \
+    (uint64_t)(lut_update_granularity) & 0xFFFF, CONFIG_SCALE_MEM)
+
 #define gemmini_extended_mvin(dram_addr, spad_addr, cols, rows) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, dram_addr, ((uint64_t)(rows) << (ADDR_LEN + 16)) | ((uint64_t)(cols) << ADDR_LEN) | (spad_addr), k_MVIN)
 
@@ -257,11 +411,28 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
   gemmini_preload(GARBAGE_ADDR, C)
 
 // config
-#define gemmini_extended3_config_ex(dataflow, sys_act, sys_shift, sys_acc_scale, C_stride, A_stride, A_transpose, B_transpose, set_only_strides) \
-    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)acc_scale_t_to_acc_scale_t_bits((acc_scale_t)sys_acc_scale) << 32) | ((uint64_t)(A_stride) << 16) | (B_transpose << 9) | (A_transpose << 8) | ((set_only_strides) << 7) | ((sys_act) << 3) | ((dataflow) << 2) | CONFIG_EX, ((uint64_t)(C_stride) << 48) | (sys_shift), k_CONFIG); \
+// RS1: [63:32] acc_scale | [31:16] a_stride | [15:14] out_mx_fmt | [13:12] wgt_mx_fmt | [11:10] act_mx_fmt | [9] b_transpose | [8] a_transpose | [7] set_only_strides | [6] spacer | [5] uselut | [4:3] activation | [2] dataflow | [1:0] cmd_type
+// RS2: [63:48] c_stride | [47:32] relu6_shift | [31:0] in_shift
+#define gemmini_extended3_config_ex(dataflow, sys_act, sys_shift, sys_acc_scale, C_stride, A_stride, A_transpose, B_transpose, set_only_strides, act_mx_fmt, wgt_mx_fmt, out_mx_fmt, uselut) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, \
+        ((uint64_t)acc_scale_t_to_acc_scale_t_bits((acc_scale_t)sys_acc_scale) << 32) | \
+        ((uint64_t)(A_stride) << 16) | \
+        ((uint64_t)(out_mx_fmt) << 14) | \
+        ((uint64_t)(wgt_mx_fmt) << 12) | \
+        ((uint64_t)(act_mx_fmt) << 10) | \
+        ((uint64_t)(B_transpose) << 9) | \
+        ((uint64_t)(A_transpose) << 8) | \
+        ((uint64_t)(set_only_strides) << 7) | \
+        ((uint64_t)(uselut) << 5) | \
+        ((uint64_t)(sys_act) << 3) | \
+        ((uint64_t)(dataflow) << 2) | \
+        CONFIG_EX, \
+        ((uint64_t)(C_stride) << 48) | (uint64_t)(uint32_t)(sys_shift), \
+        k_CONFIG)
+
 
 #define gemmini_extended2_config_ex(dataflow, sys_act, sys_shift, A_stride, A_transpose, B_transpose) \
-  gemmini_extended3_config_ex(dataflow, sys_act, sys_shift, ACC_SCALE_IDENTITY, 1, A_stride, A_transpose, B_transpose, false)
+  gemmini_extended3_config_ex(dataflow, sys_act, sys_shift, ACC_SCALE_IDENTITY, 1, A_stride, A_transpose, B_transpose, false, 0, 0, 0, 0)
 
 #define gemmini_extended_config_ex(dataflow, sys_act, sys_shift, A_stride, A_transpose, B_transpose) \
   gemmini_extended2_config_ex(dataflow, sys_act, sys_shift, A_stride, A_transpose, B_transpose)
@@ -314,6 +485,11 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
     uint32_t _placeholder; \
     ROCC_INSTRUCTION(XCUSTOM_ACC, rd, config_reg, _placeholder, k_COUNTER) \
   }
+
+// -DGEMMINI_MMIO: commands and fence through Radiance's MMIO registers (include/gemmini_mmio.h)
+#ifdef GEMMINI_MMIO
+#include "include/gemmini_mmio.h"
+#endif
 
 // Read counter
 static uint32_t counter_read(size_t index) {
@@ -371,6 +547,52 @@ static int ceil_divide_int(int a, int b){
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A_stride, B_stride, k_LOOP_WS_CONFIG_STRIDES_AB) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, D_stride, C_stride, k_LOOP_WS_CONFIG_STRIDES_DC) \
     ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(a_spad_id) << 18) | ((uint64_t)(b_spad_id) << 16) | ((uint64_t)(act) << 8) | ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate), ((is_resadd) << 2) | ((B_transpose) << 1) | (A_transpose), k_LOOP_WS) \
+  }
+
+// Native loop with loop-managed MX scales: the loop loads its own A/B scale slices ([K/32][I*DIM] rows of pitch
+// A_sc_pitch, [K/32][J*DIM] of pitch B_sc_pitch) into its scale half and orders them in HW -- no MX_LOAD_SCALES,
+// CONFIG_SCALE_MEM or fence around it. v1: BF16 output, no padding.
+#define gemmini_loop_ws_mx(I, J, K, A, B, C, A_stride, B_stride, C_stride, A_sc, B_sc, A_sc_pitch, B_sc_pitch, ex_accumulate, a_spad_id, b_spad_id) \
+  { \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t)(A_sc), (uint64_t)(B_sc), k_LOOP_WS_CONFIG_SCALES) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t)(A_sc_pitch), (uint64_t)(B_sc_pitch), k_LOOP_WS_CONFIG_SCALE_STRIDES) \
+    gemmini_loop_ws(I, J, K, 0, 0, 0, A, B, NULL, C, A_stride, B_stride, 0, C_stride, \
+                    false, false, false, false, ex_accumulate, NO_ACTIVATION, a_spad_id, b_spad_id, false) \
+  }
+
+// gemmini_loop_ws_mx for single x single (MXFP8) on the shared (act-quad) acc layout, DIM>=16 (LOOP_WS rs2[11]):
+// the same acc rows as single x quad (LUT/FP4) for the same C block. BF16 DRAM C only.
+#define LOOP_WS_SHARED_ACC (1ULL << 11)
+#define gemmini_loop_ws_mx_shared(I, J, K, A, B, C, A_stride, B_stride, C_stride, A_sc, B_sc, A_sc_pitch, B_sc_pitch, ex_accumulate, a_spad_id, b_spad_id) \
+  { \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t)(A_sc), (uint64_t)(B_sc), k_LOOP_WS_CONFIG_SCALES) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t)(A_sc_pitch), (uint64_t)(B_sc_pitch), k_LOOP_WS_CONFIG_SCALE_STRIDES) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, 0, ((uint64_t)(K) << 32) | ((uint64_t)(J) << 16) | (uint64_t)(I), k_LOOP_WS_CONFIG_BOUNDS) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A, B, k_LOOP_WS_CONFIG_ADDRS_AB) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, NULL, C, k_LOOP_WS_CONFIG_ADDRS_DC) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, A_stride, B_stride, k_LOOP_WS_CONFIG_STRIDES_AB) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, 0, C_stride, k_LOOP_WS_CONFIG_STRIDES_DC) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, ((uint64_t)(a_spad_id) << 18) | ((uint64_t)(b_spad_id) << 16) | \
+                             ((uint64_t)(NO_ACTIVATION) << 8) | (ex_accumulate), LOOP_WS_SHARED_ACC, k_LOOP_WS) \
+  }
+
+// Scratchpad loop with loop-managed metadata: the loop loads its own A/B scale slices (A_sc/B_sc, row pitch in bytes per
+// E8M0 k-block) into the scale half of its slot and, when A_lut != 0, its act-in codebooks (one per 2^G rows of this
+// block; G = 1 under managed scales) into the LUT half of its slot. Lets software tile one LUT matmul into blocks.
+#define gemmini_loop_ws_spad_managed(I, J, K, A, B, C, A_sc, B_sc, A_sc_pitch, B_sc_pitch, A_lut, skips) \
+  { \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t)(A_sc), (uint64_t)(B_sc), k_LOOP_WS_CONFIG_SCALES) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t)(A_sc_pitch), (uint64_t)(B_sc_pitch), k_LOOP_WS_CONFIG_SCALE_STRIDES) \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t)(A_lut), 0, k_LOOP_WS_CONFIG_LUTS) \
+    gemmini_loop_ws_spad(I, J, K, 0, 0, 0, A, B, 0, C, false, false, false, false, false, NO_ACTIVATION, 0, 0, false, skips) \
+  }
+
+// gemmini_loop_ws_mx plus loop-managed codebooks: the loop loads A_lut (act-in, rows >> G) and B_lut (weight, cols >> G)
+// codebooks into its slot's LUT halves (0 = not managed; e.g. act codebooks loaded flat once with MX_LOAD_LUT).
+#define gemmini_loop_ws_mx_lut(I, J, K, A, B, C, A_stride, B_stride, C_stride, A_sc, B_sc, A_sc_pitch, B_sc_pitch, A_lut, B_lut, ex_accumulate, a_spad_id, b_spad_id) \
+  { \
+    ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t)(A_lut), (uint64_t)(B_lut), k_LOOP_WS_CONFIG_LUTS) \
+    gemmini_loop_ws_mx(I, J, K, A, B, C, A_stride, B_stride, C_stride, A_sc, B_sc, A_sc_pitch, B_sc_pitch, ex_accumulate, a_spad_id, b_spad_id) \
   }
 
 #define gemmini_loop_ws_spad(I, J, K, pad_I, pad_J, pad_K, A, B, D, C, A_transpose, B_transpose, full_C, low_D, ex_accumulate, act, a_spad_id, b_spad_id, is_resadd, skips) \
@@ -1636,7 +1858,7 @@ static void sp_tiled_conv(
     const int ocol_it = trans_input_3120 ? 1 : (DIM << input_dilated);
 
     if (trans_input_3120) {
-      gemmini_extended3_config_ex(0, 0, 0, 0, orows * ocols, irows * icols, 0, 0, true);
+      gemmini_extended3_config_ex(0, 0, 0, 0, orows * ocols, irows * icols, 0, 0, true, 0, 0, 0, 0);
     }
 
     for (int och = 0; och < ochs; och += DIM) {
@@ -2313,7 +2535,7 @@ static void tiled_conv(
         out_stride * sizeof(elem_t);
     gemmini_extended_config_st(st_dram_stride, act, scale);
 
-    gemmini_extended3_config_ex(WEIGHT_STATIONARY, 0, 0, 0, input_dilation, stride >> downsample, trans_input_3120, trans_weight_0132, false);
+    gemmini_extended3_config_ex(WEIGHT_STATIONARY, 0, 0, 0, input_dilation, stride >> downsample, trans_input_3120, trans_weight_0132, false, 0, 0, 0, 0);
 
     const int pool_out_row_dim = (out_row_dim + 2 * pool_padding - pool_size) / pool_stride + 1;
     const int pool_out_col_dim = (out_col_dim + 2 * pool_padding - pool_size) / pool_stride + 1;
@@ -2561,7 +2783,7 @@ static void tiled_conv_dw(
     const size_t st_dram_stride = channels * sizeof(elem_t);
     gemmini_extended_config_st(st_dram_stride, act, scale);
 
-    gemmini_extended3_config_ex(WEIGHT_STATIONARY, 0, 0, 0, 1, stride, false, false, false);
+    gemmini_extended3_config_ex(WEIGHT_STATIONARY, 0, 0, 0, 1, stride, false, false, false, 0, 0, 0, 0);
 
     const int pool_out_row_dim = (out_row_dim + 2 * pool_padding - pool_size) / pool_stride + 1;
     const int pool_out_col_dim = (out_col_dim + 2 * pool_padding - pool_size) / pool_stride + 1;

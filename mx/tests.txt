@@ -1,0 +1,146 @@
+# One line = one or more tests (dim=16,8,32 makes three). `./mxtests.py list` prints the names.
+# Each test's golden must match the per mesh row product/accumulator precision of a config header
+# (include/gemmini_params_<name>.h): a test's params=<name>, else the default below for its DIM (bf16_ = BF16
+# arithmetic). Committed data headers record their precision; a mismatching one is regenerated at build.
+precision  dim4=dim4_fp4_vpu  dim8=dim8_fp4  dim16=fp4_vpu  dim32=dim32_fp4_vpu  bf16_dim16=e4m3_lut_bf16_dim16  bf16_dim32=e4m3_lut_bf16_dim32
+
+# asym keys: act, wei (e4m3 e5m2 e4m3s e2m3 e3m2 fp4), dim, size (default 64x64),
+#            out=fp4 (requant), tag=bf16 (prints cycles), alt/wdiff (override altfmt bits)
+
+asym  act=e2m3   wei=e3m2   dim=16,8,32
+asym  act=e2m3   wei=e4m3   dim=16,8,32
+asym  act=e2m3   wei=e4m3s  dim=16,8,32
+asym  act=e2m3   wei=e4m3s  dim=16,8,32  out=fp4
+asym  act=e2m3   wei=e5m2   dim=16,8,32
+asym  act=e2m3   wei=e5m2   dim=32       size=128x128x256
+asym  act=e2m3   wei=fp4    dim=16,8,32
+asym  act=e3m2   wei=e2m3   dim=16,8,32
+asym  act=e3m2   wei=e4m3   dim=16,8,32
+asym  act=e3m2   wei=e4m3s  dim=16,8,32
+asym  act=e3m2   wei=e5m2   dim=16,8,32
+asym  act=e4m3   wei=e2m3   dim=16,8,32
+asym  act=e4m3   wei=e3m2   dim=16,8,32
+asym  act=e4m3   wei=e4m3s  dim=16,8,32
+asym  act=e4m3   wei=e5m2   dim=16,8,32
+asym  act=e4m3   wei=fp4    dim=16,8,32
+asym  act=e4m3s  wei=e2m3   dim=16,8,32
+asym  act=e4m3s  wei=e3m2   dim=16,8,32
+asym  act=e4m3s  wei=e4m3   dim=16,8,32
+asym  act=e4m3s  wei=e4m3   dim=16,32    tag=bf16
+asym  act=e4m3s  wei=e5m2   dim=16,8,32
+asym  act=e4m3s  wei=e5m2   dim=32       size=128x128x256
+asym  act=e4m3s  wei=fp4    dim=16,8,32
+asym  act=e4m3s  wei=fp4    dim=16,32    tag=bf16
+asym  act=e4m3s  wei=fp4    dim=16       size=128x128
+asym  act=e4m3s  wei=fp4    dim=16       size=16x32
+asym  act=e4m3s  wei=fp4    dim=32       size=128x128x256
+asym  act=e5m2   wei=e2m3   dim=16,8,32
+asym  act=e5m2   wei=e3m2   dim=16,8,32
+asym  act=e5m2   wei=e4m3   dim=16,8,32
+asym  act=e5m2   wei=e4m3s  dim=16,8,32
+asym  act=e5m2   wei=e4m3s  dim=16,8,32  out=fp4
+asym  act=e5m2   wei=e4m3s  dim=32       size=64x96x64
+asym  act=e5m2   wei=fp4    dim=16,8,32
+asym  act=fp4    wei=e2m3   dim=16,8,32  alt=0 wdiff=1
+asym  act=fp4    wei=e4m3   dim=16,8,32
+asym  act=fp4    wei=e4m3s  dim=16,8,32
+asym  act=fp4    wei=e4m3s  dim=16,8,32  out=fp4
+asym  act=fp4    wei=e5m2   dim=16,8,32
+
+# lut_requant keys: fmt (e4m3 e5m2 e2m3 e3m2), dim, size, tag=bf16 (bf16-golden data header)
+lut_requant  fmt=e4m3  dim=16,8,32
+lut_requant  fmt=e4m3  dim=16,32  tag=bf16
+lut_requant  fmt=e4m3  dim=8,32   size=128x128
+lut_requant  fmt=e4m3  dim=32     size=128x64x128,64x128x128
+lut_requant  fmt=e5m2  dim=16,8,32
+lut_requant  fmt=e5m2  dim=32     size=128x128,128x64x128,64x128x128
+lut_requant  fmt=e2m3  dim=16,8,32
+lut_requant  fmt=e2m3  dim=32     size=128x128,128x64x128,64x128x128
+lut_requant  fmt=e3m2  dim=4,8,32
+lut_requant  fmt=e3m2  dim=32     size=128x128,128x64x128,64x128x128
+
+# lut_bf16 = same as lut_requant but BF16 output; _d32 / _d8 are the DIM32 / DIM8 versions (keys: fmt, size, tag)
+lut_bf16      fmt=e4m3,e5m2,e2m3
+lut_bf16      fmt=e4m3  tag=bf16
+lut_bf16_d32  fmt=e4m3
+lut_bf16_d32  fmt=e4m3  tag=bf16
+lut_bf16_d8   fmt=e4m3  size=64x64,128x128
+
+# one-off sources in mx/src (src keys: name, params = gemmini_params_<params>.h); their data headers are the
+# include/matmul_*.h they name
+src  name=matmul_tiled_fp4_64x64,matmul_tiled_fp6_128x128,matmul_tiled_fp6_128x128x512
+src  name=matmul_tiled_fp6_128x128x512_requant,matmul_tiled_fp6_64x64_chain,matmul_tiled_fp6_128x128_chain
+src  name=matmul_tiled_fp6_128x128_chunk_timing,matmul_tiled_fp6_128x128_chunk4_timing
+src  name=matmul_tiled_fp6_128x128_lut_blocked,matmul_tiled_fp6_128x128_lut_dramloop,matmul_tiled_fp4_128x128
+src  name=matmul_tiled_fp4_128x128x512,matmul_tiled_fp8_64x64,matmul_tiled_asym_e4m3s_e4m3_dramloop
+src  name=matmul_tiled_fp8_64x64_DRAMMvout,matmul_tiled_fp8_128x128,matmul_tiled_fp8_128x128_chunked
+src  name=matmul_tiled_fp8_128x128_chunked4,matmul_tiled_fp8_128x128_dramloop,matmul_tiled_fp8_64x64_dramloop_dim4
+src  name=matmul_tiled_fp8_64x64_dramloop_dim8,matmul_tiled_fp8_64x64_dramloop_dim16
+src  name=matmul_tiled_fp8_64x64_dramloop_dim32,matmul_tiled_fp8_64x96x64_dramloop_dim16
+src  name=matmul_tiled_fp8_64x96x64_dramloop_dim32,matmul_tiled_fp8_64x96x64_dim32,matmul_tiled_fp8_64x96x64_dim8
+src  name=matmul_tiled_fp8_64x96x64_dim4,matmul_tiled_fp8_64x96x64_dramloop_dim8
+src  name=matmul_tiled_fp8_64x96x64_dramloop_dim4,matmul_tiled_fp8_64x96x64_requant_dim32
+src  name=matmul_tiled_fp8_128x128_dramloop_nc,matmul_tiled_fp8_128x128_dramloop_nc4
+src  name=matmul_tiled_fp8_128x128_chunked_2d,matmul_tiled_fp8_128x128_dramloop_nc_2d
+src  name=matmul_tiled_fp8_128x128_dramloop_nc_wait,matmul_tiled_fp8_128x128_dramloop_ls
+src  name=matmul_tiled_fp8_128x128_dramloop_ls4,matmul_tiled_fp8_128x128_dramloop_kt
+src  name=matmul_tiled_fp8_128x128_dramloop_relu,mx_mem_bw,matmul_tiled_fp8_128x128x256
+src  name=matmul_tiled_fp8_128x128x256_DRAMMvout,matmul_tiled_fp8_64x64_requant
+src  name=matmul_tiled_fp4_128x128x64_requant_dim32,matmul_tiled_asym_fp4_fp6_64x64_dim32
+src  name=matmul_tiled_asym_fp6_fp4_64x64_dim32,matmul_tiled_asym_fp4_fp6_128x128x256_dim32
+src  name=matmul_tiled_asym_fp4_fp6_64x64_dim8,matmul_tiled_asym_fp6_fp4_64x64_dim8,matmul_tiled_fp8_64x64_chain
+src  name=matmul_tiled_fp8_128x128_chain,matmul_tiled_fp8_128x128_requant,matmul_tiled_fp8_64x96x64
+src  name=matmul_tiled_fp8_96x32x32,matmul_tiled_fp8_96x96x64,matmul_tiled_fp8_32x32x32,matmul_tiled_fp4_64x64_requant
+src  name=matmul_tiled_fp4_128x128_requant,matmul_tiled_fp4_128x128x512_requant,matmul_tiled_asym_fp4_fp6_64x64
+src  name=matmul_tiled_asym_fp6_fp4_64x64
+src  name=vpu_ops,vpu_softmax,spad_requant,spad_requant_fp4,spad_requant_lut_fp6,chain_pipelined,chain_vpu_spad_requant  params=fp4_e3m2_e4m3_vpu
+
+# older plain-format tests (keys: dim, size)
+fp8_requant_sq   size=64x64      dim=4,8,32
+fp8_requant_sq   size=128x128    dim=4,8
+fp8_requant      size=32x32x32,64x96x64,96x32x32,96x96x64
+fp8_requant_big  size=128x128x256,64x256x64  dim=32
+fp8_single       size=64x64,128x128  dim=4,8
+fp4_requant      size=64x64      dim=4,8,32
+fp4_requant      size=128x128    dim=32
+fp4_nonrequant   size=64x64,128x128  dim=32
+fp8_chain        size=64x64      dim=8,32
+fp4_chain        size=64x64,128x128
+
+# Kernel tests (opt-in: `make mxk`): mx/src kernels on the BF16 LUT configs (params=pwr_base_dim<dim>).
+# data lines: name = data set (<name>.bin + .h, generated at build into data/), gen = mx/golden command.
+data  name=lutk_tiny    gen="gen_lutk_proj.py --m 32 --k 128 --n 64 --tag tiny --seed 0"
+data  name=lutk_tiny64  gen="gen_lutk_proj.py --m 64 --k 128 --n 64 --tag tiny64 --seed 0"
+data  name=lutk_gate    gen="gen_lutk_proj.py --m 32 --k 2048 --n 128 --tag gate --seed 0"
+data  name=lutk_down    gen="gen_lutk_proj.py --m 32 --k 5632 --n 128 --tag down --seed 0"
+data  name=lutk_l7p     gen="gen_lutk_proj.py --m 128 --k 1024 --n 128 --tag l7p --seed 0"
+data  name=lutk_l7d     gen="gen_lutk_proj.py --m 128 --k 1376 --n 128 --tag l7d --seed 0"
+data  name=mxk_kblock6_tiny  gen="gen_mxk_kblock.py --m 32 --k 128 --n 64 --tag tiny --seed 0"
+data  name=mxk_kblock6_l7p   gen="gen_mxk_kblock.py --m 128 --k 1024 --n 128 --tag l7p --seed 0"
+data  name=mxk_kblock6_l7d   gen="gen_mxk_kblock.py --m 128 --k 1376 --n 128 --tag l7d --seed 0"
+data  name=mxk_micromix_tiny468  gen="gen_mxk_micromix.py --m 64 --n 64 --groups 4:4,6:2,8:2 --tag tiny468 --seed 0 --dims 16,32"
+data  name=mxk_micromix_tiny48   gen="gen_mxk_micromix.py --m 64 --n 64 --groups 4:4,8:4 --tag tiny48 --seed 0 --dims 16,32"
+data  name=mxk_micromix_tiny4    gen="gen_mxk_micromix.py --m 64 --n 64 --groups 4:8 --tag tiny4 --seed 0 --dims 16,32"
+data  name=mxk_micromix_tiny6    gen="gen_mxk_micromix.py --m 64 --n 64 --groups 6:8 --tag tiny6 --seed 0 --dims 16,32"
+data  name=mxk_micromix_tiny8    gen="gen_mxk_micromix.py --m 64 --n 64 --groups 8:8 --tag tiny8 --seed 0 --dims 16,32"
+data  name=mxk_micromix_l7p468   gen="gen_mxk_micromix.py --m 128 --n 128 --groups 4:20,6:8,8:4 --tag l7p468 --seed 0 --dims 16,32"
+data  name=mxk_micromix_l7p48    gen="gen_mxk_micromix.py --m 128 --n 128 --groups 4:20,8:12 --tag l7p48 --seed 0 --dims 16,32"
+data  name=mxk_micromix_l7p6     gen="gen_mxk_micromix.py --m 128 --n 128 --groups 6:32 --tag l7p6 --seed 0 --dims 16,32"
+data  name=mxk_micromix_l7p8     gen="gen_mxk_micromix.py --m 128 --n 128 --groups 8:32 --tag l7p8 --seed 0 --dims 16,32"
+data  name=mxk_kmixa_a44      gen="gen_mxk_kmixa.py --base 44 --plain 8 --pattern LPLPPLLP --tag a44"
+data  name=mxk_kmixa_a44p6    gen="gen_mxk_kmixa.py --base 44 --plain 6 --pattern LPLPPLLP --tag a44p6"
+data  name=mxk_kmixa_a48      gen="gen_mxk_kmixa.py --base 48 --plain 8 --pattern LPLPPLLP --tag a48"
+data  name=mxk_kmixa_a44all   gen="gen_mxk_kmixa.py --base 44 --plain 8 --pattern LLLLLLLL --tag a44all"
+data  name=mxk_kmixa_a44none  gen="gen_mxk_kmixa.py --base 44 --plain 8 --pattern PPPPPPPP --tag a44none"
+
+lutk          tag=tiny,gate,down  dim=16,32  var=fp8,lut0,lut1,lut2,lut3,fp4_0,fp4_1,fp4_2,fp4_3
+lutk          tag=tiny64          dim=16,32  var=lut3,fp4_3  pad=1,17
+mxk_kblock    base=6,8  tag=tiny,l7p,l7d  dim=16,32  var=fp8,lut0,lut1,lut2,lut3,fp4_0,fp4_1,fp4_2,fp4_3
+mxk_kblock    base=6,8  tag=tiny,l7p,l7d  dim=16,32  var=lut0_mix,lut1_mix,lut2_mix,lut3_mix,fp4_0_mix,fp4_1_mix,fp4_2_mix,fp4_3_mix
+mxk_micromix  tag=tiny468,tiny48,tiny4,tiny6,tiny8,l7p468,l7p48,l7p6,l7p8  dim=16,32  nf=0,1
+mxk_kmixa     tag=a44,a44p6,a48,a44all,a44none  dim=16,32
+data  name=lutk_pwr             gen="gen_lutk_proj.py --m 64 --k 256 --n 128 --tag pwr --seed 0 --mask-file pwr_masks.json"
+data  name=mxk_kblock6_pwr      gen="gen_mxk_kblock.py --m 64 --k 256 --n 128 --tag pwr --seed 0 --mask-file pwr_masks.json"
+data  name=mxk_micromix_pwr468  gen="gen_mxk_micromix.py --m 64 --n 128 --groups 4:5,6:2,8:1 --tag pwr468 --seed 0 --dims 16,32"
+data  name=mxk_micromix_pwr4    gen="gen_mxk_micromix.py --m 64 --n 128 --groups 4:8 --tag pwr4 --seed 0 --dims 16,32"
+mxk_pwr       kernel=fp8,fp6,w4a8,lut,lutmix,lutmix6,a4w4,micromix  dim=16,32  chk=0,1

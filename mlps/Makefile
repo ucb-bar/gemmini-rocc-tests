@@ -9,7 +9,8 @@ tests = \
 	mlp1_32 \
 	mlp2_32 \
 	mlp3_32 \
-	mlp4_32
+	mlp4_32 \
+	mnist_mxgemmini
 
 tests_baremetal = $(tests:=-baremetal)
 runs_baremetal = $(addsuffix .run,$(tests_baremetal))
@@ -20,6 +21,7 @@ else
 	tests_linux = $(tests:=-linux)
 	tests_pk = $(tests:=-pk)
 endif
+
 
 BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
 GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_nn.h $(abs_top_srcdir)/include/gemmini_testutils.h

@@ -58,6 +58,7 @@ int main() {
       exit(1);
     }
 
+  printf("PASS\n");
   exit(0);
 }
 

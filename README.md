@@ -27,3 +27,27 @@ cp bareMetalC/template.c bareMetalC/my_test.c
 
 Then, add `my_test` to the `tests` list at the top of `bareMetalC/Makefile`. Afterwards, running `./build.sh` will install `my_test-baremetal` in `build/bareMetalC`.
 
+
+# MX tests
+
+MX tests live in `mx/`. Build them for one target (binaries land in `build_<target>/mx/`):
+
+- RoCC (e.g. rocket, and Spike): `./build_rocc.sh mx`
+- MMIO (e.g. Radiance): `./build_mmio.sh mx`
+
+Spike runs the RoCC binaries: `spike --extension=gemmini build_rocc/mx/<test>-baremetal`.
+
+Most are generated: each line of `mx/tests.txt` is one or more tests built from `mx/templates/`.
+
+Goldens depend on the per mesh row product and accumulation precision in a config's `gemmini_params.h`
+(`MESH_PROD_PRECISION` / `MESH_ACC_PRECISION`). The committed data headers record the precision they were made with.
+After changing the hardware, copy the elaborated `include/gemmini_params.h` to `include/gemmini_params_<name>.h`, point
+the `precision` line (or a test's `params=<name>`) in `mx/tests.txt` at it, and rebuild: only headers whose precision
+differs are regenerated (into `mx/data/`).
+
+The first `make mxk` generates the kernel tests' data into `mx/data/`, which takes several minutes (bit-exact goldens in Python).
+
+```
+mx/mxtests.py list        # all test names
+mx/mxtests.py show NAME   # how one test is built
+```
