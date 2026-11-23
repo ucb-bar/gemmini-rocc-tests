@@ -39,10 +39,13 @@ Spike runs the RoCC binaries: `spike --extension=gemmini build_rocc/mx/<test>-ba
 
 Most are generated: each line of `mx/tests.txt` is one or more tests built from `mx/templates/`.
 
-Goldens are generated at build time using the per mesh row product and accumulation precision in a config's
-`gemmini_params.h` (`MESH_PROD_PRECISION` / `MESH_ACC_PRECISION`). After changing the hardware, copy the elaborated
-`include/gemmini_params.h` to `include/gemmini_params_<name>.h`, point the `precision` line (or a test's `params=<name>`)
-in `mx/tests.txt` at it, and rebuild.
+Goldens depend on the per mesh row product and accumulation precision in a config's `gemmini_params.h`
+(`MESH_PROD_PRECISION` / `MESH_ACC_PRECISION`). The committed data headers record the precision they were made with.
+After changing the hardware, copy the elaborated `include/gemmini_params.h` to `include/gemmini_params_<name>.h`, point
+the `precision` line (or a test's `params=<name>`) in `mx/tests.txt` at it, and rebuild: only headers whose precision
+differs are regenerated (into `mx/data/`).
+
+The first `make mxk` generates the kernel tests' data into `mx/data/`, which takes several minutes (bit-exact goldens in Python).
 
 ```
 mx/mxtests.py list        # all test names

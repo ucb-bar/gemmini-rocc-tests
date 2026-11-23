@@ -17,11 +17,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 TESTS_DIR = ROOT.parent
-sys.path.insert(0, str(TESTS_DIR))
+sys.path.insert(0, str(TESTS_DIR / "mx" / "golden"))
 
 import numpy as np
 import torch
 
+import precision  # per mesh row (exp, frac): ConfigsFP default for TILE
 from fp8_matmul_model import (
     INPUT_SPEC, SCALE_SPEC, GROUP, TILE,
     make_fp_quantizer, tiled_matmul_hwlike, write_c_header_tiled,
@@ -320,8 +321,8 @@ def main():
     C_out_bf16 = tiled_matmul_hwlike(
         A_in, B_in, A_scales_row_q, B_scales_col_q,
         verbose=False,
-        prod_precision_list=[(4, 3)] * TILE,
-        acc_precision_list=[(4, 4)] * 8 + [(4, 5)] * 2 + [(4, 6)] * 5 + [(8, 7)] * 1,
+        prod_precision_list=precision.for_dim(TILE)[0],
+        acc_precision_list=precision.for_dim(TILE)[1],
     )
 
     mx_logits = C_out_bf16[:NUM_CLASSES, :NUM_CLASSES]

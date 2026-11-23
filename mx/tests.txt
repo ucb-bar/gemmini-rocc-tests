@@ -1,6 +1,7 @@
 # One line = one or more tests (dim=16,8,32 makes three). `./mxtests.py list` prints the names.
-# Goldens are generated at build with the per mesh row product/accumulator precision of a config header
-# (include/gemmini_params_<name>.h): a test's params=<name>, else the default below for its DIM (bf16_ = tag=bf16).
+# Each test's golden must match the per mesh row product/accumulator precision of a config header
+# (include/gemmini_params_<name>.h): a test's params=<name>, else the default below for its DIM (bf16_ = BF16
+# arithmetic). Committed data headers record their precision; a mismatching one is regenerated at build.
 precision  dim4=dim4_fp4_vpu  dim8=dim8_fp4  dim16=fp4_vpu  dim32=dim32_fp4_vpu  bf16_dim16=e4m3_lut_bf16_dim16  bf16_dim32=e4m3_lut_bf16_dim32
 
 # asym keys: act, wei (e4m3 e5m2 e4m3s e2m3 e3m2 fp4), dim, size (default 64x64),
@@ -65,7 +66,33 @@ lut_bf16_d32  fmt=e4m3
 lut_bf16_d32  fmt=e4m3  tag=bf16
 lut_bf16_d8   fmt=e4m3  size=64x64,128x128
 
-# one-off sources that target one config (src keys: name, params = gemmini_params_<params>.h)
+# one-off sources in mx/src (src keys: name, params = gemmini_params_<params>.h); their data headers are the
+# include/matmul_*.h they name
+src  name=matmul_tiled_fp4_64x64,matmul_tiled_fp6_128x128,matmul_tiled_fp6_128x128x512
+src  name=matmul_tiled_fp6_128x128x512_requant,matmul_tiled_fp6_64x64_chain,matmul_tiled_fp6_128x128_chain
+src  name=matmul_tiled_fp6_128x128_chunk_timing,matmul_tiled_fp6_128x128_chunk4_timing
+src  name=matmul_tiled_fp6_128x128_lut_blocked,matmul_tiled_fp6_128x128_lut_dramloop,matmul_tiled_fp4_128x128
+src  name=matmul_tiled_fp4_128x128x512,matmul_tiled_fp8_64x64,matmul_tiled_asym_e4m3s_e4m3_dramloop
+src  name=matmul_tiled_fp8_64x64_DRAMMvout,matmul_tiled_fp8_128x128,matmul_tiled_fp8_128x128_chunked
+src  name=matmul_tiled_fp8_128x128_chunked4,matmul_tiled_fp8_128x128_dramloop,matmul_tiled_fp8_64x64_dramloop_dim4
+src  name=matmul_tiled_fp8_64x64_dramloop_dim8,matmul_tiled_fp8_64x64_dramloop_dim16
+src  name=matmul_tiled_fp8_64x64_dramloop_dim32,matmul_tiled_fp8_64x96x64_dramloop_dim16
+src  name=matmul_tiled_fp8_64x96x64_dramloop_dim32,matmul_tiled_fp8_64x96x64_dim32,matmul_tiled_fp8_64x96x64_dim8
+src  name=matmul_tiled_fp8_64x96x64_dim4,matmul_tiled_fp8_64x96x64_dramloop_dim8
+src  name=matmul_tiled_fp8_64x96x64_dramloop_dim4,matmul_tiled_fp8_64x96x64_requant_dim32
+src  name=matmul_tiled_fp8_128x128_dramloop_nc,matmul_tiled_fp8_128x128_dramloop_nc4
+src  name=matmul_tiled_fp8_128x128_chunked_2d,matmul_tiled_fp8_128x128_dramloop_nc_2d
+src  name=matmul_tiled_fp8_128x128_dramloop_nc_wait,matmul_tiled_fp8_128x128_dramloop_ls
+src  name=matmul_tiled_fp8_128x128_dramloop_ls4,matmul_tiled_fp8_128x128_dramloop_kt
+src  name=matmul_tiled_fp8_128x128_dramloop_relu,mx_mem_bw,matmul_tiled_fp8_128x128x256
+src  name=matmul_tiled_fp8_128x128x256_DRAMMvout,matmul_tiled_fp8_64x64_requant
+src  name=matmul_tiled_fp4_128x128x64_requant_dim32,matmul_tiled_asym_fp4_fp6_64x64_dim32
+src  name=matmul_tiled_asym_fp6_fp4_64x64_dim32,matmul_tiled_asym_fp4_fp6_128x128x256_dim32
+src  name=matmul_tiled_asym_fp4_fp6_64x64_dim8,matmul_tiled_asym_fp6_fp4_64x64_dim8,matmul_tiled_fp8_64x64_chain
+src  name=matmul_tiled_fp8_128x128_chain,matmul_tiled_fp8_128x128_requant,matmul_tiled_fp8_64x96x64
+src  name=matmul_tiled_fp8_96x32x32,matmul_tiled_fp8_96x96x64,matmul_tiled_fp8_32x32x32,matmul_tiled_fp4_64x64_requant
+src  name=matmul_tiled_fp4_128x128_requant,matmul_tiled_fp4_128x128x512_requant,matmul_tiled_asym_fp4_fp6_64x64
+src  name=matmul_tiled_asym_fp6_fp4_64x64
 src  name=vpu_ops,vpu_softmax,spad_requant,spad_requant_fp4,spad_requant_lut_fp6,chain_pipelined,chain_vpu_spad_requant  params=fp4_e3m2_e4m3_vpu
 
 # older plain-format tests (keys: dim, size)

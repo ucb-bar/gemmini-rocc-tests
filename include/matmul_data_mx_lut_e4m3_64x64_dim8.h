@@ -1,3 +1,4 @@
+// golden precision: MESH_PROD_PRECISION {{4,3},{4,3},{4,3},{4,3},{4,3},{4,3},{4,3},{4,3}} MESH_ACC_PRECISION {{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7}}
 #ifndef INCLUDE_MATMUL_DATA_MX_LUT_E4M3_64X64_DIM8_H
 #define INCLUDE_MATMUL_DATA_MX_LUT_E4M3_64X64_DIM8_H
 

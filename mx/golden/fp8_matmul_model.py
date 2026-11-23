@@ -1177,18 +1177,10 @@ if __name__ == "__main__":
     parser.add_argument("--N", type=int, default=32)
     parser.add_argument("--header-path", type=str, default="matmul_data.h")
     parser.add_argument("--quiet", action="store_true")
+    import precision
+    precision.add_arg(parser)
     args = parser.parse_args()
-
-    # The Python lists below use eXmY notation, where Y is the number of
-    # explicit fraction bits. This differs by 1 from the HardFloat sigWidth
-    # used in Scala configs.
-    #
-    # matches correctly
-    # prod_precision_list = [(8,7)] * TILE
-    # acc_precision_list = [(8,7)] * TILE
-
-    # Hardware meshProdPrecisionList = Seq.fill(16) {(4, 4)} maps to e4m3 here.
-    prod_precision_list = [(4,3)] * TILE
-    acc_precision_list = [(4,4)] * 8 + [(4,5)] * 2 + [(4,6)] * 5 + [(8,7)] * 1
+    precision.load(args.params)
+    prod_precision_list, acc_precision_list = precision.for_dim(TILE)   # per mesh row (exp, frac)
 
     run(args.M, args.K, args.N, header_path=args.header_path, verbose=not args.quiet, acc_precision_list=acc_precision_list, prod_precision_list=prod_precision_list)

@@ -1042,14 +1042,11 @@ if __name__ == "__main__":
     parser.add_argument("--N", type=int, default=N)
     parser.add_argument("--header-path", type=str, default="matmul_data_fp4.h")
     parser.add_argument("--quiet", action="store_true")
+    import precision
+    precision.add_arg(parser)
     args = parser.parse_args()
-
-    # Configure precision lists to match hardware mesh settings.
-    # prod_precision_list: (exp_bits, frac_bits) per k-step within a tile.
-    # acc_precision_list:  (exp_bits, man_bits) per k-step within a tile.
-    # Set to None to use default (PROD_MANT_BITS truncation + bf16 accumulation).
-    prod_precision_list = [(4,3)] * 16
-    acc_precision_list = [(4,4)] * 8 + [(4,5)] * 2 + [(4,6)] * 5 + [(8,7)] * 1
+    precision.load(args.params)
+    prod_precision_list, acc_precision_list = precision.for_dim(TILE_K)   # per mesh row (exp, frac)
 
     C = run(args.M, args.K, args.N, header_path=args.header_path, verbose=not args.quiet,
             prod_precision_list=prod_precision_list, acc_precision_list=acc_precision_list)

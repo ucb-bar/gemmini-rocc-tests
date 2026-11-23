@@ -724,8 +724,13 @@ print("[Step 5]: Compare C_out with tiled_matmul_hwlike golden")
 # print(fp8_matmul_model.TILE)  # should be 16 = K_TILE
 # print(fp8_matmul_model.GROUP) # should be 32 = GROUP
 # exit()
-prod_precision_list = [(4, 3)] * TILE
-acc_precision_list  = [(4, 4)] * 8 + [(4, 5)] * 2 + [(4, 6)] * 5 + [(8, 7)] * 1
+import precision   # per mesh row (exp, frac): --params <gemmini_params.h> when run directly, else the default
+if __name__ == "__main__":
+    import argparse as _ap
+    _p = _ap.ArgumentParser(); precision.add_arg(_p); precision.load(_p.parse_known_args()[0].params)
+    prod_precision_list, acc_precision_list = precision.for_dim(TILE)
+else:   # imported for its operands (gen_mx_lut, gen_lut_dim): the importer computes its own golden
+    prod_precision_list, acc_precision_list = precision.default(TILE)
 in_q = make_fp_quantizer(INPUT_SPEC, rounding="zero")
 A_in = in_q(A_fp)
 B_in = in_q(B_fp)
