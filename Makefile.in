@@ -5,8 +5,8 @@ RISCVTOOLS      := @RISCVTOOLS@
 ROCC = examples
 RUNNER         := "spike --extension=gemmini "
 
-.PHONY: all bareMetalC clean imagenet transformers mlps
-all: bareMetalC imagenet transformers mlps
+.PHONY: all bareMetalC mx mxk clean imagenet transformers mlps
+all: bareMetalC mx imagenet transformers mlps
 
 vars = \
 	abs_top_srcdir=$(abs_top_srcdir) \
@@ -18,6 +18,16 @@ vars = \
 bareMetalC:
 	mkdir -p $@
 	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
+
+mx:
+	mkdir -p $@
+	$(MAKE) -C $@ -f $(abs_top_srcdir)/$@/Makefile $(vars)
+
+# kernel tests (lutk, mxk_*): not in `all`
+mxk:
+	mkdir -p mx
+	$(MAKE) -C mx -f $(abs_top_srcdir)/mx/Makefile abs_top_srcdir=$(abs_top_srcdir) XLEN=$(XLEN) PREFIX=$(ROCC)-mx \
+	  src_dir=$(abs_top_srcdir)/mx RISCVTOOLS=$(RISCVTOOLS) mxk
 
 imagenet:
 	mkdir -p $@
@@ -33,6 +43,7 @@ mlps:
 
 clean:
 	$(MAKE) -C bareMetalC -f $(abs_top_srcdir)/bareMetalC/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-bareMetalC clean
+	$(MAKE) -C mx -f $(abs_top_srcdir)/mx/Makefile abs_top_srcdir=$(abs_top_srcdir) src_dir=$(abs_top_srcdir)/mx PREFIX=$(ROCC)-mx clean
 	$(MAKE) -C imagenet -f $(abs_top_srcdir)/imagenet/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-imagenet clean
 	$(MAKE) -C mlps -f $(abs_top_srcdir)/mlps/Makefile abs_top_srcdir=$(abs_top_srcdir) PREFIX=$(ROCC)-mlps clean
 

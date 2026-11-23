@@ -6,4 +6,9 @@ configure
 .ipynb_checkpoints
 *.pyc
 build_spike
-build_mx_rocket
+build_rocc
+build_mmio
+mx/golden/*.bin
+mx/golden/*.log
+__pycache__
+mx/data/

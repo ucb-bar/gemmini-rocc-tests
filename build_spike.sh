@@ -13,6 +13,7 @@ if [ ! -d "build_spike" ] ; then
 fi
 
 cd build_spike
+./config.status > /dev/null   # pick up Makefile.in changes (e.g. the mx target)
 
 if [[ $(which riscv64-unknown-linux-gnu-gcc) ]] ; then
     make -j RUNNER=spike $@

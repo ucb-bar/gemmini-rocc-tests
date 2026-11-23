@@ -27,3 +27,18 @@ cp bareMetalC/template.c bareMetalC/my_test.c
 
 Then, add `my_test` to the `tests` list at the top of `bareMetalC/Makefile`. Afterwards, running `./build.sh` will install `my_test-baremetal` in `build/bareMetalC`.
 
+
+# MX tests
+
+MX tests live in `mx/`. Build them for one target (binaries land in `build_<target>/mx/`):
+
+- RoCC (e.g. rocket): `./build_rocc.sh mx`
+- MMIO (e.g. Radiance): `./build_mmio.sh mx`
+- Spike: `./build_spike.sh mx`
+
+Most are generated: each line of `mx/tests.txt` is one or more tests built from `mx/templates/`.
+
+```
+mx/mxtests.py list        # all test names
+mx/mxtests.py show NAME   # how one test is built
+```

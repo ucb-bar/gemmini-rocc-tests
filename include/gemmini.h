@@ -69,6 +69,8 @@
 #define k_LOOP_WS_CONFIG_SCALE_STRIDES 32
 #define k_LOOP_WS_CONFIG_KMIX 36    // mixed-K loop: rs1 / rs2 = MXFP8 B DRAM base / row stride (the loop's B: low precision)
 #define k_LOOP_WS_CONFIG_KMASK 37   // mixed-K loop: per-K-block mask (1 = low precision), rs1 = bits 63:0, rs2 = 127:64
+#define k_LOOP_WS_CONFIG_KMIX_A 39  // mixed-K loop, act side: rs1 = A base of the plain (kmask 0) K-blocks (E4M3-single, the loop's A stride); rs2[63:62] = their direct FP6 {direct, alt}
+#define k_MX_SCALE_FMT 38           // MX_FLEX_SCALES builds: block-scale formats, see gemmini_mx_scale_fmt
 #define k_LOOP_WS_CONFIG_LUTS 35   // rs1 / rs2 = act-in / weight codebooks DRAM addr (loop-managed, LUT half = loop slot)
 #define k_VPU_EXEC 33
 #define k_SPAD_REQUANT 34
@@ -143,6 +145,17 @@
 // Turn OFF runtime LUT usage for subsequent matmuls (MX_LOAD_LUT turns it back ON; default off).
 #define gemmini_mx_lut_disable() \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, 0, 0, k_MX_LUT_DISABLE)
+
+// Block-scale formats (MX_FLEX_SCALES builds; a no-op otherwise). fmt: MX_SFMT_E8M0, MX_SFMT_E8RNE, or X = 2..7 for
+// eXmY (X exponent bits above the signed base, 8-X mantissa bits). a/w: the A/B scales the matmul reads; out: the
+// scales the requantizer writes. Takes effect immediately: gemmini_fence() before it.
+#define MX_SFMT_E8M0 0
+#define MX_SFMT_E8RNE 1
+#define gemmini_mx_scale_fmt(a_fmt, a_base, w_fmt, w_base, out_fmt, out_base) \
+  ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, \
+    ((uint64_t)((a_fmt) & 7) | ((uint64_t)((w_fmt) & 7) << 3) | ((uint64_t)((out_fmt) & 7) << 6)), \
+    ((uint64_t)((uint8_t)(a_base)) | ((uint64_t)((uint8_t)(w_base)) << 8) | ((uint64_t)((uint8_t)(out_base)) << 16)), \
+    k_MX_SCALE_FMT)
 
 #define gemmini_mx_load_scales(dram_addr, len, sel) \
   ROCC_INSTRUCTION_RS1_RS2(XCUSTOM_ACC, (uint64_t)(dram_addr), \
@@ -472,6 +485,11 @@ static acc_scale_t_bits acc_scale_t_to_acc_scale_t_bits(acc_scale_t x) {
     uint32_t _placeholder; \
     ROCC_INSTRUCTION(XCUSTOM_ACC, rd, config_reg, _placeholder, k_COUNTER) \
   }
+
+// -DGEMMINI_MMIO: commands and fence through Radiance's MMIO registers (include/gemmini_mmio.h)
+#ifdef GEMMINI_MMIO
+#include "include/gemmini_mmio.h"
+#endif
 
 // Read counter
 static uint32_t counter_read(size_t index) {

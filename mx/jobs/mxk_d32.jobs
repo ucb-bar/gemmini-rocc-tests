@@ -1,0 +1,24 @@
+# mxk LLaMA-7B-slice perf (M=128, perf counters on) + two small kernels for gap analysis, 32x32 LUT config:
+#   sim/simq run-waves CONFIG=MxE4M3Fp4E3M2LutBf16Dim32GemminiBoomBw2IF128Config BINARY=<gemmini-rocc-tests>/mx/jobs/mxk_d32.jobs
+# Build: gemmini-rocc-tests ./build_rocc.sh mxk. l7p = 128x1024x128 (q/k/v/o/gate/up K),
+# l7d = 128x1376x128 (down_proj K/8). kblock8 = MXFP8 base, kblock6 = MXFP6 E3M2 base; fp8 = all plain, lut0 = 66% LUT
+# K-blocks (MXQuant b5), lut3 = all LUT, fp4_0 = 66% MXFP4 (ablation). micromix 468/48 = FP4+FP6+FP8 / FP4+FP8 groups.
+mxk_kblock8_l7p_d32_fp8
+mxk_kblock8_l7p_d32_lut0
+mxk_kblock8_l7p_d32_lut3
+mxk_kblock8_l7p_d32_fp4_0
+mxk_kblock6_l7p_d32_fp8
+mxk_kblock6_l7p_d32_lut0
+mxk_kblock6_l7p_d32_lut3
+mxk_kblock6_l7p_d32_fp4_0
+mxk_kblock8_l7d_d32_fp8
+mxk_kblock8_l7d_d32_lut0
+mxk_kblock6_l7d_d32_fp8
+mxk_kblock6_l7d_d32_lut0
+mxk_micromix_l7p468_d32
+mxk_micromix_l7p48_d32
+mxk_micromix_l7p6_d32
+mxk_micromix_l7p8_d32
+# small kernels (gap analysis)
+mxk_kblock8_tiny_d32_fp8
+mxk_micromix_tiny8_d32
