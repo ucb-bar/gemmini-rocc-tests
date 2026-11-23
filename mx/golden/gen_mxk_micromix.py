@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import argparse
 
+import precision
+
 import numpy as np
 import torch
 
@@ -50,7 +52,9 @@ def main() -> int:
     ap.add_argument("--abase", type=int, default=0)
     ap.add_argument("--wfmt", type=int, default=0, help="W scale format, as --afmt")
     ap.add_argument("--wbase", type=int, default=0)
+    precision.add_arg(ap, many=True)
     a = ap.parse_args()
+    precision.load(a.params)
     flex = a.afmt > 1 or a.wfmt > 1
     M, N = a.m, a.n
     grp = {f: 0 for f in ORDER}

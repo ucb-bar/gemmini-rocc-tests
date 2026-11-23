@@ -132,7 +132,7 @@ int main() {
 
   mx_perf_t perf = {0};
   MX_PERF_MARK(perf.t0);
-  // ISA parity: funct-29 MX_LOAD_LUT DMA loader (same call as SPIKE_SIM), replacing the CPU regmap.
+  // ISA parity: funct-29 MX_LOAD_LUT DMA loader, replacing the CPU regmap.
   // sel: 0 = weight(B), 1 = act-in(A), 2 = act-out(C).
   gemmini_mx_load_lut_dt((uint64_t)&B_lut[0][0], (MATMUL_N >> QUANT_LUT_UPDATE_GRANULARITY), 0, 6);
   gemmini_mx_load_lut_dt((uint64_t)&A_lut[0][0], (MATMUL_M >> QUANT_LUT_UPDATE_GRANULARITY), 1, 6);

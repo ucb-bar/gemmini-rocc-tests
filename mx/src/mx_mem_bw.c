@@ -1,5 +1,5 @@
 // Memory characterization, no compute: DMA mvin (cold DRAM vs clean L2 hit, 64B vs 16B rows), the MX scale
-// loader, and mvout. Standalone only. Source data = the 128x128 test's A_in/B_in (.rodata, never touched by
+// loader, and mvout. Source data = the 128x128 test's A_in/B_in (.rodata, never touched by
 // the CPU, so the only L2 client is Gemmini: warm phases are clean hits with no L1 probes).
 #include <stdint.h>
 #include <stdio.h>
@@ -9,9 +9,6 @@
 #include "include/matmul_fp8_128x128.h"
 #include "include/mx_perf.h"
 
-#ifdef SPIKE_SIM
-int main() { printf("skipped: standalone-only test\n"); return 0; }
-#else
 
 #define DIM 16
 #define N 128                       // A_in/B_in are N x N bytes
@@ -120,4 +117,3 @@ int main() {
   printf("mx_mem_bw %s (%d mismatches in spot check)\n", errors ? "FAILED" : "PASSED", errors);
   return errors != 0;
 }
-#endif

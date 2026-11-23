@@ -23,7 +23,7 @@ sys.path.insert(0, here)
 import torch
 import fp8_matmul_model as fm
 from lut_golden_model import tensor_to_custom_fp_codes
-from gen_mx_lut import precision_for_dim
+import precision
 from formats import FORMATS, requant
 
 
@@ -45,7 +45,9 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--header-path", type=str, default=None)
     ap.add_argument("--chain", action="store_true")
+    precision.add_arg(ap)
     a = ap.parse_args()
+    precision.load(a.params)
     M, K, N, dim = a.M, a.K, a.N, a.dim
     assert M % (2 * dim) == 0 and N % (2 * dim) == 0 and K % dim == 0 and K % 32 == 0
     shape = f"{M}x{N}" if M == N == K else f"{M}x{N}x{K}"
@@ -60,7 +62,7 @@ def main():
     B_sc = torch.pow(2.0, torch.randint(-4, 4, (GK, N), generator=g).float())
 
     fm.TILE = dim
-    prod, acc = precision_for_dim(dim)
+    prod, acc = precision.for_dim(dim)
     C = fm.tiled_matmul_hwlike(A, B, A_sc, B_sc, verbose=False, prod_precision_list=prod, acc_precision_list=acc)
     assert torch.isfinite(C).all(), "non-finite golden"
 

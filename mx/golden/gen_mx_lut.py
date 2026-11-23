@@ -6,7 +6,7 @@ Formats: e4m3 / e5m2 (fp8, 8-bit codebook, 4-bit indices) and e2m3 / e3m2 (fp6,
 with the same DIM-aware golden: operands (A_in_hw/B_in/luts/scales) come byte-for-byte
 from lut_mapping_demo (imported with the exact env that produced each committed header),
 and only the goldens (C_out / C_out_bf16 / C_scales_row / C_proj_hw) are recomputed with
-the per-lane precision model (fp8_matmul_model.TILE=dim, precision_for_dim(dim)) so they
+the per-lane precision model (fp8_matmul_model.TILE=dim, precision.for_dim(dim)) so they
 match Spike / the RTL at the chosen mesh DIM.
 
 Per-format requant snap, requant-code encode, and nearest-LUT finder are REUSED verbatim
@@ -22,20 +22,7 @@ import os
 import sys
 import tempfile
 
-# ---- precision_for_dim: replicated from gen_matmul_llama.py:66-74 (as in gen_lut_dim.py) ----
-# (exp_bits, frac_bits); frac = Scala sigWidth - 1. dim=16 reproduces the original ramp.
-ACC_PRECISION = [(4, 4)] * 8 + [(4, 5)] * 2 + [(4, 6)] * 5 + [(8, 7)] * 1
-
-
-def precision_for_dim(dim: int):
-    prod = [(4, 3)] * dim
-    if dim <= 8:
-        acc = [(8, 7)] * dim   # DIM<=8: ALL rows bf16 (design assumption -- no reduced-precision ramp)
-    elif dim <= 16:
-        acc = ACC_PRECISION[:dim]
-    else:
-        acc = ACC_PRECISION + [(8, 7)] * (dim - 16)
-    return prod, acc
+import precision
 
 
 # Per-format constants: env INPUT_SPEC + the committed dim16 header's include-guard path prefix.
@@ -65,6 +52,7 @@ def main():
                     help="Full BF16 PE products and adds (MxE4M3LutBf16Dim* configs); header suffix _bf16.")
     ap.add_argument("--header-path", type=str, default=None,
                     help="Output header path (default include/matmul_data_mx_lut_<fmt>_64x64[_dim32].h).")
+    precision.add_arg(ap)
     args = ap.parse_args()
     fmt = args.format
     dim = args.dim
@@ -125,14 +113,13 @@ def main():
     IS_E2M3 = lmd.IS_E2M3
     IS_E3M2 = not (IS_E4M3 or IS_E5M2 or IS_E2M3)
 
-    # --- Step 5 (DIM-aware): C_out_bf16 = tiled_matmul_hwlike with precision_for_dim(dim) -----
+    # --- Step 5 (DIM-aware): C_out_bf16 = tiled_matmul_hwlike with precision.for_dim(dim) -----
     fp8_matmul_model.TILE = dim
     for attr in ("TILE_K", "TILE_M", "TILE_N"):
         if hasattr(fp8_matmul_model, attr):
             setattr(fp8_matmul_model, attr, {"TILE_K": dim, "TILE_M": 2 * dim, "TILE_N": 2 * dim}[attr])
-    prod_prec, acc_prec = precision_for_dim(dim)
-    if args.bf16_arith:
-        prod_prec, acc_prec = [(8, 7)] * dim, [(8, 7)] * dim
+    precision.load(args.params)
+    prod_prec, acc_prec = precision.for_dim(dim, args.bf16_arith)
 
     in_q = make_fp_quantizer(INPUT_SPEC, rounding="zero")
     A_in = in_q(lmd.A_fp)

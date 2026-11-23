@@ -13,6 +13,8 @@ Same layout, offsets and golden tags as gen_lutk_proj.py (whose helpers it impor
 from __future__ import annotations
 
 import argparse
+
+import precision
 import json
 from pathlib import Path
 
@@ -54,7 +56,9 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--mask-file", help='JSON {"name": [0/1 per K-block]}; default: random masks at --shares')
     ap.add_argument("--dims", default="16,32")
+    precision.add_arg(ap, many=True)
     a = ap.parse_args()
+    precision.load(a.params)
     M, K, N = a.m, a.k, a.n
     NKB = K // GROUP
     assert K % GROUP == 0 and N % 64 == 0 and M % 32 == 0

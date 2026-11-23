@@ -15,51 +15,6 @@
 #define BF16_PER_WORD 4
 #define OUT_COLS (MATMUL_N / BF16_PER_WORD)
 
-// On RadianceGemminiOnlyConfig the Gemmini is driven over MMIO rather than the
-// RoCC interface, so real custom-3 instructions (and the spike-only
-// gemmini_mx_load_scales / gemmini_mx_read_smem modeling ops) trap. The
-// #ifndef SPIKE_SIM paths below mirror bareMetalC/matmul_tiled_fp8_64x64.c:
-// command words are written to the MMIO control registers, scale factors are
-// written straight into the scale-factor memory, and the output is read back
-// directly out of the scratchpad.
-#define GEMMINI_SF_MEM 0x40088000
-#define GEMMINI_SF_MEM_A (GEMMINI_SF_MEM + 0x2000)
-#define GEMMINI_SF_MEM_B GEMMINI_SF_MEM
-#define SMEM 0x40000000
-
-#define GEMMINI_CTRL 0x40084000
-#define GEMMINI_RS1_ADDR (GEMMINI_CTRL + 0x10)
-#define GEMMINI_RS2_ADDR (GEMMINI_CTRL + 0x18)
-#define GEMMINI_INST_ADDR (GEMMINI_CTRL + 0x0)
-#define GEMMINI_BUSY_ADDR (GEMMINI_CTRL + 0x20)
-
-#ifndef SPIKE_SIM
-#undef ROCC_INSTRUCTION_RS1_RS2
-#define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct) { \
-    *((volatile uint64_t *) GEMMINI_RS1_ADDR) = (rs1); \
-    *((volatile uint64_t *) GEMMINI_RS2_ADDR) = (rs2); \
-    *((volatile uint32_t*) GEMMINI_INST_ADDR) = (0x7B) | (0 << 7) | (3 << 12) | (1 << 15) | (2 << 20) | ((funct) << 25); \
-}
-
-// Over MMIO the default RoCC fence does not drain Gemmini's DMA queues, so a
-// fence that returns before the mvout store completes lets the store
-// controller's DMACommandTracker free a command that responses are still
-// arriving for (DMACommandTracker.scala assert(cmds(cmd_id).valid)). Match the
-// largest matmul_tiled tests and spin on the busy register instead.
-#undef gemmini_fence
-#define gemmini_fence() { while (*((volatile uint32_t *) GEMMINI_BUSY_ADDR)) asm volatile ("nop"); }
-
-// MMIO write of the per-group scale factors into the scale-factor memory.
-// scale_factors is laid out as [K/32][INDIM] bytes (8 per uint64 word).
-static void load_scale_factors(volatile uint64_t *sf_mem, uint8_t *scale_factors, int INDIM, int K) {
-  for (size_t k = 0; k < K/32; k++) {
-    for (size_t i = 0; i < INDIM / 8; i++) {
-      sf_mem[k*INDIM/8 + i] = ((uint64_t*) scale_factors)[k * INDIM/8 + i];
-    }
-  }
-}
-#endif
-
 #ifdef BAREMETAL
 // Override the weak handle_trap (which silently exits 1337) so an unexpected
 // trap reports its cause/epc instead. mcause: 1=instr access, 2=illegal instr,
@@ -115,13 +70,8 @@ int main() {
   gemmini_extended3_config_ex(WEIGHT_STATIONARY, 0, 0, ACC_SCALE_IDENTITY,
                               1, 1, 0, 0, false, 0, 0, 3, 0);
 
-#ifdef SPIKE_SIM
   gemmini_mx_load_scales((uint64_t)&A_scales_row, sizeof(A_scales_row), 0);
   gemmini_mx_load_scales((uint64_t)&B_scales_col, sizeof(B_scales_col), 1);
-#else
-  load_scale_factors((volatile uint64_t *) GEMMINI_SF_MEM_A, (uint8_t *) &A_scales_row, MATMUL_M, MATMUL_K);
-  load_scale_factors((volatile uint64_t *) GEMMINI_SF_MEM_B, (uint8_t *) &B_scales_col, MATMUL_N, MATMUL_K);
-#endif
 
   gemmini_config_ld(MATMUL_K * sizeof(uint8_t));
   for (int i = 0; i < tiles_I; i++) {
@@ -169,16 +119,11 @@ int main() {
   // Drain the mvout store DMA before reading results back.
   gemmini_fence();
 
-#ifdef SPIKE_SIM
-  gemmini_mx_read_smem(&C_hw[0][0], SPAD_DEST * 16, MATMUL_M * MATMUL_N);
-#else
-  uint64_t* smem_start_addr = ((uint64_t*)SMEM) + SPAD_DEST * 2;
-  for (int i = 0; i < MATMUL_M; i++) {
-    for (int j = 0; j < OUT_COLS; j++) {
-      C_hw[i][j] = *(smem_start_addr + (i*OUT_COLS + j));
-    }
-  }
-#endif
+  // BF16 C in the internal spad (row-major) -> flat spad->DRAM mvout
+  gemmini_config_st(DIM * sizeof(uint8_t));
+  for (int r = 0; r < MATMUL_M * MATMUL_N * 2 / DIM; r += DIM)
+    gemmini_extended_mvout((uint8_t *) C_hw + r * DIM, SPAD_DEST + r, DIM, DIM);
+  gemmini_fence();
 
   int bf16_errors = 0;
   for (int i = 0; i < MATMUL_M; i++) {

@@ -954,7 +954,8 @@ with open(HEADER_PATH, "w") as f:
     f.write(content)
 print("C_proj_hw appended to header.")
 
-BIN_DIR = Path(os.environ.get("MXGEMMINI_BIN_DIR", str(Path.cwd())))
-write_tensor_bins(BIN_DIR, A_indices, B_indices, C_proj_hw, C_out_bf16)
-print(f"Binary tensors written to {BIN_DIR}")
+if os.environ.get("MXGEMMINI_BIN_DIR"):   # optional raw tensor dumps (debug only)
+    BIN_DIR = Path(os.environ["MXGEMMINI_BIN_DIR"])
+    write_tensor_bins(BIN_DIR, A_indices, B_indices, C_proj_hw, C_out_bf16)
+    print(f"Binary tensors written to {BIN_DIR}")
 

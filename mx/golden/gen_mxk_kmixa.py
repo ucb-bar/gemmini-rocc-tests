@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import argparse
 
+import precision
+
 import numpy as np
 import torch
 
@@ -38,7 +40,9 @@ def main() -> int:
     ap.add_argument("--abase", type=int, default=0)
     ap.add_argument("--wfmt", type=int, default=0)
     ap.add_argument("--wbase", type=int, default=0)
+    precision.add_arg(ap, many=True)
     a = ap.parse_args()
+    precision.load(a.params)
     assert a.base == 44 or a.plain == 8, "base 48: plain W is the loop's E4M3 W"
     M, N, pat = a.m, a.n, a.pattern.upper()
     assert set(pat) <= {"L", "P"} and len(pat) <= 128 and M % 64 == 0 and N % 64 == 0

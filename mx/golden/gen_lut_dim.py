@@ -7,11 +7,11 @@ importing lut_mapping_demo.py with the exact env that generated that header
 (SEED=0, M=K=N=64, INPUT_SPEC=fp8:e4m3, G=1). Only the goldens
 (C_out_bf16 / C_out=nibble-packed C_proj / C_scales_row / C_proj_hw) are recomputed
 with the DIM-aware per-lane precision model (fp8_matmul_model driven exactly as
-gen_matmul_llama.build(): mm.TILE=dim, prod/acc = precision_for_dim(dim)) so the
+gen_matmul_llama.build(): mm.TILE=dim, prod/acc = precision.for_dim(dim)) so the
 golden matches Spike (gemmini.cc acc ramp) and the RTL at DIM=32.
 
 Emission / deproject / operand helpers are REUSED from lut_golden_model and
-lut_mapping_demo -- nothing is rewritten. precision_for_dim is replicated inline
+lut_mapping_demo -- nothing is rewritten. precision comes from precision.py (--params)
 (source: gen_matmul_llama.py:66-74) to avoid pulling app.mxq_golden.
 
 Run:
@@ -24,15 +24,7 @@ import os
 import sys
 import tempfile
 
-# ---- precision_for_dim: replicated from gen_matmul_llama.py:66-74 -------------------------
-# (exp_bits, frac_bits); frac = Scala sigWidth - 1. dim=16 reproduces the original ramp.
-ACC_PRECISION = [(4, 4)] * 8 + [(4, 5)] * 2 + [(4, 6)] * 5 + [(8, 7)] * 1
-
-
-def precision_for_dim(dim: int):
-    prod = [(4, 3)] * dim
-    acc = ACC_PRECISION[:dim] if dim <= 16 else ACC_PRECISION + [(8, 7)] * (dim - 16)
-    return prod, acc
+import precision
 
 
 def main():
@@ -40,7 +32,9 @@ def main():
     ap.add_argument("--dim", type=int, default=32, help="Mesh DIM (per-tile accumulation depth).")
     ap.add_argument("--header-path", type=str, default=None,
                     help="Output header path (default include/matmul_data_mx_lut_e4m3_64x64_dim<DIM>.h).")
+    precision.add_arg(ap)
     args = ap.parse_args()
+    precision.load(args.params)
     dim = args.dim
 
     here = os.path.dirname(os.path.abspath(__file__))
@@ -90,12 +84,12 @@ def main():
     A_TILE_M, K_TILE = lmd.A_TILE_M, lmd.K_TILE
     assert INPUT_SPEC == "fp8:e4m3" and lmd.IS_E4M3, "gen_lut_dim currently supports e4m3 only"
 
-    # --- Step 5 (DIM-aware): C_out_bf16 = tiled_matmul_hwlike with precision_for_dim(dim) -----
+    # --- Step 5 (DIM-aware): C_out_bf16 = tiled_matmul_hwlike with precision.for_dim(dim) -----
     fp8_matmul_model.TILE = dim                 # per-tile accumulation depth = mesh DIM
     for attr in ("TILE_K", "TILE_M", "TILE_N"):  # nibble models only; harmless if absent
         if hasattr(fp8_matmul_model, attr):
             setattr(fp8_matmul_model, attr, {"TILE_K": dim, "TILE_M": 2 * dim, "TILE_N": 2 * dim}[attr])
-    prod_prec, acc_prec = precision_for_dim(dim)
+    prod_prec, acc_prec = precision.for_dim(dim)
 
     in_q = make_fp_quantizer(INPUT_SPEC, rounding="zero")
     A_in = in_q(lmd.A_fp)

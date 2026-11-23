@@ -85,10 +85,12 @@ vpath %.c $(src_dir)/src
 
 MX_TEMPLATE_DEPS = $(src_dir)/include/mx_test_common.h $(wildcard $(src_dir)/templates/*.c)
 
-# Per-test extras: its params header (params=) and its generated data set (data lines).
+# Per-test extras: its params header (params=), its generated data header (template tests) or data set (data lines).
 mx_extra_deps = $(if $(MX_PARAMS_$(1)),params/$(MX_PARAMS_$(1))/include/gemmini_params.h) \
+                $(if $(MX_HDR_$(1)),data/$(MX_HDR_$(1)).h) \
                 $(if $(MX_BLOB_$(1)),data/$(MX_BLOB_$(1)).h data/$(MX_BLOB_$(1))_blob.o)
-mx_extra_flags = $(if $(MX_PARAMS_$(1)),-iquote params/$(MX_PARAMS_$(1))) $(if $(MX_BLOB_$(1)),-Idata)
+mx_extra_flags = $(if $(MX_PARAMS_$(1)),-iquote params/$(MX_PARAMS_$(1))) \
+                 $(if $(MX_HDR_$(1)),-iquote data/$(dir $(MX_HDR_$(1)))) $(if $(MX_BLOB_$(1)),-Idata)
 
 .SECONDEXPANSION:
 $(addsuffix -baremetal,$(mx_default_tests) $(mx_mxk_tests)): %-baremetal: $(GEMMINI_HEADERS) $(MX_TEMPLATE_DEPS) \
@@ -103,9 +105,20 @@ mxk: $(mx_mxk_tests:=-baremetal)
 params/%/include/gemmini_params.h: $(abs_top_srcdir)/include/gemmini_params_%.h
 	mkdir -p $(dir $@) && cp $< $@
 
+# Golden precision = the config header's per mesh row product/accumulator precision (--params).
+GOLDEN_PY = $(wildcard $(src_dir)/golden/*.py)
+prec_h = $(foreach p,$(1),params/$(p)/include/gemmini_params.h)
+
+# Template-test data header data/<prec>/<name>.h: mx/golden command MX_HGEN with config MX_HPREC.
+$(addprefix data/,$(addsuffix .h,$(mx_hdrs))): data/%.h: $(GOLDEN_PY) $$(call prec_h,$$(MX_HPREC_$$*))
+	mkdir -p $(dir $@) && cd $(src_dir)/golden && MX_DATA_DIR=$(CURDIR)/$(dir $@) python3 $(MX_HGEN_$*) \
+	  $(if $(filter gen_plain.py%,$(MX_HGEN_$*)),,--header-path $(CURDIR)/$@) \
+	  --params $(addprefix $(CURDIR)/,$(call prec_h,$(MX_HPREC_$*))) > $(CURDIR)/$@.log
+
 OBJCOPY ?= riscv$(XLEN)-unknown-elf-objcopy
-data/%.bin data/%.h: $(wildcard $(src_dir)/golden/*.py)
-	mkdir -p data && cd $(src_dir)/golden && MX_DATA_DIR=$(CURDIR)/data python3 $(MX_GEN_$*)
+data/%.bin data/%.h: $(GOLDEN_PY) $$(call prec_h,$$(MX_BPREC_$$*))
+	mkdir -p data && cd $(src_dir)/golden && MX_DATA_DIR=$(CURDIR)/data python3 $(MX_GEN_$*) \
+	  $(if $(MX_BPREC_$*),--params $(addprefix $(CURDIR)/,$(call prec_h,$(MX_BPREC_$*))))
 
 .PRECIOUS: data/%.bin data/%.h
 data/%_blob.o: data/%.bin

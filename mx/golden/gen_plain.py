@@ -31,20 +31,7 @@ BLOCK = 32
 #: where headers are written (MX_DATA_DIR overrides; default: the repo include/)
 OUT_DIR = Path(os.environ.get("MX_DATA_DIR", HERE.parent.parent / "include"))
 
-#: Mesh precision, from ConfigsFP.scala's meshProdPrecisionList / meshAccPrecisionList. Written
-#: (exp_bits, frac_bits); the same schedule appears in gemmini.cc as acc_e[]/acc_m[].
-PROD_PRECISION = [(4, 3)] * 16
-ACC_PRECISION = [(4, 4)] * 8 + [(4, 5)] * 2 + [(4, 6)] * 5 + [(8, 7)] * 1
-
-def precision_for_dim(dim: int):
-    """Per-DIM (prod, acc) precision lists mirroring ConfigsFP dim{16,32}MxFPConfig
-    (Python frac = Scala sigWidth - 1): prod = MxFloat(4,4,4) uniform -> (4,3); acc = the DIM=16 ramp
-    for rows 0-15, extra rows (DIM>16) bf16 MxFloat(8,8,4) -> (8,7). dim=16 reproduces the originals."""
-    prod = [(4, 3)] * dim
-    if dim <= 8:
-        return prod, [(8, 7)] * dim   # DIM=4/8: all acc rows bf16 (dim4MxFPConfig, dim8MxFPConfig)
-    acc = ACC_PRECISION[:dim] if dim <= 16 else ACC_PRECISION + [(8, 7)] * (dim - 16)
-    return prod, acc
+import precision   # per mesh row product / accumulator precision (--params)
 
 
 from formats import Format, FORMATS, requant  # noqa: E402
@@ -275,7 +262,7 @@ def build(shape: Shape, verbose: bool = True, operands: dict | None = None) -> d
         mm.TILE_K = shape.dim
         mm.TILE_M = 2 * shape.dim
         mm.TILE_N = 2 * shape.dim
-    prod_prec, acc_prec = precision_for_dim(shape.dim)
+    prod_prec, acc_prec = precision.for_dim(shape.dim)
     C_bf16 = mm.tiled_matmul_hwlike(
         torch.from_numpy(A_P), torch.from_numpy(B_P),
         torch.from_numpy(e8m0_decode(A_scales).astype(np.float32)),       # [M][GK]
@@ -474,7 +461,7 @@ def _run_mesh(A_P: np.ndarray, A_scales: np.ndarray,
     mm.TILE = dim
     if hasattr(mm, "TILE_K"):
         mm.TILE_K, mm.TILE_M, mm.TILE_N = dim, 2 * dim, 2 * dim
-    prod_prec, acc_prec = precision_for_dim(dim)
+    prod_prec, acc_prec = precision.for_dim(dim)
     C = mm.tiled_matmul_hwlike(
         torch.from_numpy(A_P), torch.from_numpy(B_P),
         torch.from_numpy(e8m0_decode(A_scales).astype(np.float32)),
@@ -760,7 +747,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Generate plain-format matmul data headers.")
     ap.add_argument("names", nargs="*", help=f"shapes ({', '.join(sorted(BY_NAME))}) or chain_<shape>; default: all")
     ap.add_argument("--operands", type=Path, help="use these codes + scales instead of random ones")
+    precision.add_arg(ap, many=True)
     a = ap.parse_args()
+    precision.load(a.params)
     operands = load_operands(a.operands) if a.operands else None
     names = a.names or list(BY_NAME) + [f"chain_{c}" for c in CHAINS]
     for name in names:

@@ -6,6 +6,7 @@ and PROD_MANT_BITS=3 (1.m × 1.m → ≤3 fractional bits after normalization).
 """
 
 import math
+import os
 import re
 import sys
 import random
@@ -1024,9 +1025,9 @@ def run(M: int, K: int, N: int, header_path: str = "matmul_data_fp4.h", verbose:
         a_tile_m       = TILE_M,
         k_tile         = TILE_K,
     )
-    write_tensor_bins(Path(header_path).resolve().parent, A_in, B_in, C_out_quantized, C_out_bf16)
     print(f"\nHeader written to: {header_path}")
-    print(f"Binary tensors written to: {Path(header_path).resolve().parent}")
+    if os.environ.get("MXGEMMINI_BIN_DIR"):   # optional raw tensor dumps (debug only)
+        write_tensor_bins(os.environ["MXGEMMINI_BIN_DIR"], A_in, B_in, C_out_quantized, C_out_bf16)
 
     return C_out_bf16
 

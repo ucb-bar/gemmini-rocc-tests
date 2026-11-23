@@ -1,13 +1,10 @@
 *~
 *#
-build
+build*/
 autom4te.cache
 configure
 .ipynb_checkpoints
 *.pyc
-build_spike
-build_rocc
-build_mmio
 mx/golden/*.bin
 mx/golden/*.log
 __pycache__

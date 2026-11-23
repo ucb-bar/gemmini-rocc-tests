@@ -5,7 +5,7 @@ Merges the ~30 gen_asym_<act>_<wei>.py generators into ONE code path + a per-com
 All asym combos are non-requant: output is BF16 (C_out_bf16), golden via
 fp8_matmul_model.tiled_matmul_hwlike. This generator adds DIM-awareness: --dim 16 reproduces
 the committed headers byte-identical; --dim 32 keeps operands identical and recomputes the golden
-with precision_for_dim(32) (emits ..._dim32.h).
+with precision.for_dim(32) (emits ..._dim32.h).
 
 Usage:
     ./gen_asym.py --act <spec> --wei <spec> [--dim 16|32] [--M 64 --K 64 --N 64 --seed 0]
@@ -20,19 +20,7 @@ import argparse
 import os
 import sys
 
-# --- precision_for_dim: replicated from gen_matmul_llama.py:66-74 / gen_mx_lut.py -------------
-ACC_PRECISION = [(4, 4)] * 8 + [(4, 5)] * 2 + [(4, 6)] * 5 + [(8, 7)] * 1
-
-
-def precision_for_dim(dim: int):
-    prod = [(4, 3)] * dim
-    if dim == 8:
-        acc = [(8, 7)] * 8   # DIM=8: ALL rows bf16 (design assumption -- no reduced-precision ramp)
-    elif dim <= 16:
-        acc = ACC_PRECISION[:dim]
-    else:
-        acc = ACC_PRECISION + [(8, 7)] * (dim - 16)
-    return prod, acc
+import precision
 
 
 # --- Combo registry ---------------------------------------------------------------------------
@@ -117,6 +105,7 @@ def main():
                     help="Full BF16 PE products and adds (MxE4M3LutBf16Dim* configs); header suffix _bf16.")
     ap.add_argument("--header-path", type=str, default=None,
                     help="Output path (default ./include/matmul_data_asym_<combo>[_dim32].h).")
+    precision.add_arg(ap)
     args = ap.parse_args()
 
     here = os.path.dirname(os.path.abspath(__file__))
@@ -255,9 +244,8 @@ def main():
         if hasattr(fp8_matmul_model, attr):
             setattr(fp8_matmul_model, attr,
                     {"TILE_K": dim, "TILE_M": 2 * dim, "TILE_N": 2 * dim}[attr])
-    prod_prec, acc_prec = precision_for_dim(dim)
-    if args.bf16_arith:
-        prod_prec, acc_prec = [(8, 7)] * dim, [(8, 7)] * dim
+    precision.load(args.params)
+    prod_prec, acc_prec = precision.for_dim(dim, args.bf16_arith)
     C_out_bf16 = tiled_matmul_hwlike(
         A_fp, B_fp, A_scales_row_q, B_scales_col_q,
         verbose=False, prod_precision_list=prod_prec, acc_precision_list=acc_prec,

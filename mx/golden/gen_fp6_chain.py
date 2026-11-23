@@ -11,6 +11,7 @@ output scales.
 """
 from __future__ import annotations
 
+import precision
 import os
 import sys
 from pathlib import Path
@@ -178,8 +179,6 @@ LUT_SIZE   = 16
 A_TILE_M   = 32
 K_TILE     = 16
 DEV        = torch.device("cpu")
-PROD_PREC  = [(4, 3)] * K_TILE
-ACC_PREC   = [(4, 4)] * 8 + [(4, 5)] * 2 + [(4, 6)] * 5 + [(8, 7)] * 1
 
 _in_q = make_fp_quantizer(INPUT_SPEC, rounding="zero")
 
@@ -276,7 +275,7 @@ def run_mm(A_idx, A_luts_t, A_scale_dec, B_idx, B_luts_t, B_scale_dec, M, K, N):
     B_fp = _project(B_idx, B_luts_t, "col", K)                 # [K][N]
     A_in, B_in = _in_q(A_fp), _in_q(B_fp)
     C_bf16 = tiled_matmul_hwlike(A_in, B_in, A_scale_dec, B_scale_dec, verbose=False,
-                                 prod_precision_list=PROD_PREC, acc_precision_list=ACC_PREC)
+                                 prod_precision_list=precision.for_dim(K_TILE)[0], acc_precision_list=precision.for_dim(K_TILE)[1])
     C_req, C_scale_vals = matrix_mx_requantize(C_bf16, quant_spec=INPUT_SPEC)   # values, [M][N/32]
     C_req6 = hw_bf16_to_fp6(q_bf16_rne(C_req)).float().view(M, N)
     # Data-derived OUTPUT LUTs (k-means on the requantized fp6 values), 16 entries per 2 rows.
@@ -447,7 +446,13 @@ static const uint32_t C2_lut[{nAg}][3] = {{
 
 
 def main():
-    S = int(sys.argv[1]) if len(sys.argv) > 1 else 64
+    import argparse
+    ap = argparse.ArgumentParser(description="fp6 chained-matmul data header (DIM 16).")
+    ap.add_argument("size", type=int, nargs="?", default=64)
+    precision.add_arg(ap)
+    a = ap.parse_args()
+    precision.load(a.params)
+    S = a.size
     print(f"fp6 chain {S}x{S}x{S} ...")
     d = build_chain(S)
     p = emit(d)

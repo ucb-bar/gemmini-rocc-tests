@@ -41,6 +41,10 @@ typedef uint32_t acc_scale_t_bits;
 
 #define HAS_MX_SCALING
 
+// Per mesh row {exp bits, frac bits} of the product and accumulator; the MX goldens are generated from these.
+#define MESH_PROD_PRECISION {{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7}}
+#define MESH_ACC_PRECISION {{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7},{8,7}}
+
 #define row_align(blocks) __attribute__((aligned(blocks*DIM*sizeof(elem_t))))
 #define row_align_acc(blocks) __attribute__((aligned(blocks*DIM*sizeof(acc_t))))
 

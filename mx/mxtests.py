@@ -5,8 +5,10 @@
   ./mxtests.py show NAME        template, data header and compiler flags of one test
   ./mxtests.py mk               make fragment (mx/Makefile includes this)
 
-Template tests use committed data headers (include/). Kernel tests (lutk, mxk_*) build an mx/src kernel against
-their own params header, with data blobs generated at build time from the manifest's `data` lines.
+Template tests generate their data header at build time (mx/golden); its golden uses the per mesh row
+product / accumulator precision of a config header: the test's params=, else the manifest's `precision` default
+for its DIM. Kernel tests (lutk, mxk_*) build an mx/src kernel against their own params header, with data blobs
+generated at build time from the manifest's `data` lines.
 """
 import argparse
 import itertools
@@ -21,12 +23,24 @@ FORMATS = {'e4m3', 'e5m2', 'e4m3s', 'e2m3', 'e3m2', 'fp4'}
 
 
 class Test:
-    """src: path under mx/ (templates/<t>.c or src/<k>.c); data: committed header in include/ (template tests);
-    blob: generated data set (kernel tests); params: gemmini_params_<params>.h to compile against; group: make group."""
-    def __init__(self, name, template, data, defs, src=None, blob=None, params=None, group='default'):
+    """src: path under mx/ (templates/<t>.c or src/<k>.c); data: generated data header (template tests), made by
+    `gen` (mx/golden command) with the precision of config `prec` (dim/bf16 resolved by load()); blob: generated
+    data set (kernel tests); params: gemmini_params_<params>.h to compile against; group: make group."""
+    def __init__(self, name, template, data, defs, src=None, blob=None, params=None, group='default', gen=None,
+                 dim=16, bf16=False):
         self.name, self.template, self.data, self.defs = name, template, data, defs
         self.src = src or f'templates/{template}.c'
         self.blob, self.params, self.group = blob, params, group
+        self.gen, self.dim, self.bf16, self.prec = gen, dim, bf16, None
+
+
+SPEC = {'e4m3': 'fp8:e4m3', 'e5m2': 'fp8:e5m2', 'e4m3s': 'fp8:e4m3s', 'e2m3': 'fp6:e2m3', 'e3m2': 'fp6:e3m2',
+        'fp4': 'fp4:e2m1'}
+
+
+def mnk(size):
+    d = [int(x) for x in size.split('x')]
+    return d if len(d) == 3 else d + [d[1]]
 
 
 def asym(p):
@@ -44,7 +58,10 @@ def asym(p):
     for k in ('alt', 'wdiff'):
         if k in p:
             defs[k.upper()] = int(p[k])
-    return Test(name, 'asym', data, defs)
+    M, N, K = mnk(size)
+    gen = f'gen_asym.py --act {SPEC[act]} --wei {SPEC[wei]} --dim {dim} --M {M} --N {N} --K {K}'
+    gen += ' --requant fp4' if out == 'fp4' else ''
+    return Test(name, 'asym', data, defs, gen=gen, dim=dim, bf16=tag == 'bf16', params=p.get('params'))
 
 
 LUT_PREFIX = {'e4m3': 'fp8_e4m3_lut', 'e5m2': 'fp8_e5m2', 'e2m3': 'fp6_e2m3_lut', 'e3m2': 'fp6_e3m2_lut'}
@@ -58,7 +75,13 @@ def lut_requant(p):
     suffix = (f'_dim{dim}' if dim != 16 else '') + (f'_{tag}' if tag else '')
     name = f'matmul_tiled_{LUT_PREFIX[fmt]}_{size}_requant{suffix}'
     data = f'matmul_data_mx_lut_{fmt}_{size}{suffix}'
-    return Test(name, 'lut_requant', data, {'FMT': fmt, 'MESH_DIM': dim})
+    return Test(name, 'lut_requant', data, {'FMT': fmt, 'MESH_DIM': dim}, gen=lut_gen(fmt, dim, size), dim=dim,
+                bf16=tag == 'bf16', params=p.get('params'))
+
+
+def lut_gen(fmt, dim, size):
+    M, N, K = mnk(size)
+    return f'gen_mx_lut.py --format {fmt} --dim {dim} --M {M} --N {N} --K {K}'
 
 
 LUT_BF16_DIM = {'lut_bf16': 16, 'lut_bf16_d32': 32, 'lut_bf16_d8': 8}
@@ -70,7 +93,8 @@ def lut_bf16(kind):
         suffix = (f'_dim{dim}' if dim != 16 else '') + (f'_{tag}' if tag else '')
         mid = '_nonrequant' if kind == 'lut_bf16_d8' else ''
         name = f'matmul_tiled_{LUT_PREFIX[fmt]}_{size}{mid}{suffix}'
-        return Test(name, kind, f'matmul_data_mx_lut_{fmt}_{size}{suffix}', {'FMT': fmt, 'MESH_DIM': dim})
+        return Test(name, kind, f'matmul_data_mx_lut_{fmt}_{size}{suffix}', {'FMT': fmt, 'MESH_DIM': dim},
+                    gen=lut_gen(fmt, dim, size), dim=dim, bf16=tag == 'bf16', params=p.get('params'))
     return make
 
 
@@ -92,7 +116,9 @@ def plain(kind):
         dim, size = int(p.get('dim', 16)), p.get('size', '64x64')
         d = f'_dim{dim}' if dim != 16 else ''
         name, data = (x.format(size=size, d=d) for x in PLAIN[kind])
-        return Test(name, kind, data, {'MESH_DIM': dim})
+        shape = data.removeprefix('matmul_')
+        shape = 'chain_' + shape.replace('_chain', '') if '_chain' in shape else shape
+        return Test(name, kind, data, {'MESH_DIM': dim}, gen=f'gen_plain.py {shape}', dim=dim, params=p.get('params'))
     return make
 
 
@@ -174,7 +200,7 @@ TEMPLATES = {'asym': asym, 'src': src, 'lutk': lutk, 'mxk_pwr': mxk_pwr, 'mxk_kb
 
 def load(path=MANIFEST, data=None):
     """Tests from the manifest; `data` lines (name=<blob> gen="<generator args>") go into the data dict."""
-    tests = []
+    tests, precision = [], {}
     data = {} if data is None else data
     for lineno, line in enumerate(open(path), 1):
         words = shlex.split(line, comments=True)
@@ -184,6 +210,9 @@ def load(path=MANIFEST, data=None):
         if kind == 'data':
             data[kvs['name']] = kvs['gen']
             continue
+        if kind == 'precision':
+            precision.update(kvs)
+            continue
         if kind not in TEMPLATES:
             sys.exit(f'{path}:{lineno}: unknown template "{kind}"')
         keys = list(kvs)
@@ -192,6 +221,12 @@ def load(path=MANIFEST, data=None):
                 tests.append(TEMPLATES[kind](dict(zip(keys, combo))))
             except (KeyError, ValueError) as e:
                 sys.exit(f'{path}:{lineno}: {e}')
+    for t in tests:
+        if t.gen:
+            key = ('bf16_' if t.bf16 else '') + f'dim{t.dim}'
+            t.prec = t.params or precision.get(key)
+            if not t.prec:
+                sys.exit(f'{t.name}: no params= and no `precision {key}=` default')
     missing = {t.blob for t in tests if t.blob and t.blob not in data}
     if missing:
         sys.exit(f'no data line for: {sorted(missing)}')
@@ -203,7 +238,7 @@ def load(path=MANIFEST, data=None):
 
 
 def cflags(t):
-    flags = [f'-DMX_DATA_H=\'"include/{t.data}.h"\''] if t.data else []
+    flags = [f'-DMX_DATA_H=\'"{t.data}.h"\''] if t.gen else [f'-DMX_DATA_H=\'"include/{t.data}.h"\''] if t.data else []
     flags += [f'-D{k}={v}' for k, v in t.defs.items()]
     return ' '.join(flags)
 
@@ -227,7 +262,9 @@ def main():
         if t is None:
             sys.exit(f'no test named {a.name}')
         print(f'source    mx/{t.src}')
-        if t.data:
+        if t.gen:
+            print(f'data      data/{t.prec}/{t.data}.h  <- mx/golden/{t.gen} --params include/gemmini_params_{t.prec}.h')
+        elif t.data:
             print(f'data      include/{t.data}.h')
         if t.blob:
             print(f'data      {t.blob}.bin/.h  <- mx/golden/{data[t.blob]}')
@@ -244,9 +281,20 @@ def main():
                 print(f'MX_PARAMS_{t.name} := {t.params}')
             if t.blob:
                 print(f'MX_BLOB_{t.name} := {t.blob}')
+            if t.gen:
+                print(f'MX_HDR_{t.name} := {t.prec}/{t.data}')
+        hdrs = {}
+        for t in tests:
+            if t.gen:
+                hdrs.setdefault(f'{t.prec}/{t.data}', (t.gen, t.prec))
+        for h, (gen, prec) in hdrs.items():
+            print(f'mx_hdrs += {h}')
+            print(f'MX_HGEN_{h} := {gen}')
+            print(f'MX_HPREC_{h} := {prec}')
         for b, gen in data.items():
             print(f'mx_data_sets += {b}')
             print(f'MX_GEN_{b} := {gen}')
+            print(f'MX_BPREC_{b} := {" ".join(sorted({t.params for t in tests if t.blob == b and t.params}))}')
 
 
 if __name__ == '__main__':

@@ -32,11 +32,17 @@ Then, add `my_test` to the `tests` list at the top of `bareMetalC/Makefile`. Aft
 
 MX tests live in `mx/`. Build them for one target (binaries land in `build_<target>/mx/`):
 
-- RoCC (e.g. rocket): `./build_rocc.sh mx`
+- RoCC (e.g. rocket, and Spike): `./build_rocc.sh mx`
 - MMIO (e.g. Radiance): `./build_mmio.sh mx`
-- Spike: `./build_spike.sh mx`
+
+Spike runs the RoCC binaries: `spike --extension=gemmini build_rocc/mx/<test>-baremetal`.
 
 Most are generated: each line of `mx/tests.txt` is one or more tests built from `mx/templates/`.
+
+Goldens are generated at build time using the per mesh row product and accumulation precision in a config's
+`gemmini_params.h` (`MESH_PROD_PRECISION` / `MESH_ACC_PRECISION`). After changing the hardware, copy the elaborated
+`include/gemmini_params.h` to `include/gemmini_params_<name>.h`, point the `precision` line (or a test's `params=<name>`)
+in `mx/tests.txt` at it, and rebuild.
 
 ```
 mx/mxtests.py list        # all test names

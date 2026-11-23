@@ -1,4 +1,8 @@
 # One line = one or more tests (dim=16,8,32 makes three). `./mxtests.py list` prints the names.
+# Goldens are generated at build with the per mesh row product/accumulator precision of a config header
+# (include/gemmini_params_<name>.h): a test's params=<name>, else the default below for its DIM (bf16_ = tag=bf16).
+precision  dim4=dim4_fp4_vpu  dim8=dim8_fp4  dim16=fp4_vpu  dim32=dim32_fp4_vpu  bf16_dim16=e4m3_lut_bf16_dim16  bf16_dim32=e4m3_lut_bf16_dim32
+
 # asym keys: act, wei (e4m3 e5m2 e4m3s e2m3 e3m2 fp4), dim, size (default 64x64),
 #            out=fp4 (requant), tag=bf16 (prints cycles), alt/wdiff (override altfmt bits)
 

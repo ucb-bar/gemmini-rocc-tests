@@ -25,15 +25,9 @@
 
 // RTL sim: the CPU reference (software BF16 FMAs, I*J*K of them) dominates the run, so keep it small while still
 // covering two K chunks into the accumulator and, at DIM 16 / 32, a partial row tile. Spike runs the larger problem.
-#ifdef SPIKE_SIM
-#define MAT_DIM_I 64
-#define MAT_DIM_K 128
-#define MAT_DIM_J 64
-#else
 #define MAT_DIM_I 4
 #define MAT_DIM_K (2 * DIM)
 #define MAT_DIM_J DIM
-#endif
 
 #define MAX_PRINTED_ERRORS 10
 

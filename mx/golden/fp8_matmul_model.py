@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import math
+import os
 from pathlib import Path
 import re
 import time
@@ -1162,9 +1163,9 @@ def run(M: int, K: int, N: int, header_path: str = "matmul_data.h", verbose: boo
         C_out_quantized=C_out_quantized,
         C_out_scales=C_out_scales,
     )
-    write_tensor_bins(Path(header_path).resolve().parent, A_in, B_in, C_out_quantized, C_out_bf16)
     print(f"\nHeader written to: {header_path}")
-    print(f"Binary tensors written to: {Path(header_path).resolve().parent}")
+    if os.environ.get("MXGEMMINI_BIN_DIR"):   # optional raw tensor dumps (debug only)
+        write_tensor_bins(os.environ["MXGEMMINI_BIN_DIR"], A_in, B_in, C_out_quantized, C_out_bf16)
 
     return C_out_bf16
 

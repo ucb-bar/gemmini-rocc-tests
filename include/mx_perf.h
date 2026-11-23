@@ -7,7 +7,7 @@
 #include "include/gemmini_testutils.h"
 
 // RTL only (Spike returns dummy counts); counter ops hang if num_counter=0, -DMX_PERF_NO_HW_COUNTERS opts out.
-#if !defined(SPIKE_SIM) && !defined(GEMMINI_MMIO) && !defined(MX_PERF_NO_HW_COUNTERS)
+#if !defined(GEMMINI_MMIO) && !defined(MX_PERF_NO_HW_COUNTERS)
 #define MX_PERF_HW_COUNTERS
 #endif
 

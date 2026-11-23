@@ -133,7 +133,7 @@ int main() {
 
    // MVIN B
 
-  // ISA parity: funct-29 LUTs + funct-27 scales (same calls as SPIKE_SIM), replacing the CPU
+  // ISA parity: funct-29 LUTs + funct-27 scales, replacing the CPU
   // regmap + flat window. sel: LUT 0=weight(B),1=act-in(A),2=act-out(C); scales 0=A/act,1=B/wgt.
   // B (weight) LUT is the one that matters (fp6 deproject). A_lut/C_lut are placeholders:
   // fp4 activations take the direct path (no LUT) and the output is bf16.

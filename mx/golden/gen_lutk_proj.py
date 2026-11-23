@@ -32,6 +32,7 @@ HERE = Path(__file__).resolve().parent
 DATA = Path(os.environ.get("MX_DATA_DIR", HERE.parent / "data"))
 sys.path.insert(0, str(HERE))
 import fp8_matmul_model as FM  # noqa: E402
+import precision  # noqa: E402
 from lut_golden_model import make_lut, tensor_to_custom_fp_codes  # noqa: E402
 
 GROUP = 32
@@ -80,7 +81,7 @@ def bf16_add(a, b):   # exact sum rounded once to BF16 (RNE): the VPU's VPU_ADD 
 
 
 def golden(A, B, As, Bs, kbs, dim):
-    """BF16 mesh golden (bf16 products and accumulation) over the K-blocks kbs, in order."""
+    """Mesh golden over the K-blocks kbs, in order (precision from --params, else all BF16)."""
     if not kbs:
         return np.zeros((A.shape[0], B.shape[1]), np.uint16)
     ks = np.concatenate([np.arange(kb * GROUP, (kb + 1) * GROUP) for kb in kbs])
@@ -88,9 +89,9 @@ def golden(A, B, As, Bs, kbs, dim):
     for attr, v in (("TILE_K", dim), ("TILE_M", 2 * dim), ("TILE_N", 2 * dim)):
         if hasattr(FM, attr):
             setattr(FM, attr, v)
-    prec = [(8, 7)] * dim
+    prod, acc = precision.for_dim(dim, bf16_arith=True)
     C = FM.tiled_matmul_hwlike(A[:, ks], B[ks, :], As[:, kbs], Bs[kbs, :], verbose=False,
-                               prod_precision_list=prec, acc_precision_list=prec)
+                               prod_precision_list=prod, acc_precision_list=acc)
     return bf16_bits(C)
 
 
@@ -103,7 +104,9 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--mask-file", help='JSON {"name": [0/1 per K-block]}; default: random masks at --shares')
     ap.add_argument("--dims", default="16,32")
+    precision.add_arg(ap, many=True)
     a = ap.parse_args()
+    precision.load(a.params)
     M, K, N = a.m, a.k, a.n
     NKB = K // GROUP
     assert K % GROUP == 0 and N % 64 == 0 and M % 32 == 0

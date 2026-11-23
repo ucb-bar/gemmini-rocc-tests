@@ -129,7 +129,7 @@ int main() {
 
    // MVIN B
 
-  // ISA parity: funct-29 LUTs + funct-27 scales (same calls as SPIKE_SIM), replacing the CPU
+  // ISA parity: funct-29 LUTs + funct-27 scales, replacing the CPU
   // regmap + flat window. sel: LUT 0=weight(B),1=act-in(A),2=act-out(C); scales 0=A/act,1=B/wgt.
   gemmini_mx_load_lut_dt((uint64_t)&B_lut[0][0], (MATMUL_N >> QUANT_LUT_UPDATE_GRANULARITY), 0, 6);
   gemmini_mx_load_lut_dt((uint64_t)&A_lut[0][0], (MATMUL_M >> QUANT_LUT_UPDATE_GRANULARITY), 1, 6);

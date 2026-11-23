@@ -22,11 +22,6 @@ else
 	tests_pk = $(tests:=-pk)
 endif
 
-# mnist_mxgemmini selects the spike RoCC path vs the RTL MMIO path on this
-# macro (matching bareMetalC/Makefile). build_spike.sh passes RUNNER=spike.
-ifeq ($(findstring spike,$(RUNNER)),spike)
-CFLAGS := $(CFLAGS) -DSPIKE_SIM
-endif
 
 BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
 GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_nn.h $(abs_top_srcdir)/include/gemmini_testutils.h
